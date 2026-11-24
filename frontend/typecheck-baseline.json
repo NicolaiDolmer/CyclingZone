@@ -654,8 +654,7 @@
   "src/components/Layout.jsx": {
     "TS18046": 3,
     "TS2339": 12,
-    "TS2345": 6,
-    "TS2589": 1,
+    "TS2345": 5,
     "TS2741": 2
   },
   "src/components/MyLatestResultCard.jsx": {
@@ -839,12 +838,12 @@
     "TS18047": 1,
     "TS2322": 7,
     "TS2339": 12,
-    "TS2345": 3
+    "TS2345": 2
   },
   "src/components/admin/growth/RoadmapAdminForms.jsx": {
     "TS2339": 1,
     "TS2345": 3,
-    "TS2739": 17,
+    "TS2739": 16,
     "TS2741": 7
   },
   "src/components/admin/sections/BalanceDriftWatchSection.jsx": {
@@ -1642,10 +1641,9 @@
     "TS18048": 2
   },
   "src/lib/posthogClient.js": {
-    "TS18047": 3,
+    "TS18047": 2,
     "TS2322": 3,
-    "TS2339": 4,
-    "TS2698": 1
+    "TS2339": 4
   },
   "src/lib/posthogIntegration.jsx": {
     "TS2339": 1
@@ -1834,13 +1832,6 @@
   "src/lib/ridersUrlState.test.js": {
     "TS2739": 1,
     "TS2790": 1
-  },
-  "src/lib/roadmapVoting.js": {
-    "TS2339": 4,
-    "TS2345": 1
-  },
-  "src/lib/roadmapVoting.test.js": {
-    "TS2339": 3
   },
   "src/lib/roleHint.test.js": {
     "TS18047": 4,
@@ -2479,8 +2470,8 @@
   },
   "src/pages/RiderRankingsPage.jsx": {
     "TS2322": 4,
-    "TS2339": 6,
-    "TS2345": 2,
+    "TS2339": 2,
+    "TS2345": 1,
     "TS2739": 2,
     "TS2741": 2
   },
@@ -2505,7 +2496,7 @@
   },
   "src/pages/RoadmapPage.jsx": {
     "TS2339": 2,
-    "TS2345": 4
+    "TS2345": 3
   },
   "src/pages/RulesPage.jsx": {
     "TS2322": 1,

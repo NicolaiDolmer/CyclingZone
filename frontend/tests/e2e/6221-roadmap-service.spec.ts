@@ -19,9 +19,9 @@ test('#6221: admin stats and visible split controls use backend routes', async (
       return json(route, (route.request().headers().accept || '').includes('vnd.pgrst.object') ? user : [user]);
     }
     if (url.includes('/roadmap_item_scores')) return json(route, [{ item_id: itemId, engine: 'club', approved: true,
-      title_en: 'Fixture item', title_da: 'Testpunkt', status: 'planned', horizon: 'next', sort_order: 10,
+      title_en: 'Fixture item', title_da: 'Testpunkt', status: 'planned', horizon: '2026-W42', issue_ref: 6221, sort_order: 10,
       votes: 2, avg_importance: 5, steering_score: 5, sd_importance: 0 }]);
-    if (url.includes('/roadmap_items')) return json(route, [{ id: itemId, flag_key: null, beta_soon: false, live_soon: false }]);
+    if (url.includes('/roadmap_items')) return json(route, [{ id: itemId, category: 'club', flag_key: null, beta_soon: false, live_soon: false }]);
     return json(route, []);
   });
   await page.route('**/api/admin/roadmap/stats', route => json(route, { stats: { voters: 42, voters_14d: 31, votes_total: 80, voted_all: 19, managed_teams: 118 } }));
@@ -29,7 +29,7 @@ test('#6221: admin stats and visible split controls use backend routes', async (
   await page.route('**/api/admin/roadmap/split', route => {
     if (route.request().method() === 'OPTIONS') return json(route, {});
     splitCalls++;
-    expect(route.request().postDataJSON()).toMatchObject({ source: itemId, title_en: 'Rest EN', title_da: 'Rest DA', status: 'planned', horizon: 'next' });
+    expect(route.request().postDataJSON()).toMatchObject({ source: itemId, title_en: 'Rest EN', title_da: 'Rest DA', status: 'planned', horizon: '2026-W42', issue_ref: 6222 });
     expect(route.request().headers().authorization).toMatch(/^Bearer /);
     return json(route, { id: '00000000-0000-0000-0000-000000000002' });
   });
@@ -48,6 +48,13 @@ test('#6221: admin stats and visible split controls use backend routes', async (
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Restens titel (EN)').fill('Rest EN');
   await dialog.getByLabel('Restens titel (DA)').fill('Rest DA');
+  await dialog.getByLabel('Status').selectOption('planned');
+  await dialog.getByLabel('Tidspunkt', { exact: true }).selectOption('fixed');
+  await dialog.getByLabel('ISO-uge eller dato', { exact: true }).fill('2026-W42');
+  await dialog.getByRole('button', { name: 'Del punkt', exact: true }).click();
+  await expect(dialog.getByText('Planlagt kræver et GitHub-issue og et fast tidspunkt.')).toBeVisible();
+  expect(splitCalls).toBe(0);
+  await dialog.getByLabel('GitHub-issue').fill('6222');
   await dialog.getByRole('button', { name: 'Del punkt', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   expect(splitCalls).toBe(1);

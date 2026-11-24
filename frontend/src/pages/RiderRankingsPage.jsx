@@ -40,8 +40,8 @@ const ALL_DIVISIONS = Array.from(
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
 const WIN_COLS = [
   { key: "stage_wins",   labelKey: "rankings.colStageWins",   shortKey: "rankings.shortStageWins" },
-  { key: "gc_wins",      labelKey: "rankings.colGcWins",      shortKey: "rankings.shortGcWins" },
-  { key: "classic_wins", labelKey: "rankings.colClassicWins", shortKey: "rankings.shortClassicWins" },
+  { key: "gc_wins",      labelKey: "rankings.colGcWins",      shortKey: "rankings.colGcWins" },
+  { key: "classic_wins", labelKey: "rankings.colClassicWins", shortKey: "rankings.colClassicWins" },
   { key: "pts_wins",     labelKey: "rankings.colPtsWins",     shortKey: "rankings.shortPtsWins" },
   { key: "mtn_wins",     labelKey: "rankings.colMtnWins",     shortKey: "rankings.shortMtnWins" },
   { key: "young_wins",   labelKey: "rankings.colYoungWins",   shortKey: "rankings.shortYoungWins" },
@@ -56,6 +56,9 @@ const OPTIONAL_COLS = [
   { key: "polka_days",  labelKey: "rankings.colPolkaDays",   shortKey: "rankings.shortPolkaDays",   defaultVisible: false },
   { key: "white_days",  labelKey: "rankings.colWhiteDays",   shortKey: "rankings.shortWhiteDays",   defaultVisible: false },
 ];
+
+const WIN_VIEW_KEYS = ["gc_wins", "classic_wins", "total_wins"];
+const WIN_SORT_DEFAULT = { key: "total_wins", ascending: false };
 
 const COLUMNS_STORAGE_KEY = "cz.riderRankings.columns";
 
@@ -125,8 +128,11 @@ export default function RiderRankingsPage() {
   // 30 på Mit Hold samtidig — præcis den divergens #3071 blev åbnet for at lukke.
   // Alderen kommer derfor fra den delte kilde, ligesom alle andre flader.
   const seasonYear = useActiveSeasonYear();
-  const [sortKey, setSortKey] = useState("points");
-  const [sortAsc, setSortAsc] = useState(false);
+  const [view, setView] = useState("overview");
+  const [overviewSort, setOverviewSort] = useState({ key: "points", ascending: false });
+  const [winSort, setWinSort] = useState(WIN_SORT_DEFAULT);
+  const showWins = view === "wins";
+  const { key: sortKey, ascending: sortAsc } = showWins ? winSort : overviewSort;
   const [ownerFilter, setOwnerFilter] = useState("all");
   // #1004: filter på ét konkret hold ("all" = alle hold).
   const [teamFilter, setTeamFilter] = useState("all");
@@ -136,7 +142,8 @@ export default function RiderRankingsPage() {
   // hentet én gang. Bruges KUN til at slå rytterens team.league_division_id op
   // mod division/pulje-URL-param'ene (resolveDivisionSelectionFromParams) —
   // fanens EGEN default forbliver "alle divisioner" uden param'ene.
-  const [divisions, setDivisions] = useState([]);
+  /** @typedef {Pick<import("../types/database.types.ts").Database["public"]["Tables"]["league_divisions"]["Row"], "id" | "tier" | "pool_index" | "label">} RankingDivision */
+  const [divisions, setDivisions] = useState(/** @type {RankingDivision[]} */ ([]));
   // #2795 — brugerens eget hold, til --me-ring-markeringen nedenfor. Samme
   // mønster som StandingsPage/RaceDetailPage: uafhængig af rangliste-data,
   // så et fejlende/langsomt team-opslag aldrig blokerer selve ranglisten.
@@ -197,8 +204,13 @@ export default function RiderRankingsPage() {
   }
 
   function handleSort(key) {
-    if (sortKey === key) setSortAsc(a => !a);
-    else { setSortKey(key); setSortAsc(false); }
+    const setSort = showWins ? setWinSort : setOverviewSort;
+    setSort(current => ({ key, ascending: current.key === key && !current.ascending }));
+  }
+
+  function changeView(value) {
+    if (value === "wins") setWinSort(WIN_SORT_DEFAULT);
+    setView(value);
   }
 
   function toggleColumn(key) {
@@ -388,14 +400,45 @@ export default function RiderRankingsPage() {
     })),
   ];
 
+  const visibleColumns = showWins
+    ? columns.filter(col => (
+      WIN_VIEW_KEYS.includes(col.key) || ("sticky" in col && col.sticky) || ("fold" in col && col.fold)
+    )).map(col => {
+      if (!WIN_VIEW_KEYS.includes(col.key) || typeof col.mobileLabel !== "string") return col;
+      return {
+        ...col,
+        tight: isMobile,
+        // DataTable handles bubbled clicks and exposes its current aria-sort on the th.
+        header: (
+          <button type="button"
+            className="cursor-pointer rounded-cz text-end focus-visible:outline-2 focus-visible:outline-cz-accent-t"
+          >
+            {col.mobileLabel}
+          </button>
+        ),
+      };
+    })
+    : columns;
+
   // #8280 (P21): kontrollerne bor i ÉN titellinje inde i tabellens ramme. Valgene
-  // står som ord (division · pulje · ejer), søg yderst til højre, hold-valget bag
+  // står som ord (visning · division · pulje · ejer), søg yderst til højre, hold-valget bag
   // filter-ikonet og kolonne-valget bag kolonne-knappen. Sæson, antal og
   // "opdateret"-tid står i tællelinjen under tabellen (P9), ikke i en løs linje
   // mellem fanerne og tabellen.
   const titleBar = {
     page: "rider_rankings",
+    compactChoices: true,
     choices: [
+      {
+        key: "view",
+        ariaLabel: t("rankings.viewLabel"),
+        value: view,
+        onChange: e => changeView(e.target.value),
+        options: [
+          { value: "overview", label: t("rankings.viewOverview") },
+          { value: "wins", label: t("rankings.viewWins") },
+        ],
+      },
       {
         key: "division",
         ariaLabel: t("rankings.divisionFilterLabel"),
@@ -403,7 +446,9 @@ export default function RiderRankingsPage() {
         onChange: e => changeDivision(e.target.value),
         options: [
           { value: ALL_DIVISIONS_VALUE, label: t("rankings.divisionFilterAll") },
-          ...ALL_DIVISIONS.map(d => ({ value: String(d), label: t("rankings.divisionFilterOption", { n: d }) })),
+          ...ALL_DIVISIONS.map(d => ({
+            value: String(d), label: t("rankings.divisionFilterOption", { n: d }),
+          })),
         ],
       },
       ...(hasPoolSubtabs ? [{
@@ -449,7 +494,7 @@ export default function RiderRankingsPage() {
     },
     // Computer: de valgfrie kolonner. Telefon: DataTable bytter selv til sit eget
     // kolonne-ark (tre kolonner + "Fuld tabel").
-    columns: {
+    columns: showWins ? null : {
       label: t("rankings.columnsHeading"),
       count: visibleOptionalCols.length,
       total: OPTIONAL_COLS.length,
@@ -469,7 +514,7 @@ export default function RiderRankingsPage() {
       ) : (
         <DataTable
           label={t("rankings.title")}
-          columns={columns}
+          columns={visibleColumns}
           rows={filtered}
           rowKey={(rider) => rider.id}
           titleBar={titleBar}
@@ -484,9 +529,7 @@ export default function RiderRankingsPage() {
                 : null}
             />
           )}
-          /* D-047 (#5102): en rangliste laeses paa point, sejre og praemiepenge;
-             kategori-sejrene ligger bag kolonne-knappen og "Fuld tabel". */
-          mobileDefaults={["points", "total_wins", "prize_earned"]}
+          mobileDefaults={showWins ? WIN_VIEW_KEYS : ["points", "total_wins", "prize_earned"]}
           sort={sortKey}
           sortDir={sortAsc ? "asc" : "desc"}
           onSort={handleSort}
@@ -503,12 +546,12 @@ export default function RiderRankingsPage() {
           }}
           count={
             <div className="flex flex-wrap items-center gap-4">
-              <span>{t("rankings.legendStage")}</span>
-              <span>{t("rankings.legendGc")}</span>
-              <span>{t("rankings.legendClassic")}</span>
-              <span>{t("rankings.legendPcl")}</span>
-              <span>{t("rankings.legendMtn")}</span>
-              <span>{t("rankings.legendU25")}</span>
+              {!showWins && <span>{t("rankings.legendStage")}</span>}
+              {!showWins && <>
+                <span>{t("rankings.legendPcl")}</span>
+                <span>{t("rankings.legendMtn")}</span>
+                <span>{t("rankings.legendU25")}</span>
+              </>}
               <span className="ms-auto">
                 {seasonLine} · {t("rankings.ridersCount", { count: filtered.length })}
                 {/* #4225 — mellem to sæsoner viser ranglisten sidste AFSLUTTEDE sæson,

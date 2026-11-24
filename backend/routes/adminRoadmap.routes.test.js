@@ -54,8 +54,8 @@ test('admin vote rows pass the single jsonb object through unchanged (#7789)', a
   }, async () => ({ data: votes, error: null }));
 });
 
-test('split accepts every player-facing horizon pattern (#7895)', async () => {
-  const horizons = ['this_week', 'next_week', 'season_5', 'season_12', 'q1_2027', 'q4_2028', 'y2027', 'unscheduled'];
+test('split accepts fixed ISO windows, dates and season milestones', async () => {
+  const horizons = ['2026-W49', '2026-W53', '2028-02-29', 'season_6_start', 'season_6', 'q1_2027'];
   await withApp(async (base, calls) => {
     for (const horizon of horizons) {
       const res = await fetch(base + '/split', { method: 'POST', headers: { authorization: 'admin', 'Content-Type': 'application/json' }, body: JSON.stringify({ ...split, horizon }) });
@@ -65,9 +65,22 @@ test('split accepts every player-facing horizon pattern (#7895)', async () => {
   });
 });
 
+test('omitting status and time creates an unscheduled idea', async () => {
+  await withApp(async (base, calls) => {
+    const { source, title_en, title_da } = split;
+    const res = await fetch(base + '/split', {
+      method: 'POST', headers: { authorization: 'admin', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source, title_en, title_da }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(calls[0][1].p_status, 'active');
+    assert.equal(calls[0][1].p_horizon, 'unscheduled');
+  });
+});
+
 test('invalid split input is rejected before calling the writer', async () => {
   await withApp(async (base, calls) => {
-    for (const body of [[], {}, { ...split, source: 'invalid' }, { ...split, title_da: '' }, { ...split, status: 'invalid' }, { ...split, horizon: 'invalid' }, { ...split, horizon: 'next' }, { ...split, horizon: 'later' }, { ...split, horizon: 'q5_2027' }, { ...split, issue_ref: -1 }]) {
+    for (const body of [[], {}, { ...split, source: 'invalid' }, { ...split, title_da: '' }, { ...split, status: 'invalid' }, { ...split, horizon: 'invalid' }, { ...split, horizon: 'next' }, { ...split, horizon: 'later' }, { ...split, horizon: 'q5_2027' }, { ...split, issue_ref: -1 }, { ...split, issue_ref: null }, { ...split, horizon: 'unscheduled' }, { ...split, horizon: 'this_week' }, { ...split, horizon: 'next_week' }, { ...split, horizon: '2025-W53' }, { ...split, horizon: '2026-02-29' }]) {
       const res = await fetch(base + '/split', { method: 'POST', headers: { authorization: 'admin', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       assert.equal(res.status, 400);
     }

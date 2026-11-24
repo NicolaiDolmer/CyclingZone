@@ -225,6 +225,10 @@
       "squadAndAuctions": {
         "title": "Holdstørrelse og auktioner",
         "text": "Holdgrænser gælder stadig per division. Aktive auktioner hvor du fører, reserverer både balance og en mulig trupplads, så du ikke kan føre flere auktioner end dit hold kan rumme."
+      },
+      "availableBalance": {
+        "title": "Til rådighed",
+        "text": "Til rådighed er det, du kan bruge, når der er taget højde for dine førende bud og aktive autobud."
       }
     },
     "transfers": {
@@ -1188,6 +1192,10 @@
     },
     "riders": {
       "label": "Ryttere",
+      "rankingWins": {
+        "title": "Sammenlign sejre på rytterranglisten",
+        "text": "Åbn Ranglister, vælg Rytterrangliste, og vælg Sejre i tabellen. Samlet viser sejre i etapeløbenes samlede klassement. Klassikere viser sejre i endagsløb. Sejre i alt tæller også etapesejre og sejre i point-, bjerg- og ungdomsklassementerne. Vælg en kolonneoverskrift for at sortere efter den."
+      },
       "valueAndPrice": {
         "title": "Værdi og pris",
         "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder og udvikling. Den bygger på de samme evner som ratingen på hans kort og regnes ens for alle ryttere, uanset type, så når hans evner flytter sig, følger værdien med. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi. Værdier genberegnes én gang om ugen, hver søndag fra kl. 14 dansk tid, så en rytters værdi bevæger sig i ugentlige spring frem for dag for dag. Træning ændrer hans evner med det samme; værdien følger med ved næste søndagsopdatering. Værdien kan allerede begynde at falde i slutningen af 20'erne, før nogen evne vender: den priser hele den resterende karriere, ikke kun det nuværende niveau. En rytter der stadig er på sit skarpeste kan godt se sin værdi falde, alene fordi der er færre sæsoner tilbage at sælge ham i."
@@ -1601,7 +1609,7 @@
       },
       "trainingGroups": {
         "title": "Træningsgrupper",
-        "text": "En gruppe lader dig træffe én træningsbeslutning for flere ryttere. Du opretter den under Program, Plan: åbn \"Plan for\" og vælg \"+ Ny gruppe\". Giv den et navn, og start fra en ryttertype, eller vælg rytterne selv. En rytter kan være i én gruppe. En ændring i et felt gælder så hele gruppen, og ryttere med en etape beholder etapen. \"Træthed i aften\" viser gruppens mest trætte rytter. Rækkefølgen ligger fast: rytterens egen plan først, så gruppens plan, så holdets plan. Retter du én rytters egne felter, vinder hans plan, indtil du vælger \"Følg gruppen\" igen. Du kan også sætte et program på en gruppe under Programmer og give en gruppe sin egen undtagelse under Træthedsgrænse."
+        "text": "En gruppe lader dig træffe én træningsbeslutning for flere ryttere. Hvis du ser biblioteket på Program, vælger du et program fra den fulde liste. Brug 'Kopiér til ryttere' eller '+ Gruppe eller rytter', og tjek program og modtagere, før du bekræfter. Under 'Grupper og ryttere' kan du åbne 'Medlemmer' ved gruppen eller bruge 'Flyt til gruppe' på rytterens række. Ved en rytter med 'Intet program' vælger du 'Tilføj til gruppe'. På telefon åbner du 'Programmer' eller 'Skift program' for at finde biblioteket. Brug '+ Ny gruppe' i biblioteket for at oprette en gruppe. I den ældre Program-visning åbner du Plan og vælger \"Plan for\" og trykker på \"+ Ny gruppe\". Giv den et navn, og start fra en ryttertype, eller vælg rytterne selv. En rytter kan være i én gruppe. En ændring i et felt gælder så hele gruppen, og ryttere med en etape beholder etapen. \"Træthed i aften\" viser gruppens mest trætte rytter. Rækkefølgen ligger fast: rytterens egen plan først, så gruppens plan, så holdets plan. Retter du én rytters egne felter, vinder hans plan, indtil du vælger \"Følg gruppen\" igen. Du kan også sætte et program på en gruppe under Programmer og give en gruppe sin egen undtagelse under Træthedsgrænse."
       },
       "catalogV3": {
         "title": "To hårde sessioner til hver ryttertype",

@@ -6,7 +6,7 @@ import {
   latestUpdateByIssue, validateTitles, fmtScore, ADMIN_TABS, HORIZONS, HORIZON_LABELS, DEFAULT_SORT, isAdminTab,
   tabRows, filterItems, filterIssueRows, sortRows, nextSort, tabCounts, dontKnowTotal,
   parseVotePayload, voterDivisions, filterVotes, itemPoints, categoryPoints, plottable, chartRows, categoryOf,
-  ROADMAP_CATEGORIES, NO_CATEGORY, categoryLabel, isCategoryKey, totalScore, patchRows,
+  ROADMAP_CATEGORIES, categoryLabel, isCategoryKey, totalScore, patchRows,
   mergeCategories, bubbleRadius, coincidentIndex, votesForItems, distinctVoters, CHART_SCOPES, SCORE_MIN, SCORE_MAX, UNKNOWN_DIVISION,
 } from "./roadmapAdminModel.ts";
 
@@ -136,11 +136,11 @@ test("fanerne er de syv aftalte, og isAdminTab afviser andet", () => {
   assert.equal(isAdminTab("roadmap"), false);
   assert.equal(isAdminTab(null), false);
 });
-test("horisont-vælgeren tilbyder sæsoner, kvartaler og uden tid (#7895)", () => {
-  assert.equal(HORIZON_LABELS.season_5, "Sæson 5");
+test("horisont-vælgeren tilbyder faste milepæle og uden tid", () => {
+  assert.equal(HORIZON_LABELS.season_6_start, "Starten af sæson 6");
   assert.equal(HORIZON_LABELS.q1_2027, "Q1 2027");
   assert.ok(!(HORIZONS as readonly string[]).includes("later"));
-  for (const h of ["this_week", "next_week", "season_5", "season_6", "q1_2027", "q2_2027", "y2027", "unscheduled"]) {
+  for (const h of ["season_6_start", "season_6", "q1_2027", "unscheduled"]) {
     assert.ok((HORIZONS as readonly string[]).includes(h), h);
     assert.ok(HORIZON_LABELS[h], h);
   }
@@ -285,14 +285,14 @@ test("itemPoints uden stemme-rækker bruger viewets tal (før migrationen er app
   assert.deepEqual([p.x, p.y, p.voters, p.dontKnow, p.split], [4.5, 3, 7, 1, true]);
 });
 
-test("categoryPoints: faste kategorier, stemmere tælles én gang pr. kategori, uden kategori samles", () => {
+test("categoryPoints: faste kategorier, stemmere tælles én gang pr. kategori, tidligere motor giver standardkategori", () => {
   const rows = [row({ item_id: "a", category: "race_film" }), row({ item_id: "b", category: "race_film" }),
-    row({ item_id: "c", category: "  " })];
+    row({ item_id: "c", category: "  ", engine: "club" })];
   const cats = categoryPoints(rows, parseVotePayload(payload)!.votes);
-  const film = cats.find((c) => c.key === "Løbsfilm & løbsside")!;
+  const film = cats.find((c) => c.key === "Løb")!;
   // a: 6, 2 (+ Ved ikke); b: 4, 5. Stemmer 0 og 2 stemte på begge.
   assert.deepEqual([film.y, film.x, film.voters, film.dontKnow, film.items], [4.25, 3, 3, 1, 2]);
-  const none = cats.find((c) => c.key === NO_CATEGORY)!;
+  const none = cats.find((c) => c.key === "Klub & økonomi")!;
   assert.deepEqual([none.voters, none.items, none.x], [0, 1, null]);
 });
 
@@ -310,19 +310,19 @@ test("chartRows og categoryOf", () => {
   assert.deepEqual(chartRows(rows, "ideas").map((r) => r.item_id), ["a"]);
   assert.deepEqual(chartRows(rows, "planned").map((r) => r.item_id), ["b"]);
   assert.equal(CHART_SCOPES.length, 3);
-  assert.equal(categoryOf(row({ category: "race_engine" })), "Race engine");
-  assert.equal(categoryOf(row({ category: null })), NO_CATEGORY);
+  assert.equal(categoryOf(row({ category: "race_engine" })), "Løb");
+  assert.equal(categoryOf(row({ category: null })), "Klub & økonomi");
   // Gammel fritekst er ikke en fast kategori.
-  assert.equal(categoryOf(row({ category: " Live " })), NO_CATEGORY);
+  assert.equal(categoryOf(row({ category: " Live " })), "Klub & økonomi");
 });
 
-test("de 17 faste kategorier har unikke nøgler og navne og passer i kolonnen (1-40 tegn)", () => {
-  assert.equal(ROADMAP_CATEGORIES.length, 17);
-  assert.equal(new Set(ROADMAP_CATEGORIES.map((c) => c.key)).size, 17);
-  assert.equal(new Set(ROADMAP_CATEGORIES.map((c) => c.label)).size, 17);
+test("de 16 faste kategorier har unikke nøgler og navne og passer i kolonnen (1-40 tegn)", () => {
+  assert.equal(ROADMAP_CATEGORIES.length, 16);
+  assert.equal(new Set(ROADMAP_CATEGORIES.map((c) => c.key)).size, 16);
+  assert.equal(new Set(ROADMAP_CATEGORIES.map((c) => c.label)).size, 16);
   for (const c of ROADMAP_CATEGORIES) assert.ok(c.key.length >= 1 && c.key.length <= 40, c.key);
   assert.equal(categoryLabel("rider_profile"), "Rytterprofil & historik");
-  assert.equal(categoryLabel("app"), "App & navigation");
+  assert.equal(categoryLabel("app"), "App, mobil & hjælp");
   assert.equal(isCategoryKey("social"), true);
   assert.equal(isCategoryKey("Socialt & forum"), false);
   assert.equal(isCategoryKey(null), false);

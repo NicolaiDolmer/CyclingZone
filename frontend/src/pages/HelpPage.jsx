@@ -127,6 +127,7 @@ const SECTION_DEFS = [
       { id: "flashAuction", kind: "text" },
       { id: "tenMinExtend", kind: "text" },
       { id: "squadAndAuctions", kind: "text" },
+      { id: "availableBalance", kind: "text" }, // #8357
     ],
   },
   {
@@ -344,6 +345,7 @@ const SECTION_DEFS = [
     key: "riders",
     Icon: BikeIcon,
     blocks: [
+      { id: "rankingWins", kind: "text" },
       { id: "valueAndPrice", kind: "text" },
       { id: "salary", kind: "text" },
       { id: "reputation", kind: "text" },

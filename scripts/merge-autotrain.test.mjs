@@ -10,12 +10,17 @@ import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  CODEX_REQUEST_COMMENT,
+  codexRequestBody,
+  CODEX_RETRY_MS,
   QUEUE_CI_TIMEOUT_MINUTES,
   TRAIN_MAX_BATCH,
   TRAIN_MAX_DEPLOY,
+  codexReviewCandidates,
   completeFileList,
   confirmBeforeQueue,
   decideAction,
+  decideCodexRerequest,
   deployImpact,
   evaluatePr,
   hasOwnerMergeApproval,
@@ -23,6 +28,7 @@ import {
   parseArgs,
   queueArgs,
   requiredChecksStatus,
+  requestStaleCodexReviews,
   reviewGateStatus,
   run,
   selectTrain,
@@ -690,6 +696,286 @@ describe('merge-vagt: Stop-hooken (check-now-md.sh)', () => {
       const active = runHook('{"stop_hook_active": true}');
       assert.equal(active.decision, undefined);
       assert.match(active.systemMessage, /MERGE-VAGT: #8315 /);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
+// ── Gen-bestilling af Codex-review (#7654) ──────────────────────────────────
+
+const CODEX_BOT = 'chatgpt-codex-connector';
+const OLD_HEAD = 'c'.repeat(40);
+const RR_NOW = new Date('2026-11-23T12:00:00Z');
+const rrAgo = (m) => new Date(RR_NOW.getTime() - m * 60_000).toISOString();
+const HEAD_AT = rrAgo(120);
+
+const codexSummary = (sha, status = 'Completed') => ({
+  author: `${CODEX_BOT}[bot]`,
+  body: `<!-- codex-pull-request-review-summary -->\n| Review | Status | Commit |\n|---|---|---|\n| Code Review | ${status} | \`${sha.slice(0, 10)}\` |`,
+  createdAt: rrAgo(300),
+});
+const userRequest = (minutesAgo) => ({ author: OWNER, body: '@codex review', createdAt: rrAgo(minutesAgo) });
+const codexError = (minutesAgo) => ({ author: `${CODEX_BOT}[bot]`, body: 'Codex hit a problem. Something went wrong. Try again later by commenting "@codex review".', createdAt: rrAgo(minutesAgo) });
+const gateComment = { author: 'github-actions[bot]', body: '<!-- review-gate -->\nCodex-review gaelder et aeldre commit: kommenter `@codex review`', createdAt: rrAgo(10) };
+
+function decide(overrides = {}) {
+  return decideCodexRerequest({ comments: [], reviews: [], headSha: HEAD, headCommittedAt: HEAD_AT, isDraft: false, author: 'dev', now: RR_NOW, ...overrides });
+}
+
+describe('#7654 decideCodexRerequest', () => {
+  it('stale review: Codex har kun reviewet et aeldre hoved og ingen har bestilt et nyt -> bestiller', () => {
+    const res = decide({ comments: [codexSummary(OLD_HEAD)] });
+    assert.equal(res.request, true);
+  });
+
+  it('intet review overhovedet paa hovedet -> bestiller', () => {
+    assert.equal(decide().request, true);
+  });
+
+  it('allerede bestilt efter hovedets commit -> intet (idempotent pr. hoved)', () => {
+    const res = decide({ comments: [codexSummary(OLD_HEAD), userRequest(30)] });
+    assert.equal(res.request, false);
+    assert.match(res.reason, /allerede bestilt/);
+  });
+
+  it('en bestilling FOER hovedets commit daekker ikke det nye hoved', () => {
+    assert.equal(decide({ comments: [codexSummary(OLD_HEAD), userRequest(200)] }).request, true);
+  });
+
+  it('review-gatens egen kommentar der naevner @codex review er ikke en bestilling', () => {
+    assert.equal(decide({ comments: [gateComment] }).request, true);
+  });
+
+  it('Codex citerer selv "@codex review" i en fejlbesked: det er ikke en bestilling', () => {
+    const quoted = { ...codexError(5), body: '@codex review er bestilt. Something went wrong.' };
+    assert.equal(decide({ comments: [quoted] }).request, true, 'ingen ægte bestilling endnu');
+  });
+
+  it('draft -> intet, uanset review-tilstand', () => {
+    assert.equal(decide({ isDraft: true, comments: [codexSummary(OLD_HEAD)] }).request, false);
+  });
+
+  it('Codex har reviewet hovedet, eller kører nu -> intet', () => {
+    assert.equal(decide({ comments: [codexSummary(HEAD)] }).request, false);
+    assert.equal(decide({ comments: [codexSummary(HEAD, 'In progress')] }).request, false);
+    const review = { author: `${CODEX_BOT}[bot]`, body: 'Codex Review: Didn\'t find any major issues.', commit: HEAD, submittedAt: rrAgo(5) };
+    assert.equal(decide({ reviews: [review] }).request, false);
+  });
+
+  it('Dependabot er undtaget fra Codex-kravet', () => {
+    assert.equal(decide({ author: 'dependabot[bot]' }).request, false);
+    assert.equal(decide({ author: 'app/dependabot' }).request, false);
+  });
+
+  it('ukendt hovedtidspunkt: bestiller ikke (fail-safe)', () => {
+    assert.equal(decide({ headCommittedAt: '' }).request, false);
+  });
+
+  it('Something went wrong efter bestillingen: hoejst een ny bestilling i timen', () => {
+    const base = [codexSummary(OLD_HEAD), userRequest(40), codexError(38)];
+    const early = decide({ comments: base });
+    assert.equal(early.request, false);
+    assert.match(early.reason, /inden for den seneste time/);
+    const late = decide({ comments: [codexSummary(OLD_HEAD), userRequest(61), codexError(59)] });
+    assert.equal(late.request, true);
+    assert.match(late.reason, /fejlede/);
+    assert.equal(CODEX_RETRY_MS, 60 * 60_000);
+  });
+
+  it('Something went wrong som review-svar taeller ogsaa', () => {
+    const review = { author: `${CODEX_BOT}[bot]`, body: 'Something went wrong.', commit: null, submittedAt: rrAgo(59) };
+    assert.equal(decide({ comments: [userRequest(61)], reviews: [review] }).request, true);
+  });
+
+  it('koerer-resume paa hovedet + fejlbesked nyere end bestillingen: gen-bestiller efter en time (Codex P2)', () => {
+    const running = codexSummary(HEAD, 'In progress');
+    const late = decide({ comments: [running, userRequest(61), codexError(59)] });
+    assert.equal(late.request, true);
+    assert.match(late.reason, /fejlede/);
+    const early = decide({ comments: [running, userRequest(40), codexError(38)] });
+    assert.equal(early.request, false);
+    assert.match(early.reason, /inden for den seneste time/);
+    // Uden fejl, eller med en fejl FOER bestillingen, koerer reviewet stadig.
+    assert.match(decide({ comments: [running, userRequest(61)] }).reason, /koerer/);
+    assert.match(decide({ comments: [running, codexError(90), userRequest(61)] }).reason, /koerer/);
+  });
+
+  it('en ny bestilling efter fejlen: ingen yderligere, til naeste fejl + en time', () => {
+    const comments = [codexSummary(OLD_HEAD), userRequest(120 - 1), codexError(100), userRequest(5)];
+    assert.equal(decide({ comments, headCommittedAt: rrAgo(130) }).request, false);
+  });
+
+  it('togets egen bestilling er bundet til hoved-SHA\'en, ikke til commit-tiden (Codex P2)', () => {
+    const own = (sha, minutesAgo, login = OWNER) => ({ author: login, body: codexRequestBody(sha), createdAt: rrAgo(minutesAgo) });
+    const opts = { ownerLogin: OWNER, comments: [] };
+    // Et allerede oprettet commit pushes efter bestillingen paa det forrige hoved: committer-datoen ligger FOER den gamle bestilling.
+    assert.equal(decide({ ...opts, headCommittedAt: rrAgo(300), comments: [own(OLD_HEAD, 30)] }).request, true, 'bestilling paa gammelt hoved daekker ikke');
+    // Fremtidsdateret hoved: bestillingen er "foer" hovedet efter tid, men bundet til SHA'en, saa ingen gentagelse.
+    const future = decide({ ...opts, headCommittedAt: new Date(RR_NOW.getTime() + 86_400_000).toISOString(), comments: [own(HEAD, 30)] });
+    assert.equal(future.request, false);
+    assert.match(future.reason, /allerede bestilt/);
+    // En markoer fra en anden konto er ikke togets: den behandles som en manuel bestilling (tidsregel).
+    assert.equal(decide({ ...opts, comments: [own(HEAD, 200, 'someone')] }).request, true, 'foer hovedets commit og ikke fra ejeren');
+    assert.equal(decide({ ...opts, comments: [own(HEAD, 30, 'someone')] }).request, false, 'efter hovedets commit taeller som manuel bestilling');
+  });
+
+  it('en fejl fra et AELDRE hoved udloeser ikke noget', () => {
+    const comments = [codexError(500), userRequest(30)];
+    assert.equal(decide({ comments }).request, false);
+  });
+
+  it('en fejlet summary paa hovedet bestilles igen, men hoejst en gang i timen', () => {
+    assert.equal(decide({ comments: [codexSummary(HEAD, 'Failed'), userRequest(30)] }).request, false);
+    assert.equal(decide({ comments: [codexSummary(HEAD, 'Failed'), userRequest(70)] }).request, true);
+    assert.equal(decide({ comments: [codexSummary(HEAD, 'Failed')] }).request, true, 'ingen bestilling efter hovedet');
+  });
+});
+
+describe('#7654 codexReviewCandidates', () => {
+  const marker = { comments: [markerComment(HEAD)] };
+  const notReady = (overrides = {}, ctx = {}) => evalWith(overrides, { allChecks: [{ name: 'review-gate', bucket: 'fail', event: 'pull_request_target', startedAt: '2026-11-04T10:00:00Z' }], ...ctx });
+  const numbers = (evs) => codexReviewCandidates(evs).map((e) => e.number);
+
+  it('evaluatePr bevarer kategorien, naar review-gaten er roed (forudsaetning for lavrisiko-udvaelgelsen)', () => {
+    const e = notReady({ number: 1 });
+    assert.equal(e.ready, false);
+    assert.equal(e.category, 'c');
+  });
+
+  it('staaende kategori eller ejer-markoer, ikke klar; alt andet udelukkes', () => {
+    const evs = [
+      notReady({ number: 1 }),
+      notReady({ number: 2, ...marker }, { classification: OWNER_GO }),
+      notReady({ number: 3 }, { classification: OWNER_GO }),
+      evalWith({ number: 4 }),
+      notReady({ number: 5, isDraft: true, ...marker }),
+      notReady({ number: 6, mergeable: 'CONFLICTING', ...marker }),
+      notReady({ number: 7, labels: ['hold'], ...marker }),
+      notReady({ number: 8, mergeable: 'UNKNOWN', ...marker }),
+      notReady({ number: 9, mergeable: 'UNKNOWN' }, { classification: null }), // som evaluateOne: tidlig afslag klassificerer ikke
+    ];
+    assert.deepEqual(numbers(evs), [1, 2, 8]);
+  });
+});
+
+// Fake gh for REST-kaldene; kommentaren der skrives, bliver en rigtig kommentar paa PR'en.
+function fakeReviewGh(prs) {
+  const posted = [];
+  const calls = [];
+  const state = new Map(Object.entries(prs).map(([n, v]) => [Number(n), { draft: false, head: HEAD, author: 'dev', headAt: HEAD_AT, comments: [], reviews: [], ...v }]));
+  const prOf = (path) => state.get(Number(/(?:pulls|issues)\/(\d+)/.exec(path)?.[1]));
+  const gh = {
+    json(args) {
+      calls.push(args.join(' '));
+      const path = args.find((a) => a.startsWith('repos/'));
+      const p = prOf(path);
+      if (!p) throw new Error('gh: 404');
+      if (p.fail) throw new Error('gh nede');
+      if (/\/issues\/\d+\/comments/.test(path)) return [p.comments.map((c) => ({ user: { login: c.author }, body: c.body, created_at: c.createdAt }))];
+      if (/\/pulls\/\d+\/reviews/.test(path)) return [p.reviews.map((r) => ({ user: { login: r.author }, body: r.body, commit_id: r.commit, submitted_at: r.submittedAt }))];
+      return { draft: p.draft, head: { sha: p.head }, user: { login: p.author } };
+    },
+    text(args) {
+      calls.push(args.join(' '));
+      if (args[0] === 'pr' && args[1] === 'comment') {
+        const n = Number(args[2]);
+        posted.push({ n, body: args[args.indexOf('--body') + 1], args });
+        state.get(n).comments.push({ author: OWNER, body: args[args.indexOf('--body') + 1], createdAt: RR_NOW.toISOString() });
+        return '';
+      }
+      const sha = /commits\/([0-9a-f]{40})/.exec(args[1])?.[1];
+      const p = [...state.values()].find((v) => v.head === sha);
+      return `${p?.headAt ?? ''}\n`;
+    },
+  };
+  return { gh, posted, calls, state };
+}
+
+describe('#7654 requestStaleCodexReviews (gh injiceret)', () => {
+  const stale = (n, overrides = {}) => evalWith({ number: n, ...overrides }, { allChecks: [{ name: 'review-gate', bucket: 'fail', event: 'pull_request_target', startedAt: '2026-11-04T10:00:00Z' }] });
+
+  it('stale review: skriver EN @codex review, logger linjen, og flytter aldrig en markoer', () => {
+    const f = fakeReviewGh({ 10: { comments: [codexSummary(OLD_HEAD), markerComment(OLD)] } });
+    const lines = [];
+    const res = requestStaleCodexReviews({ evaluations: [stale(10, { comments: [markerComment(OLD)] })], repo: 'o/r', now: RR_NOW, gh: f.gh, log: (l) => lines.push(l) });
+    assert.deepEqual(res, [10]);
+    assert.equal(f.posted.length, 1);
+    assert.ok(f.posted[0].body.startsWith(CODEX_REQUEST_COMMENT), 'bestillingen starter med @codex review');
+    assert.equal(f.posted[0].body, codexRequestBody(HEAD), 'bundet til hoved-SHA\'en');
+    assert.ok(f.posted[0].args.includes('--repo') && f.posted[0].args.includes('o/r'));
+    assert.ok(lines.some((l) => l.includes(`gen-bestilt review: #10 (HEAD ${HEAD.slice(0, 7)})`)), lines.join('\n'));
+    // Eneste skrivning er selve kommentaren: ingen markoer-tekst, ingen labels, ingen luk/genaabn.
+    const prCalls = f.calls.filter((c) => /^pr /.test(c));
+    assert.equal(prCalls.length, 1);
+    assert.match(prCalls[0], /^pr comment 10 --repo o\/r --body @codex review\r?\n\r?\n<!-- merge-autotrain: codex-review-request sha=a{40} -->$/);
+  });
+
+  it('allerede bestilt efter hovedet: intet; et nyt kald er idempotent efter den foerste bestilling', () => {
+    const f = fakeReviewGh({ 11: { comments: [codexSummary(OLD_HEAD)] }, 12: { comments: [codexSummary(OLD_HEAD), userRequest(10)] } });
+    const evs = [stale(11), stale(12)];
+    assert.deepEqual(requestStaleCodexReviews({ evaluations: evs, repo: 'o/r', now: RR_NOW, gh: f.gh }), [11]);
+    assert.deepEqual(requestStaleCodexReviews({ evaluations: evs, repo: 'o/r', now: new Date(RR_NOW.getTime() + 20 * 60_000), gh: f.gh }), []);
+    assert.equal(f.posted.length, 1);
+  });
+
+  it('draft: ingen kommentar (ogsaa naar GitHub siger draft, selvom listen sagde klar)', () => {
+    const f = fakeReviewGh({ 13: { draft: true, comments: [codexSummary(OLD_HEAD)] } });
+    assert.deepEqual(requestStaleCodexReviews({ evaluations: [stale(13)], repo: 'o/r', now: RR_NOW, gh: f.gh }), []);
+    assert.equal(f.posted.length, 0);
+    // En draft i selve vurderingen er aldrig kandidat og giver ingen gh-kald.
+    const g = fakeReviewGh({});
+    requestStaleCodexReviews({ evaluations: [evalWith({ number: 14, isDraft: true })], repo: 'o/r', now: RR_NOW, gh: g.gh });
+    assert.deepEqual(g.calls, []);
+  });
+
+  it('Something went wrong: een bestilling, saa ingen mere foer der er gaaet en time', () => {
+    const f = fakeReviewGh({ 15: { comments: [codexSummary(OLD_HEAD), userRequest(40), codexError(38)] } });
+    const evs = [stale(15)];
+    assert.deepEqual(requestStaleCodexReviews({ evaluations: evs, repo: 'o/r', now: RR_NOW, gh: f.gh }), []);
+    const later = new Date(RR_NOW.getTime() + 25 * 60_000);
+    assert.deepEqual(requestStaleCodexReviews({ evaluations: evs, repo: 'o/r', now: later, gh: f.gh }), [15]);
+    f.state.get(15).comments.push({ ...codexError(0), createdAt: new Date(later.getTime() + 60_000).toISOString() });
+    assert.deepEqual(requestStaleCodexReviews({ evaluations: evs, repo: 'o/r', now: new Date(later.getTime() + 30 * 60_000), gh: f.gh }), []);
+    assert.deepEqual(requestStaleCodexReviews({ evaluations: evs, repo: 'o/r', now: new Date(later.getTime() + 65 * 60_000), gh: f.gh }), [15]);
+    assert.equal(f.posted.length, 2);
+  });
+
+  it('dry-run: logger hvad der ville ske, skriver intet', () => {
+    const f = fakeReviewGh({ 16: { comments: [codexSummary(OLD_HEAD)] } });
+    const lines = [];
+    const res = requestStaleCodexReviews({ evaluations: [stale(16)], repo: 'o/r', now: RR_NOW, dryRun: true, gh: f.gh, log: (l) => lines.push(l) });
+    assert.deepEqual(res, []);
+    assert.equal(f.posted.length, 0);
+    assert.ok(lines.some((l) => /DRY-RUN: ville gen-bestille review: #16/.test(l)));
+  });
+
+  it('en PR der fejler stopper ikke de andre (fail-soft)', () => {
+    const f = fakeReviewGh({ 17: { fail: true }, 18: { comments: [codexSummary(OLD_HEAD)] } });
+    const lines = [];
+    const res = requestStaleCodexReviews({ evaluations: [stale(17), stale(18)], repo: 'o/r', now: RR_NOW, gh: f.gh, log: (l) => lines.push(l) });
+    assert.deepEqual(res, [18]);
+    assert.ok(lines.some((l) => /#17: gen-bestilling af review fejlede/.test(l)));
+  });
+
+  it('Codex har allerede reviewet hovedet: intet', () => {
+    const f = fakeReviewGh({ 19: { comments: [codexSummary(HEAD)] } });
+    assert.deepEqual(requestStaleCodexReviews({ evaluations: [stale(19)], repo: 'o/r', now: RR_NOW, gh: f.gh }), []);
+  });
+
+  it('run() kalder gen-bestillingen med vurderingerne; en fejl dér stopper ikke toget', async () => {
+    const seen = [];
+    const dir = mkdtempSync(join(tmpdir(), 'autotrain-rr-'));
+    try {
+      const res = await run({
+        argv: ['--dry-run'], now: RR_NOW, repoRoot: dir, out: () => {},
+        readMarker: () => null, evaluate: () => [evalWith({ number: 11 })],
+        guard: () => {},
+        requestReviews: (opts) => { seen.push(opts); throw new Error('gh nede'); },
+      });
+      assert.equal(res.action, 'dry-run');
+      assert.deepEqual(res.train, [11]);
+      assert.equal(seen.length, 1);
+      assert.equal(seen[0].dryRun, true);
+      assert.deepEqual(seen[0].evaluations.map((e) => e.number), [11]);
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

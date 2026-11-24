@@ -225,6 +225,10 @@
       "squadAndAuctions": {
         "title": "Taille de l'effectif et enchères",
         "text": "Les limites d'effectif s'appliquent toujours par division. Les enchères en cours où tu mènes réservent à la fois du solde et une place potentielle dans l'effectif, tu ne peux donc pas mener plus d'enchères que ton effectif ne peut en accueillir."
+      },
+      "availableBalance": {
+        "title": "Solde disponible",
+        "text": "Ton solde disponible est ce que tu peux dépenser après avoir déduit les montants bloqués par tes meilleures offres et tes enchères automatiques actives."
       }
     },
     "transfers": {
@@ -1188,6 +1192,10 @@
     },
     "riders": {
       "label": "Coureurs",
+      "rankingWins": {
+        "title": "Compare les victoires au classement des coureurs",
+        "text": "Ouvre le classement des coureurs et choisis Victoires dans le tableau. Les victoires au général sont les victoires au classement général des courses par étapes. Les victoires en classiques sont les victoires dans les courses d’un jour. Le total inclut aussi les victoires d’étape et celles des classements par points, de la montagne et des jeunes. Sélectionne un en-tête pour trier cette colonne."
+      },
       "valueAndPrice": {
         "title": "Valeur et prix",
         "text": "La valeur de marché d'un coureur vient du modèle de valorisation du jeu : il estime la production que le coureur devrait fournir pour le reste de sa carrière, mesurée par rapport au calendrier de saison du jeu et ajustée selon l'âge et la progression. Il est construit à partir des mêmes aptitudes que la note de sa fiche et calculé de la même façon pour chaque coureur, quel que soit son type : quand ses aptitudes bougent, sa valeur suit. Les jeunes talents portent de la valeur pour les saisons qui les attendent ; les vétérans sont cotés sur ce qu'il leur reste ; l'élite absolue du jeu porte des prix de star bien au-delà du budget de n'importe quelle équipe. Le prix de départ d'une enchère doit au minimum égaler la valeur du coureur. Les valeurs sont recalculées une fois par semaine, chaque dimanche à partir de 14:00 heure danoise, la valeur d'un coureur bouge donc par paliers hebdomadaires plutôt que jour après jour. L'entraînement change ses aptitudes tout de suite ; sa valeur suit à la mise à jour du dimanche suivant. La valeur peut déjà commencer à glisser vers la fin de la vingtaine, avant qu'une aptitude ne tourne : elle cote toute sa carrière restante, pas seulement son niveau actuel. Un coureur encore à son meilleur peut quand même voir sa valeur baisser, simplement parce qu'il lui reste moins de saisons pour le vendre."

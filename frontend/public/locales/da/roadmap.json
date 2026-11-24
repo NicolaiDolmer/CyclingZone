@@ -57,7 +57,7 @@
       "season": "Sæson {season}",
       "quarter": "Q{quarter} {year}",
       "year": "{year}",
-      "unscheduled": "Til afstemning"
+      "unscheduled": "Tidspunkt afklares"
     }
   },
   "beta": {

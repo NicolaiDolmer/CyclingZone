@@ -87,7 +87,8 @@ test("RoadmapPage fanger lastSeen ÉN gang ved mount, FØR den overskrives (#567
 });
 
 test("RoadmapPage nulstiller lastSeen ved besøg, også med kendte fejl i regnestykket (#5673, #6150)", () => {
-  assert.match(source, /const all = \[\.\.\.\(itemData \?\? \[\]\), \.\.\.\(issueData \?\? \[\]\)\]/);
+  assert.match(source, /\.or\(PUBLIC_ROADMAP_CATEGORY_FILTER\)/);
+  assert.match(source, /const all = \[\.\.\.publicItems, \.\.\.\(issueData \?\? \[\]\)\]/);
   assert.match(source, /writeLastSeenRoadmap\(latestRoadmapCreatedAt\(all\)\)/);
 });
 

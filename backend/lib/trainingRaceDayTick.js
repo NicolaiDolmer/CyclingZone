@@ -269,7 +269,9 @@ export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId
 // Saved selections can include riders excluded from the actual start field.
 // Only an immutable first-stage snapshot proves DNS; missing evidence keeps
 // the binding. Never infer DNS from finishers or a missing result.
-async function releaseNonStarters(supabase, rows) {
+// #8549 fund E: Week blocks' planned stages (engine and forecast) use this same release,
+// so a known non-starter has no planned stage on any of the date's fields.
+export async function releaseNonStarters(supabase, rows) {
   const raceIds = [...new Set(rows.map(row => row.race_id).filter(Boolean))];
   const fields = new Map();
   if (raceIds.length) {

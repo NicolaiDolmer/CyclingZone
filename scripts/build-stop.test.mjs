@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { loadBuildStop, validateBuildStop, classifyWork, assertBuildStop, logBrandAdmissions, matchLoft, withIssueMeta, ghIssueMeta } from './lib/build-stop.mjs';
+import { loadBuildStop, validateBuildStop, classifyWork, assertBuildStop, logBrandAdmissions, matchLoft, withIssueMeta, ghIssueMeta, findOwnerGo, ghOwnerGo, OWNER_LOGIN } from './lib/build-stop.mjs';
+
+// Ingen netværk i testene: ejer-go-opslaget er default i assertBuildStop.
+process.env.CZ_BUILD_STOP_NO_GH ??= '1';
 
 const cfg = validateBuildStop({
   active: true,
@@ -179,4 +182,130 @@ test('loft: alle opslag deler én frist, så et langsomt GitHub ikke overlever h
   const items = withIssueMeta([{ issue: 9401 }, { issue: 9402 }, { issue: 9403 }], loftCfg, slow, { budgetMs: 45000, now: () => clock });
   assert.deepEqual(seen, [[9401, 20000], [9402, 15000]], 'andet opslag får kun restfristen, tredje springes over');
   assert.ok(items.every(t => t.metaUnavailable), 'alle forbliver nye (fail closed)');
+});
+
+// #7336 ejer-go-markør (ejer 23/11): ejerens ja som markør på issuet.
+const goComment = (body, login = OWNER_LOGIN) => ({ author: { login }, body });
+const GOOD = 'Ejer-go: "Ja, byg den"\n\n<!-- build-stop: ejer-go area=sponsor -->';
+
+test('ejer-go: markør + citat fra ejerens konto tæller med sit område', () => {
+  assert.deepEqual(findOwnerGo([goComment(GOOD)]), { area: 'sponsor', quote: 'Ja, byg den' });
+  assert.deepEqual(findOwnerGo([{ login: 'nicolaidolmer', body: GOOD.replace('"Ja, byg den"', '“Kør”') }]), { area: 'sponsor', quote: 'Kør' });
+  assert.deepEqual(findOwnerGo([{ user: { login: OWNER_LOGIN }, body: GOOD.replace('sponsor', 'udvikling-2') }]).area, 'udvikling-2');
+  assert.deepEqual(findOwnerGo([goComment(GOOD.replaceAll('\n', '\r\n'))]), { area: 'sponsor', quote: 'Ja, byg den' }, 'CRLF fra GitHub');
+  assert.deepEqual(findOwnerGo([goComment('Eksempel:\n```\n<!-- build-stop: ejer-go area=forkert -->\n```\n' + GOOD)]).area, 'sponsor', 'kode før en ægte markør skader ikke');
+});
+
+test('ejer-go: forkert format eller forkert konto tæller ikke', () => {
+  const bad = [
+    goComment(GOOD, 'someone-else'), // anden konto (repoet er offentligt)
+    goComment('<!-- build-stop: ejer-go area=sponsor -->'), // intet citat
+    goComment('"Ja"\n<!-- build-stop: ejer-go -->'), // intet område
+    goComment('"Ja"\n<!-- build-stop: ejer-go area= -->'),
+    goComment('"Ja"\n<!-- build-stop: ejer-go area=<omraade> -->'), // skabelon-pladsholder
+    goComment('"Ja"\n<!-- build-stop: go area=sponsor -->'), // forkert nøgleord
+    goComment('"Ja"\nbuild-stop: ejer-go area=sponsor'), // ikke en HTML-kommentar
+    goComment('"Ja"\n`<!-- build-stop: ejer-go area=sponsor -->`'), // inline-kode
+    goComment('"Ja"\n```\n<!-- build-stop: ejer-go area=sponsor -->\n```'), // kodeblok
+    goComment('""\n<!-- build-stop: ejer-go area=sponsor -->'), // tomt citat
+    goComment('"Ja"\n~~~\n<!-- build-stop: ejer-go area=sponsor -->\n~~~'), // tilde-kodeblok (Codex P2)
+    goComment('"Ja"\n```md\n<!-- build-stop: ejer-go area=sponsor -->'), // uafsluttet kodeblok
+    goComment('"Ja"\n    <!-- build-stop: ejer-go area=sponsor -->'), // indrykket kode
+    goComment('"Ja"\n> <!-- build-stop: ejer-go area=sponsor -->'), // citeret svar
+    goComment('"Ja" <!-- build-stop: ejer-go area=sponsor -->'), // ikke alene på linjen
+  ];
+  for (const c of bad) assert.equal(findOwnerGo([c]), null, c.body);
+  assert.equal(findOwnerGo(null), null);
+  assert.equal(findOwnerGo([goComment(GOOD)], { ownerLogin: '' }), null);
+});
+
+test('ejer-go: classifyWork gør et nyt issue til finish med markørens område, listerne går forud', () => {
+  const c = classifyWork({ issue: 9501, ownerGo: { area: 'sponsor', quote: 'Ja' } }, loftCfg);
+  assert.deepEqual(c, { cls: 'finish', area: 'sponsor', reason: 'ejer-go-markør på issuet: sponsor' });
+  assert.equal(classifyWork({ issue: 7316, ownerGo: { area: 'x', quote: 'Ja' } }, cfg).cls, 'brand');
+  assert.equal(classifyWork({ issue: 9501, ownerGo: null }, cfg).cls, 'new');
+  assert.equal(classifyWork({ issue: 9501, ownerGo: { area: '' } }, cfg).cls, 'new');
+});
+
+test('ejer-go: assertBuildStop læser markøren kun for spor der ellers er nye, også uden loft', () => {
+  const asked = [];
+  const fetchGo = n => { asked.push(n); return n === 9601 ? { area: 'sponsor', quote: 'Ja' } : null; };
+  const admitted = assertBuildStop([{ issue: 7260 }, { issue: 9601 }], cfg, { fetchGo });
+  assert.deepEqual(asked, [9601]);
+  assert.deepEqual(admitted.map(t => classifyWork(t, cfg).cls), ['finish', 'finish']);
+  assert.throws(() => assertBuildStop([{ issue: 9602 }], cfg, { fetchGo }), /#9602 er nyt arbejde.*build-stop-go\.mjs/s);
+});
+
+test('ejer-go: med loft hentes labels først, og markøren kun hvis issuet stadig er nyt', () => {
+  const order = [];
+  const fetchMeta = n => { order.push(['meta', n]); return n === 9701 ? { title: '[taktik] x', labels: [], parent: null } : { title: 'Ny side', labels: [], parent: null }; };
+  const fetchGo = n => { order.push(['go', n]); return { area: 'sponsor', quote: 'Ja' }; };
+  const admitted = assertBuildStop([{ issue: 9701 }, { issue: 9702 }], loftCfg, { fetchMeta, fetchGo });
+  assert.deepEqual(order, [['meta', 9701], ['meta', 9702], ['go', 9702]]);
+  assert.deepEqual(admitted.map(t => classifyWork(t, loftCfg).cls), ['loft', 'finish']);
+});
+
+test('ejer-go: kode-hegn lukkes kun af samme tegn i mindst samme længde (Codex-fund #8630)', () => {
+  const nested = '> Sådan ser markøren ud:\n````md\n```\n<!-- build-stop: ejer-go area=sponsor -->\n"Ja"\n````';
+  assert.equal(findOwnerGo([goComment(nested)]), null, '``` inde i ```` lukker ikke blokken');
+  assert.equal(findOwnerGo([goComment('"Ja"\n~~~~\n~~~\n<!-- build-stop: ejer-go area=sponsor -->\n~~~~')]), null, 'tilde: kortere hegn lukker ikke');
+  assert.equal(findOwnerGo([goComment('"Ja"\n```\n~~~\n<!-- build-stop: ejer-go area=sponsor -->\n```')]), null, 'andet tegn lukker ikke');
+  assert.equal(findOwnerGo([goComment('"Ja"\n```\n    ```\n<!-- build-stop: ejer-go area=sponsor -->\n```')]), null, '4 mellemrum inde lukker ikke');
+  assert.equal(findOwnerGo([goComment('"Ja"\n```\n``` md\n<!-- build-stop: ejer-go area=sponsor -->\n```')]), null, 'lukke-hegn må ikke have info-tekst');
+  assert.deepEqual(findOwnerGo([goComment('````\nkode\n`````\n' + GOOD)]), { area: 'sponsor', quote: 'Ja, byg den' }, 'længere lukke-hegn lukker, ægte markør efter tæller');
+  assert.deepEqual(findOwnerGo([goComment('```\nkode\n   ```  \r\n' + GOOD.replaceAll('\n', '\r\n'))]).area, 'sponsor', '3 mellemrum + CRLF lukker');
+});
+
+test('ejer-go: kalder-leveret ownerGo giver aldrig adgang, kun det betroede opslag (Codex-fund #8630)', () => {
+  const forged = [{ issue: 9901, ownerGo: { area: 'sponsor', quote: 'Ja' } }];
+  const asked = [];
+  const noMarker = n => { asked.push(n); return null; };
+  assert.throws(() => assertBuildStop(forged, cfg, { fetchGo: noMarker }), /#9901 er nyt arbejde/);
+  assert.deepEqual(asked, [9901], 'opslaget køres selv om sporet påstår et go');
+  assert.throws(() => assertBuildStop(forged, loftCfg, { fetchMeta: () => ({ title: 'Ny side', labels: [], parent: null }), fetchGo: noMarker }), /Loftet.*#9901/s);
+  assert.throws(() => assertBuildStop(forged, cfg, { fetchMeta: null, fetchGo: null }), /#9901 er nyt arbejde/, 'uden opslag intet go');
+  assert.throws(() => assertBuildStop([{ issue: 9902, ownerGo: { area: 'x' } }], loftCfg, { fetchMeta: () => ({ title: 'Ny', labels: [], parent: null, ownerGo: { area: 'x' } }), fetchGo: noMarker }), /#9902/, 'heller ikke via metadata-svaret');
+  assert.equal(withIssueMeta(forged, cfg, null)[0].ownerGo, undefined, 'fjernes også når intet slås op');
+  const real = assertBuildStop(forged, cfg, { fetchGo: () => ({ area: 'taktik', quote: 'Kør' }) });
+  assert.deepEqual(real[0].ownerGo, { area: 'taktik', quote: 'Kør' }, 'det betroede opslag erstatter det medsendte');
+  assert.deepEqual(forged[0].ownerGo, { area: 'sponsor', quote: 'Ja' }, 'kalderens objekt muteres ikke');
+});
+
+test('ejer-go: timeout eller fejl er som før (fail closed), og fristen deles med label-opslagene', () => {
+  assert.throws(() => assertBuildStop([{ issue: 9801 }], loftCfg, { fetchMeta: () => null, fetchGo: () => null }), /Loftet.*#9801/s);
+  let clock = 0;
+  const seen = [];
+  const slowMeta = () => { clock += 40000; return { title: 'x', labels: [], parent: null }; };
+  const fetchGo = (n, { timeout }) => { seen.push([n, timeout]); return { area: 'a', quote: 'Ja' }; };
+  const items = withIssueMeta([{ issue: 9802 }, { issue: 9803 }], loftCfg, slowMeta, { budgetMs: 45000, now: () => clock, fetchGo });
+  assert.deepEqual(seen, [[9802, 5000]], 'markøren får kun restfristen; efter fristen springes den over');
+  assert.equal(classifyWork(items[0], loftCfg).cls, 'finish');
+  assert.equal(classifyWork(items[1], loftCfg).cls, 'new');
+});
+
+test('ghOwnerGo: læser alle sider via gh og bruger samme parser; null ved fejl og timeout', () => {
+  const prev = process.env.CZ_BUILD_STOP_NO_GH;
+  delete process.env.CZ_BUILD_STOP_NO_GH;
+  try {
+    let call;
+    const lines = [JSON.stringify({ login: 'someone-else', body: GOOD.replace('sponsor', 'fremmed') }), JSON.stringify({ login: OWNER_LOGIN, body: GOOD })].join('\n');
+    assert.deepEqual(ghOwnerGo(42, { exec: (cmd, a, o) => { call = [cmd, a, o]; return lines; } }), { area: 'sponsor', quote: 'Ja, byg den' });
+    assert.equal(call[0], 'gh');
+    assert.ok(call[1].includes('--paginate'));
+    assert.ok(call[1].includes('repos/NicolaiDolmer/CyclingZone/issues/42/comments?per_page=100'));
+    assert.equal(call[2].timeout, 10000, 'kort timeout');
+    assert.equal(ghOwnerGo(42, { exec: () => { const e = Error('ETIMEDOUT'); e.code = 'ETIMEDOUT'; throw e; } }), null);
+    assert.equal(ghOwnerGo(42, { exec: () => 'ikke json' }), null);
+    assert.equal(ghOwnerGo(42, { exec: () => '' }), null);
+    assert.equal(ghOwnerGo(0, { exec: () => assert.fail('ugyldigt issue slår ikke op') }), null);
+    if (process.env.NODE_TEST_CONTEXT) assert.equal(ghOwnerGo(42), null, 'default-gh slår aldrig op under node --test');
+  } finally {
+    if (prev === undefined) delete process.env.CZ_BUILD_STOP_NO_GH; else process.env.CZ_BUILD_STOP_NO_GH = prev;
+  }
+  process.env.CZ_BUILD_STOP_NO_GH = '1';
+  try {
+    assert.equal(ghOwnerGo(42, { exec: () => assert.fail('ingen netværk i tests') }), null);
+  } finally {
+    if (prev === undefined) delete process.env.CZ_BUILD_STOP_NO_GH; else process.env.CZ_BUILD_STOP_NO_GH = prev;
+  }
 });

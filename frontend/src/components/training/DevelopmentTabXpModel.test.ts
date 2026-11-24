@@ -5,7 +5,7 @@ import {
   bandText, barPct, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, sortDevRows, topOf, topSortValue,
   xpDevelopmentMode, buildDevelopmentFixture, seasonRatingChange, signedText, DEFAULT_SORT, DEV_FIXTURE_TODAY, MAX_ABILITIES, type DevRiderInput,
   dayKeyMinus, dayXpByAbility, gainsLast30, xpLineOf,
-  DEV_COLUMNS, defaultDevColumns, parseDevColumns, serializeDevColumns, sortAfterColumns, toggleDevColumn,
+  DEV_COLUMNS, defaultDevColumns, naturalTypeLine, parseDevColumns, serializeDevColumns, sortAfterColumns, toggleDevColumn,
 } from "./DevelopmentTabXpModel.ts";
 import type { XpReceipt } from "../../lib/trainingReportXp.ts";
 import { riderOverallRating as riderOverallRatingJs } from "../../lib/riderRating.js";
@@ -399,4 +399,14 @@ test("no date with XP gives a dash, and no row for today gives no XP today", () 
   assert.equal(rows[0].xpPerDay, null);
   assert.equal(devSummary(rows).xpToday, null);
   assert.equal(devSummary(rows).riderDays, 0);
+});
+
+test("#7947 natural type on one line: the primary in the cell, a different second type apart, never stacked (owner 23/11)", () => {
+  assert.deepEqual(naturalTypeLine({ primary: "climber", secondary: "stage_racer" }), { primary: "climber", secondary: "stage_racer" });
+  assert.deepEqual(naturalTypeLine({ primary: "sprinter", secondary: "sprinter" }), { primary: "sprinter", secondary: null }, "the same type twice is one type");
+  assert.deepEqual(naturalTypeLine({ primary: "sprinter", secondary: null }), { primary: "sprinter", secondary: null });
+  assert.equal(naturalTypeLine(null), null);
+  assert.equal(naturalTypeLine({ primary: "", secondary: "climber" } as never), null, "no natural type without a primary");
+  const ui = readFileSync(new URL("./DevelopmentTabXp.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(ui, /<RiderTypeBadge[^>]*\bstacked\b/, "no stacked badge in the development table");
 });

@@ -36,8 +36,10 @@ Hvert værktøj ejer ÉT tal. Er to værktøjer uenige om "det samme", så slå 
 
 - **Cookieløs før login.** `frontend/src/lib/posthogClient.js` bygger klienten med `persistence: "memory"` og en underklasse (`memoryOnlyClass`) der også springer lite's localStorage/sessionStorage-support-probe over. SDK'et skriver altså hverken cookies, localStorage eller sessionStorage; anonym id, opt-out og event-kø dør med fanen. Vagtet runtime mod den ægte pakke i `posthogIntegration.test.js`.
 - **Ny anonym id pr. page load.** Derfor kalder `posthogIntegration.jsx` `identify(<intern UUID>)` ved HVER page load efter login (aldrig e-mail/navn), og `reset()` ved logout. Identify venter til brugerens profil er hentet, så en afvisning gemt i `users.consent_preferences` fra en anden enhed gælder før vi kobler noget til personen.
+- **Attribution ved identify.** Kaster opslaget af sessionsmetadata, bruges UUID'et fra den indlæste brugerprofil uden kampagnedata. Samtykkegaten og effektens oprydning gælder også i fallbacken.
 - **Bruger-events venter på identify.** `logEvent`-spejlingen bærer bruger-id'et; kommer eventet før identify, holdes det i hukommelsen (maks 50) og sendes efter identify, så det lander på personen og ikke på en anonym id. Opt-out/reset smider køen væk.
 - **Kerne-rejsen.** `signup` og `first_bid` fandtes. Nye: `team_created` (første dashboard-load med et hold under 7 dage gammelt, kædet efter signup-flushen så rækkefølgen holder) og `first_training` (afledt i `logEvent()` af første trænings-handling, se §3). `first_race_with_own_squad` sendes **server-side** fra backend med env `POSTHOG_PROJECT_KEY` ([#6278](https://github.com/NicolaiDolmer/CyclingZone/issues/6278)), ikke fra klienten. "Tilbage dag 2/7" kræver ingen kode: det er PostHog-retention på `$pageview` for identificerede personer.
+- **Kampagne-attribution i SPA'en.** `signup`, `team_created` og `first_training` spejler kontooprettelsens first-touch-`utm_source`, `utm_medium`, `utm_campaign` og `utm_content` som event-properties og `$set_once`-person-properties under variant A. Auth-metadata fra oprettelsen holder dem adskilt fra den nuværende URL og fra en anden brugers lokale snapshot. `signup_attribution` er fortsat den autoritative kilde. Et UTM-mærket `$pageview` beskriver sidebesøget, og anonyme ID'er overlever ikke en fuld navigation mellem dokumenter.
 - **Tæl first_* som unikke personer i PostHog, ikke som rå events.** Dedup-flaget `cz_first_event_v1:*` i localStorage skrives kun med analytics-ja (uændret). For en bruger der ikke har svaret på banneret skriver vi bevidst intet, så et `first_*`-event kan nå PostHog én gang pr. page load. `signup` er undtaget: dens eksisterende markør skifter værdi til `posthog_sent`, så den kun sendes én gang.
 - **Dashboard D1/D7** bygges i PostHog når der er data (kræver `VITE_POSTHOG_KEY` i Vercel). Det er et supplement; gate-D7 er stadig Postgres-kohorte-tallet i §4b.
 
@@ -86,7 +88,7 @@ Valget gemmes to steder: `localStorage["cz_consent_v1"]` og `users.consent_prefe
 | Traffic beacon | **ingen gate** (cookie-fri, storage-less, kun offentlige sider) | `frontend/src/lib/trafficBeacon.js` |
 | First-touch attribution | **ingen gate** (fanges før banneret besvares, skrives først ved signup) | `frontend/src/lib/attribution.js`, på marketing-siderne `marketing/lib/attribution.ts` (samme felter, #5310) |
 | Presence (`users.last_seen`) | **ingen gate** (nødvendig drift) | `POST /api/presence`, RPC `touch_user_presence` |
-| Server-events (`checkout_started`/`checkout_completed`) | **ingen gate** (betalings-telemetri, service-role) | `backend/lib/billingCheckout.js`, `backend/lib/aluntaWebhook.js` |
+| Server-events (`checkout_started`/`checkout_completed`) | Betalingsloggen skrives service-role. Kampagnefelter og PostHog-spejling følger serverens consent-gate fra første løb | `backend/lib/billingCheckout.js`, `backend/lib/aluntaWebhook.js`, `backend/lib/checkoutCampaign.js` |
 
 Alle fire browser-vendors er monteret i `AnalyticsBoundary` (`frontend/src/lib/sentry.jsx:138-152`), en egen error boundary, så en analytics-fejl aldrig vælter appen. 📄
 
@@ -291,6 +293,8 @@ Den fulde union med `auction_bids`, `race_entries`, `xp_log` og forum lever i `s
 
 > ⚠️ LTV er **for høj i dag**: halvårsprisen står som 26500 øre i koden mod faktisk 21200. Se §6 og [#5051](https://github.com/NicolaiDolmer/CyclingZone/issues/5051).
 
+Checkout-events får kontoens first-touch fra `signup_attribution`, når serverens samtykkekontrol tillader det. Kun validerede UTM-tags og faste betalingslabels spejles. Køb og webhook-kvittering afhænger aldrig af opslaget eller telemetrien. Kampagneopslaget har en frist på to sekunder, hvorefter betalingsloggen skrives med de eksisterende felter. Brug små bogstaver i utm_campaign, også ved join af historiske first-touch-rækker til campaign_spend_daily. Brug faktiske Alunta-fakturaer til omsætning.
+
 ### 4e. NPS
 
 Standarddefinition, `backend/lib/growthSnapshot.js`: promoter = 9-10, passiv = 7-8, detractor = 0-6. `score = 100 * (promoters - detractors) / n`, `null` ved n = 0. Svar ligger i `nps_responses` og hænger på **`user_id`, ikke på et hold**. Prompten er gatet i `frontend/src/lib/npsGating.js`: mindst 3 løbsdage plus 90 dages throttle. NPS blev droppet fra spørgeskemaet 8/9, fordi dashboard-NPS måler det samme løbende (`docs/SURVEY_SYSTEM.md` §5.3).
@@ -301,7 +305,7 @@ Strukturen fra `docs/archive/SPRINT_DASHBOARD.md` overlever selvom tallene deri 
 
 ## 5. Attribution (kort)
 
-First-touch fanges ved **første** besøg i `localStorage["cz_attribution_v1"]` (`frontend/src/lib/attribution.js`): fem UTM-felter plus `referrer` og `landing_path`. "First-touch wins", der overskrives aldrig. Marketing-siderne ligger på samme origin og skriver samme række via et inline-script i root-layoutet (`marketing/lib/attribution.ts`, #5310). En same-origin referrer gemmes aldrig som kanal; dens utm_* udledes i stedet. Målebruddet 14/9 og læse-sidens fallback: `docs/GROWTH_STACK.md` §3.5. Rækken skrives først server-side ved holdoprettelse (`backend/routes/api.js`, `PUT /api/teams/my`, kun når holdet reelt blev oprettet) til `signup_attribution`, service-role-only, læses via `GET /api/admin/attribution`. 📄
+First-touch fanges ved **første** besøg i `localStorage["cz_attribution_v1"]` (`frontend/src/lib/attribution.js`): fem UTM-felter plus `referrer` og `landing_path`. "First-touch wins", der overskrives aldrig. Marketing-siderne ligger på samme origin og skriver samme række via et inline-script i root-layoutet (`marketing/lib/attribution.ts`, #5310). En same-origin referrer gemmes aldrig som kanal; dens utm_* udledes i stedet. Målebruddet 14/9 og læse-sidens fallback: `docs/GROWTH_STACK.md` §3.5. Ved holdoprettelse foretrækker serveren kontooprettelsens snapshot i Auth. Browserens payload bruges for ældre konti uden brugbart snapshot. Rækken skrives først server-side ved holdoprettelse (`backend/routes/api.js`, `PUT /api/teams/my`, kun når holdet reelt blev oprettet) til `signup_attribution`, service-role-only, læses via `GET /api/admin/attribution`. 📄
 
 Attributionen er **bevidst uden for samtykke-gaten**: first-touch sker før banneret besvares, og intet persisteres før brugeren selv opretter en konto. Grundlaget er legitim interesse (vurdering, ikke juridisk efterprøvet); om privatlivspolitikken beskriver det, er ikke tjekket ❓
 

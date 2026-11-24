@@ -15,7 +15,7 @@ import { RIDERS, TEST_TEAM } from "./seedData.js";
 import { PREVIEW_YOUTH_RIDERS } from "./youthSquadsMock.ts";
 
 type SeedEstimate = { level?: number; role?: string | null; now?: number | null };
-type SeedReport = { maxLevel: number; scout?: unknown };
+type SeedReport = { maxLevel: number; scout?: unknown; primaryKey?: string; types?: { key: string; now: number; progLo: number; progHi: number }[] };
 type SeedProjection = { level: number; maxLevel: number; own: boolean; now: number; primaryKey: string };
 
 const KEY = "cz_mock_potential_estimate";
@@ -135,14 +135,27 @@ export function previewAcademy<T extends {
 
 export function previewReport(id: string, seed: SeedReport, own: boolean) {
   const view = viewFor(id);
+  const prognosis = own ? prognosisFor(view) : null;
+  // #6110 (ejer 23/11): prognosen pr. ryttertype står under skønnet igen, ét tal pr. type
+  // som serveren sender; bånd, loft og alias er ikke med. Opdigtet: den primære type får den
+  // samlede prognose for egne ryttere, de andre midten af frøets bånd, aldrig under nu.
+  const types = !view.hidden && seed.types?.length
+    ? seed.types.map(({ key, now, progLo, progHi }) => {
+      const point = key === seed.primaryKey && prognosis && !prognosis.hidden
+        ? prognosis.value
+        : Math.round((progLo + progHi) / 2);
+      return { key, now, prog: Math.max(now, point) };
+    })
+    : null;
   return {
+    ...(types ? { primaryKey: seed.primaryKey ?? null, types } : {}),
     level: view.hidden ? 0 : own ? seed.maxLevel : 1,
     maxLevel: seed.maxLevel,
     own,
     looks: view.hidden ? 0 : 1,
     scout: seed.scout,
     potentialView: view,
-    ...(own ? { prognosisView: prognosisFor(view) } : {}),
+    ...(prognosis ? { prognosisView: prognosis } : {}),
   };
 }
 

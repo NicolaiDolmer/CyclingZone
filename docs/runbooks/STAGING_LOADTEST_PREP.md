@@ -58,6 +58,8 @@ data-kopier fra prod-reparationer. Prod har 89 og staging 59. De listes som `bac
 så forskellen forbliver synlig. Extensions, `auth`, `storage` og `cron` er ikke dækket af
 fingeraftrykket. Staging har 0 pg_cron-jobs og 0 `public`-triggere, der kalder pg_net.
 
+Refreshen genopretter auth.users.on_auth_user_created i restore-transaktionen. Tjekket foer GO bekraefter bindingen til public.handle_new_user().
+
 ## 2. Volumen pr. tabel
 
 Prod er pg_class-estimater fra 5/10. Staging er præcise counts fra 5/10.

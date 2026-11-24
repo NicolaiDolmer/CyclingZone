@@ -15,9 +15,12 @@
 // Et løb i divisionen, som rytteren ikke er udtaget til, er ikke hans løbsfelt (UGE-4).
 // Et løb, holdet ingen har i endnu, er en løbsdag med auto-udtagelse (UGE-4b).
 import { gameDaySpansByDivision, loadPriorMaxGameDayByDivision } from "./trainingDayCloseTrigger.js";
-import { forecastBindingsFromEntryDays, loadTeamFatigueForecast, FORECAST_SLOTS } from "./trainingWeekPlanForecast.js";
+import { catalogV3GateForTeam, forecastBindingsFromEntryDays, loadTeamFatigueForecast, FORECAST_SLOTS } from "./trainingWeekPlanForecast.js";
 import { loadRaceExitGameDays } from "./trainingRaceDayTick.js";
-import { programSlotForRaceDay } from "./trainingPrograms.js";
+import { programForSession, programSlotForRaceDay } from "./trainingPrograms.js";
+import { rotationPassAt } from "./trainingRotation.js";
+import { loadRotationPlans } from "./trainingRotationProgress.js";
+import { applyFatigueRules, loadTeamFatigueRules } from "./trainingFatigueRules.ts";
 import { isInjuredOnRaceDay } from "./injuryRaceDays.js";
 import { copenhagenDateString, copenhagenMidnightUTC, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
@@ -88,6 +91,29 @@ export function weekDateRiderFields({ gameDays, riderIds, plannedStages, boundRi
     out[id] = { raceSlots, restSlots };
   }
   return out;
+}
+
+export function forecastRotationFields({ rotation, startIndex, gameDays, fields, rule, rodeStagePreviousDate, catalogV3 = false }) {
+  let index = startIndex % rotation.passes.length;
+  const length = rotation.passes.length;
+  const recoverySlots = [];
+  const rotationSlots = gameDays.map((day) => {
+    const slot = programSlotForRaceDay(day, gameDays);
+    if (fields.raceSlots.includes(slot) || fields.restSlots.includes(slot)) return null;
+    const pass = rotationPassAt(rotation, index);
+    const program = programForSession(pass.session, null, { catalogV3 });
+    if (!program?.ok) return null;
+    if (slot === 0 && rodeStagePreviousDate && rule) {
+      if (applyFatigueRules({ program, rule, slotIndex: slot, rodeStagePreviousDate }).stamp) {
+        recoverySlots.push(slot);
+        return null;
+      }
+    }
+    const preview = { ...pass, index, length };
+    index = (index + 1) % length;
+    return preview;
+  });
+  return { ...fields, rotationSlots, recoverySlots, nextRotationIndex: index };
 }
 
 /**
@@ -257,6 +283,17 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
       return data;
     })
     : new Map();
+  const rotationStarts = new Map(Object.entries(today.riders ?? {})
+    .filter(([, result]) => Number.isInteger(result.nextRotationIndex))
+    .map(([id, result]) => [id, result.nextRotationIndex]));
+  const rotations = rotationStarts.size ? await loadRotationPlans({
+    supabase, teamId: team.id, riderIds: [...rotationStarts.keys()], plans: [],
+    // schema-columns-ok: plan_kind was added by the merged #8577 rotation migration.
+    weekRows: await rows(supabase.from("training_week_plans").select("rider_id, plan_kind").eq("team_id", team.id), "week rotation plans"),
+  }) : new Map();
+  const [rotationRules, catalogV3] = rotations.size ? await Promise.all([
+    loadTeamFatigueRules(supabase, team.id), catalogV3GateForTeam(supabase, team.id),
+  ]) : [null, false];
   const days = dates.map((date, i) => {
     const weekday = copenhagenWeekdayKey(date);
     const dateRaces = weekDateRaces({ stages: stagesByDate.get(date) ?? [], races, plannedStages, raceIdByEntry, entryRows, exits: entryExits, startedRaceIds });
@@ -265,12 +302,23 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
     }
     const gameDays = gameDaysByDate.get(date);
     if (!gameDays) return { date, weekday, available: false, races: dateRaces, riders: {} };
+    const riderFields = weekDateRiderFields({
+      gameDays, riderIds, plannedStages, boundRiderIdsByGameDay,
+      injuredOn: (id, gameDay) => isInjuredOnRaceDay({ condition: conditionByRider.get(id), seasonId, gameDay, tickDate: date }),
+    });
+    for (const [id, rotation] of rotations) {
+      const previousDays = gameDaysByDate.get(dates[i - 1]) ?? [];
+      const rodeStagePreviousDate = plannedStages.some((stage) => stage.rider_id === id && previousDays.includes(stage.game_day))
+        || (i === 1 && (today.riders?.[id]?.raceSlots?.length ?? 0) > 0);
+      riderFields[id] = forecastRotationFields({
+        rotation, startIndex: rotationStarts.get(id), gameDays, fields: riderFields[id],
+        rule: rotationRules?.forRider(id), rodeStagePreviousDate, catalogV3,
+      });
+      rotationStarts.set(id, riderFields[id].nextRotationIndex);
+    }
     return {
       date, weekday, available: true, races: dateRaces,
-      riders: weekDateRiderFields({
-        gameDays, riderIds, plannedStages, boundRiderIdsByGameDay,
-        injuredOn: (id, gameDay) => isInjuredOnRaceDay({ condition: conditionByRider.get(id), seasonId, gameDay, tickDate: date }),
-      }),
+      riders: riderFields,
     };
   });
   return { ...base, available: true, days };

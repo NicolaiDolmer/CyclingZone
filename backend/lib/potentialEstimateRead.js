@@ -27,7 +27,7 @@ import { publicEstimateView } from "./potentialEstimate.js";
 import { PEAK_AGE } from "./developmentProjection.js";
 import { loadPastPeakAging, pastPeakFromAging } from "./pastPeakView.js"; // #7947: efter peak som motoren
 import { mergeDevelopmentSnapshots } from "./riderDevelopmentReceipt.js";
-import { buildVerdict, ratingFromAbilities } from "./scoutingReport.js";
+import { buildTypePrognosisBands, buildVerdict, ratingFromAbilities } from "./scoutingReport.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { bestRoleForAbilities } from "./riderBestRoleCache.js";
 import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
@@ -151,20 +151,31 @@ const daysBetween = (from, to) => Math.round((Date.parse(to) - Date.parse(from))
 // Rå (urundede) ratings, så en lille fremgang over vinduet ikke rundes væk.
 function paceInputs(rider, liveAbilities, snapshots, today) {
   if (!liveAbilities) return null;
-  const { best_role: role } = bestRoleForAbilities(liveAbilities, {
-    primaryType: rider.primary_type, secondaryType: rider.secondary_type,
-  });
+  const role = bestRoleOf(rider, liveAbilities);
   if (!role) return null;
-  const now = roleOutputRaw(liveAbilities, role);
-  if (now == null) return null;
+  return rolePaceInputs(role, liveAbilities, paceBaseline(snapshots, today));
+}
+
+function bestRoleOf(rider, liveAbilities) {
+  return bestRoleForAbilities(liveAbilities, {
+    primaryType: rider.primary_type, secondaryType: rider.secondary_type,
+  }).best_role ?? null;
+}
+
+// Farten-vinduets startbillede: seneste billede fra før vinduet, ellers det ældste i
+// vinduet. Uden billeder har rytteren ingen registreret fremgang, og farten er nul.
+function paceBaseline(snapshots, today) {
   const windowStart = isoDay(new Date(Date.parse(today) - PROGNOSIS_PACE_DAYS * DAY_MS));
-  // Seneste billede fra før vinduet; ellers det ældste i vinduet. Uden billeder har
-  // rytteren ingen registreret fremgang i vinduet, og farten er nul.
   const sorted = [...(snapshots ?? [])].sort((a, b) => a.snapshot_date.localeCompare(b.snapshot_date));
   const baseline = sorted.filter((row) => row.snapshot_date <= windowStart).at(-1) ?? sorted[0] ?? null;
-  const past = baseline ? roleOutputRaw(baseline.abilities ?? {}, role) : null;
-  const daysAgo = baseline ? daysBetween(baseline.snapshot_date, today) : null;
-  return { now, past, daysAgo };
+  return baseline ? { abilities: baseline.abilities ?? {}, daysAgo: daysBetween(baseline.snapshot_date, today) } : null;
+}
+
+function rolePaceInputs(role, liveAbilities, baseline) {
+  const now = roleOutputRaw(liveAbilities, role);
+  if (now == null) return null;
+  const past = baseline ? roleOutputRaw(baseline.abilities, role) : null;
+  return { now, past, daysAgo: baseline?.daysAgo ?? null };
 }
 
 // Evne-billeder fra lidt før farten-vinduet og frem, kun for de ryttere der skal bruge dem.
@@ -204,7 +215,8 @@ async function loadPaceSnapshots(supabase, { riderIds, today }) {
 }
 
 // prognosisView pr. egen rytter. Andres ryttere er ikke med i resultatet.
-async function loadPrognosisViews(supabase, { teamId, context, clock = new Date() }) {
+// `preloaded` (valgfri): evne-billeder der allerede er hentet, så rapporten ikke læser dem to gange.
+async function loadPrognosisViews(supabase, { teamId, context, clock = new Date(), preloaded = null }) {
   const out = new Map();
   const own = context.riderRows.filter((rider) => rider.team_id === teamId);
   const ready = own.filter((rider) => {
@@ -222,7 +234,9 @@ async function loadPrognosisViews(supabase, { teamId, context, clock = new Date(
     else if (age > PEAK_AGE) out.set(rider.id, PAST_PEAK);
     return out.get(rider.id) == null;
   });
-  const snapshots = await loadPaceSnapshots(supabase, { riderIds: growing.map((rider) => rider.id), today });
+  const snapshots = preloaded && growing.every((rider) => preloaded.has(rider.id))
+    ? preloaded
+    : await loadPaceSnapshots(supabase, { riderIds: growing.map((rider) => rider.id), today });
   for (const rider of growing) {
     const inputs = paceInputs(rider, context.abilities.get(rider.id), snapshots.get(rider.id), today);
     const value = inputs
@@ -252,18 +266,79 @@ function estimateVerdict({ view, age, own, level, maxLevel, rating }) {
   };
 }
 
+// #6110: prognosen pr. ryttertype står under skønnet igen, for egne og scoutede ryttere.
+// Skjulte ryttere (uscoutet, AI-hold, lærer endnu) får ingen liste, og uden evner eller
+// alder er der intet at fremskrive. Spejderens bånd pr. type (maskeret efter holdets
+// scout-niveau og spejder) bruges kun her på serveren; svaret bærer ét tal pr. type.
+async function loadRoleBands({ rider, abilities, own, level, teamId, age, bandScout, loadDevelopmentXp, potentialView }) {
+  if (potentialView.hidden || !abilities || age == null) return [];
+  if (!own && !(level > 0)) return [];
+  const developmentXp = loadDevelopmentXp ? await loadDevelopmentXp() : null;
+  const bands = buildTypePrognosisBands({
+    nowAbilities: abilities, age, primaryType: rider.primary_type, secondaryType: rider.secondary_type,
+    potentiale: rider.potentiale, level, riderId: rider.id, teamId, scout: bandScout, developmentXp,
+  });
+  return bands.some((band) => band.now != null) ? bands : [];
+}
+
+const bandMid = (band) => (band && Number.isFinite(band.progLo) && Number.isFinite(band.progHi)
+  ? (band.progLo + band.progHi) / 2
+  : null);
+
+// #6110 (ejer 23/11): ét prognosetal pr. ryttertype, intet bånd. Samme regel som den
+// samlede prognose (pacePrognosis): rytterens fart i netop den type de seneste dage, frem
+// til toppen, mod et mål for typen. Målet er holdets skøn, flyttet med typens afstand til
+// den bedste rolle i spejderens fremskrivning. Den bedste rolle har dermed skønnet selv
+// som mål og samme tal som "Prognose" på kortet. Efter toppen vokser ingen type.
+// Ren funktion; `bands` er loadRoleBands' svar, `snapshots` rytterens evne-billeder.
+export function buildTypePrognoses({ bands, rider, liveAbilities, snapshots, today, estimate, age }) {
+  const best = liveAbilities ? bestRoleOf(rider, liveAbilities) : null;
+  const bestMid = bandMid(bands.find((band) => band.key === best));
+  const baseline = paceBaseline(snapshots, today);
+  return bands.filter((band) => band.now != null).map((band) => {
+    const mid = bandMid(band);
+    const target = band.key === best ? estimate
+      : bestMid != null && mid != null ? estimate + mid - bestMid
+        : mid;
+    const inputs = liveAbilities ? rolePaceInputs(band.key, liveAbilities, baseline) : null;
+    const prog = inputs && target != null && age <= PEAK_AGE
+      ? pacePrognosis({ ...inputs, estimate: target, age })
+      : null;
+    return { key: band.key, now: band.now, prog: prog ?? band.now };
+  });
+}
+
 // GET /riders/:id/scouting-report. `level` er knappens niveau (egen rytter = maxLevel);
 // `looks` er de kig holdet faktisk har taget ("bygger på", spec §3.6).
-export async function buildScoutingReportFromView(supabase, { teamId, rider, own, level, maxLevel, looks, age, scout, generatedAt, clock = new Date() }) {
+// `bandScout` er holdets rigtige spejder (til båndbredden), `scout` er kun visningens udsnit.
+// `loadDevelopmentXp` er valgfri (XP-modellen bag sin kontakt); uden den er prognosen som før.
+export async function buildScoutingReportFromView(supabase, { teamId, rider, own, level, maxLevel, looks, age, scout, generatedAt, bandScout, loadDevelopmentXp = null, clock = new Date() }) {
   const context = await loadEstimateContext(supabase, { teamId, riderIds: [rider.id] });
   const potentialView = context.views.get(rider.id) ?? UNSCOUTED;
   const rating = context.ratings.get(rider.id) ?? null;
-  const prognoses = await loadPrognosisViews(supabase, { teamId, context, clock });
+  const liveAbilities = context.abilities.get(rider.id);
+  // Codex P2 (#8645): typerne bruger samme referencesæson som prognosisView, så en
+  // sæsonpause (ingen aktiv sæson) aldrig gør rytteren yngre i fremskrivningen.
+  const typesAge = rider.birthdate
+    ? scoutBandAge(rider.birthdate, await resolveScoutBandSeasonNumber(supabase)) ?? age
+    : age;
+  const bands = await loadRoleBands({
+    rider, abilities: liveAbilities, own, level, teamId, age: typesAge, bandScout, loadDevelopmentXp, potentialView,
+  });
+  const today = isoDay(clock);
+  const snapshots = bands.length ? await loadPaceSnapshots(supabase, { riderIds: [rider.id], today }) : null;
+  const prognoses = await loadPrognosisViews(supabase, { teamId, context, clock, preloaded: snapshots });
+  const types = bands.length
+    ? buildTypePrognoses({
+      bands, rider, liveAbilities, snapshots: snapshots.get(rider.id), today, estimate: potentialView.value, age: typesAge,
+    })
+    : [];
   return {
     potentialView,
     ...(prognoses.has(rider.id) ? { prognosisView: prognoses.get(rider.id) } : {}),
     level, maxLevel, own, looks,
     primaryKey: rider.primary_type ?? null,
+    ...(types.length ? { types } : {}),
     verdict: estimateVerdict({ view: potentialView, age, own, level, maxLevel, rating }),
     pastPeak: pastPeakFromAging(age, await loadPastPeakAging(supabase, { now: clock })), // regel 16: uret injiceres
     scout, generatedAt,

@@ -2,17 +2,17 @@
 // som i dag, men i to trin (ejer 4/10): først kun "Good idea?"; når den er
 // valgt, eller der allerede er en stemme, folder "Important to you?" ud. Kun
 // rækken selv vokser. Stemmen gemmes, når begge er valgt (buildVotePayload).
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { engineCounts, roadmapRowId, type RoadmapItem, type RoadmapVote } from "../../lib/roadmapModel.ts";
-import { isDontKnow, isValidScore } from "../../lib/roadmapVoting.js";
-import { Button, EmptyState, Section, SectionHeader, Segmented } from "./roadmapUi.ts";
+import { roadmapRowId, type RoadmapItem, type RoadmapVote } from "../../lib/roadmapModel.ts";
+import { categoryCounts, isDontKnow, isValidScore, resolveRoadmapCategory, roadmapCategoryLabel } from "../../lib/roadmapVoting.js";
+import { Button, EmptyState, Section, SectionHeader } from "./roadmapUi.ts";
 import ScoreScale, { DontKnowButton } from "./ScoreScale.tsx";
 import { RowMeta, RowTitle, SaveNote, SkeletonRows, ROW, ROW_LIST } from "./RoadmapRows.tsx";
-import { areaTitle, localTitle, type SaveState } from "./roadmapFormat.ts";
+import { itemCategoryTitle, localTitle, type SaveState } from "./roadmapFormat.ts";
 import { buttonClass } from "../ui/buttonStyles.js";
-import { CheckIcon, MessageIcon } from "../ui/index.js";
+import { CheckIcon, MessageIcon, Select } from "../ui/index.js";
 
 export const FORUM_ROADMAP_PATH = "/forum?category=roadmap";
 
@@ -61,17 +61,9 @@ export default function VoteTab(props: VoteTabProps) {
     );
   }
 
-  const counts = engineCounts(ideas);
-  // Et område der er tømt af filteret falder tilbage til "All".
-  const activeArea = area === "all" || counts.some((c) => c.key === area) ? area : "all";
-  const shown = activeArea === "all" ? ideas : ideas.filter((i) => i.engine === activeArea);
-  const options = [
-    { value: "all", label: <span>{t("vote.all")} <span className="tabular-nums">{ideas.length}</span></span> },
-    ...counts.map((c) => ({
-      value: c.key,
-      label: <span>{areaTitle(t, c.key)} <span className="tabular-nums">{c.count}</span></span>,
-    })),
-  ];
+  const counts = categoryCounts(ideas);
+  const activeArea = counts.some((entry) => entry.key === area) ? area : "all";
+  const shown = activeArea === "all" ? ideas : ideas.filter((item) => resolveRoadmapCategory(item) === activeArea);
 
   return (
     <Section aria-busy={loading || undefined}>
@@ -97,10 +89,13 @@ export default function VoteTab(props: VoteTabProps) {
             <p className="mb-2 text-xs text-cz-2 tabular-nums">{t("vote.unrated", { unrated: props.unrated, total: ideasTotal })}</p>
           )}
           {counts.length > 1 && (
-            // Én linje, der scroller vandret inde i rækken (spec §3.6): w-max
-            // hindrer at segmenterne presses sammen og bryder over flere linjer.
-            <div className="mb-2 max-w-full overflow-x-auto">
-              <Segmented label={t("vote.areaLabel")} value={activeArea} onChange={setArea} options={options} className="w-max" />
+            <div className="mb-2 w-full sm:max-w-xs">
+              <Select size="sm" aria-label={t("vote.areaLabel")} value={activeArea} onChange={(event: ChangeEvent<HTMLSelectElement>) => setArea(event.target.value)}>
+                <option value="all">{t("vote.all")} ({ideas.length})</option>
+                {counts.map(({ key, count }) => (
+                  <option key={key} value={key}>{roadmapCategoryLabel(key, i18n.language)} ({count})</option>
+                ))}
+              </Select>
             </div>
           )}
           <ul className={ROW_LIST}>
@@ -113,7 +108,7 @@ export default function VoteTab(props: VoteTabProps) {
                 <li key={item.id} id={roadmapRowId(item.id)} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
                   <div className="flex-1 min-w-0">
                     <RowTitle isNew={props.isNew(item)} newLabel={t("labels.new")}>{localTitle(item, i18n.language)}</RowTitle>
-                    <RowMeta>{areaTitle(t, item.engine)}</RowMeta>
+                    <RowMeta>{itemCategoryTitle(item, i18n.language)}</RowMeta>
                   </div>
                   {props.canVote && (
                     <div className="flex flex-col gap-1.5">

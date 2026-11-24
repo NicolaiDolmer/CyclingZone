@@ -63,6 +63,8 @@ export interface TacticsRiderRow {
   today: string;
   effort: ReactNode;
   effortMobile: ReactNode;
+  /** #8386: indsatsen uden opgavetekst til telefonlistens linje (ellers effort). */
+  effortPhone?: ReactNode;
   /** Ordrer pr. rutedel (etapeplanen), eller null. */
   parts: TacticsPartCell[] | null;
   /** "Extra orders"-chips, eller null. */

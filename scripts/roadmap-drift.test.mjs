@@ -137,3 +137,15 @@ test("formatDrift viser flag uden roadmap-punkt og hvordan det rettes", () => {
   assert.match(text, /roadmap-sync-registry\.mjs --apply/);
   assert.match(formatDrift({ missing: [], stale: [] }), /uden roadmap-punkt \(0\)/);
 });
+
+test("planIssueNumbers læser MASTERPLAN i 3 lag (#7631): Denne uge, Næste uge og S6, ikke Senere/Parkeret", () => {
+  const md = [
+    "## Rammer", "- regel #1111",
+    "## Denne uge: uge 48 (23.-29/11)", "- saldo #8357 og #8466",
+    "## Næste uge: uge 49 (30/11-6/12)", "- autopris #8474",
+    "## S6 (starter 28/11)", "- profiltop #8281",
+    "## Senere", "- omdømme #4957",
+    "## Parkeret", "- sikkerhed #7029",
+  ].join("\n");
+  assert.deepEqual(planIssueNumbers(md), [8357, 8466, 8474, 8281]);
+});

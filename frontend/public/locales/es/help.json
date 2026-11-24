@@ -225,6 +225,10 @@
       "squadAndAuctions": {
         "title": "Tamaño de la plantilla y subastas",
         "text": "Los límites de plantilla se siguen aplicando por división. Las subastas activas que lideras reservan tanto saldo como un posible hueco de plantilla, así que no puedes liderar más subastas de las que tu plantilla puede albergar."
+      },
+      "availableBalance": {
+        "title": "Saldo disponible",
+        "text": "Tu saldo disponible es lo que puedes gastar tras descontar lo que tienes bloqueado en las pujas que lideras y en las pujas automáticas activas."
       }
     },
     "transfers": {
@@ -1188,6 +1192,10 @@
     },
     "riders": {
       "label": "Ciclistas",
+      "rankingWins": {
+        "title": "Compara victorias en la clasificación de ciclistas",
+        "text": "En Clasificaciones, abre la clasificación de ciclistas y elige Victorias en la tabla. La general cuenta las victorias en carreras por etapas. Las clásicas cuentan las victorias en carreras de un día. El total incluye también las victorias de etapa y las de las clasificaciones de puntos, montaña y jóvenes. Selecciona un encabezado para ordenar por esa columna."
+      },
       "valueAndPrice": {
         "title": "Valor y precio",
         "text": "El valor de mercado de un ciclista sale del modelo de valoración del juego: estima la producción que se espera que el ciclista aporte durante el resto de su carrera, medida frente al propio calendario de temporadas del juego y ajustada por edad y desarrollo. Se construye con las mismas habilidades que la valoración de su ficha y se calcula igual para todos los ciclistas, sea cual sea su tipo, así que cuando sus habilidades se mueven, su valor las sigue. Los jóvenes talentos tienen valor por las temporadas que tienen por delante; los veteranos se valoran por lo que les queda; la élite absoluta del juego tiene precios de estrella muy por encima del presupuesto de cualquier equipo. El precio de salida de una subasta debe igualar como mínimo el Valor del ciclista. Los valores se recalculan una vez por semana, cada domingo a partir de las 14:00 hora danesa, así que el valor de un ciclista se mueve en pasos semanales y no día a día. El entrenamiento cambia sus habilidades de inmediato; su valor lo sigue en la próxima actualización del domingo. El valor puede empezar a bajar ya al final de la veintena, antes de que ninguna habilidad decaiga: valora toda su carrera restante, no solo su nivel actual. Un ciclista que sigue en su mejor momento puede ver igualmente caer su valor, simplemente porque le quedan menos temporadas en las que venderlo."

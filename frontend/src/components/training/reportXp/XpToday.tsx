@@ -28,7 +28,12 @@ const NUM = "font-data tabular-nums";
 // One line per rider. Phone: name + three numbers (D-047) + the fold-out button.
 // #7947 (owner 20/11): Rating is its own column after Form and Fatigue on the computer;
 // on the phone it stands with them in the fold-out.
-const ROW_GRID = "grid-cols-[minmax(0,1fr)_2.5rem_2.75rem_2.75rem_2.75rem] lg:grid-cols-[minmax(0,1.8fr)_minmax(0,0.9fr)_2.75rem_2.75rem_3.25rem_minmax(4.5rem,auto)_minmax(4.5rem,auto)_2.5rem_3.25rem_3.25rem_2.75rem]";
+// #7947 (owner 23/11): names and types are never cut inside a word (they break between
+// words), and Fatigue ("64 ^12") and Rating ("34 > 35") each get a column wide enough for
+// their whole value, so the two never run into each other. Fixed tracks keep every row's
+// grid lined up with the head. The picked-rider panel opens from 1440 px, where the list
+// still has room for every track; below that the rider folds out under his row.
+const ROW_GRID = "grid-cols-[minmax(0,1fr)_2.5rem_2.75rem_2.75rem_2.75rem] lg:grid-cols-[minmax(6rem,1fr)_6.5rem_2.5rem_2.5rem_3rem_minmax(3.75rem,6rem)_minmax(3.75rem,6rem)_2.25rem_3.75rem_4.25rem_2.75rem]";
 const xp = (n: number) => formatNumber(Math.round(n));
 
 /** The owner's phone name form (18/9): "A. Brandvig". The receipt carries one full name. */
@@ -60,8 +65,9 @@ export function TypeCell({ type }: { type: XpRiderType | null }) {
   const full = type.secondary && type.secondary !== type.primary
     ? `${t(`types.${type.primary}`)}/${t(`types.${type.secondary}`)}`
     : t(`types.${type.primary}`);
-  // One line per rider: the primary type in the cell, both types on hover.
-  return <span className="block truncate text-xs text-cz-2" title={full} data-testid="xp-type">{t(`types.${type.primary}`)}</span>;
+  // One line per rider: the primary type in the cell, both types on hover. Never cut inside
+  // a word (owner 23/11): a two-word type breaks between the words instead.
+  return <span className="block text-xs leading-tight text-cz-2" title={full} data-testid="xp-type">{t(`types.${type.primary}`)}</span>;
 }
 
 /** Form as a number on the rating plate (owner call C, #8364). */
@@ -266,13 +272,13 @@ export default function XpToday({ view, onPickDate, switcher, showAll = false, o
         ]} />
         {view.paid > 0 && <PaidNote className="mt-3" />}
       </Section>
-      <div className="grid items-start gap-[14px] xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid items-start gap-[14px] min-[1440px]:grid-cols-[minmax(0,1fr)_22rem]">
         <Section className="min-w-0" data-testid="xp-today-list">
           <div className="-mx-1 mb-1 overflow-x-auto px-1 pb-1">
             <Segmented label={t("xpReport.filterLabel")} value={filter} onChange={(v: TodayFilter) => setFilter(v)} className="whitespace-nowrap"
               options={(["all", "gained", "raced", "notRaced"] as TodayFilter[]).map(key => ({ value: key, label: t(`xpReport.filter.${key}`, { count: view.counts[key] }) }))} />
           </div>
-          <div className={`grid items-end gap-x-2 py-2 lg:gap-x-2.5 ${ROW_GRID} ${META}`} aria-hidden="true" data-testid="xp-head">
+          <div className={`grid items-end gap-x-2 py-2 lg:gap-x-1 ${ROW_GRID} ${META}`} aria-hidden="true" data-testid="xp-head">
             <span>{t("training:colRider")}</span>
             <span className="hidden lg:block">{t("training:colType")}</span>
             <span className="hidden text-right lg:block">{t("xpReport.legend.training")}</span>
@@ -292,11 +298,12 @@ export default function XpToday({ view, onPickDate, switcher, showAll = false, o
               <div key={rider.id} className="border-t border-cz-border" data-testid="xp-row">
                 {/* The row picks the rider (panel) or folds him out (phone); the name is its own link. */}
                 <div onClick={() => toggle(rider.id)}
-                  className={`grid min-h-11 w-full cursor-pointer items-center gap-x-2 hover:bg-cz-subtle lg:gap-x-2.5 ${ROW_GRID} ${isPicked ? "xl:bg-cz-subtle" : ""}`}>
+                  className={`grid min-h-11 w-full cursor-pointer items-center gap-x-2 hover:bg-cz-subtle lg:gap-x-1 ${ROW_GRID} ${isPicked ? "min-[1440px]:bg-cz-subtle" : ""}`}>
                   <span className="flex min-w-0 flex-col justify-center">
-                    <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap" data-testid="xp-name-cell">
+                    {/* #7947 (owner 23/11): a long name breaks between words, never inside one (no ellipsis). */}
+                    <span className="flex min-w-0 items-center gap-1.5" data-testid="xp-name-cell">
                       {rider.nation && <Flag code={rider.nation} className="shrink-0" />}
-                      <span className="min-w-0"><RiderNameCell id={rider.id} {...nameParts(rider.name)} name={phone ? shortName(rider.name) : rider.name} stopPropagation className="text-[13px] font-semibold text-cz-1 hover:text-cz-accent-t" /></span>
+                      <span className="min-w-0"><RiderNameCell id={rider.id} {...nameParts(rider.name)} name={phone ? shortName(rider.name) : rider.name} stopPropagation wrap className="text-[13px] font-semibold leading-tight text-cz-1 hover:text-cz-accent-t" /></span>
                     </span>
                   </span>
                   <span className="hidden min-w-0 lg:block"><TypeCell type={rider.type} /></span>
@@ -317,15 +324,15 @@ export default function XpToday({ view, onPickDate, switcher, showAll = false, o
                   <button type="button" aria-expanded={isOpen} aria-label={t("xpReport.details", { name: rider.name })}
                     onClick={(e) => { e.stopPropagation(); toggle(rider.id); }}
                     className="inline-flex size-11 items-center justify-center justify-self-end text-cz-3 hover:text-cz-1">
-                    <ChevronDownIcon size={14} className={`xl:-rotate-90 ${isOpen ? "max-xl:rotate-180" : ""}`} aria-hidden="true" />
+                    <ChevronDownIcon size={14} className={`min-[1440px]:-rotate-90 ${isOpen ? "max-[1440px]:rotate-180" : ""}`} aria-hidden="true" />
                   </button>
                 </div>
-                {isOpen && <div className="border-t border-cz-border py-3 xl:hidden"><RiderDetail rider={rider} /></div>}
+                {isOpen && <div className="border-t border-cz-border py-3 min-[1440px]:hidden"><RiderDetail rider={rider} /></div>}
               </div>
             );
           })}
         </Section>
-        {selected && <Section className="hidden min-w-0 xl:sticky xl:top-4 xl:block"><RiderDetail rider={selected} panel /></Section>}
+        {selected && <Section className="hidden min-w-0 min-[1440px]:sticky min-[1440px]:top-4 min-[1440px]:block"><RiderDetail rider={selected} panel /></Section>}
       </div>
     </>
   );

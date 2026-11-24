@@ -65,6 +65,7 @@ export function useDataScope() {
     bootstrapLoading: !scope.ready || (viewerId !== null && (team.isPending
       || (team.data !== undefined && scope.teamId !== (team.data?.id ?? null)))),
     error: team.error,
+    teamRefreshing: team.fetchStatus !== "idle",
   };
 }
 

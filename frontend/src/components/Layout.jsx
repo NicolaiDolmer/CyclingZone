@@ -1,3 +1,4 @@
+import { PUBLIC_ROADMAP_CATEGORY_FILTER } from "../lib/roadmapVoting.js";
 import { useState, useEffect, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -7,6 +8,7 @@ import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + c
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
 import { LockedSalesLine, LOCKED_SALES_REFRESH_EVENT } from "./finance/LockedSaleEscrows.tsx"; // #6181
+import { refreshMarketBalance, useMarketBalance } from "../data/marketBalance.ts";
 import { ACTIVE_SURVEY_SLUG } from "../lib/survey.js"; // #4943
 import SetupWizardModal from "./SetupWizardModal";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
@@ -23,6 +25,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
 import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
+import Skeleton from "./ui/Skeleton";
 import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
 import { facilitiesNavItem } from "../lib/facilitiesNavVisibility";
 import { useFacilities } from "../lib/useFacilities";
@@ -42,7 +45,7 @@ import {
 import { syncSeenMarkers } from "../lib/seenMarkers6515.ts"; // #6515: prikkerne foelger brugeren
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
-import { getAttributionForBackend, sanitizeAttributionForBackend } from "../lib/attribution";
+import { resolveSignupAttribution } from "../lib/attribution";
 import { useActionSummary } from "../hooks/useActionSummary";
 import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 import { resolveNavDotTone, NAV_DOT_TONE_CLASS } from "../lib/selectionReminder.js"; // #4983
@@ -300,9 +303,11 @@ async function fetchForumUnread(headers) {
 async function fetchLatestRoadmapDate() {
   try {
     // #6150: nyeste af roadmap-punkter og publicerede kendte fejl (Known issues-fanen).
-    const latest = (table, flag) => supabase.from(table).select("created_at")
-      .eq(flag, true).order("created_at", { ascending: false }).limit(1);
-    const [items, issues] = await Promise.all([latest("roadmap_items", "approved"), latest("known_issues", "published")]);
+    const latest = (query) => query.order("created_at", { ascending: false }).limit(1);
+    const [items, issues] = await Promise.all([
+      latest(supabase.from("roadmap_items").select("created_at").eq("approved", true).or(PUBLIC_ROADMAP_CATEGORY_FILTER)),
+      latest(supabase.from("known_issues").select("created_at").eq("published", true)),
+    ]);
     return latestRoadmapCreatedAt([...(items.error ? [] : items.data ?? []), ...(issues.error ? [] : issues.data ?? [])]);
   } catch {
     return null;
@@ -372,8 +377,8 @@ function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClic
   );
 }
 
-function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones, logoutLabel, loginLabel, isAnonymous, onOpenFeedback, contactLabel }) {
-  const { t } = useTranslation("common");
+function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones, logoutLabel, loginLabel, isAnonymous, onOpenFeedback, contactLabel }) {
+  const { t } = useTranslation(["common", "finance"]);
   const { isPro, isFounder } = useSubscription(team?.id);
   return (
     <div className="flex flex-col h-full">
@@ -405,12 +410,25 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       </button>
 
       {/* Balance — guard mod undefined (jf. #446 bootstrap-race) */}
-      {balance != null && (
+      {marketBalance && (
         <div className="px-4 py-3 border-b border-cz-sidebar-border">
-          <p className="text-3xs text-cz-sidebar-2 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
-          <p className="text-cz-accent font-mono font-bold text-sm leading-tight" title={t("sidebar.balanceTooltip")}>
-            {formatNumber(balance)} CZ$
-          </p>
+          {marketBalance.mode === "available" && (
+            <p className="text-cz-accent font-mono font-bold text-sm leading-tight tabular-nums" title={t("sidebar.balanceTooltip")}>
+              {t("finance:balance.available", { value: formatNumber(marketBalance.value) })}
+            </p>
+          )}
+          {marketBalance.mode === "balance" && (
+            <>
+              <p className="text-3xs text-cz-sidebar-2 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
+              <p className="text-cz-accent font-mono font-bold text-sm leading-tight tabular-nums">{formatNumber(marketBalance.value)} CZ$</p>
+            </>
+          )}
+          {marketBalance.mode === "pending" && <Skeleton className="h-4 w-28 opacity-40" />}
+          {marketBalance.locked > 0 && (
+            <p className="text-cz-sidebar-2 font-mono tabular-nums text-3xs mt-0.5">
+              {t("finance:balance.lockedInBids", { value: formatNumber(marketBalance.locked) })}
+            </p>
+          )}
           <LockedSalesLine refreshKey={balance} className="text-cz-sidebar-2 text-3xs mt-0.5" />
           {team?.division != null && (
             <p className="text-cz-sidebar-2 text-3xs mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
@@ -522,6 +540,9 @@ export default function Layout() {
   const [session, setSession]               = useState(null);
   const [team, setTeam]                     = useState(null);
   const [balance, setBalance]               = useState(null);
+  // #8357: én kilde. Sidemenuen viser den delte holdsaldo (samme som dashboard og
+  // auktioner); Layouts egen læsning bruges kun, til den delte er hentet.
+  const marketBalance = useMarketBalance(balance);
   const [unread, setUnread]   = useState(0);
   // #3811: ulæst-prik ved "Patch Notes" — patchNotesLatestDate er nyeste patch-
   // dato (fra den lette patch-notes-meta.json), patchNotesUnread er den afledte
@@ -691,7 +712,7 @@ export default function Layout() {
                 // attribution-snapshottet som LoginPage gemte i auth-metadata.
                 // #5304: begge grene skal saniteres — click-ids må ikke sendes
                 // videre til backend uden ejer-go, se attribution.js.
-                attribution: getAttributionForBackend() || sanitizeAttributionForBackend(meta.attribution) || null,
+                attribution: resolveSignupAttribution(meta.attribution),
               }),
             }, { source: "team-bootstrap" });
             if (res.ok) {
@@ -766,7 +787,10 @@ export default function Layout() {
       channel.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
         async (payload) => {
           // #6181: et laast salg eller en refusion giver en NY besked, ikke en ny saldo. "Markeret som laest" aendrer intet laast.
-          if (payload?.eventType === "INSERT") window.dispatchEvent(new Event(LOCKED_SALES_REFRESH_EVENT));
+          if (payload?.eventType === "INSERT") {
+            window.dispatchEvent(new Event(LOCKED_SALES_REFRESH_EVENT));
+            refreshMarketBalance();
+          }
           setUnread(await fetchUnreadCount(session.user.id));
           const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).maybeSingle();
           if (t) setBalance(t.balance);
@@ -950,7 +974,7 @@ export default function Layout() {
   // #4983: samme kort-recipe, men tonen (gul/rød) i stedet for kun "vis den".
   const dotTones = { "/planning": selectionReminder.tone };
   const sidebarProps = {
-    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones,
+    navigate, team, balance, marketBalance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones,
     logoutLabel: t("nav.item.logout"),
     loginLabel: t("landing:nav.login"),
     isAnonymous: !session,

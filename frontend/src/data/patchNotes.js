@@ -1,5 +1,150 @@
 export const PATCHES = [
 {
+  "version": "7.505",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Scouting",
+      "area": "development",
+      "en": {
+        "title": "The projection per rider type is back on the scouting tab",
+        "body": "I took it away by mistake when the potential became one number. The scouting tab now shows the projection per rider type again, right under the potential. Each type shows one number, worked out like the projection on the card: where he ends up at his peak if he keeps his current pace. The bar shows his level today with a mark at the projection. For your own riders you see every type, and so do you for riders you have scouted on other teams. Riders you have not scouted still show no list."
+      },
+      "da": {
+        "title": "Prognosen pr. ryttertype er tilbage på scouting-fanen",
+        "body": "Jeg fjernede den ved en fejl, da potentialet blev ét tal. Scouting-fanen viser nu igen prognosen pr. ryttertype lige under potentialet. Hver type viser ét tal, regnet som prognosen på kortet: hvor han ender ved toppen, hvis han fortsætter i sin nuværende fart. Baren viser niveauet i dag med et mærke ved prognosen. På dine egne ryttere ser du alle typer, og det gør du også på ryttere, du har scoutet på andre hold. Ryttere, du ikke har scoutet, viser stadig ingen liste."
+      },
+      "refs": [
+        6110
+      ]
+    }
+  ]
+},
+{
+  "version": "7.504",
+  "date": "2026-11-23",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Rider Rankings",
+      "area": "races",
+      "en": {
+        "title": "Compare wins in the Rider Rankings",
+        "body": "What changed: The Rider Rankings has a Wins view with overall wins, classic wins and total wins side by side.\n\nWhat it means for you: Choose Wins in the table, then tap a column heading to see who leads that category."
+      },
+      "da": {
+        "title": "Sammenlign sejre på rytterranglisten",
+        "body": "Hvad er ændret: Rytterranglisten har fået visningen Sejre, der viser samlede sejre, klassikersejre og sejre i alt side om side.\n\nHvad betyder det for dig: Vælg Sejre i tabellen og tryk på en kolonneoverskrift for at se, hvem der fører i kategorien."
+      },
+      "refs": [
+        7137
+      ]
+    }
+  ]
+},
+{
+  "version": "7.503",
+  "date": "2026-11-23",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "One line per rider in Today, Report and Development",
+        "body": "Each rider now takes one line. Status and effort have their own columns, the name cell shows only the name, and the row menu holds the rider's day."
+      },
+      "da": {
+        "title": "Én linje pr. rytter i I dag, Rapport og Udvikling",
+        "body": "Hver rytter fylder nu én linje. Status og indsats har hver sin kolonne, navnecellen viser kun navnet, og rækkens menu rummer rytterens dag."
+      },
+      "refs": [
+        7947
+      ]
+    }
+  ]
+},
+{
+  "version": "7.502",
+  "date": "2026-11-23",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Tactics",
+      "area": "tactics",
+      "en": {
+        "title": "One line per rider on your phone",
+        "body": "On the new race page, tactics on a phone now show one line per rider with Easy, Normal and Hard written out, so you can set the whole team without opening anything. The team plan and Chase the break each open a sheet from the bottom. You can sort the riders by role, route match, rating, form or fatigue. Tap a rider to see all his orders and step to the next one without closing the sheet. Save stays at the bottom, and a thin bar tells you when another stage has changes you have not saved. The computer view is unchanged."
+      },
+      "da": {
+        "title": "Én linje pr. rytter på telefonen",
+        "body": "På den nye løbsside viser taktikken på telefonen nu én linje pr. rytter med Let, Normal og Hård skrevet ud, så du kan sætte hele holdet uden at åbne noget. Holdets plan og jagten på udbruddet åbner hver et ark fra bunden. Du kan sortere rytterne efter rolle, rutematch, rating, form eller træthed. Tryk på en rytter for at se alle hans ordrer, og gå videre til den næste uden at lukke arket. Gem står fast i bunden, og en tynd bjælke siger, når en anden etape har ændringer, du ikke har gemt. Computervisningen er uændret."
+      },
+      "refs": [
+        8386
+      ]
+    }
+  ]
+},
+{
+  "version": "7.501",
+  "date": "2026-11-23",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Choose a training program before applying it",
+        "body": "I removed the default program. Pick one from the full list and confirm who gets it. You can also move riders straight from their rows."
+      },
+      "da": {
+        "title": "Vælg et træningsprogram, før du lægger det på",
+        "body": "Jeg har fjernet forvalget. Vælg et program fra hele listen, og bekræft hvem der får det. Du kan også flytte ryttere direkte fra deres række."
+      },
+      "refs": [
+        8608
+      ]
+    }
+  ]
+},
+{
+  "version": "7.500",
+  "date": "2026-11-23",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Finance",
+      "area": "economy",
+      "en": {
+        "title": "See what you can spend",
+        "body": "I’ve made the sidebar, dashboard and auctions show the same available balance. Below it you can see what’s locked in bids and automatic bids."
+      },
+      "da": {
+        "title": "Se, hvad du kan bruge",
+        "body": "Jeg har gjort saldoen ens i sidemenuen, på forsiden og på auktionerne. Du ser, hvad du har til rådighed, og hvor meget der er låst i bud og autobud."
+      },
+      "refs": [
+        8357
+      ]
+    }
+  ]
+},
+{
   "version": "7.499",
   "date": "2026-11-23",
   "changes": [

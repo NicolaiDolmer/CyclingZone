@@ -278,8 +278,8 @@ function withBlockedLocalStorage(fn) {
 
 test("captureFirstTouch/getAttribution kaster ikke når window.localStorage-opslaget kaster (CYCLINGZONE-8V)", () => {
   withBlockedLocalStorage(() => {
-    assert.doesNotThrow(() => captureFirstTouch());
-    assert.equal(getAttribution(), null);
-    assert.equal(getAttributionForBackend(), null);
+    assert.doesNotThrow(() => captureFirstTouch({ now: () => "2026-11-23T08:00:00.000Z" }));
+    assert.equal(getAttribution().utm_source, "x");
+    assert.equal(getAttributionForBackend().utm_source, "x");
   });
 });

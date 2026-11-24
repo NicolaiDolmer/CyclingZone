@@ -31,7 +31,7 @@ import { fileURLToPath } from "node:url";
 import { parseRegistry } from "./generate-feature-status.mjs";
 
 // Sektioner i docs/MASTERPLAN.md, hvis issues spillerne kan maerke.
-const PLAN_SECTIONS = [/^## .*Brand/, /^## Bane 1 · Lovet/];
+const PLAN_SECTIONS = [/^## .*Brand/, /^## Bane 1 · Lovet/, /^## Denne uge/, /^## Næste uge/, /^## S6/]; // #7631: MASTERPLAN i 3 lag (23/11)
 const ITEM_DONE = ["shipped", "archived"];
 const ISSUE_DONE = ["fixed", "dismissed"];
 

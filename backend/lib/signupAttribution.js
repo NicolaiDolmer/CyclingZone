@@ -56,3 +56,10 @@ export function buildAttributionRow(userId, rawAttribution) {
   if (!hasSignal) return null;
   return row;
 }
+
+// The snapshot persisted at auth signUp belongs to the account. Browser
+// payloads cover older signups without a usable account snapshot.
+export function buildSignupAttributionRow(user, browserAttribution) {
+  return buildAttributionRow(user?.id, user?.user_metadata?.attribution)
+    ?? buildAttributionRow(user?.id, browserAttribution);
+}

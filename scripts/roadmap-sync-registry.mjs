@@ -4,7 +4,7 @@
 // Opretter manglende roadmap-punkter ud fra docs/FEATURE_REGISTRY.yml (#6693).
 //
 // En registerpost med flag + roadmap_en + roadmap_da faar et roadmap_items-
-// punkt (status planned, flag_key = flaget), sidst i planens raekkefoelge.
+// punkt (status active, flag_key = flaget), sidst i planens raekkefoelge.
 // Idempotent paa flag_key: findes der allerede et punkt med samme flag_key -
 // uanset status, ogsaa archived - roeres intet. Teksten paa et eksisterende
 // punkt opdateres heller ikke; det er adminens felt efter oprettelsen.
@@ -36,30 +36,33 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { REGISTRY_PATH, parseRegistry, validate } from "./generate-feature-status.mjs";
+import { isFixedRoadmapHorizon, UNSCHEDULED } from "../frontend/src/lib/roadmapModel.ts";
+import { roadmapCategoryEngine } from "../frontend/src/lib/roadmapVoting.js";
 import { isPlayerFacingFlag } from "./feature-registry-roadmap-check.mjs";
 
-/**
- * Registrets area -> roadmap_items.engine (CHECK: races, training, youth,
- * market, club). Alt der ikke er en af de fire motorer, staar under "Klub & verden".
- */
-export const AREA_ENGINE = {
+/** Standardkategori for hver registry-area; admin kan efterfølgende præcisere den. */
+export const AREA_CATEGORY = {
   "race-engine": "races",
   "race-day": "races",
-  stats: "races",
+  stats: "calendar",
   training: "training",
-  academy: "youth",
+  academy: "academy",
   market: "market",
-  squad: "club",
-  season: "club",
+  squad: "selection",
+  season: "calendar",
   economy: "club",
   club: "club",
-  board: "club",
-  social: "club",
-  onboarding: "club",
-  comms: "club",
-  billing: "club",
-  ops: "club",
+  board: "board_sponsors",
+  social: "social",
+  onboarding: "app",
+  comms: "app",
+  billing: "app",
+  ops: "growth",
 };
+
+export const AREA_ENGINE = Object.fromEntries(
+  Object.entries(AREA_CATEGORY).map(([area, category]) => [area, roadmapCategoryEngine(category)]),
+);
 
 /** Afstand mellem punkter i planen; samme som admin-fanens nextSortOrder (frontend/src/lib/roadmapAdminModel.ts). */
 export const SORT_STEP = 10;
@@ -70,13 +73,14 @@ export function itemFromEntry(e, sortOrder = SORT_STEP) {
   if (!engine) throw new Error(`${e.id}: intet engine for area "${e.area}"`);
   return {
     engine,
+    category: AREA_CATEGORY[e.area],
     sort_order: sortOrder,
     title_en: e.roadmap_en,
     title_da: e.roadmap_da,
     approved: false,
     publish_on_beta: true,
-    status: "planned",
-    horizon: e.roadmap_horizon || "unscheduled", // #7895: admin saetter tiden, naar punktet publiceres
+    status: "active",
+    horizon: isFixedRoadmapHorizon(e.roadmap_horizon) ? e.roadmap_horizon : UNSCHEDULED,
     issue_ref: e.epic ? Number(e.epic) : null,
     flag_key: e.flag,
   };

@@ -53,7 +53,7 @@
   },
   "sidebar": {
     "balance": "Solde",
-    "balanceTooltip": "Le CZ$ est la monnaie du jeu. Tu en gagnes en jouant, et il ne s'achète pas avec de l'argent réel.",
+    "balanceTooltip": "Ton solde disponible est ce que tu peux dépenser après avoir déduit les montants bloqués par tes meilleures offres et tes enchères automatiques actives.",
     "division": "Division {division}",
     "divisionTooltip": "Ton niveau de ligue. La division 1 est le plus haut niveau, la division 4 le niveau d'entrée.",
     "onlineNow": "{count} en ligne",

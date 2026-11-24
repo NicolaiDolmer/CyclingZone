@@ -18,12 +18,16 @@
 // Tillid: checket koerer paa pull_request mod PR'ens egen build-stop.json, saa en
 // PR der tilfoejer sit issue til brandList (den dokumenterede vej, spec §3.3)
 // kan bestaa. Den aendring staar i diffen og er ejerens veto-punkt.
+// Ejerens go-markoer (ejer 23/11) laeses fra issuets kommentarer med GH_TOKEN;
+// kun kommentarer fra repo-ejerens konto taeller (se findOwnerGo). Skrives
+// markoeren efter at checket er koert, skal checket koeres igen (push eller
+// redigér PR-body).
 //
 // Brug (workflow): PR_BODY, PR_BRANCH, PR_AUTHOR og CHANGED_FILES (linjeskift-
 // adskilt) i env. Exit 0 = ok, 1 = afvist.
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { loadBuildStop, classifyWork, withIssueMeta, ghIssueMeta } from './lib/build-stop.mjs';
+import { loadBuildStop, classifyWork, withIssueMeta, ghIssueMeta, ghOwnerGo } from './lib/build-stop.mjs';
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
 
@@ -81,7 +85,7 @@ export function isDependabot({ author, branch }) {
 }
 
 // -> { ok, rule, issues, message }
-export function evaluatePr({ body, branch, author, files = [], cfg, fetchMeta = null }) {
+export function evaluatePr({ body, branch, author, files = [], cfg, fetchMeta = null, fetchGo = null }) {
   if (!cfg.active) return { ok: true, rule: 'inactive', issues: [], message: 'Byggestop er ikke aktivt.' };
   if (isDependabot({ author, branch })) return { ok: true, rule: 'dependabot', issues: [], message: 'Dependabot er undtaget.' };
 
@@ -91,8 +95,9 @@ export function evaluatePr({ body, branch, author, files = [], cfg, fetchMeta = 
   }
 
   const issues = [...new Set([...issuesFromBody(body), ...issuesFromBranch(branch)])];
-  // #7336 loft: label/titel/forælder hentes kun for issues uden for listerne.
-  const classified = withIssueMeta(issues.map(n => ({ issue: n })), cfg, fetchMeta).map(t => ({ issue: t.issue, ...classifyWork(t, cfg) }));
+  // #7336 loft: label/titel/forælder hentes kun for issues uden for listerne;
+  // ejerens go-markør på issuet hentes kun for dem der stadig er nye.
+  const classified = withIssueMeta(issues.map(n => ({ issue: n })), cfg, fetchMeta, { fetchGo }).map(t => ({ issue: t.issue, ...classifyWork(t, cfg) }));
   const allowed = classified.filter(c => c.cls !== 'new');
   if (allowed.length) {
     return { ok: true, rule: 'listed', issues, message: `Tilladt via ${allowed.map(c => `#${c.issue} (${c.cls})`).join(', ')}.` };
@@ -103,8 +108,9 @@ export function evaluatePr({ body, branch, author, files = [], cfg, fetchMeta = 
     ok: false,
     rule: 'blocked',
     issues,
-    message: `Byggestop aktivt siden ${cfg.since}: ${seen} staar paa finishList, cleanupList eller brandList i scripts/build-stop.json${cfg.loft ? ', hoerer til et loft-omraade eller har en brand-label' : ''}. ` +
-      'Er det fase 1-arbejde, sa referer det rigtige issue. Er det brand (live hos spillerne og forkert), sa tilfoej issuet til brandList med en begrundelse. Ellers hoerer det i triage:new.',
+    message: `Byggestop aktivt siden ${cfg.since}: ${seen} staar paa finishList, cleanupList eller brandList i scripts/build-stop.json${cfg.loft ? ', hoerer til et loft-omraade, har en brand-label' : ''} eller har ejerens go-markoer paa issuet. ` +
+      'Er det fase 1-arbejde, sa referer det rigtige issue. Er det brand (live hos spillerne og forkert), sa tilfoej issuet til brandList med en begrundelse. ' +
+      "Har ejeren sagt ja, sa skriv markoeren (node scripts/build-stop-go.mjs --issue N --area <omraade> --quote '<ejerens ordrette ja>') og koer checket igen. Ellers hoerer det i triage:new.",
   };
 }
 
@@ -117,6 +123,7 @@ function main() {
     files: String(process.env.CHANGED_FILES || '').split('\n'),
     cfg,
     fetchMeta: ghIssueMeta,
+    fetchGo: ghOwnerGo,
   });
   console.log(`[build-stop-pr] ${res.ok ? 'OK' : 'AFVIST'} (${res.rule}): ${res.message}`);
   if (!res.ok) {

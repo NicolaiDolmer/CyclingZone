@@ -232,7 +232,7 @@ export function DataTable({
           {toolbar && (
             <div className="flex flex-wrap items-center gap-2 border-b border-cz-border px-4 py-2.5">{toolbar}</div>
           )}
-          {fullTable ? (
+          {hasChips && fullTable ? (
             <MobileFullTable
               entityCol={entityCol}
               dataCols={swappable}
