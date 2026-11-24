@@ -150,7 +150,7 @@ jobs:
   backend-test-shard:
     name: backend-test-shard ${{ matrix.shard }}/3
     needs: backend-changes
-    if: needs.backend-changes.outputs.backend == 'true'
+    if: ${{ !cancelled() && needs.backend-changes.result == 'success' && needs.backend-changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
