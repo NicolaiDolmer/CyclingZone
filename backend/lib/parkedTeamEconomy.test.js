@@ -304,10 +304,10 @@ function boardProfile(id, teamId) {
   };
 }
 
-function seasonEndTables({ parked }) {
+function seasonEndTables({ parked, comebackSeasonNumber = null, comebackSeasonId = null }) {
   const teams = [
     humanTeam(TEAM_A, { division: 3 }),
-    humanTeam(TEAM_P, { division: 3, parked_at: parked ? PARKED_AT : null }),
+    humanTeam(TEAM_P, { division: 3, parked_at: parked ? PARKED_AT : null, comeback_board_season_number: comebackSeasonNumber, comeback_season_id: comebackSeasonId }),
   ];
   return {
     seasons: [{ id: "season-5", number: 5 }],
@@ -332,8 +332,8 @@ function seasonEndTables({ parked }) {
   };
 }
 
-async function runSeasonEnd({ parked }) {
-  const supabase = createFakeSupabase(seasonEndTables({ parked }));
+async function runSeasonEnd({ parked, comebackSeasonNumber, comebackSeasonId }) {
+  const supabase = createFakeSupabase(seasonEndTables({ parked, comebackSeasonNumber, comebackSeasonId }));
   const calls = { consequences: [], replacement: [], mandateSync: [], annualMeeting: [] };
   await processSeasonEnd("season-5", {
     supabase,
@@ -373,6 +373,18 @@ test("#4592 sæson-slut: et parkeret hold får ingen bestyrelsesdom, konsekvense
   assert.ok(!parked.calls.replacement.includes(TEAM_P), "ingen formandsudskiftning for parkeret P");
   assert.ok(!parked.calls.mandateSync.includes(TEAM_P), "intet mandat-sync for parkeret P");
   assert.ok(!parked.calls.annualMeeting.includes(TEAM_P), "intet årsmøde for parkeret P");
+});
+
+test("#8100 rolls the mandate over without judging the comeback season", async () => {
+  const comeback = await runSeasonEnd({ parked: false, comebackSeasonNumber: 5 });
+  assert.ok(comeback.calls.annualMeeting.includes(TEAM_P));
+  assert.ok(!comeback.calls.consequences.includes(TEAM_P));
+  assert.ok(!comeback.calls.mandateSync.includes(TEAM_P));
+  assert.deepEqual(writesForTeam(comeback.supabase.writes, TEAM_P, [BOARD_P]).upserts, []);
+
+  const earlierSeasonRetry = await runSeasonEnd({ parked: false, comebackSeasonNumber: 6, comebackSeasonId: "season-5" });
+  assert.ok(!earlierSeasonRetry.calls.annualMeeting.includes(TEAM_P));
+  assert.ok(!earlierSeasonRetry.calls.consequences.includes(TEAM_P));
 });
 
 test("#4592 sæson-slut: et ikke-parkeret hold får samme dom, uanset om et andet hold er parkeret", async () => {
