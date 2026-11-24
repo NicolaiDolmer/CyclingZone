@@ -13,7 +13,7 @@ import {
   seedState, createFake, finishRace, press, canon, digest, stateDigest, writesDigest, countCalls,
   SEASON, DIVISION, DATE1, DAYS1, EVENING_AT, rider,
 } from "./trainNowSameResult7982.harness.js";
-import { runNormalizedTrainingDateSweep, __resetNormalizedTrainingDateCacheForTests } from "./trainingDateClose.js";
+import { runNormalizedTrainingDateSweep, ridersJoinedOnDate, __resetNormalizedTrainingDateCacheForTests } from "./trainingDateClose.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 
 const BIG = { count: 48, entered: [3, 7, 11, 19, 23, 31, 40], injured: [5, 23], tired: [2, 14, 29, 44], noPlan: [4, 16, 33], boughtLate: [47], academy: [46], weekPlan: true, fatigueRules: true, staff: true };
@@ -60,6 +60,9 @@ async function eveningSweep(state, fake, { now = EVENING_AT, memory }) {
     teamConcurrency: 1,
     // Ignored on the merge base (no switch there).
     loadSweepMemory: async () => memory,
+    // #8606: the open-date check for riders who joined later, answered from the stand-in's
+    // tables like loadTeams above (ignored on the merge base, so the golden is unchanged).
+    loadJoinedRiders: async ({ tickDate }) => ridersJoinedOnDate(structuredClone(state.riders), tickDate),
   });
   return canon(summary);
 }
