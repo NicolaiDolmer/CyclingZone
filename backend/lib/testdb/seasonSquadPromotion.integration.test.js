@@ -9,10 +9,20 @@ const JUNIOR = uuid(20), U23 = uuid(21), SOLD = uuid(22), STAYS = uuid(23);
 const EXISTING_WIN = uuid(40), NEW_BID = uuid(41);
 const CUTOVER = "2026-11-28T15:00:00Z";
 const swapMigration = readFileSync(new URL("../../../database/2026-11-09-2176-m3-auto-accept-claim-swap.sql", import.meta.url), "utf8");
+const commitmentMigration = readFileSync(new URL("../../../database/2026-11-07-6181-m3-market-commitment.sql", import.meta.url), "utf8");
+const seatCommitment = commitmentMigration.slice(
+  commitmentMigration.indexOf("CREATE OR REPLACE FUNCTION public.team_seat_commitment("),
+  commitmentMigration.indexOf("-- Holdets egne senior-ryttere"),
+);
+const paymentMigration = readFileSync(new URL("../../../database/2026-11-10-2176-transfer-payment-beta-scope.sql", import.meta.url), "utf8");
+const paidSwap = paymentMigration.slice(
+  paymentMigration.indexOf("CREATE OR REPLACE FUNCTION public.auto_accept_claim_swap_paid("),
+  paymentMigration.indexOf("-- The assignment and its existing travel debit"),
+);
 const clubMigration = readFileSync(new URL("../../../database/2026-11-24-8034-club-roster-cap.sql", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../../../database/2026-11-24-7323-season-squad-promotion.sql", import.meta.url), "utf8");
 
-test("cutover promotes despite full squads and open sales, closes old rows, and replays from committed history", async () => {
+test("cutover promotes despite full squads and open sales, closes old rows, and replays from committed history", async (t) => {
   const db = new PGlite();
   try {
     await db.exec(`
@@ -39,6 +49,9 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
         PERFORM pg_advisory_xact_lock(hashtextextended(least($1, $2)::text, 0));
         PERFORM pg_advisory_xact_lock(hashtextextended(greatest($1, $2)::text, 0));
       END; $fixture$;
+      CREATE FUNCTION market_beta_mode_2176() RETURNS boolean LANGUAGE sql AS 'SELECT true';
+      CREATE FUNCTION market_scope_2176(uuid, uuid) RETURNS boolean LANGUAGE sql AS 'SELECT true';
+      CREATE FUNCTION market_squad_max() RETURNS integer LANGUAGE sql AS 'SELECT 30';
       INSERT INTO seasons VALUES ('${S5}', 'completed'), ('${S6}', 'active');
       INSERT INTO riders (id, team_id, squad, is_academy, firstname, lastname, salary, contract_end_season, promotion_pending_to)
       VALUES ('${JUNIOR}', '${CLUB}', 'junior', true, 'Junior', 'Rider', 4000, 8, 'u23'),
@@ -62,6 +75,8 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
       INSERT INTO transfer_listings VALUES ('${JUNIOR}', 10000);
     `);
     await db.exec(swapMigration);
+    await db.exec(seatCommitment);
+    await db.exec(paidSwap);
     for (let attempt = 0; attempt < 2; attempt += 1) {
       await db.exec(migration);
       await db.exec(clubMigration);
@@ -119,6 +134,77 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
       "SELECT auto_accept_claim_swap($1,$2,$3,$4,$5,$6,'{}','{}') AS result",
       [offered, requested, CLUB, BUYER, defer, CUTOVER],
     );
+    const pickSeniors = (teamId) => db.query(
+      "SELECT id FROM riders WHERE team_id=$1 AND squad='senior' ORDER BY id LIMIT 2", [teamId],
+    ).then(({ rows }) => rows.map(({ id }) => id));
+    const clubSeniors = await pickSeniors(CLUB);
+    const buyerSeniors = await pickSeniors(BUYER);
+    const placeSwap = async (paid, pair, deferred) => {
+      const args = [clubSeniors[pair], buyerSeniors[pair], CLUB, BUYER, deferred, CUTOVER];
+      const result = paid
+        ? await db.query("SELECT auto_accept_claim_swap_paid($1,$2,$3,$4,$5,$6,'{}','{}',$7,0,NULL) AS result", [...args, uuid(100 + pair)])
+        : await swap(args[0], args[1], deferred);
+      assert.equal(result.rows[0].result.status, "claimed");
+      if (paid) assert.equal(result.rows[0].result.payment_handled, true);
+    };
+    for (const paid of [false, true]) {
+      const mode = paid ? "atomic payment" : "legacy";
+      await t.test(`second balanced swap before flush in ${mode} mode`, async () => {
+        await db.exec("BEGIN");
+        try {
+          await placeSwap(paid, 0, true);
+          await placeSwap(paid, 1, true);
+          assert.deepEqual((await db.query(
+            "SELECT count(*)::int AS count FROM riders WHERE pending_team_id IS NOT NULL GROUP BY pending_team_id ORDER BY pending_team_id",
+          )).rows, [{ count: 2 }, { count: 2 }]);
+          await db.query("SAVEPOINT purchase");
+          await assert.rejects(buy("team_id"), /club_roster_full/);
+          await db.query("ROLLBACK TO SAVEPOINT purchase");
+        } finally {
+          await db.exec("ROLLBACK");
+        }
+      });
+      for (const deferred of [false, true]) {
+        await t.test(`senior replacement above the squad cap in ${mode} mode (deferred=${deferred})`, async () => {
+          await db.exec("BEGIN");
+          try {
+            const count = () => db.query(
+              "SELECT count(*)::int AS count FROM riders WHERE coalesce(pending_team_id,team_id)=$1 AND squad='senior'",
+              [CLUB],
+            );
+            await db.query("UPDATE riders SET squad='senior' WHERE id = (SELECT id FROM riders WHERE team_id=$1 AND squad='u23' LIMIT 1)", [CLUB]);
+            assert.deepEqual((await count()).rows, [{ count: 31 }]);
+            await placeSwap(paid, 0, deferred);
+            assert.deepEqual((await count()).rows, [{ count: 31 }]);
+          } finally {
+            await db.exec("ROLLBACK");
+          }
+        });
+      }
+    }
+
+    await t.test("paid swaps that grow the senior squad still respect an auction reservation", async () => {
+      await db.exec("BEGIN");
+      try {
+        // Club has 29 seniors and one reserved auction place. Buyer has room
+        // for the outgoing junior, so only the senior reservation can block it.
+        await db.query("UPDATE riders SET squad='u23' WHERE id=$1", [clubSeniors[1]]);
+        await db.query("UPDATE riders SET squad='u23' WHERE id=$1", [SOLD]);
+        const claim = await db.query(
+          "SELECT auto_accept_claim_swap_paid($1,$2,$3,$4,false,$5,'{}','{}',$6,0,NULL) AS result",
+          [STAYS, buyerSeniors[0], CLUB, BUYER, CUTOVER, uuid(120)],
+        );
+        assert.equal(claim.rows[0].result.status, "swap_squad_full");
+        assert.equal(claim.rows[0].result.team_id, CLUB);
+        assert.deepEqual((await db.query("SELECT team_id,pending_team_id FROM riders WHERE id=$1", [STAYS])).rows,
+          [{ team_id: CLUB, pending_team_id: null }]);
+        assert.deepEqual((await db.query("SELECT team_id,pending_team_id FROM riders WHERE id=$1", [buyerSeniors[0]])).rows,
+          [{ team_id: BUYER, pending_team_id: null }]);
+      } finally {
+        await db.exec("ROLLBACK");
+      }
+    });
+
     const otherTeam = uuid(66);
     await db.query("INSERT INTO teams (id) VALUES ($1)", [otherTeam]);
     // An unrelated departure has not created an extra senior place for this swap.

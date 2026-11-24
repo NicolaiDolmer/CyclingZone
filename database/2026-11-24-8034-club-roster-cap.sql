@@ -36,6 +36,11 @@ BEGIN
     PERFORM pg_advisory_xact_lock(hashtextextended(incoming_team::text, 0));
     departing_rider := CASE WHEN swap_leg->>'incoming' = NEW.id::text
       AND swap_leg->>'team' = incoming_team::text THEN (swap_leg->>'outgoing')::uuid END;
+    -- A locked same-squad replacement adds no place. It is independent of
+    -- pending registrations and remains possible above a roster limit.
+    IF departing_rider IS NOT NULL AND swap_leg->'replaces_place' = 'true'::jsonb THEN
+      CONTINUE;
+    END IF;
     IF (
       SELECT count(*) FROM public.riders r
       WHERE (r.team_id = incoming_team OR r.pending_team_id = incoming_team)
@@ -116,6 +121,9 @@ DECLARE
   v_leg record;
   v_assignments text;
   v_contract_assignments text;
+  v_replaces_place boolean;
+  v_replacements uuid[] := ARRAY[]::uuid[];
+  v_senior_growth uuid[] := ARRAY[]::uuid[];
 BEGIN
   IF p_offered_rider_id IS NULL OR p_requested_rider_id IS NULL
      OR p_offered_rider_id = p_requested_rider_id
@@ -151,13 +159,21 @@ BEGIN
   -- uroert, og et eksplicit NULL i patchen skrives som NULL.
   FOR v_leg IN
     SELECT * FROM (VALUES
-      (o.id, p_receiving_team_id, p_offered_patch, q.id),
-      (q.id, p_proposing_team_id, p_requested_patch, o.id)
-    ) AS t(rider_id, target_team_id, patch, departing_rider_id)
+      (p_receiving_team_id, p_offered_patch, o.id, o.squad, o.is_retired, q.id, q.squad, q.is_retired),
+      (p_proposing_team_id, p_requested_patch, q.id, q.squad, q.is_retired, o.id, o.squad, o.is_retired)
+    ) AS t(target_team_id, patch, rider_id, from_squad, rider_retired, departing_rider_id, departing_squad, departing_retired)
   LOOP
-    -- Both riders and both teams are locked. Credit only the opposite leg.
+    -- Use the original outgoing squad, even if its row already carries an
+    -- incoming squad patch. An explicit null squad follows the senior default.
+    v_replaces_place := v_leg.rider_retired IS NOT TRUE AND v_leg.departing_retired IS NOT TRUE
+      AND coalesce(v_leg.departing_squad, 'senior') = coalesce(
+        CASE WHEN v_leg.patch ? 'squad' THEN v_leg.patch->>'squad' ELSE v_leg.from_squad END, 'senior');
+    IF v_replaces_place THEN
+      v_replacements := array_append(v_replacements, v_leg.rider_id);
+    END IF;
     PERFORM set_config('cyclingzone.swap_departure', jsonb_build_object(
-      'incoming', v_leg.rider_id, 'team', v_leg.target_team_id, 'outgoing', v_leg.departing_rider_id
+      'incoming', v_leg.rider_id, 'team', v_leg.target_team_id, 'outgoing', v_leg.departing_rider_id,
+      'replaces_place', v_replaces_place
     )::text, true);
     v_assignments := CASE WHEN p_defer_registration THEN 'pending_team_id=$2, updated_at=$3'
       ELSE 'team_id=$2, pending_team_id=NULL, acquired_at=$3' END;
@@ -171,15 +187,20 @@ BEGIN
       USING v_leg.patch, v_leg.target_team_id, p_now, v_leg.rider_id;
   END LOOP;
 
-  -- Resolve the destination after applying the sale patches. A same-squad
-  -- replacement can fill the last place. An addition to a full squad cannot.
+  -- Only a destination that grows must pass the squad limit. Pending moves
+  -- continue to reserve places for acquisitions that grow a squad.
   FOR v_leg IN
     SELECT coalesce(r.pending_team_id, r.team_id) AS target_team_id,
            coalesce(r.squad, 'senior') AS target_squad,
            CASE WHEN r.id = o.id THEN q.id ELSE o.id END AS departing_rider_id
     FROM public.riders r
     WHERE r.id IN (o.id, q.id)
+      AND NOT (r.id = ANY(v_replacements))
+      AND r.is_retired IS NOT TRUE
   LOOP
+    IF v_leg.target_squad = 'senior' THEN
+      v_senior_growth := array_append(v_senior_growth, v_leg.target_team_id);
+    END IF;
     IF (
       SELECT count(*) FROM public.riders r
       WHERE (r.team_id = v_leg.target_team_id OR r.pending_team_id = v_leg.target_team_id)
@@ -192,12 +213,29 @@ BEGIN
     END IF;
   END LOOP;
 
-  RETURN jsonb_build_object('status','claimed','offered_rider_id',o.id,'requested_rider_id',q.id);
+  RETURN jsonb_build_object('status','claimed','offered_rider_id',o.id,'requested_rider_id',q.id,
+                            'senior_growth_team_ids',to_jsonb(v_senior_growth));
 END;
 $$;
 
 REVOKE ALL ON FUNCTION public.auto_accept_claim_swap(uuid, uuid, uuid, uuid, boolean, timestamptz, jsonb, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.auto_accept_claim_swap(uuid, uuid, uuid, uuid, boolean, timestamptz, jsonb, jsonb) TO service_role;
+
+-- Keep the paid wrapper's reservation check for senior growth. Patch the
+-- installed definition so the atomic payment gate and settlement stay intact.
+DO $migration$
+DECLARE
+  old_guard constant text := 'IF public.market_scope_2176(v_team,NULL) AND public.team_seat_commitment(v_team,NULL)>public.market_squad_max() THEN';
+  new_guard constant text := 'IF coalesce(v_claim->''senior_growth_team_ids'' ? v_team::text, true) AND public.market_scope_2176(v_team,NULL) AND public.team_seat_commitment(v_team,NULL)>public.market_squad_max() THEN';
+  def text := pg_get_functiondef('public.auto_accept_claim_swap_paid(uuid,uuid,uuid,uuid,boolean,timestamptz,jsonb,jsonb,uuid,bigint,jsonb)'::regprocedure);
+BEGIN
+  IF strpos(def, new_guard) > 0 THEN RETURN; END IF;
+  IF strpos(def, old_guard) = 0 OR (length(def) - length(replace(def, old_guard, ''))) <> length(old_guard) THEN
+    RAISE EXCEPTION '#8034: unexpected paid swap reservation guard';
+  END IF;
+  EXECUTE replace(def, old_guard, new_guard);
+END
+$migration$;
 
 NOTIFY pgrst, 'reload schema';
 
