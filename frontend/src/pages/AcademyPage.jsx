@@ -96,7 +96,7 @@ export default function AcademyPage() {
   // #5519: med U23/Junior-siderne tændt erstatter links Youth squads-kortet (3a).
   const youthSquadPagesOn = useYouthSquadPages();
   const {
-    enabled, squads, intake, graduations, balance,
+    enabled, squads, intake, balance,
     intakePull, loading, error, signCandidate, rejectCandidate,
     pullIntake, academyProfile, saveProfile, roster,
   } = useAcademy();
@@ -484,36 +484,6 @@ export default function AcademyPage() {
       />
 
       <div className="space-y-6">
-      {/* GRADUATION DAY-BANNER (#2491) — selve valget bor nu paa sin egen T1-side
-          (/academy/graduation, ejer-godkendt mockup 3g). Her staar kun banneret,
-          og KUN naar der er nogen at traeffe valg om.
-
-          Den gamle blok — ét kort pr. rytter med tre knapper — er slettet, ikke
-          gemt bag et flag: to flader med samme irreversible valg er praecis den
-          dobbelt-flade HANDOFF pkt. 8 forbyder ("banner on Academy only, plus
-          the Inbox notification"). Kortene kunne desuden hverken vise
-          rating-plade, potentiale-baand eller traenerens vurdering, og havde
-          ingen faelles bekraeftelse. */}
-      {graduations.length > 0 && (
-        <section>
-          <SectionHeader title={t("graduationHeading")} />
-          <Card className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-[13.5px] font-medium text-cz-1">
-                {t("graduationBanner.title", { count: graduations.length })}
-              </p>
-              <p className="mt-1 text-xs text-cz-2">{t("graduationBanner.body")}</p>
-            </div>
-            <Link
-              to="/academy/graduation"
-              className={`${buttonClass({ variant: "secondary", size: "sm" })} shrink-0`}
-            >
-              {t("graduationBanner.action")}
-            </Link>
-          </Card>
-        </section>
-      )}
-
       {/* #5844: "A thank-you from the board" — bestyrelsens engangs-kuld (10
           tilbud: 5 U23-alder + 5 junior-alder). Samme kort og samme sign/afvis
           som det normale optag; eneste forskel er gratis signing og 14 dages

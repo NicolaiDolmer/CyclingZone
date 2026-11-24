@@ -160,7 +160,6 @@ export interface DashboardOptions {
   racePause: boolean;
   nowMs: number;
   seasonStartWindowOpen: (season: Row | null) => boolean;
-  academyEnabled: boolean;
 }
 
 export function useDashboardData(options: DashboardOptions) {
@@ -336,21 +335,15 @@ export function useDashboardData(options: DashboardOptions) {
   // #2925: the two "done" signals of the season-start guide, only inside the window.
   const windowOpen = options.seasonStartWindowOpen(season);
   const countsQuery = useQuery({
-    queryKey: privateKey(scope, "dashboard:season-start-counts", season?.id ?? null, options.academyEnabled),
+    queryKey: privateKey(scope, "dashboard:season-start-counts", season?.id ?? null),
     enabled: hasTeam && windowOpen && !!season,
     queryFn: async ({ signal }) => {
       const revision = await runtime.beforeRead(signal);
-      const [trainingRes, gradRes] = await Promise.all([
-        supabase.from("training_plans").select("rider_id", { count: "exact", head: true })
-          .eq("team_id", (team as Row).id).eq("season_id", (season as Row).id).abortSignal(signal),
-        options.academyEnabled
-          ? supabase.from("academy_graduation").select("rider_id", { count: "exact", head: true })
-            .eq("team_id", (team as Row).id).eq("status", "pending").abortSignal(signal)
-          : Promise.resolve({ count: 0 }),
-      ]) as [SupabaseResult, SupabaseResult];
+      const trainingRes = await supabase.from("training_plans").select("rider_id", { count: "exact", head: true })
+        .eq("team_id", (team as Row).id).eq("season_id", (season as Row).id).abortSignal(signal);
       runtime.assertReadCurrent(scope, revision);
       // count===null (error/unknown) stays null: the item shows without a check mark.
-      return { trainingPlanCount: trainingRes.count ?? null, pendingGraduations: gradRes.count ?? null };
+      return { trainingPlanCount: trainingRes.count ?? null };
     },
   }, client);
 
@@ -482,7 +475,7 @@ export function useDashboardData(options: DashboardOptions) {
     squadSelectionMissingRace,
     selectionReady,
     notTrainedToday: hasTeam ? trainingQuery.data ?? false : false,
-    seasonStartCounts: hasTeam && windowOpen && season ? countsQuery.data ?? { trainingPlanCount: null, pendingGraduations: null } : { trainingPlanCount: null, pendingGraduations: null },
+    seasonStartCounts: hasTeam && windowOpen && season ? countsQuery.data ?? { trainingPlanCount: null } : { trainingPlanCount: null },
     completedSeasonRecap: hasTeam && windowOpen && season ? recapQuery.data ?? null : null,
     recentResults: settledList(recentQuery, EMPTY_ROWS),
     riderRanking: settledList(rankingQuery, EMPTY_ROWS),

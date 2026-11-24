@@ -74,6 +74,11 @@ function createMockSupabase(initialState) {
     if (table === "race_entries") return raceEntriesTable();
     if (table === "race_withdrawals") return raceWithdrawalsTable();
     if (table === "academy_intake") return academyIntakeTable();
+    if (table === "academy_graduation") {
+      const chain = { in: () => chain, eq: () => chain, order: () => chain,
+        range: async () => ({ data: initialState.automaticPromotions ?? [], error: null }) };
+      return { select: () => chain };
+    }
     throw new Error(`Unexpected table: ${table}`);
   }
 
@@ -1716,4 +1721,19 @@ test("#4213: et tilbud til holdet selv blokerer ikke holdets eget auto-køb", as
   assert.equal(result.purchases.length, 1);
   assert.equal(result.purchases[0].riderName, "Egen Kandidat",
     "holdets egen akademikandidat er billigst og må godt tages af holdet selv");
+});
+
+test("#7323 a full senior squad can keep an automatically promoted rider without penalty", async () => {
+  const teamId = "hold";
+  const riders = Array.from({ length: 31 }, (_, i) => ({ id: `rider-${i}`, team_id: teamId }));
+  const supabase = createMockSupabase({
+    teams: [{ id: teamId, user_id: "manager", is_ai: false, is_bank: false, division: 3 }],
+    riders,
+    automaticPromotions: [{ rider_id: "rider-30", team_id: teamId }],
+  });
+  const result = await enforceTeamSquadCompliance({ supabase, teamId, now: new Date("2026-11-28T15:00:00Z") });
+  assert.equal(result.code, "within_limits");
+  assert.equal(result.totalCount, 31);
+  assert.deepEqual(supabase.state.riderUpdates, []);
+  assert.deepEqual(supabase.state.financeTransactions, []);
 });

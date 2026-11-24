@@ -340,8 +340,7 @@ import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { intakeOfferExpiryDaysFor, signingFeeForSource, isMissingSchemaError as isMissingIntakeSourceSchema } from "../lib/academyIntakeSource.ts";
-import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
-import { handleListPendingRequest, handlePromotePendingRequest } from "../lib/promotionPendingAction.js"; // #6710
+import { findPendingGraduation } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.ts";
@@ -19370,80 +19369,6 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // #2456: fri-agent-butikken ("frie ungdoms-free-agents") er fjernet — talenter
     // kommer via eget intake eller ungdomsauktionen; usolgte slettes ved finalisering.
 
-    // Pending graduates (#932): akademiryttere der har passeret 21 og afventer
-    // promover/sælg/slip-valg inden override-vinduets (deadline) udløb.
-    // #2796: kortet bad om promovér/sælg/slip på navn + alder alene. Payloaden
-    // bærer nu også type, markedsværdi og løn (samme felter rosteret allerede
-    // viser), så de tre knapper ikke længere er konsekvensblinde. Potentiale
-    // udelades bevidst: en graduate er 21+ og dermed færdig med ungdomskurven —
-    // markedsværdien er det beslutningsrelevante tal her.
-    //
-    // #2491 (Graduation Day-siden, ejer-godkendt mockup 3g): rækken bærer nu
-    // HVILKEN overgang det er (`from_squad`/`to_squad`, #4619) plus de felter
-    // siden viser pr. rytter — evne-rækken (så rating-pladen kan regnes med
-    // frontendens ratingForRole-SSOT, samme mønster som alle andre rytter-
-    // flader), kontrakt-længde/-slutsæson og produktionsværdien. Potentiale-
-    // båndet hentes IKKE her: siden bruger ScoutablePotentiale, der går
-    // gennem det maskerede POST /api/scouting/estimates som alle andre flader
-    // — råt potentiale forlader stadig aldrig serveren (#1162).
-    const { data: gradRows } = await supabase
-      .from("academy_graduation")
-      .select(`rider_id, deadline, status, from_squad, to_squad, riders(firstname, lastname, birthdate, nationality_code, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus, current_production_value, primary_type, secondary_type, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")}))`)
-      .eq("team_id", teamId)
-      .eq("status", "pending")
-      .order("deadline", { ascending: true });
-
-    // #2491: hvor mange pladser er der i MÅL-truppen? Graduation Day skal kunne
-    // vise "Move up" som blokeret MED årsag, og blokeringen skal være den
-    // SAMME gate som resolveGraduation's promote-gren bruger
-    // (academyGraduation.hasRoomInTargetSquad): ungdomstrupper mod SQUAD_CAPS,
-    // senior mod divisionens cap. Tælles kun når der faktisk er en pending
-    // graduering — ellers er det en gratis forespørgsel pr. sidevisning.
-    //
-    // youthSquadRooms ovenfor bruger allerede countSquadMembers, samme
-    // tælling som skrive-siden. Genbrug resultatet frem for nye parallelle HEADs.
-    const youthSquadCounts = { junior: 0, u23: 0 };
-    if ((gradRows ?? []).length > 0) {
-      youthSquadCounts.junior = squads.junior.used;
-      youthSquadCounts.u23 = squads.u23.used;
-    }
-
-    // #5943: sæson-alder (ageForSeason), ikke wall-clock — ellers står en rytter
-    // der er 19 i sæsonen som 16 ved oprykningen, når sæsonåret ligger foran kalenderen.
-    const graduationSeasonNumber = await getActiveSeasonNumber();
-    const graduations = (gradRows ?? []).map((g) => {
-      const r = g.riders ?? {};
-      const age = ageForSeason(r.birthdate, graduationSeasonNumber);
-      // Nullable på rækker fra før #4619: fallback er 'senior', præcis samme
-      // adfærd som graduationSquadPatch — en graduering uden trup-information
-      // ER den gamle akademi → senior-overgang. Vi gætter aldrig `from`.
-      const toSquad = g.to_squad ?? "senior";
-      const targetCount = toSquad === "senior" ? seniorCount : youthSquadCounts[toSquad] ?? 0;
-      const targetMax = toSquad === "senior" ? seniorMax : (SQUAD_CAPS[toSquad] ?? null);
-      const ab = Array.isArray(r.rider_derived_abilities) ? r.rider_derived_abilities[0] : r.rider_derived_abilities;
-      return {
-        riderId: g.rider_id,
-        name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(),
-        firstname: r.firstname ?? null,
-        lastname: r.lastname ?? null,
-        age,
-        deadline: g.deadline,
-        nationality_code: r.nationality_code ?? null,
-        primary_type: r.primary_type ?? null,
-        secondary_type: r.secondary_type ?? null,
-        salary: r.salary ?? null,
-        contract_length: r.contract_length ?? null,
-        contract_end_season: r.contract_end_season ?? null,
-        current_production_value: r.current_production_value ?? null,
-        market_value: calculateRiderMarketValue(r),
-        fromSquad: g.from_squad ?? null,
-        toSquad,
-        targetSquadCount: targetCount,
-        targetSquadMax: targetMax,
-        rider_derived_abilities: ab ?? null,
-      };
-    });
-
     // #3550: pull-baseret intake — flag-status + "hentet denne uge"-markør, så
     // frontend'en kan vise knap-tilstanden vs. kandidat-kortene uden en ekstra
     // roundtrip. Flag OFF (default indtil cutover) → intakePull.enabled=false,
@@ -19454,7 +19379,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       : false;
     // #6666 Optag 2.0 (samme flag): potentiale læres gennem træning + akademiets profil.
     const intake2 = intakePullEnabled
-      ? await buildIntake2View(supabase, { teamId, roster, intake, seasonNumber: graduationSeasonNumber })
+      ? await buildIntake2View(supabase, { teamId, roster, intake, seasonNumber: await getActiveSeasonNumber() })
       : null;
     const estimateViews = await isPotentialEstimateOn(req)
       ? await buildAcademyFromViews(supabase, { teamId, roster: intake2?.roster ?? roster, intake: intake2?.intake ?? intake })
@@ -19467,7 +19392,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       seniorMax,
       roster: estimateViews?.roster ?? intake2?.roster ?? roster,
       intake: estimateViews?.intake ?? intake2?.intake ?? intake,
-      graduations,
+      graduations: [], // Compatibility for clients cached before #7323.
       intakePull: { enabled: intakePullEnabled, pulledThisWeek: intakePulledThisWeek },
       academyProfile: intake2?.profile ?? null,
     });
@@ -19685,42 +19610,7 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
   }
 });
 
-// POST /api/academy/graduate — resolvér en akademirytter der har passeret 21.
-// Body: { riderId, action } hvor action ∈ promote|sell|release (#932).
-router.post("/academy/graduate", requireAuth, marketWriteLimiter, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
-  try {
-    const isBetaTester = await isViewerBetaTester(req);
-    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
-    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
-
-    const { riderId, action } = req.body || {};
-    if (!riderId || !action) return res.status(400).json({ error: "riderId and action required" });
-
-    const { data: season } = await supabase
-      .from("seasons")
-      .select("number")
-      .eq("status", "active")
-      .maybeSingle();
-    const seasonNumber = season?.number ?? 1;
-
-    const result = await resolveGraduation(supabase, {
-      teamId: req.team.id,
-      riderId,
-      action,
-      seasonNumber,
-    });
-
-    res.json(result);
-  } catch (err) {
-    const msg = err?.message ?? "";
-    if (["not_pending", "squad_cap_violation", "invalid_action", "rider_not_found"].includes(msg)) {
-      return res.status(409).json({ error: msg });
-    }
-    captureException(err);
-    res.status(500).json({ error: msg });
-  }
-});
+router.post("/academy/graduate", requireAuth, marketWriteLimiter, (_req, res) => res.sendStatus(410));
 
 // POST /api/academy/reject — afvis en tilbudt akademi-kandidat.
 // Body: { riderId }
@@ -19854,20 +19744,7 @@ router.post("/riders/:id/squad", requireAuth, marketWriteLimiter, async (req, re
   }
 });
 
-// #6710: "Afventer oprykning" — trupsidens liste + "Ryk op" (promotionPendingAction.js).
-router.get("/team/promotion-pending", requireAuth, presencePulseLimiter, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
-  try {
-    const out = await handleListPendingRequest(supabase, { teamId: req.team.id, seasonNumber: await getActiveSeasonNumber() });
-    res.status(out.status).json(out.body);
-  } catch (err) { captureException(err); res.status(500).json({ error: "Could not load riders awaiting promotion", errorCode: "promotion_pending_failed" }); }
-});
-router.post("/riders/:id/promote-pending", requireAuth, marketWriteLimiter, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
-  try {
-    const out = await handlePromotePendingRequest(supabase, { teamId: req.team.id, riderId: req.params.id, seasonNumber: await getActiveSeasonNumber() });
-    res.status(out.status).json(out.body);
-  } catch (err) { captureException(err); res.status(500).json({ error: "Could not promote the rider", errorCode: "promotion_pending_failed" }); }
-});
+router.get("/team/promotion-pending", requireAuth, presencePulseLimiter, (_req, res) => res.json({ riders: [] }));
+router.post("/riders/:id/promote-pending", requireAuth, marketWriteLimiter, (_req, res) => res.sendStatus(410));
 
 export default router;

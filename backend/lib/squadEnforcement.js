@@ -46,6 +46,7 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace, shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { fetchLiveAcademyOffers, filterOutPromisedAcademyRiders } from "./academyOfferProtection.ts";
 import { applySeniorSquadFilter } from "./squads.js";
+import { loadProtectedSeniorRiderIds } from "./seasonSquadPromotion.js";
 
 // #1309: aktiv sæson-number til contract_end_season-beregning.
 // Spejler transferExecution.fetchActiveSeasonNumber — default 1 som edge-case.
@@ -421,6 +422,10 @@ export async function enforceTeamSquadCompliance({
 
   const limits = limitsOverride ?? getSquadLimits(team.division);
   const effectiveCount = ownedRiders.length;
+  const protectedIds = effectiveCount > limits.max
+    ? await loadProtectedSeniorRiderIds(supabase, new Map(ownedRiders.map(({ id }) => [id, teamId])))
+    : new Set();
+  const enforcementMax = limits.max + protectedIds.size;
 
   let purchases = [];
   let sales = [];
@@ -460,8 +465,8 @@ export async function enforceTeamSquadCompliance({
       });
       purchases.push(result);
     }
-  } else if (effectiveCount > limits.max) {
-    deviatingCount = effectiveCount - limits.max;
+  } else if (effectiveCount > enforcementMax) {
+    deviatingCount = effectiveCount - enforcementMax;
     // #2617/#1995: auto-salget flipper team_id direkte (og KAN ikke parkeres —
     // pending_team_id=null betyder "intet pending", så et salg til fri agent
     // (ai_team_id=null) har ingen parkerings-repræsentation). Vælg derfor kun
@@ -471,7 +476,7 @@ export async function enforceTeamSquadCompliance({
     const racingIds = new Set(
       await getRidersInActiveStageRace(supabase, ownedRiders.map(r => r.id))
     );
-    const sellable = ownedRiders.filter(r => !racingIds.has(r.id));
+    const sellable = ownedRiders.filter(r => !racingIds.has(r.id) && !protectedIds.has(r.id));
     const candidates = pickRidersToSell(sellable, deviatingCount);
     salesDeferredByRacing = deviatingCount - candidates.length;
 

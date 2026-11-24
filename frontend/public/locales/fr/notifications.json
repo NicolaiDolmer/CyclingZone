@@ -1,4 +1,10 @@
 {
+  "seasonPromotions": {
+    "u23Moved": "Promus en U23 : {names}",
+    "seniorMoved": "Promus chez les seniors : {names}",
+    "u23OverLimit": "Ton équipe U23 dépasse sa limite. Voir l’effectif.",
+    "seniorOverLimit": "Ton équipe senior dépasse sa limite. Voir l’effectif."
+  },
   "page": {
     "title": "Boîte de réception",
     "subtitleMine": "{count, plural, =0 {Tout est lu} one {# non lue} other {# non lues}}",

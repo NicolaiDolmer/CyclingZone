@@ -1742,17 +1742,8 @@
         "text": "À partir de la saison 5, l'académie n'a plus de coût d'entretien par place. Tes coureurs de l'académie ne coûtent que leur salaire."
       },
       "graduation": {
-        "title": "Jour de la remise des diplômes",
-        "text": "Les coureurs qui ont dépassé leur effectif passent à l'étape suivante au changement de saison. Un junior qui a 19 ans passe dans ton équipe U23, et un coureur U23 qui a 23 ans passe dans ton équipe senior. La liste ouvre la semaine avant le changement de saison, et la date limite est le changement lui-même. Tant que tu n'as pas déplacé un coureur, il s'entraîne et court dans son ancien effectif. Pour chaque coureur, tu choisis Monter (demande une place libre dans l'effectif où il va, et il garde son contrat exactement tel quel), Vendre sur le marché des transferts, ou Libérer comme agent libre. Si tu ne fais rien, le club choisit pour toi au changement : monter quand il y a de la place, sinon vendre. Ton coach donne un court avis sur chaque coureur, et ce n'est jamais qu'un avis, jamais une promesse."
-      },
-      "graduationDayPage": {
-        "title": "Où faire le choix",
-        "steps": [
-          "Une bannière apparaît sur la page Académie, et tu reçois un message dans ta boîte de réception, quand des coureurs attendent.",
-          "Ouvre le Jour de la remise des diplômes depuis l'un ou l'autre.",
-          "Chaque transition a sa propre carte, avec une ligne par coureur : note, potentiel, contrat et avis de ton coach.",
-          "Choisis Monter, Vendre ou Libérer pour chaque coureur, puis appuie sur Tout confirmer."
-        ]
+        "title": "Promotion automatique dans un autre effectif",
+        "text": "Au changement de saison, je fais passer les juniors dans l’équipe U23 à 19 ans et les U23 dans l’équipe senior à 23 ans, selon leur âge de saison. Les coureurs qui restent dans ton club conservent leur contrat et leur salaire. Leurs enchères et annonces de transfert se poursuivent. Je les fais monter même si l’effectif est complet. Tu peux continuer à courir, à t’entraîner et à vendre. Tu peux de nouveau recruter dans cet effectif dès qu’une place se libère. Les promotions figurent dans ton message de changement de saison."
       },
       "promoteDemote": {
         "title": "Déplacer des coureurs entre les effectifs",
@@ -1774,8 +1765,8 @@
         "text": "Oui, monter est toujours autorisé s'il y a une place libre : un coureur de 17 ans peut être dans l'équipe U23, un coureur de 20 ans dans l'équipe senior, quand tu veux. Descendre ne fonctionne que dans la limite d'âge propre à l'effectif : un coureur de 19 ans ne peut pas retourner chez les juniors, et un coureur de 23 ans ne peut pas retourner en U23."
       },
       "graduationDayAt23": {
-        "title": "Que se passe-t-il quand un coureur dépasse l'âge de son effectif ?",
-        "text": "Au changement de saison, les coureurs qui ont dépassé leur effectif passent à l'étape suivante : de juniors à l'équipe U23 à l'âge de saison 19 ans, de U23 à senior à l'âge de saison 23 ans. Tu as le premier choix au Jour de la remise des diplômes ; si tu ne fais rien avant la date limite, le club le fait monter quand il y a de la place et que tu en as les moyens, sinon le vend, sinon le libère comme agent libre. Au changement de saison, les contrats qui expirent prennent fin d'abord : seuls les coureurs encore sous contrat peuvent monter. Prolonge le contrat d'un jeune coureur avant la fin de la saison si tu veux qu'il monte."
+        "title": "Promotion automatique dans un autre effectif",
+        "text": "Au changement de saison, je fais passer les juniors dans l’équipe U23 à 19 ans et les U23 dans l’équipe senior à 23 ans, selon leur âge de saison. Les coureurs qui restent dans ton club conservent leur contrat et leur salaire. Leurs enchères et annonces de transfert se poursuivent. Je les fais monter même si l’effectif est complet. Tu peux continuer à courir, à t’entraîner et à vendre. Tu peux de nouveau recruter dans cet effectif dès qu’une place se libère. Les promotions figurent dans ton message de changement de saison."
       },
       "youthRacesFromS4": {
         "title": "L'équipe U23 et l'équipe juniors courent-elles vraiment ?",

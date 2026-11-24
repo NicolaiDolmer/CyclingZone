@@ -1,3 +1,5 @@
+import { isAcademyEnabled } from "./academyFlag.js";
+import { promoteSeasonSquads, loadSquadPromotionNotices } from "./seasonSquadPromotion.js";
 import { assessFinalTrainingDateSettlement } from './seasonTransitionReadiness.js';
 /**
  * Slice 08 — Sæson-transition orchestrator
@@ -194,6 +196,7 @@ export async function emitSeasonStartedNotifications({
   humanTeams = null,
   notify = notifyUser,
   loadSponsorPayouts = loadSeasonStartedSponsorPayouts,
+  squadPromotions = [],
 }) {
   const seasonNumber = toSeason.number;
   const stats = { delivered: 0, deduped: 0, failed: 0, failedUserIds: [] };
@@ -219,6 +222,10 @@ export async function emitSeasonStartedNotifications({
     managers = data;
   }
   const eligible = (managers || []).filter((team) => team.user_id);
+  const managerTeamIds = new Set(eligible.map((team) => team.id));
+  const squadPromotionNotices = await loadSquadPromotionNotices(
+    supabase, squadPromotions.filter(({ team_id }) => managerTeamIds.has(team_id)),
+  );
 
   let sponsorPayoutByTeamId = new Map();
   if (eligible.length > 0) {
@@ -239,6 +246,8 @@ export async function emitSeasonStartedNotifications({
   for (const team of eligible) {
     const sponsorAmount = sponsorPayoutByTeamId.get(team.id);
     const hasSponsorAmount = typeof sponsorAmount === "number" && Number.isFinite(sponsorAmount);
+    const promotions = squadPromotionNotices.get(team.id);
+    const promotionMetadata = promotions ? { squadPromotions: promotions } : {};
     try {
       const res = await notify({
         supabase,
@@ -251,12 +260,14 @@ export async function emitSeasonStartedNotifications({
           ? {
               titleCode: "notif.seasonStarted.title",
               titleParams: { number: seasonNumber },
+              ...promotionMetadata,
               messageCode: "notif.seasonStarted.messageWithSponsor",
               messageParams: { number: seasonNumber, amount: sponsorAmount },
             }
           : {
               titleCode: "notif.seasonStarted.title",
               titleParams: { number: seasonNumber },
+              ...promotionMetadata,
               messageCode: "notif.seasonStarted.message",
               messageParams: { number: seasonNumber },
             },
@@ -1398,6 +1409,13 @@ export async function transitionToNextSeason({
     });
   }
 
+  // Promote the riders who still belong to the club after contract expiry and retirement.
+  const promoteSquads = deps.promoteSeasonSquads ?? promoteSeasonSquads;
+  const promotions = await (deps.isAcademyEnabled ?? isAcademyEnabled)(supabase)
+    ? await promoteSquads({ supabase, seasonId: plan.to_season.id, seasonNumber: plan.to_season.number, transitionAtIso })
+    : [];
+  if (promotions.length > 0) log.push({ phase: "season_squad_promotions", count: promotions.length });
+
   // Phase 6f (#3043): detektér + varsl hold der er under MIN_RIDERS_FOR_RACE (8)
   // EFTER de to frigivelses-faser ovenfor (kontraktudløb + pension er nu endelige
   // for denne transition). #2748/#2834's squad-spærre (squadRiskGuard.js) gater
@@ -1631,6 +1649,7 @@ export async function transitionToNextSeason({
       phase: "season_started_notifications",
       ...(await emitSeasonStarted({
         supabase,
+        squadPromotions: promotions,
         toSeason: plan.to_season,
       })),
     });

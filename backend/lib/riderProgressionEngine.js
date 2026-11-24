@@ -46,8 +46,6 @@ import {
   noticeFreezePatch,
 } from "./retirementNotice.js";
 import { notifyTeamOwner } from "./notificationService.js";
-import { isAcademyEnabled } from "./academyFlag.js";
-import { detectGraduates } from "./academyGraduation.js";
 
 // Sæson 1 = launch-året (2026). Alder er SÆSON-drevet (ikke real-world-tid), så
 // ryttere ældes troværdigt over sæsoner. ageForSeason(birthdate, N) = år N − fødselsår.
@@ -227,7 +225,6 @@ export async function developRidersForSeason({
   supabase, seasonId, seasonNumber,
   notify = true, now = new Date(),
   notifyTeamOwnerFn = notifyTeamOwner,
-  detectGraduatesFn = detectGraduates,
   seasonLoadByRider: seasonLoadByRiderArg,
   loadSeasonDevelopmentLoadFn = loadSeasonDevelopmentLoad,
   loadAgingCfgFn = loadXpAgingCfg,
@@ -485,13 +482,6 @@ export async function developRidersForSeason({
           messageParams: { name, age },
         },
       }).catch(() => { /* notifikation må aldrig vælte transitionen */ }));
-  }
-
-  // ── Akademi-graduering (#932): akademiryttere der har passeret 21 sættes i
-  //    pending-valg (promover/sælg/slip). Gated på academy_enabled (no-op uden
-  //    akademi). Kører efter aldring så ageForSeason afspejler den nye sæson.
-  if (await isAcademyEnabled(supabase)) {
-    await detectGraduatesFn(supabase, { seasonId, seasonNumber, now });
   }
 
   return summary;

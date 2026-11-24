@@ -1,3 +1,5 @@
+import { loadProtectedSeniorRiderIds } from "./seasonSquadPromotion.js";
+
 /**
  * #1346 — Readiness-gate for manuel sæson-transition.
  * =====================================================
@@ -107,11 +109,21 @@ export async function countSquadLimitViolations({ supabase } = {}) {
   }
   const countByTeam = new Map();
   for (const teamId of effectiveTeamById.values()) countByTeam.set(teamId, (countByTeam.get(teamId) || 0) + 1);
+  const overLimitTeamIds = new Set(teams.filter((team) => (
+    (countByTeam.get(team.id) || 0) > getSquadLimits(team.division).max
+  )).map(({ id }) => id));
+  const overLimitRiders = new Map([...effectiveTeamById].filter(([, teamId]) => overLimitTeamIds.has(teamId)));
+  const protectedIds = await loadProtectedSeniorRiderIds(supabase, overLimitRiders);
+  const protectedByTeam = new Map();
+  for (const riderId of protectedIds) {
+    const teamId = overLimitRiders.get(riderId);
+    protectedByTeam.set(teamId, (protectedByTeam.get(teamId) || 0) + 1);
+  }
   const violatingTeams = [];
   for (const t of teams || []) {
     const limits = getSquadLimits(t.division);
     const n = countByTeam.get(t.id) || 0;
-    if (n > limits.max || n < limits.min) {
+    if (n > limits.max + (protectedByTeam.get(t.id) || 0) || n < limits.min) {
       violatingTeams.push({ teamId: t.id, teamName: t.name ?? null, count: n, min: limits.min, max: limits.max });
     }
   }

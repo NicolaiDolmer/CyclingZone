@@ -1,10 +1,9 @@
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage, login, json, RIDERS, TEST_TEAM } from "./fixtures.js";
 import { SEED_ACADEMY, SEED_SCOUT_ESTIMATES } from "../../src/preview/seedData.js";
-import { readFileSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
-const coachCopy = JSON.parse(readFileSync(new URL("../../public/locales/da/academy.json", import.meta.url), "utf8")).graduationDay.coach;
 const fixedNow = new Date("2026-10-20T12:00:00Z");
 const stages = [
   { stage: "learning", daysOnTeam: 0, nextStageDays: 1, band: null },
@@ -58,7 +57,7 @@ for (const width of [1440, roleShots ? 390 : 375]) {
           rider_derived_abilities: rider.rider_derived_abilities }],
       }));
       await login(page);
-      for (const [surface, path] of [["team", "/team"], ["development", "/team?tab=development"], ["hero", "/riders/rider-1"], ["scouting", "/riders/rider-1?tab=scouting"], ["training", "/training?tab=development"], ["graduation", "/academy/graduation"]]) {
+      for (const [surface, path] of [["team", "/team"], ["development", "/team?tab=development"], ["hero", "/riders/rider-1"], ["scouting", "/riders/rider-1?tab=scouting"], ["training", "/training?tab=development"]]) {
         await test.step(surface, async () => {
           await page.goto(path);
           if (surface === "development") await expect(page.getByRole("tab", { name: /^(Development|Udvikling)$/i })).toHaveAttribute("aria-selected", "true");
@@ -115,10 +114,6 @@ for (const width of [1440, roleShots ? 390 : 375]) {
           } else {
             await expect(page.locator("[data-potential-band]").first()).toBeVisible();
             if (surface === "scouting") await page.locator("[data-type]").first().scrollIntoViewIfNeeded();
-          }
-          if (surface === "graduation") {
-            const verdict = before || stage.stage === "final" ? "climbing" : stage.band ? "unproven" : "unknown";
-            await expect(page.getByTestId("graduation-coach-verdict")).toHaveText(coachCopy[verdict]);
           }
           if (roleShots && stage.stage === "final" && surface === "scouting") {
             const report = hasRoleReport

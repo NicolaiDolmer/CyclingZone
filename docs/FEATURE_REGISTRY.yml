@@ -1423,13 +1423,24 @@ features:
   - id: promotion-pending
     area: academy
     title_en: Awaiting promotion instead of auto-sale
-    title_da: Afventer oprykning i stedet for automatisk salg ved fuld trup
-    state: live
-    flag: promotion_pending_enabled
+    title_da: Afventer oprykning ved fuld trup
+    state: retired
     ssot: docs/YOUTH_RULES.md
     epic: 5833
-    verified: 2026-10-24
-    note: "#6710 plan-PR 1. promotion_pending_enabled on 24/10 17:27 UTC efter ejer-ja (#7153, læst tilbage i prod)."
+    verified: 2026-11-24
+    note: "#7323 erstatter valget med automatisk oprykning ved sæsonskiftet."
+
+  - id: season-squad-promotion
+    area: academy
+    title_en: Automatic youth squad promotion
+    title_da: Automatisk oprykning mellem ungdomstrupper og senior
+    state: building
+    ssot: docs/YOUTH_RULES.md
+    epic: 7323
+    verified: 2026-11-24
+    decision: goer-faerdigt
+    decide_by: 2026-11-28
+    note: "Bygget til prøveskiftet #7325, afventer verifikation og release."
 
   # --- economy -------------------------------------------------------------
   - id: economy-no-upkeep

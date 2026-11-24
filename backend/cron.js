@@ -59,7 +59,6 @@ import { runTrainingDayCloseSweep, createTrainingDayCloseFailureTracker } from "
 import { runAiRecoverySweep } from "./lib/aiRecoverySweep.js";
 import { runScoutSweep } from "./lib/scoutSweep.js";
 import { runWageDeductionSweep } from "./lib/wageDeductionSweep.js";
-import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
@@ -798,63 +797,6 @@ async function runWageDeductionSweepCron() {
     sentryCapture(new Error(`wage deduction sweep: ${result.failed} hold fejlede`), {
       tags: { cron: "wage deduction sweep" },
       extra: { swept: result.swept, failed: result.failed },
-    });
-  }
-}
-
-// ─── Akademi-graduering: auto-resolver udløbne pending graduates (#932) ───────
-
-async function runGraduationSweepCron() {
-  const result = await runAcademyGraduationSweep({ supabase, now: new Date() });
-  // #5133: backfillen åbner de override-vinduer sæson-transitionen missede.
-  // Et created > 0 er i sig selv et signal om at detektionen ved sæsonskiftet
-  // svigtede — log det synligt, også når alt andet gik godt.
-  if (result.backfill?.created) {
-    console.log(`🎓 Graduerings-backfill: ${result.backfill.created} akademiryttere fik det override-vindue de aldrig fik ved saesonskiftet`);
-  }
-  if (result.backfill?.notificationsSent) {
-    // Et vindue stod aabent uden at manageren vidste det (insert ok, notify
-    // kastede). Beskeden er nu eftersendt, men tallet er et signal om at
-    // notifikations-vejen svigtede tidligere.
-    console.log(`🎓 Graduerings-backfill: ${result.backfill.notificationsSent} manglende graduerings-notifikation(er) eftersendt`);
-  }
-  if (result.backfill?.error) {
-    // Backfillen faldt helt fra hinanden (typisk en læsefejl mod Supabase).
-    // Sweepet kørte videre, men den løbende redningssti var ude af drift dette
-    // tick — og den er hele pointen med #5133, så den skal ses.
-    console.error(`❌ Graduerings-backfill: ${result.backfill.error}`);
-    sentryCapture(new Error(`missed-graduate sweep: ${result.backfill.error}`), {
-      tags: { cron: "graduation sweep" },
-    });
-  }
-  if (result.backfill?.failed) {
-    console.error(`❌ Graduerings-backfill: ${result.backfill.failed} fejlede (per-rytter try/catch isolerede)`);
-    sentryCapture(new Error(`missed-graduate sweep: ${result.backfill.failed} ryttere fejlede`), {
-      tags: { cron: "graduation sweep" },
-      // #4902/#5132: flade strenge — nestede objekter klippes til "[Object]" af
-      // Sentrys normalizeDepth og gør kortet ubrugeligt.
-      extra: {
-        created: result.backfill.created,
-        failed: result.backfill.failed,
-        errors: (result.backfill.errors || []).map((e) => `${e.riderId}: ${e.message}`),
-      },
-    });
-  }
-  if (result.resolved) {
-    console.log(`🎓 Graduerings-sweep: ${result.resolved} akademiryttere auto-resolveret`);
-  }
-  if (result.alreadyResolved) {
-    // #7474: afgjort efter listen blev læst (manageren eller en anden proces); ingen fejl.
-    console.log(`🎓 Graduerings-sweep: ${result.alreadyResolved} var allerede afgjort`);
-  }
-  if (result.failed) {
-    console.error(`❌ Graduerings-sweep: ${result.failed} fejlede (per-rytter try/catch isolerede)`);
-    // #2389 A2: aggregeret capture pr. tick (mirror entry-generator-mønstret).
-    sentryCapture(new Error(`graduation sweep: ${result.failed} ryttere fejlede`), {
-      tags: { cron: "graduation sweep" },
-      // #4484: errors med — uden dem viser Sentry-kortet kun et tal, og en
-      // fastlåst rytter kræver en DB-udgravning for at findes.
-      extra: { resolved: result.resolved, failed: result.failed, errors: result.errors },
     });
   }
 }
@@ -2075,11 +2017,6 @@ export function startCron() {
     { offsetMs: 35 * 1000, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS }
   );
 
-  // Akademi-graduering: auto-resolver udløbne pending graduates efter kl. 22 (#932)
-  startClockAlignedInterval(
-    trackedTick("graduation sweep", monitorCron("graduation-sweep", runGraduationSweepCron, CRON_MONITOR_5MIN)),
-    { offsetMs: 45 * 1000, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS }
-  );
 
   // Talentspejder: modner scout_assignments (missioner hvert tick, #3997; target-backstop efter kl. 22, #2244)
   startClockAlignedInterval(

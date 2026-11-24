@@ -83,7 +83,6 @@ import {
 import SeasonSignupCard from "../components/SeasonSignupCard"; // [epic #4592 del 3] #452
 import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
 import { useMarketBalance } from "../data/marketBalance.ts";
-import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
   Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, DiscordIcon,
@@ -162,7 +161,6 @@ export default function DashboardPage() {
 
   // #2925/#2752/#4387: dismissals huskes lokalt pr. saeson/hold (laeses i effekter, ikke i render).
   const [seasonStartDismissed, setSeasonStartDismissed] = useState(false);
-  const [academyEnabled, setAcademyEnabled] = useState(false);
   const [seasonWrapDismissed, setSeasonWrapDismissed] = useState(false);
   const [contractExpiryDismissedIds, setContractExpiryDismissedIds] = useState(null);
   // [epic #4592 del 3] #452: ingen optimistisk tilmelding, knappen viser sin egen loading.
@@ -179,7 +177,6 @@ export default function DashboardPage() {
     nowMs,
     // #2925: saesonstart-vinduet er afledt af den aktive saesons start_date; nowMs tikker hvert minut.
     seasonStartWindowOpen: (season) => isSeasonStartWindow(season, new Date(nowMs)),
-    academyEnabled,
   }));
   useDashboardCardEvents(cardTrackingRoot, dashboard.scope.viewerId);
   const {
@@ -241,12 +238,6 @@ export default function DashboardPage() {
   useEffect(() => {
     setSeasonStartDismissed(readSeasonStartDismissed(seasonInfo?.id));
   }, [seasonInfo?.id]);
-
-  // Akademiet er feature-gated. Layout.jsx har allerede afgjort synligheden og
-  // cachet den; vi genbruger cachen frem for at betale et ekstra /api/academy/me.
-  useEffect(() => {
-    setAcademyEnabled(readCachedAcademyNav());
-  }, [team?.id]);
 
   useEffect(() => {
     setSeasonWrapDismissed(readSeasonWrapDismissed(completedSeasonRecap?.seasonId));
@@ -527,8 +518,6 @@ export default function DashboardPage() {
       trainingPlanCount: seasonStartCounts.trainingPlanCount,
       boardPlanMissing,
       boardStatusLoaded,
-      pendingGraduations: seasonStartCounts.pendingGraduations,
-      academyEnabled,
     })
     : [];
 

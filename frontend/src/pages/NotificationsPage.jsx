@@ -17,6 +17,7 @@ import { resolveNotificationLink, aggregateCtaKey } from "../lib/notificationLin
 import { resolveAggregateLink } from "../components/notifications/aggregateLink.ts"; // #5417
 import { notifyUnreadChanged, subscribeUnreadSync } from "../components/notifications/unreadSync.js"; // #6473
 import { findSupersededUnreadIds } from "../components/notifications/supersededUnread.js"; // #6385
+import SeasonSquadPromotions from "../components/notifications/SeasonSquadPromotions.js";
 import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -191,7 +192,7 @@ const TYPE_CONFIG = {
   academy_signed:            { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/academy" },
   academy_rejected:          { Icon: XIcon,            color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/academy" },
   // #2491: valget bor paa Graduation Day-siden, ikke laengere paa Academy.
-  academy_graduation_ready:  { Icon: RocketIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy/graduation" },
+  academy_graduation_ready:  { Icon: RocketIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy" },
   academy_graduated:         { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/academy" },
   // Forfremmelse/degradering flytter rytteren mellem akademi og seniortrup —
   // truppen er stedet hvor spilleren ser resultatet.
@@ -859,6 +860,12 @@ export default function NotificationsPage() {
                             {renderNotificationMessage(n, tBackend)}
                           </RiderLink>
                         </p>
+                        {n.type === "season_started" && (
+                          <SeasonSquadPromotions
+                            promotions={n.metadata?.squadPromotions}
+                            onOpenSquad={() => { if (!n.is_read) markRead(n.id); }}
+                          />
+                        )}
                         {n.type === "discord_welcome" && (
                           <DiscordWelcomeExtras notification={n} onRead={markRead} tBackend={tBackend} />
                         )}

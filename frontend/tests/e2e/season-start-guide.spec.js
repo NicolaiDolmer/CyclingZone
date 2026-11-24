@@ -26,7 +26,6 @@ const SEASON_2 = {
 // blandede tilstand er med vilje: screenshottet skal vise BÅDE et afkrydset og
 // et ikke-afkrydset punkt.
 const TRAINING_PLAN_ROWS = Array.from({ length: 12 }, (_, i) => ({ rider_id: `rider-${i + 1}` }));
-const PENDING_GRADUATIONS = [{ rider_id: "grad-1" }, { rider_id: "grad-2" }];
 
 async function installSeasonStartMocks(page) {
   // Akademiet skal være synligt for holdet, ellers udelades akademi-punktet.
@@ -42,7 +41,6 @@ async function installSeasonStartMocks(page) {
     return json(route, wantsSingle ? SEASON_2 : [SEASON_2]);
   });
   await page.route("**/rest/v1/training_plans**", (route) => json(route, TRAINING_PLAN_ROWS));
-  await page.route("**/rest/v1/academy_graduation**", (route) => json(route, PENDING_GRADUATIONS));
 
   // Bestyrelsen: forhandlingen er åben (ikke baseline) og ingen plan er
   // færdigforhandlet → punktet skal stå som manglende.
@@ -94,7 +92,6 @@ test("season start guide lists the four cutover decisions with working deep link
     [/Build your squad/i, "/auctions"],
     [/Set the training plan/i, "/training"],
     [/Negotiate with the board/i, "/board"],
-    [/Decide on academy graduates/i, "/academy"],
   ];
   for (const [name, href] of expected) {
     const row = card.getByRole("link", { name });
@@ -108,7 +105,7 @@ test("done state follows the data, and unknown never renders as done", async ({ 
   const card = page.getByTestId("season-start-guide");
 
   // Træningsplanen er lagt (12 rækker) → præcis ét punkt er markeret udført.
-  await expect(card).toContainText(/1 of 4 decisions made/i);
+  await expect(card).toContainText(/1 of 3 decisions made/i);
   await expect(card.getByRole("link", { name: /Set the training plan/i })).toContainText(/Done/i);
   await expect(card.getByRole("link", { name: /Build your squad/i })).not.toContainText(/Done/i);
 });
@@ -156,7 +153,7 @@ test("capture season start guide screenshot", async ({ page }, testInfo) => {
   await gotoDashboardInEnglish(page);
   const card = page.getByTestId("season-start-guide");
   await expect(card).toBeVisible();
-  await expect(card).toContainText(/1 of 4 decisions made/i);
+  await expect(card).toContainText(/1 of 3 decisions made/i);
 
   // Parkér markøren uden for kortet. Uden dette kan en række fange :hover og
   // rendere i guld (--accent-t) i screenshottet, hvilket fejlagtigt ser ud som

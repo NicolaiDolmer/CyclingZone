@@ -1,0 +1,19 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "topic": "Academy",
+      "area": "academy",
+      "en": {
+        "title": "Youth riders move up at the season change",
+        "body": "I move juniors to the U23 team at season age 19 and U23 riders to the senior team at 23. They keep their contracts and pay, and their sales continue. If a squad goes over its limit, you can keep racing, training and selling. You can bring riders into that squad again once it has a free place. See who moved up in your season change message."
+      },
+      "da": {
+        "title": "Ungdomsryttere rykker op ved sæsonskiftet",
+        "body": "Jeg rykker juniorer op på U23-holdet ved sæsonalder 19 og U23-ryttere op på seniorholdet ved 23. De beholder kontrakt og løn, og deres salg fortsætter. Kommer en trup over loftet, kan du stadig køre løb, træne og sælge. Du kan få nye ryttere ind i truppen igen, når der er en ledig plads. Se, hvem der rykkede op, i din sæsonskiftebesked."
+      },
+      "refs": [7323]
+    }
+  ]
+}

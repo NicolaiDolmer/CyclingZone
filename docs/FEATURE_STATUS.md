@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-161 poster: live 135 · dormant 7 · building 9 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+162 poster: live 134 · dormant 7 · building 10 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -13,9 +13,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-engine
 
-**live:** Day form in words after the stage (`race-day-words-7725`) 2026-11-08 · Jersey hunt in the stage plan (`race-jersey-hunt-7855`) 2026-11-20
+**live:** Jersey hunt in the stage plan (`race-jersey-hunt-7855`) 2026-11-20
 
-**arkiv:** `form-and-fatigue` · `luxury-helper-role` · `race-all-out-7280` · `race-day-form-6649` · `race-descent-task-7380` · `race-engine-profile-hills` · `race-engine-s5-profiles` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-final-km-boundary-7383` · `race-finalize-resumable` · `race-form-peaks` · `race-intention-choice` · `race-itt-no-day-roll-7726` · `race-itt-save-7332` · `race-itt-terrain-6595` · `race-notify-outbox` · `race-team-chase-7730` · `team-selection-and-roles`
+**arkiv:** `form-and-fatigue` · `luxury-helper-role` · `race-all-out-7280` · `race-day-form-6649` · `race-day-words-7725` · `race-descent-task-7380` · `race-engine-profile-hills` · `race-engine-s5-profiles` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-final-km-boundary-7383` · `race-finalize-resumable` · `race-form-peaks` · `race-intention-choice` · `race-itt-no-day-roll-7726` · `race-itt-save-7332` · `race-itt-terrain-6595` · `race-notify-outbox` · `race-team-chase-7730` · `team-selection-and-roles`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -73,14 +73,16 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## academy
 
-**arkiv:** `academy` · `academy-intake-pull` · `academy-pull-reminder` · `academy-sunday-drip` · `intake-offer-expiry` · `promotion-pending` · `scout-system`
+**arkiv:** `academy` · `academy-intake-pull` · `academy-pull-reminder` · `academy-sunday-drip` · `intake-offer-expiry` · `scout-system`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |AI academy pull (`academy-ai-weekly-pull`)|dormant|-|[YOUTH_RULES](YOUTH_RULES.md)|#6666|2026-10-25|Flag academy_ai_weekly_pull_enabled; ikke nu.|
 |Season academy intake (`season-academy-intake`)|dormant|`season_academy_intake_enabled`|[YOUTH_RULES](YOUTH_RULES.md)|#2911|2026-10-15|Sikkerhedsventil (#2911); off i prod, ejer flipper.|
 |Academy page with tabs and age focus (`academy-page-v2-8081`)|building|-|[YOUTH_RULES](YOUTH_RULES.md)|#8081|2026-11-16|Slukket; trækket læser ikke aldersfokus.|
+|Automatic youth squad promotion (`season-squad-promotion`)|building|-|[YOUTH_RULES](YOUTH_RULES.md)|#7323|2026-11-24|Bygget til prøveskiftet #7325, afventer verifikation og release.|
 |Three squads (`three-squads`)|spec|-|[YOUTH_RULES](YOUTH_RULES.md)|#2492|2026-09-06|Slice 0 er leveret; resten er spec.|
+|Awaiting promotion instead of auto-sale (`promotion-pending`)|retired|-|[YOUTH_RULES](YOUTH_RULES.md)|#5833|2026-11-24|#7323 erstatter valget med automatisk oprykning ved sæsonskiftet.|
 
 ## season
 

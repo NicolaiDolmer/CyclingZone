@@ -413,7 +413,7 @@
   "../backend/lib/riderProgressionEngine.js": {
     "TS1127": 3,
     "TS18046": 1,
-    "TS2339": 10
+    "TS2339": 9
   },
   "../backend/lib/riderSeasonAge.js": {
     "TS18049": 5
@@ -1905,12 +1905,6 @@
   "src/lib/seasonReference.test.js": {
     "TS2322": 2,
     "TS2531": 1
-  },
-  "src/lib/seasonStartGuide.js": {
-    "TS2740": 1
-  },
-  "src/lib/seasonStartGuide.test.js": {
-    "TS2739": 12
   },
   "src/lib/seasonTimeline.js": {
     "TS2322": 3
