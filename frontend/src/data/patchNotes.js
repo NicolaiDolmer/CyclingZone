@@ -1,5 +1,53 @@
 export const PATCHES = [
 {
+  "version": "7.508",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Rider Rankings",
+      "area": "interface",
+      "en": {
+        "title": "Flags on the rider rankings",
+        "body": "The rider rankings show a flag for each rider's country. Hover over the flag or tap it to see the full country name."
+      },
+      "da": {
+        "title": "Flag på rytterranglisten",
+        "body": "Rytterranglisten viser et flag for rytterens land. Hold musen over flaget, eller tryk på det, for at se landenavnet."
+      },
+      "refs": [
+        8648
+      ]
+    }
+  ]
+},
+{
+  "version": "7.507",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "area": "interface",
+      "en": {
+        "title": "Clearer choices at the annual meeting",
+        "body": "The harder goal option is called Harder. The meeting explains how your mandate and vision milestones affect the board's confidence."
+      },
+      "da": {
+        "title": "Tydeligere valg på årsmødet",
+        "body": "Det sværere målvalg hedder Sværere. Årsmødet forklarer, hvordan mandat og visionsmilepæle påvirker bestyrelsens tillid."
+      },
+      "refs": [
+        5850
+      ]
+    }
+  ]
+},
+{
   "version": "7.506",
   "date": "2026-11-24",
   "changes": [
