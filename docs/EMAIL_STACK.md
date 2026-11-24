@@ -61,6 +61,10 @@ Migrationer 📄: `database/2026-07-20-2725-email-retention-loop.sql` (`email_lo
 | `EMAIL_REPLY_TO` | valgfri | Intet `Reply-To`; et svar lander i intetheden |
 | `EMAIL_REPLY_FORWARD_TO` | valgfri | Indgående svar logges, men videresendes ikke |
 
+### Staging-prøve for bekræftelse med kode (#8681)
+
+Signup-bekræftelsen i Supabase Auth har et separat staging-flow. Frontend-buildet skal have mode `staging` og pege på Auth-grenen `staging-cutover` for at vise kodeformularen. Supabase-skabelonen i `scripts/staging/auth/signup-code.html` bruger signup-metadata til DA, med EN som fallback. Kun confirmation-template indgår i prøven. Afgrænsningen til et Auth-projekt skal verificeres før enhver konfigurationsændring, og aktivering i produktion kræver en særskilt ejerbeslutning. Mailbevis i staging skal bruge en godkendt staging-mailvej og syntetiske konti. Koder, adresser og sessionsdata går ikke i analyse-events.
+
 ## 2. Mailtyper
 
 > **GDD-retning, ejer 10/9 (D-038):** i den nye managers første uge er krogen hændelsesdrevet:

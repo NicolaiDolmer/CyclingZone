@@ -12,6 +12,8 @@ import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { Wordmark } from "../components/Brand";
 import DiscordJoinLink from "../components/DiscordJoinLink";
+import SignupOtpForm from "../components/SignupOtpForm";
+import { isStagingSignupOtp } from "../lib/signupOtp.ts";
 import { Card, Button, Input, CheckIcon, InboxIcon } from "../components/ui";
 import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
 import { getAttributionForBackend } from "../lib/attribution";
@@ -20,6 +22,11 @@ import { safeNextPath } from "../lib/safeNextPath.js";
 import { clearSessionExpiredFlash, peekSessionExpiredFlash } from "../lib/sessionExpiry.js";
 
 const API = import.meta.env.VITE_API_URL;
+const signupOtpEnabled = isStagingSignupOtp(import.meta.env.MODE, import.meta.env.VITE_SUPABASE_URL);
+
+function stagingSignupCodeUrl() {
+  return new URL("/login?mode=confirm-code", window.location.origin).toString();
+}
 
 const PUBLIC_APP_URL =
   import.meta.env.VITE_PUBLIC_APP_URL || "https://cyclingzone.org";
@@ -87,12 +94,13 @@ export default function LoginPage() {
   // engangs-form som authLinkError ovenfor), så et reload ikke genopliver den.
   const [sessionExpired] = useState(() => peekSessionExpiredFlash());
   // #672: landing kan deep-linke til signup-mode via ?mode=signup (Opret bruger-CTA).
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   // #2042: cold deep-link-trafik ankommer med ?next= → default til signup-mode
   // (de har sjældent en konto endnu), så CTA'en matcher intentionen.
   const nextPath = safeNextPath(searchParams.get("next"));
   const [mode, setMode] = useState(() => {
     const requested = searchParams.get("mode");
+    if (signupOtpEnabled && requested === "confirm-code") return requested;
     if (requested === "signup" || requested === "forgot" || requested === "login") return requested;
     return nextPath ? "signup" : "login";
   });
@@ -184,6 +192,7 @@ export default function LoginPage() {
   const isLoginMode = mode === "login";
   const isSignupMode = mode === "signup";
   const isForgotMode = mode === "forgot";
+  const showSignupCode = signupOtpEnabled && mode === "confirm-code";
 
   // #2826: en af de ubekræftede konti i prod var oprettet på "gmal.com" — den
   // mail kunne aldrig ankomme. Vi foreslår en rettelse mens de stadig kan nå at
@@ -212,16 +221,29 @@ export default function LoginPage() {
 
   // #2068: "send bekræftelsesmail igen". Bruges både fra signup-succes-skærmen
   // og fra login-fejlen "email not confirmed" — begge kender allerede emailen.
+  function setOtpFlowMode(nextMode) {
+    const params = new URLSearchParams(searchParams);
+    params.set("mode", nextMode);
+    setSearchParams(params, { replace: true });
+    setMode(nextMode);
+  }
+
   async function handleResendConfirmation(targetEmail) {
-    if (!targetEmail || resendState === "sending") return;
+    if (!targetEmail || resendState === "sending") return false;
     // #2826: respektér cooldownen frem for at sende et kald vi ved bliver afvist.
-    if (cooldownSecondsLeft(resendCooldownUntil, Date.now()) > 0) return;
+    if (cooldownSecondsLeft(resendCooldownUntil, Date.now()) > 0) return false;
     setResendState("sending");
     setResendError("");
-    const { error: err } = await supabase.auth.resend({
-      type: "signup",
-      email: targetEmail,
-    });
+    let err;
+    try {
+      ({ error: err } = await supabase.auth.resend({
+        type: "signup",
+        email: targetEmail,
+        ...(signupOtpEnabled ? { options: { emailRedirectTo: stagingSignupCodeUrl() } } : {}),
+      }));
+    } catch (failure) {
+      err = failure;
+    }
     if (err) {
       setResendState("idle");
       setResendError(mapSupabaseAuthError(err, t));
@@ -230,9 +252,11 @@ export default function LoginPage() {
       // for vores default, så den viste ventetid er sand.
       const retryAfter = parseRateLimitSeconds(err);
       if (retryAfter) setResendCooldownUntil(cooldownUntil(Date.now(), retryAfter));
+      return false;
     } else {
       setResendState("sent");
       setResendCooldownUntil(cooldownUntil(Date.now()));
+      return true;
     }
   }
 
@@ -242,7 +266,8 @@ export default function LoginPage() {
   // fast på en succes-skærm for en mail der aldrig kunne ankomme.
   function handleFixEmail() {
     setSuccess(null);
-    setMode("signup");
+    if (showSignupCode) setOtpFlowMode("signup");
+    else setMode("signup");
     setShowPassword(false);
     setError("");
     setResendState("idle");
@@ -307,7 +332,14 @@ export default function LoginPage() {
           // brugeren står med en ubekræftet konto og ellers ingen vej videre.
           // #2172: detektér via code ELLER message (isEmailNotConfirmedError), så
           // resend-knappen ikke tavst forsvinder hvis Supabase ændrer ordlyden.
-          setShowResend(isEmailNotConfirmedError(error));
+          const emailNotConfirmed = isEmailNotConfirmedError(error);
+          if (signupOtpEnabled && emailNotConfirmed) {
+            setError("");
+            setPassword("");
+            setOtpFlowMode("confirm-code");
+          } else {
+            setShowResend(emailNotConfirmed);
+          }
           setResendState("idle");
         }
         return;
@@ -381,6 +413,7 @@ export default function LoginPage() {
         email: email.trim(),
         password,
         options: {
+          ...(signupOtpEnabled ? { emailRedirectTo: stagingSignupCodeUrl() } : {}),
           // #2068: manager_name gemmes nu også i metadata (var kun team_name) —
           // Layout auto-opretter holdet fra denne metadata efter email-bekræftelse,
           // så en confirm-on-bruger ikke skal genindtaste navnene i SetupWizard.
@@ -413,6 +446,7 @@ export default function LoginPage() {
       // for at vente 5s og vise en modstridende "dit hold er klar / log ind"-kombi.
       if (!data.session) {
         setSuccess({ kind: "confirm", email: email.trim() });
+        if (signupOtpEnabled) setOtpFlowMode("confirm-code");
         return;
       }
 
@@ -505,8 +539,8 @@ export default function LoginPage() {
               <Wordmark className="h-9 w-auto" />
             </Link>
           </h1>
-          <p className="mt-4 text-sm text-cz-2">{subtitle}</p>
-          {nextPath && (
+          {!showSignupCode && <p className="mt-4 text-sm text-cz-2">{subtitle}</p>}
+          {nextPath && !showSignupCode && (
             <div className="mt-5 rounded-cz border border-cz-border bg-cz-subtle px-4 py-3 text-left">
               <p className="text-sm font-semibold text-cz-1">{t("auth:context.title")}</p>
               <p className="mt-1 text-xs text-cz-2">{t("auth:context.body")}</p>
@@ -518,7 +552,7 @@ export default function LoginPage() {
           {/* #4350: eksisterende tekst (errors:supabase.sessionMissing) — ingen
               ny copy at oversætte. Kort på fladen; forklaringen hører hjemme i
               handlingen, ikke i en prosa-blok. */}
-          {sessionExpired && !success && (
+          {sessionExpired && !success && !showSignupCode && (
             <div
               role="status"
               className="mb-4 rounded-cz border border-cz-border bg-cz-subtle px-4 py-3 text-left"
@@ -526,7 +560,7 @@ export default function LoginPage() {
               <p className="text-sm font-semibold text-cz-1">{t("errors:supabase.sessionMissing")}</p>
             </div>
           )}
-          {authLinkError && !success && (
+          {authLinkError && !success && !showSignupCode && (
             <div
               role="status"
               className="mb-4 rounded-cz border border-cz-border bg-cz-subtle px-4 py-3 text-left"
@@ -550,7 +584,25 @@ export default function LoginPage() {
               </div>
             </div>
           )}
-          {success ? (
+          {showSignupCode ? (
+            <SignupOtpForm
+              address={success?.kind === "confirm" ? success.email : undefined}
+              initialEmail={email}
+              danish={language === "da"}
+              loadingMail={resendState === "sending"}
+              mailSent={resendState === "sent"}
+              resendError={resendError}
+              cooldownLeft={cooldownLeft}
+              onResend={handleResendConfirmation}
+              onChangeAddress={success?.kind === "confirm" ? handleFixEmail : undefined}
+              onBack={() => {
+                resetMessages();
+                setPassword("");
+                setShowPassword(false);
+                setOtpFlowMode("login");
+              }}
+            />
+          ) : success ? (
             <div className="py-4 text-center" role="status">
               <div className="mb-4 flex justify-center">
                 {success.kind === "signup" ? (

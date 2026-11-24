@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="{{ if eq (index .Data "language") "da" }}da{{ else }}en{{ end }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;background:#f0f3f6;color:#142033;font-family:Arial,sans-serif">
+  <table role="presentation" style="width:100%;border-collapse:collapse">
+    <tr><td align="center" style="padding:28px 16px">
+      <table role="presentation" style="width:100%;max-width:520px;border:1px solid #c4cdd8;border-radius:5px;background:#fff">
+        <tr><td style="padding:24px">
+          <p style="margin:0 0 16px;color:#3e5069;font-size:13px;font-weight:700;letter-spacing:1px">CYCLING ZONE</p>
+          {{ if eq (index .Data "language") "da" }}
+          <h1 style="margin:0 0 10px;font-size:24px;line-height:1.2">Bekræft din e-mail</h1>
+          <p style="margin:0 0 14px;font-size:16px;line-height:1.5">Brug koden på kontoskærmen.</p>
+          {{ else }}
+          <h1 style="margin:0 0 10px;font-size:24px;line-height:1.2">Confirm your email</h1>
+          <p style="margin:0 0 14px;font-size:16px;line-height:1.5">Use this code on the account screen.</p>
+          {{ end }}
+          <p style="margin:0 0 16px"><strong style="display:inline-block;border:1px solid #c4cdd8;border-radius:5px;padding:9px 12px;font-size:30px;letter-spacing:4px">{{ .Token }}</strong></p>
+          {{ if eq (index .Data "language") "da" }}
+          <p style="margin:0 0 10px;font-size:16px"><a style="color:#304369" href="{{ .RedirectTo }}">Åbn kodesiden</a></p>
+          <p style="margin:0;font-size:14px;line-height:1.5">Koden kan bruges én gang og udløber. Du kan ignorere mailen, hvis du ikke har oprettet en konto.</p>
+          {{ else }}
+          <p style="margin:0 0 10px;font-size:16px"><a style="color:#304369" href="{{ .RedirectTo }}">Open the code screen</a></p>
+          <p style="margin:0;font-size:14px;line-height:1.5">The code can be used once and expires. You can ignore this email if you didn't create an account.</p>
+          {{ end }}
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
