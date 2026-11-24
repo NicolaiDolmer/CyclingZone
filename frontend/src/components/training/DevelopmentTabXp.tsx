@@ -209,14 +209,13 @@ function TitleLine({ summary }: { summary: ReturnType<typeof devSummary> }) {
   );
 }
 
-/** `wrap`: allow a long label to wrap within a narrow number column. */
+/** `wrap`: a two-word label may break onto a second line instead of widening a narrow number column. */
 function SortHead({ k, label, title, wrap = false, className = "", sort, onSort }: { k: SortKey; label: string; title?: string; wrap?: boolean; className?: string; sort: SortState; onSort: (k: SortKey) => void }) {
   const active = sort.key === k;
   return (
     <th className={`px-3 py-2 text-start ${HEAD} ${className}`} aria-sort={active ? (sort.dir === 1 ? "ascending" : "descending") : undefined}>
-      <button type="button" onClick={() => onSort(k)} title={title} className={`inline-flex items-center gap-1 text-start uppercase hover:text-cz-1 ${wrap ? "max-w-full" : "whitespace-nowrap"} ${active ? "text-cz-1" : ""}`}>
-        <span className={wrap ? "min-w-0 hyphens-auto wrap-anywhere" : undefined}>{label}</span>
-        <SortIcon size={11} className="shrink-0" aria-hidden="true" />
+      <button type="button" onClick={() => onSort(k)} title={title} className={`inline-flex items-center gap-1 text-start uppercase hover:text-cz-1 ${wrap ? "" : "whitespace-nowrap"} ${active ? "text-cz-1" : ""}`}>
+        {label}<SortIcon size={11} aria-hidden="true" />
       </button>
     </th>
   );
@@ -412,7 +411,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns, onChangeFocus
           <SortHead k="top" label={t("developmentXp.colTop")} className="w-[118px]" sort={sort} onSort={onSort} />
           <SortHead k="season" label={t("developmentXp.colRatingSeason")} title={t("developmentXp.ratingSeasonTitle")} wrap className="w-[84px]" sort={sort} onSort={onSort} />
           {show30 && <SortHead k="rating30" label={t("developmentXp.colRating30")} title={t("developmentXp.rating30Title")} wrap className="w-[84px]" sort={sort} onSort={onSort} />}
-          <SortHead k="xpToday" label={t("developmentXp.colXpToday")} wrap className="w-[116px]" sort={sort} onSort={onSort} />
+          <SortHead k="xpToday" label={t("developmentXp.colXpToday")} className="w-[116px]" sort={sort} onSort={onSort} />
           <SortHead k="xp30" label={t("developmentXp.colXp30")} wrap className="w-[96px]" sort={sort} onSort={onSort} />
           <SortHead k="next" label={t("developmentXp.colNext")} sort={sort} onSort={onSort} />
         </tr>
@@ -471,7 +470,7 @@ function PhoneList({ rows, open, toggle, columns, onChangeFocus }: { rows: DevRo
   return (
     <div data-testid="development-xp-list">
       <div className={`grid gap-2 border-b border-cz-border px-3 py-2 ${PHONE_GRID} ${HEAD} text-3xs`}>
-        <span>{t("colRider")}</span><span>{t("developmentXp.colRating")}</span><span className="hyphens-auto wrap-anywhere">{t("developmentXp.colXp30Short")}</span><span>{t("developmentXp.colNext")}</span>
+        <span>{t("colRider")}</span><span>{t("developmentXp.colRating")}</span><span>{t("developmentXp.colXp30Short")}</span><span>{t("developmentXp.colNext")}</span>
       </div>
       <ul>
         {rows.map((row) => {

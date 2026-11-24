@@ -8,11 +8,11 @@
       "area": "interface",
       "en": {
         "title": "Full words in training labels",
-        "body": "Training spells out experience points in the development headings and times in the Danish training status."
+        "body": "Training spells out times in the Danish training status."
       },
       "da": {
         "title": "Fulde ord på træningssiden",
-        "body": "Træning skriver erfaringspoint i udviklingsoverskrifterne og klokkeslæt i den danske træningsstatus."
+        "body": "Træning skriver klokkeslæt i den danske træningsstatus."
       },
       "refs": [
         8651
