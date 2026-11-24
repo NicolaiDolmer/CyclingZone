@@ -11,7 +11,7 @@ import WorldCatalog from "../components/race/WorldCatalog.jsx";
 import RaceHistoryLibrary from "../components/race/RaceHistoryLibrary.tsx"; // #6514
 import { useRaceLibraryV2 } from "../lib/raceLibraryV2Flag.ts"; // #6514
 import { Flag } from "../components/Flag";
-import { formatNumber, formatDate } from "../lib/intl";
+import { formatDate } from "../lib/intl";
 import { sortRacesByDateDesc } from "../lib/raceCalendarSort";
 import { filterByDivisionPool, ALL_DIVISIONS_VALUE, ALL_POOLS_VALUE } from "../lib/resultsFilter";
 import { latestScheduledMsByRace } from "../lib/raceCompletionDate";
@@ -542,7 +542,7 @@ export default function ResultaterPage() {
                             </p>
                           </div>
                           <span className="font-mono font-bold text-cz-accent-t text-sm">
-                            {t("points", { count: formatNumber(s.total_points || 0) })}
+                            {t("points", { count: Number(s.total_points || 0) })}
                           </span>
                         </div>
                       ))}
@@ -581,7 +581,7 @@ export default function ResultaterPage() {
                             </p>
                           </div>
                           <span className="font-mono font-bold text-cz-accent-t text-sm">
-                            {t("points", { count: formatNumber(a.points || 0) })}
+                            {t("points", { count: Number(a.points || 0) })}
                           </span>
                         </RiderLink>
                       ))}
@@ -712,7 +712,7 @@ function RaceResultCard({ race, podium, playedAtMs, t }) {
               </div>
               {row.points_earned > 0 && (
                 <span className="shrink-0 font-mono text-xs font-bold text-cz-accent-t">
-                  {t("points", { count: formatNumber(row.points_earned) })}
+                  {t("points", { count: Number(row.points_earned || 0) })}
                 </span>
               )}
             </div>

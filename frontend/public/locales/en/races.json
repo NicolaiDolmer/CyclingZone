@@ -923,7 +923,7 @@
     "type": {
       "Klassement": {
         "label": "General classification",
-        "desc": "GC placement in stage races"
+        "desc": "General classification placing in stage races"
       },
       "Klassiker": {
         "label": "Classics",
@@ -2269,8 +2269,9 @@
     "bestRiders": "Best riders",
     "bestRidersSub": "Accumulated across all editions",
     "noResultsYet": "No results yet",
-    "statGc": "{count} GC",
-    "statStageWins": "{count} stage wins",
+    "statGc": "{count, plural, one {# overall win} other {# overall wins}}",
+    "statPoints": "{count, plural, one {# point} other {# points}}",
+    "statStageWins": "{count, plural, one {# stage win} other {# stage wins}}",
     "statTop3": "{count} top-3",
     "noWins": "No wins",
     "accumulatedTitle": "Accumulated points total",

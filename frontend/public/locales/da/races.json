@@ -923,7 +923,7 @@
     "type": {
       "Klassement": {
         "label": "Samlet klassement",
-        "desc": "GC-placering i etapeløb"
+        "desc": "Placering i det samlede klassement i etapeløb"
       },
       "Klassiker": {
         "label": "Klassiker",
@@ -2269,8 +2269,9 @@
     "bestRiders": "Bedste ryttere",
     "bestRidersSub": "Akkumuleret på tværs af alle udgaver",
     "noResultsYet": "Ingen resultater endnu",
-    "statGc": "{count} GC",
-    "statStageWins": "{count} etapesejre",
+    "statGc": "{count, plural, one {# samlet sejr} other {# samlede sejre}}",
+    "statPoints": "{count, plural, one {# point} other {# point}}",
+    "statStageWins": "{count, plural, one {# etapesejr} other {# etapesejre}}",
     "statTop3": "{count} top-3",
     "noWins": "Ingen sejre",
     "accumulatedTitle": "Akkumuleret point-total",
