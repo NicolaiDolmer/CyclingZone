@@ -14,7 +14,7 @@ test("return clears penalties from the parking sweep and withdraws a paused forc
       CREATE ROLE anon;
       CREATE ROLE authenticated;
       CREATE TABLE teams (id uuid PRIMARY KEY, parked_at timestamptz);
-      CREATE TABLE board_profiles (team_id uuid, budget_modifier numeric);
+      CREATE TABLE board_profiles (team_id uuid, budget_modifier numeric, satisfaction integer DEFAULT 50);
       CREATE TABLE board_consequences (
         team_id uuid, layer integer, status text, created_at timestamptz,
         resolved_at timestamptz, payload jsonb
@@ -23,7 +23,7 @@ test("return clears penalties from the parking sweep and withdraws a paused forc
     `);
     for (const teamId of [returned, parked]) {
       await db.query("INSERT INTO teams VALUES ($1, NULL)", [teamId]);
-      await db.query("INSERT INTO board_profiles VALUES ($1, 0.9)", [teamId]);
+      await db.query("INSERT INTO board_profiles VALUES ($1, 0.9, 15)", [teamId]);
       await db.query(`
         INSERT INTO board_consequences
         SELECT $1, layer, 'active',
@@ -47,7 +47,14 @@ test("return clears penalties from the parking sweep and withdraws a paused forc
       [returned],
     );
     await unpark();
+    assert.deepEqual((await db.query("SELECT team_id,satisfaction FROM board_profiles ORDER BY team_id")).rows, [
+      { team_id: returned, satisfaction: 50 },
+      { team_id: parked, satisfaction: 15 },
+    ]);
+    await db.query("UPDATE board_profiles SET satisfaction = 55 WHERE team_id = $1", [returned]);
     await unpark();
+
+    assert.equal((await db.query("SELECT satisfaction FROM board_profiles WHERE team_id = $1", [returned])).rows[0].satisfaction, 55);
 
     const { rows: expired } = await db.query(
       "SELECT team_id, layer FROM board_consequences WHERE status = 'expired' ORDER BY layer",

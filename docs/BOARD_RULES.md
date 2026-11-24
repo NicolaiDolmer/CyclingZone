@@ -317,7 +317,7 @@ Halvsæson-tjekket (`boardMidSeason.js`, #8099) bruger samme filter: et parkeret
 Årsmandat-kørslen (`boardMandateAutoAccept.js`), plan-auto-accepten (`boardAutoAccept.js`) og advarslen om negativ saldo (`cron.js`) bruger samme filter og samme fail-closed (#8110): ingen påmindelse, ingen underskrift på holdets vegne, ingen advarsel.
 Mens holdet er parkeret, er bestyrelsen frosset. Ved genindplacering ophæves aktive
 straffe, også dem fra selve parkeringssæsonskiftet, og åbne eller pausede tvangslister trækkes tilbage. Den passive
-sponsorreduktion nulstilles. Historik og bonusser bevares. Uge-, halvsæson- og
+sponsorreduktion nulstilles, og bestyrelsens tilfredshed starter neutralt (ejer 24/11). Historik og bonusser bevares. Uge-, halvsæson- og
 sæsonslutdom springes over i comeback-sæsonen. Normal vurdering genoptages i den
 efterfølgende sæson. Gælder både comeback midt i sæsonen og genindplacering ved
 sæsonskiftet (ejer 13/11, #8100).

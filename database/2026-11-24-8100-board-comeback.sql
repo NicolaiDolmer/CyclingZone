@@ -29,8 +29,9 @@ BEGIN
     AND status = 'active' AND layer BETWEEN 2 AND 5;
 
   UPDATE public.board_profiles
-  SET budget_modifier = 1
-  WHERE team_id = NEW.id AND budget_modifier < 1;
+  SET satisfaction = DEFAULT,
+      budget_modifier = CASE WHEN budget_modifier < 1 THEN 1 ELSE budget_modifier END
+  WHERE team_id = NEW.id;
 
   RETURN NEW;
 END;
