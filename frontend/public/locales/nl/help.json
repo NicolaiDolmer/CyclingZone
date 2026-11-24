@@ -1719,7 +1719,7 @@
       },
       "academySize": {
         "title": "Grootte van de Academie (per team)",
-        "text": "Elk team mag maximaal {squadCap} renners hebben en de club mag er in totaal {clubRiderCap} hebben. Om op een renner te bieden of hem te kopen, heb je een vrije plaats nodig in een geschikt team en in de club als geheel. Voor een interne overstap moet er ruimte zijn in het ontvangende team. Automatische promoties kunnen de teamlimiet overschrijden. Je kunt blijven koersen, trainen en renners verkopen."
+        "text": "Elk team mag maximaal {squadCap} renners hebben en de club mag er in totaal {clubRiderCap} hebben. Voor biedingen, aankopen en ruilen is plek nodig in een geschikt team. Als de club vol is, verkoop of ontsla je eerst een renner voordat je er een toevoegt. Je kunt nog steeds één renner voor één andere ruilen als de teams na de ruil binnen hun limieten blijven. Voor een interne overstap moet er ruimte zijn in het ontvangende team. Automatische promoties kunnen de teamlimiet overschrijden. Je kunt blijven koersen, trainen en renners verkopen."
       },
       "dailyTrainingBoost": {
         "title": "Dagelijkse training in de academie",

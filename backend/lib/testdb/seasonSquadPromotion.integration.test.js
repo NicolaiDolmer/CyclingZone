@@ -109,6 +109,39 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
     await assert.rejects(openAuction(), /club_roster_full/);
     await buy("team_id");
     await assert.rejects(buy("team_id"), /club_roster_full/);
+    await db.query("UPDATE riders SET squad = 'junior' WHERE id = $1", [SOLD]);
+    await db.query(
+      "INSERT INTO riders(id, team_id, squad, is_academy) SELECT gen_random_uuid(), $1, CASE WHEN n <= 29 THEN 'junior' ELSE 'senior' END, n <= 29 FROM generate_series(1, 60 - (SELECT count(*)::int FROM riders WHERE team_id=$1)) n",
+      [BUYER],
+    );
+    await db.query("UPDATE riders SET squad = 'senior', is_academy = false WHERE id IN (SELECT id FROM riders WHERE team_id=$1 AND squad='u23' LIMIT 3)", [CLUB]);
+    const swap = (offered, requested, defer) => db.query(
+      "SELECT auto_accept_claim_swap($1,$2,$3,$4,$5,$6,'{}','{}') AS result",
+      [offered, requested, CLUB, BUYER, defer, CUTOVER],
+    );
+    const otherTeam = uuid(66);
+    await db.query("INSERT INTO teams (id) VALUES ($1)", [otherTeam]);
+    // An unrelated departure has not created an extra senior place for this swap.
+    await db.query("UPDATE riders SET pending_team_id = $1 WHERE id = (SELECT id FROM riders WHERE team_id=$2 AND squad='senior' LIMIT 1)", [otherTeam, CLUB]);
+    const { rows: [senior] } = await db.query("SELECT id FROM riders WHERE team_id=$1 AND squad='senior' LIMIT 1", [BUYER]);
+    for (const defer of [false, true]) {
+      await assert.rejects(db.query(
+        "SELECT auto_accept_claim_swap($1,$2,$3,$4,$5,$6,$7,'{}')",
+        [STAYS, senior.id, CLUB, BUYER, defer, CUTOVER, JSON.stringify({ squad: "senior", is_academy: false })],
+      ), /swap_destination_squad_full/);
+      assert.deepEqual((await db.query("SELECT team_id,pending_team_id FROM riders WHERE id=$1", [STAYS])).rows,
+        [{ team_id: CLUB, pending_team_id: null }]);
+      assert.deepEqual((await db.query("SELECT team_id,pending_team_id FROM riders WHERE id=$1", [senior.id])).rows,
+        [{ team_id: BUYER, pending_team_id: null }]);
+    }
+    assert.equal((await swap(STAYS, SOLD, false)).rows[0].result.status, "claimed");
+    const rosterCounts = () => db.query("SELECT count(*)::int AS count FROM riders GROUP BY team_id ORDER BY team_id");
+    assert.deepEqual((await rosterCounts()).rows, [{ count: 60 }, { count: 60 }]);
+    assert.equal((await swap(SOLD, STAYS, true)).rows[0].result.status, "claimed");
+    assert.deepEqual((await db.query("SELECT id, pending_team_id FROM riders WHERE id IN ($1,$2) ORDER BY id", [STAYS, SOLD])).rows, [
+      { id: SOLD, pending_team_id: BUYER }, { id: STAYS, pending_team_id: CLUB },
+    ]);
+    await assert.rejects(buy("team_id"), /club_roster_full/);
     assert.equal((await db.query("SELECT count(*)::int AS pending FROM riders WHERE promotion_pending_to IS NOT NULL")).rows[0].pending, 0);
   } finally {
     await db.close();

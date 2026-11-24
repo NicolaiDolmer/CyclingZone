@@ -23,7 +23,7 @@ import { evaluateFlagStage } from "./featureStage.js";
 import { isAutoAcceptActorEnabled2176, isAutoAcceptPairEnabled2176, isMarketTransportEnabled2176, readMarketFlag2176, readMarketSpendIssue2176 } from "./marketBeta2176.ts";
 import { calculateAuctionEnd, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
 import { getTeamMarketState, SELLER_SQUAD_FLOOR, sellerFloorRiskIds, calculateRiderMarketValue } from "./marketUtils.js";
-import { CLUB_RIDER_CAP } from "./squads.js";
+import { CLUB_RIDER_CAP, SQUAD_CAPS } from "./squads.js";
 import { readTransferPriceBandConfig, getPriceBandViolation } from "./transferPriceBand.js";
 import { buildAtRiskErrorParams, fetchAtRiskRiders } from "./squadRiskGuard.js";
 import { assertSigningAllowed } from "./boardConsequences.js";
@@ -382,9 +382,11 @@ export async function claimSwapUnderTeamLock(supabase, {
   deferRegistration, now, offeredPatch, requestedPatch, marketBeta = false, dealId = null, cash = 0,
   payment = /** @type {import('./marketBeta2176.ts').MarketSwapPayment2176 | null} */ (null),
 }) {
-  const capacityIssue = (error) => error?.message === "club_roster_full"
-    ? { code: "buyer_squad_full", teamId: error.details, maxRiders: CLUB_RIDER_CAP }
-    : null;
+  const capacityIssue = (error) => {
+    const maxRiders = error?.message === "club_roster_full" ? CLUB_RIDER_CAP
+      : error?.message === "swap_destination_squad_full" ? SQUAD_CAPS.senior : null;
+    return maxRiders == null ? null : { code: "buyer_squad_full", teamId: error.details, maxRiders };
+  };
   if (marketBeta) {
     try {
       const result = await rpc(supabase, "auto_accept_claim_swap_paid", {

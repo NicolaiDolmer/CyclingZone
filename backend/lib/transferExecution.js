@@ -625,14 +625,53 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
 
   const riderRestore = squadRestoreImage(rider, graduatePatch);
   const priorSaleEscrow = await saleEscrowStatusForDeal(supabase, { dealType: "transfer", dealId: offer.id });
-  const lockedClaim = priorSaleEscrow === "refunded" ? null : await claimTransferUnderTeamLock(supabase, {
-    riderId: rider.id, sellerTeamId: offer.seller_team_id, buyerTeamId: offer.buyer_team_id,
-    deferRegistration, now, acquirePatch: { ...transferContractPatch, ...graduatePatch },
-    activeSeasonNumber, maxRiders: buyerState.squad_limits.max, price, dealId: offer.id,
-    buyerPayload: transferBuyerPayment.payload, sellerPayload: transferSellerPayment.payload,
-    marketBeta: await isMarketAtomicPayments2176(supabase),
-    riderRestore: riderRestore ? { [rider.id]: riderRestore } : {},
-  });
+  let lockedClaim, movedRider;
+  try {
+    lockedClaim = priorSaleEscrow === "refunded" ? null : await claimTransferUnderTeamLock(supabase, {
+      riderId: rider.id, sellerTeamId: offer.seller_team_id, buyerTeamId: offer.buyer_team_id,
+      deferRegistration, now, acquirePatch: { ...transferContractPatch, ...graduatePatch },
+      activeSeasonNumber, maxRiders: buyerState.squad_limits.max, price, dealId: offer.id,
+      buyerPayload: transferBuyerPayment.payload, sellerPayload: transferSellerPayment.payload,
+      marketBeta: await isMarketAtomicPayments2176(supabase),
+      riderRestore: riderRestore ? { [rider.id]: riderRestore } : {},
+    });
+    if (!lockedClaim?.issue && !lockedClaim?.boundary) {
+      movedRider = priorSaleEscrow === "refunded"
+        ? null
+        : lockedClaim ? lockedClaim.data : deferRegistration
+        ? await expectMaybeSingle(
+            supabase
+              .from("riders")
+              .update({ pending_team_id: offer.buyer_team_id, updated_at: now.toISOString(), ...transferContractPatch, ...graduatePatch })
+              .eq("id", rider.id)
+              .eq("team_id", offer.seller_team_id)
+              .is("pending_team_id", null)
+              .select("id")
+          )
+        : await expectMaybeSingle(
+            supabase
+              .from("riders")
+              .update({
+                team_id: offer.buyer_team_id,
+                pending_team_id: null,
+                acquired_at: now.toISOString(),
+                ...transferContractPatch,
+                ...graduatePatch,
+              })
+              .eq("id", rider.id)
+              .eq("team_id", offer.seller_team_id)
+              // #6181: en allerede solgt, ventende rytter kan ikke sælges igen.
+              .is("pending_team_id", null)
+              .select("id")
+          );
+    }
+  } catch (error) {
+    if (error && typeof error === "object" && "message" in error && error.message === "club_roster_full") {
+      return failure(409, "The buying club has no free places. Sell or release a rider first.", "club_roster_full");
+    }
+    throw error;
+  }
+
   if (lockedClaim?.boundary) return failure(409, undefined, "offer_at_auto_accept_price", { errorParams: lockedClaim.boundary.body.errorParams });
   if (lockedClaim?.issue) {
     const claimIssue = lockedClaim.issue;
@@ -643,35 +682,6 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, issueMeta);
     return failure(400, message.error, claimIssue.code, "errorParams" in message ? { errorParams: message.errorParams } : {});
   }
-  const movedRider = priorSaleEscrow === "refunded"
-    ? null
-    : lockedClaim ? lockedClaim.data : deferRegistration
-    ? await expectMaybeSingle(
-        supabase
-          .from("riders")
-          .update({ pending_team_id: offer.buyer_team_id, updated_at: now.toISOString(), ...transferContractPatch, ...graduatePatch })
-          .eq("id", rider.id)
-          .eq("team_id", offer.seller_team_id)
-          .is("pending_team_id", null)
-          .select("id")
-      )
-    : await expectMaybeSingle(
-        supabase
-          .from("riders")
-          .update({
-            team_id: offer.buyer_team_id,
-            pending_team_id: null,
-            acquired_at: now.toISOString(),
-            ...transferContractPatch,
-            ...graduatePatch,
-          })
-          .eq("id", rider.id)
-          .eq("team_id", offer.seller_team_id)
-          // #6181: en allerede solgt, ventende rytter kan ikke sælges igen.
-          .is("pending_team_id", null)
-          .select("id")
-      );
-
   if (!movedRider) {
     await withdrawTransferOffer(supabase, offer.id);
     const stalePayload = buildTransferStaleCancelledNotification({
@@ -1195,7 +1205,7 @@ export async function confirmTransferOffer({
     deferRegistration,
     now,
   });
-  if (!result.ok && result.code === "offer_at_auto_accept_price") {
+  if (!result.ok && (result.code === "offer_at_auto_accept_price" || result.code === "club_roster_full")) {
     // Reuse the existing terminal withdrawal semantics. This single conditional
     // UPDATE is a transaction/CAS: only the exact confirmed financial terms
     // rejected above may be withdrawn. Never overwrite a concurrent new counter,

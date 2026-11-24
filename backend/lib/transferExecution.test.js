@@ -723,6 +723,29 @@ test("#2176: atomic transfer claim refusing a raced seller floor stops before ow
   assert.equal(client._finance.length, 0);
 });
 
+for (const atomic of [false, true]) {
+  test(`#8034: a full club during ${atomic ? "atomic" : "legacy"} settlement returns a capacity error`, async () => {
+    const db = baseDb({ windowStatus: "open" });
+    db.app_config = atomic ? [{ key: "auto_accept_enabled", value: "on" }] : [];
+    db.transfer_offers.push({ id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+      offer_amount: 200, status: "awaiting_confirmation", buyer_confirmed: false, seller_confirmed: true });
+    const full = () => { throw new Error("club_roster_full"); };
+    const client = makeSupabase(db, atomic ? { claimTransfer: full } : { beforeRiderUpdate: full });
+    const result = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer",
+      now: new Date("2026-11-24T10:00:00Z") });
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 409);
+    assert.equal(result.code, "club_roster_full");
+    assert.equal(db.transfer_offers[0].status, "withdrawn");
+    const retry = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer",
+      now: new Date("2026-11-24T10:01:00Z") });
+    assert.equal(retry.ok, false);
+    assert.notEqual(retry.code, "already_confirmed");
+    assert.equal(db.riders.find(rider => rider.id === "rider-1").team_id, "seller");
+    assert.equal(client._finance.length, 0);
+  });
+}
+
 test("#6181: claim refusing the buyer money under the team lock stops before ownership and payment", async () => {
   const db = baseDb({ windowStatus: "open" });
   db.app_config = [{ key: "auto_accept_enabled", value: "on" }];

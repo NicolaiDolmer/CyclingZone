@@ -14,7 +14,7 @@
     },
     "seniorsStayHint": "Los ciclistas de tu plantilla sénior siguen siendo sénior hasta que los muevas. Abre un ciclista y usa Cambiar de plantilla.",
     "stats": {
-      "riders": "Ciclistas, límite temporal",
+      "riders": "Ciclistas",
       "squadValue": "Valor de la plantilla"
     }
   },

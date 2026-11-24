@@ -1719,7 +1719,7 @@
       },
       "academySize": {
         "title": "Tamaño de la academia (por equipo)",
-        "text": "Cada equipo tiene un máximo de {squadCap} ciclistas y el club puede tener hasta {clubRiderCap} en total. Para pujar por un ciclista o ficharlo, necesitas una plaza libre en un equipo en el que pueda competir y en el conjunto del club. Los traslados internos requieren una plaza en el equipo de destino. Los ascensos automáticos pueden superar el límite del equipo. Puedes seguir compitiendo, entrenando y vendiendo ciclistas."
+        "text": "Cada equipo tiene un máximo de {squadCap} ciclistas y el club puede tener hasta {clubRiderCap} en total. Las pujas, compras e intercambios requieren una plaza en un equipo en el que el ciclista pueda competir. Si el club está al límite, vende o libera a un ciclista antes de incorporar a otro. Puedes intercambiar un ciclista por otro si se respetan los límites de cada equipo. Los traslados internos requieren una plaza en el equipo de destino. Los ascensos automáticos pueden superar el límite del equipo. Puedes seguir compitiendo, entrenando y vendiendo ciclistas."
       },
       "dailyTrainingBoost": {
         "title": "Entrenamiento diario en la academia",

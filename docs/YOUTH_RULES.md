@@ -158,7 +158,7 @@ Automatisk planlægning af før-skifte-påmindelsen hører til #7250.
 | Samme kontrakt for alle | Ungdomsryttere signeres, forlænges, sælges og slippes efter samme regler og formler som seniorer (`TRANSFER_MARKET_RULES.md`, `ECONOMY_RULES.md`) | Dagens ungdomskontrakt, `ACADEMY.SIGNING_FEE_RATE` og akademi-lønsatsen udgår som særregler når tier-modellen bygges |
 | Løn frosset ved signering | Uændret (#1309, `GAME_INVARIANTS.md`) | Intet |
 | Drift pr. besat ungdomsplads | Bevares som princip: hver besat plads i Junior team og U23 team koster fast drift pr. sæson (guld-dræn). Konstanten hedder i dag `ACADEMY.DRIFT_PER_SEASON` i `backend/lib/academyFlag.js` | Beløbet pr. tier afgøres i økonomi-sim (Scorecard C3), ikke her. **S3→S4-skiftet 27/9 kører med `academy_drift_enabled`=off (ejer-beslutning 25/9, #5741) — ingen drift opkræves ved DENNE sæsonskiftekørsel; satsen fra S4 og frem er stadig åben** |
-| Trup- og klubloft fra sæsonskiftet 28/11 | Senior, holdet for ryttere under 23 og junior har hver 30 pladser, klubben har højst 60 på tværs. Automatisk aldersoprykning kan gå over trupgrænsen. Nye bud og køb kræver plads under begge grænser. Frivillig flytning kræver plads i måltruppen. | Ejer 24/11 (#8034, #7323) |
+| Trup- og klubloft ved udrulning | Senior, U23 og junior har hver 30 pladser, klubben har højst 60 på tværs. Automatisk aldersoprykning kan gå over trupgrænsen. Nye bud og køb kræver plads under begge grænser. Et bytte ved 60 er muligt, når én rytter går hver vej, og trupgrænserne er opfyldt. Frivillig flytning kræver plads i måltruppen. | Ejer 24/11 (#8034, #7323) |
 | Intake og ungdomsauktion | Uændret scope (#2456): tilbud udløber efter `INTAKE_OFFER_EXPIRY_DAYS`, afvist kandidat går på ungdomsauktion uden sælger, usolgt = forlader sporten | Signeret kandidat lander i Junior team i stedet for "akademiet" |
 
 ### 2.6 Fladerne (ejer-beslutninger i Claude Design-handoffet 2/9)
@@ -226,7 +226,7 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 | Signing fee | `academyIntake.js:483`, `ACADEMY.SIGNING_FEE_RATE` | andel af markedsværdi (udgår, §2.4) |
 | Drift | `ACADEMY.DRIFT_PER_SEASON`, opkræves i `processSeasonStart` | pr. besat plads pr. sæson |
 | Trup pr. rytter (#4619) | `riders.squad` (`senior`/`u23`/`junior`), CHECK + partielt indeks `(team_id, squad)`; `backend/lib/squads.js` er SSOT for grænser og lofter | junior ≤ 18 · u23 19-22 · senior ≥ 23 (sæsonalder). `is_academy` bevares og skrives sammen med `squad` |
-| Plads-loft | `SQUAD_CAPS` og `CLUB_RIDER_CAP` i `backend/lib/squads.js` | Tre trupper med 30 pladser hver og 60 i alt fra sæsonskiftet 28/11 (#8034). |
+| Plads-loft | `SQUAD_CAPS` og `CLUB_RIDER_CAP` i `backend/lib/squads.js` | Tre trupper med 30 pladser hver og 60 i alt fra udrulningen (#8034). |
 | Automatisk oprykning | `seasonSquadPromotion.js` og `promote_season_squads_7323` | Flytter én gang ved sæsonskiftet og gemmer bevis til den samlede sæsonbesked (§2.2). |
 | Vagt: fastlåst akademi-graduate (#4495) | `backend/lib/stuckAcademyGraduates.js` + `ownershipInvariantWatch` invariant G | dagligt read-only tjek, grace `STUCK_GRADUATE_GRACE_HOURS` (48t) så et åbent/nyligt override-vindue ikke alarmerer |
 | Flyt op/ned uden for graduering | `backend/lib/academyTransfer.js` `promote()`/`demote()`; RPC `demote_rider_to_academy` i `database/2026-06-25-academy-promote-demote.sql` | ned kræver sæsonalder ≤ 22, ingen aktiv auktion, akademi ikke fuldt |
