@@ -39,22 +39,22 @@ const ALL_DIVISIONS = Array.from(
 
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
 const WIN_COLS = [
-  { key: "stage_wins",   labelKey: "rankings.colStageWins",   shortKey: "rankings.shortStageWins" },
-  { key: "gc_wins",      labelKey: "rankings.colGcWins",      shortKey: "rankings.colGcWins" },
-  { key: "classic_wins", labelKey: "rankings.colClassicWins", shortKey: "rankings.colClassicWins" },
-  { key: "pts_wins",     labelKey: "rankings.colPtsWins",     shortKey: "rankings.shortPtsWins" },
-  { key: "mtn_wins",     labelKey: "rankings.colMtnWins",     shortKey: "rankings.shortMtnWins" },
-  { key: "young_wins",   labelKey: "rankings.colYoungWins",   shortKey: "rankings.shortYoungWins" },
+  { key: "stage_wins",   labelKey: "rankings.colStageWins" },
+  { key: "gc_wins",      labelKey: "rankings.colGcWins" },
+  { key: "classic_wins", labelKey: "rankings.colClassicWins" },
+  { key: "pts_wins",     labelKey: "rankings.colPtsWins" },
+  { key: "mtn_wins",     labelKey: "rankings.colMtnWins" },
+  { key: "young_wins",   labelKey: "rankings.colYoungWins" },
 ];
 
 // Valgfri kolonner styret af kolonne-toggle. default: top3/top10 synlige, trøjedage skjult.
 const OPTIONAL_COLS = [
-  { key: "top3",        labelKey: "rankings.colTop3",        shortKey: "rankings.shortTop3",        defaultVisible: true },
-  { key: "top10",       labelKey: "rankings.colTop10",       shortKey: "rankings.shortTop10",       defaultVisible: true },
-  { key: "yellow_days", labelKey: "rankings.colYellowDays",  shortKey: "rankings.shortYellowDays",  defaultVisible: false },
-  { key: "green_days",  labelKey: "rankings.colGreenDays",   shortKey: "rankings.shortGreenDays",   defaultVisible: false },
-  { key: "polka_days",  labelKey: "rankings.colPolkaDays",   shortKey: "rankings.shortPolkaDays",   defaultVisible: false },
-  { key: "white_days",  labelKey: "rankings.colWhiteDays",   shortKey: "rankings.shortWhiteDays",   defaultVisible: false },
+  { key: "top3",        labelKey: "rankings.colTop3",        defaultVisible: true },
+  { key: "top10",       labelKey: "rankings.colTop10",       defaultVisible: true },
+  { key: "yellow_days", labelKey: "rankings.colYellowDays",  defaultVisible: false },
+  { key: "green_days",  labelKey: "rankings.colGreenDays",   defaultVisible: false },
+  { key: "polka_days",  labelKey: "rankings.colPolkaDays",   defaultVisible: false },
+  { key: "white_days",  labelKey: "rankings.colWhiteDays",   defaultVisible: false },
 ];
 
 const WIN_VIEW_KEYS = ["gc_wins", "classic_wins", "total_wins"];
@@ -91,15 +91,12 @@ const OWNER_FILTERS = [
   { key: "free",    labelKey: "rankings.ownerFree" },
 ];
 
-// Dobbelt header-label (kort på mobil, langt på desktop) — bevaret 1:1 fra den
-// tidligere SortColHeader-hjælper, nu som DataTable `header`-node.
-function ColHeader({ t, labelKey, shortKey }) {
-  return (
-    <>
-      <span className="hidden lg:inline">{t(labelKey)}</span>
-      <span className="lg:hidden">{t(shortKey)}</span>
-    </>
-  );
+function rankingColumnLabels(label) {
+  return {
+    header: label,
+    mobileHeader: <span className="hyphens-auto wrap-anywhere">{label}</span>,
+    mobileLabel: label,
+  };
 }
 
 // Kategori-/valgfri-tal-celle: mørk når 0, fremhævet gold når kolonnen er aktiv sort.
@@ -346,8 +343,7 @@ export default function RiderRankingsPage() {
     // Point — primær sortering, længst til venstre af stats.
     {
       key: "points",
-      header: <ColHeader t={t} labelKey="rankings.colPoints" shortKey="rankings.shortPoints" />,
-      mobileLabel: t("rankings.colPoints"),
+      ...rankingColumnLabels(t("rankings.colPoints")),
       numeric: true,
       sortKey: "points",
       render: (rider) => (
@@ -359,8 +355,7 @@ export default function RiderRankingsPage() {
     // Kategori-sejre.
     ...WIN_COLS.map(col => ({
       key: col.key,
-      header: <ColHeader t={t} labelKey={col.labelKey} shortKey={col.shortKey} />,
-      mobileLabel: t(col.labelKey),
+      ...rankingColumnLabels(t(col.labelKey)),
       numeric: true,
       sortKey: col.key,
       render: (rider) => <StatCell value={rider[col.key]} active={sortKey === col.key} />,
@@ -368,8 +363,7 @@ export default function RiderRankingsPage() {
     // Sejre i alt — til højre for kategorierne (#925).
     {
       key: "total_wins",
-      header: <ColHeader t={t} labelKey="rankings.colTotalWins" shortKey="rankings.shortTotalWins" />,
-      mobileLabel: t("rankings.colTotalWins"),
+      ...rankingColumnLabels(t("rankings.colTotalWins")),
       numeric: true,
       sortKey: "total_wins",
       render: (rider) => <StatCell value={rider.total_wins} active={sortKey === "total_wins"} />,
@@ -377,8 +371,7 @@ export default function RiderRankingsPage() {
     // Tjent præmie.
     {
       key: "prize_earned",
-      header: <ColHeader t={t} labelKey="rankings.colPrize" shortKey="rankings.shortPrize" />,
-      mobileLabel: t("rankings.colPrize"),
+      ...rankingColumnLabels(t("rankings.colPrize")),
       numeric: true,
       sortKey: "prize_earned",
       render: (rider) => (
@@ -392,8 +385,7 @@ export default function RiderRankingsPage() {
     // kolonne-menuen dér); computer: dem kolonne-knappen har slået til.
     ...(isMobile ? OPTIONAL_COLS : visibleOptionalCols).map(col => ({
       key: col.key,
-      header: <ColHeader t={t} labelKey={col.labelKey} shortKey={col.shortKey} />,
-      mobileLabel: t(col.labelKey),
+      ...rankingColumnLabels(t(col.labelKey)),
       numeric: true,
       sortKey: col.key,
       render: (rider) => <StatCell value={rider[col.key]} active={sortKey === col.key} />,
@@ -404,19 +396,16 @@ export default function RiderRankingsPage() {
     ? columns.filter(col => (
       WIN_VIEW_KEYS.includes(col.key) || ("sticky" in col && col.sticky) || ("fold" in col && col.fold)
     )).map(col => {
-      if (!WIN_VIEW_KEYS.includes(col.key) || typeof col.mobileLabel !== "string") return col;
-      return {
-        ...col,
-        tight: isMobile,
-        // DataTable handles bubbled clicks and exposes its current aria-sort on the th.
-        header: (
-          <button type="button"
-            className="cursor-pointer rounded-cz text-end focus-visible:outline-2 focus-visible:outline-cz-accent-t"
-          >
-            {col.mobileLabel}
-          </button>
-        ),
-      };
+      if (!WIN_VIEW_KEYS.includes(col.key) || !("mobileLabel" in col) || typeof col.mobileLabel !== "string") return col;
+      // DataTable handles bubbled clicks and exposes its current aria-sort on the th.
+      const header = (
+        <button type="button"
+          className="cursor-pointer rounded-cz text-end hyphens-auto wrap-anywhere focus-visible:outline-2 focus-visible:outline-cz-accent-t"
+        >
+          {col.mobileLabel}
+        </button>
+      );
+      return { ...col, tight: isMobile, header, mobileHeader: header };
     })
     : columns;
 
@@ -546,12 +535,6 @@ export default function RiderRankingsPage() {
           }}
           count={
             <div className="flex flex-wrap items-center gap-4">
-              {!showWins && <span>{t("rankings.legendStage")}</span>}
-              {!showWins && <>
-                <span>{t("rankings.legendPcl")}</span>
-                <span>{t("rankings.legendMtn")}</span>
-                <span>{t("rankings.legendU25")}</span>
-              </>}
               <span className="ms-auto">
                 {seasonLine} · {t("rankings.ridersCount", { count: filtered.length })}
                 {/* #4225 — mellem to sæsoner viser ranglisten sidste AFSLUTTEDE sæson,

@@ -39,7 +39,7 @@ test("#7137 compares all three win counts and restores the overview", async ({ p
 
   // Preserve a non-default overview sort when switching modes.
   // Choosing total wins also works when the points column was swapped out.
-  const overviewWins = table.getByRole("columnheader", { name: mobile ? /^Sejre$/ : /^Sejre i alt$/ });
+  const overviewWins = table.getByRole("columnheader", { name: "Sejre i alt", exact: true });
   await overviewWins.click();
   await expect(overviewWins).toHaveAttribute("aria-sort", "descending");
   await expect(firstRider).toHaveAttribute("href", "/riders/rider-2");
@@ -120,4 +120,24 @@ test("#7137 compares all three win counts and restores the overview", async ({ p
   expect(selectedLabels.map(label => label.replace(/\s+/g, " "))).toEqual([
     "Overblik", "Division 2", "Division 2 — A", "Manager-ejede",
   ]);
+});
+
+test("#8651 keeps three full classification labels inside the phone table", async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 1280) > 640, "Mobile column picker");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await login(page);
+  await page.goto("/standings?tab=riders");
+  const table = page.getByRole("table", { name: "Rytterrangliste" });
+  await expect(table.locator("tbody tr").first()).toBeVisible();
+
+  await page.getByTestId("table-columns-open").click();
+  const labels = ["Pointklassement", "Bjergklassement", "Ungdomsklassement"];
+  for (const label of labels) await page.getByRole("button", { name: label, exact: true }).click();
+  await page.keyboard.press("Escape");
+
+  for (const label of labels) await expect(table.getByRole("columnheader", { name: label, exact: true })).toBeVisible();
+  expect(await table.evaluate(node => node.getBoundingClientRect().right)).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
 });

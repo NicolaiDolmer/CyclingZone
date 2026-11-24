@@ -1,0 +1,22 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Rider Rankings",
+      "area": "interface",
+      "en": {
+        "title": "Full column names on the rider rankings",
+        "body": "The rider rankings use full names for points, wins and classifications, including on phones."
+      },
+      "da": {
+        "title": "Fulde kolonnenavne på rytterranglisten",
+        "body": "Rytterranglisten bruger fulde navne for point, sejre og klassementer, også på telefonen."
+      },
+      "refs": [
+        8651
+      ]
+    }
+  ]
+}
