@@ -48,6 +48,23 @@ const vercelConfig = JSON.parse(
   readFileSync(join(__dirname, "..", "..", "vercel.json"), "utf8"),
 );
 
+test("the capture bridge is inert before the optional SDK and forwards to its current gate", async () => {
+  const bridge = await import(new URL("./posthogCapture.ts?test", import.meta.url).href);
+  assert.equal(bridge.isPosthogCapturing(), false);
+  assert.doesNotThrow(() => bridge.capturePosthogEvent("fixture"));
+  const capture = test.mock.fn();
+  let allowed = false;
+  bridge.registerPosthogCapture({ isCapturing: () => allowed, capture });
+  const properties = { example: true };
+  const options = { userId: "fixture-user" };
+  bridge.capturePosthogEvent("fixture", properties, options);
+  assert.equal(capture.mock.callCount(), 0);
+  allowed = true;
+  assert.equal(bridge.isPosthogCapturing(), true);
+  bridge.capturePosthogEvent("fixture", properties, options);
+  assert.deepEqual(capture.mock.calls[0].arguments, ["fixture", properties, options]);
+});
+
 test("PostHog er slået fra uden PROD (og dermed i test/dev)", () => {
   assert.equal(POSTHOG_ENABLED, false);
 });
@@ -407,7 +424,7 @@ test("vercel.json: /ingest-rewritene peger på EU og ligger før SPA-fallbacken"
 // --- logEvent.js: to adskilte gates ------------------------------------------
 
 test("logEvent.js spejler til PostHog uden at røre Postgres-skrivningen", () => {
-  assert.match(logEventSource, /import \{ capturePosthogEvent, isPosthogCapturing \} from "\.\/posthogClient\.js"/);
+  assert.match(logEventSource, /import \{ capturePosthogEvent, isPosthogCapturing \} from "\.\/posthogCapture\.ts"/);
   const inserts = logEventSource.match(/supabase\.from\("player_events"\)\.insert\(/g) || [];
   assert.equal(inserts.length, 3, "de tre player_events-inserts skal stå uændrede tilbage");
   const mirrors = logEventSource.match(/mirrorToPosthog\(/g) || [];

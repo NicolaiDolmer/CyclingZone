@@ -39,6 +39,7 @@
 //     felter som del af capture.
 
 import { isLikelyAutomation, isPrerendering } from "./clarityBotSignals.js";
+import { registerPosthogCapture } from "./posthogCapture.ts";
 import { CLICK_ID_KEYS, UTM_KEYS, getLegacyCampaignParams } from "./attribution.js";
 
 // import.meta.env optional-chained så modulet kan importeres i node --test,
@@ -429,3 +430,5 @@ export function optOutPosthog() {
     Promise.resolve(client.optOut()).catch(() => {});
   } catch { /* best-effort */ }
 }
+
+registerPosthogCapture({ isCapturing: isPosthogCapturing, capture: capturePosthogEvent });

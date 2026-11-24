@@ -2,7 +2,7 @@ import { supabase } from "./supabase";
 import { getAuthedUser } from "./getAuthedUser.js";
 import { isSquadDrafted, isTeamNewlyCreated } from "./teamDrafted.js";
 import { getSessionId } from "./sessionId.js";
-import { capturePosthogEvent, isPosthogCapturing } from "./posthogClient.js";
+import { capturePosthogEvent, isPosthogCapturing } from "./posthogCapture.ts";
 
 // Player-events baseline (#137). Fire-and-forget instrumentation der respekterer
 // analytics-consent (samme gate som Clarity). Skriver til public.player_events
