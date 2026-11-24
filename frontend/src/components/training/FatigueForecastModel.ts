@@ -5,7 +5,7 @@ export type ForecastBand = "ok" | "warn" | "risk";
 import type { RotationPreviewSlot } from "./r5/programR5Model.ts";
 
 export type ForecastEntry = {
-  fatigue: number | null; band: ForecastBand | null; raceSlots?: number[]; pendingSlots?: number[];
+  fatigue: number | null; band: ForecastBand | null; fatigueIsActual?: boolean; raceSlots?: number[]; pendingSlots?: number[];
   rotationSlots?: RotationPreviewSlot[];
   nextRotationIndex?: number;
   restSlots?: number[];

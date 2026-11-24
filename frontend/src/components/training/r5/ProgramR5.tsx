@@ -1371,11 +1371,14 @@ function Row({
         const base = "relative flex min-h-[44px] items-center border-s border-t border-cz-border px-2.5 py-1.5 text-xs";
         if (cell.kind === "race") {
           return (
-            <div key={weekday} className={`${base} gap-1 bg-cz-subtle text-cz-2`} data-testid={cell.pending ? "program-r5-pending" : "program-r5-race"}>
+            <div key={weekday} className={`${base} gap-1 bg-cz-subtle text-cz-2`} data-testid="program-r5-race">
               <FlagIcon size={11} aria-hidden="true" className="shrink-0" />
-              {cell.pending ? t("dailyReceipt.status.pending") : tR5("programR5.race")}
+              {tR5("programR5.race")}
             </div>
           );
+        }
+        if (cell.kind === "unavailable") {
+          return <div key={weekday} className={`${base} text-cz-3`}>–</div>;
         }
         if (cell.kind === "rest") {
           return <div key={weekday} className={`${base} text-cz-2`} data-testid="program-r5-week-rest">{sessionLabel("rest")}</div>;

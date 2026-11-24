@@ -33,17 +33,18 @@ export default function FatigueForecast({
   const value = Math.round(entry.fatigue);
   const bandText = t(`forecast.band_${tone}`);
   const pct = Math.max(0, Math.min(100, value));
+  const actual = settled || entry.fatigueIsActual === true;
   return (
     <div
       className={`flex items-center gap-2 ${className}`}
       data-testid="fatigue-forecast"
       data-band={tone}
-      aria-label={t(settled ? "forecast.ariaSettled" : "forecast.aria", { value, band: bandText })}
+      aria-label={t(actual ? "forecast.ariaSettled" : "forecast.aria", { value, band: bandText })}
       role="status"
     >
       <span className="font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-3">{label ?? t("forecast.label")}</span>
       <span className="font-data text-[13px] font-semibold tabular-nums text-cz-1" aria-hidden="true">
-        {settled ? value : t("forecast.value", { value })}
+        {actual ? value : t("forecast.value", { value })}
       </span>
       <span className="relative h-1.5 w-12 flex-none overflow-hidden rounded-cz-pill bg-cz-subtle" aria-hidden="true">
         <span className={`absolute inset-y-0 inset-s-0 rounded-cz-pill ${TONE_FILL[tone]}`} style={{ width: `${pct}%` }} />

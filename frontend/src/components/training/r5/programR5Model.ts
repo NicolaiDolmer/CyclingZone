@@ -322,7 +322,8 @@ export function draftTotal(drafts: Readonly<Record<string, Draft>>): number {
 // --- Ugen for et emne ----------------------------------------------------------------
 
 export type WeekCell =
-  | { kind: "race"; pending?: true }
+  | { kind: "race" }
+  | { kind: "unavailable" }
   | { kind: "rest" }
   | { kind: "ran"; session: string | null; sourceSlot?: number }
   | { kind: "session"; session: string | null; changed: boolean; sourceSlot?: number };
@@ -355,9 +356,10 @@ export function weekCells({
 }): WeekCell[][] {
   return weekdays.map((weekday) => Array.from({ length: PROGRAM_SLOTS }, (_, slot): WeekCell => {
     const placement = placements[weekday];
-    if (weekday === todayWeekday && pendingToday?.has(slot)) return { kind: "race", pending: true };
+    if (weekday === todayWeekday && raceToday.has(slot)) return { kind: "race" };
+    if (weekday === todayWeekday && pendingToday?.has(slot)) return { kind: "unavailable" };
     if (placement?.restSlots?.includes(slot)) return { kind: "rest" };
-    if ((weekday === todayWeekday && raceToday.has(slot)) || placement?.fieldSource[slot] === null) return { kind: "race" };
+    if (placement?.fieldSource[slot] === null) return { kind: "race" };
     const source = placement?.fieldSource[slot] ?? slot;
     const metadata = source === slot ? {} : { sourceSlot: source };
     if (weekday === todayWeekday && lockedToday.has(slot)) return { kind: "ran", session: cellSession(days, weekday, source), ...metadata };

@@ -531,7 +531,7 @@ function SessionsRow({ row, r5, mobile = false }: { row: Row; r5: TodayR5Props; 
         if (f === PENDING) {
           return wrap(
             <span className="flex min-h-9 items-center gap-1.5 rounded-cz border border-cz-border bg-cz-subtle px-2 text-xs text-cz-2 max-sm:min-h-11" data-testid="r5-session-pending">
-              {t("dailyReceipt.status.pending")}
+              –
             </span>,
           );
         }
@@ -686,11 +686,12 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     const plan = r5.planFor(id);
     const planDay = plan?.focus ? (dayTypeForProgram(plan) as string) : null;
     const planSession = planDay && (DAY_TYPES_WITHOUT_SESSION as readonly string[]).includes(planDay) ? planDay : (sessionForProgram(plan) as string | null);
-    const racing = r5.racingToday[id] != null;
-    const known = raceSlotsFor(r5.forecast, id);
-    const raceSlots = racing && known.size === 0 ? new Set([0]) : known;
-    const weekDays = r5.riderWeekPlans[id] ?? null;
     const riderForecast = r5.forecast?.riders?.[id];
+    const known = raceSlotsFor(r5.forecast, id);
+    const hasForecastFields = !r5.forecast?.settled && riderForecast?.raceSlots != null;
+    const racing = hasForecastFields ? known.size > 0 : r5.racingToday[id] != null;
+    const raceSlots = !hasForecastFields && racing ? new Set([0]) : known;
+    const weekDays = r5.riderWeekPlans[id] ?? null;
     const onRotation = riderForecast?.rotationSlots != null;
     const planned = dayFields({
       programSlot: (slot) => rotationFieldSession(riderForecast, slot)

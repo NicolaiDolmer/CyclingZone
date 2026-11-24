@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { buildTeamFatigueForecast, loadTeamFatigueForecast } from "./trainingWeekPlanForecast.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
+import { resolveTrainingDateReadiness } from "./trainingDateReadiness.js";
 import { DATE1, DATE2, DAYS1, EVENING_AT, RACE, SEASON, TEAM, createFake, digest, press, rider, seedState, sweep } from "./trainNowSameResult7982.harness.js";
 
 const RIDER = rider(0);
@@ -228,11 +229,12 @@ test("#8646: a known non-starter's overdue stage follows deadline settlement", a
     const plannedTime = Date.parse(state.race_stage_schedule.find((row) => row.race_id === RACE && row.stage_number === 2).scheduled_at);
     assert.deepEqual((await forecastAt(new Date(plannedTime - 1))).fieldSource, FIELDS);
     const before = await forecastAt(new Date(plannedTime + 1));
+    assert.equal(before.fatigue, state.rider_condition[0].fatigue);
     await run(state, createFake(state), { deadlineReached: true });
     assert.equal(reports(state)[slot].intensity, "unknown_pending");
     assert.deepEqual(before.fieldSource, sources(state));
     assert.deepEqual(before.pendingSlots, [slot]);
-    assert.equal(before.fatigue, state.rider_condition[0].fatigue);
+    assert.equal((await forecastAt(new Date(plannedTime + 1))).fatigue, state.rider_condition[0].fatigue);
   }
 });
 
@@ -284,13 +286,14 @@ test("#8646: an overdue rotation slot waits and later rotations match deadline s
   assert.deepEqual(overdue.pendingSlots, [2]);
   assert.deepEqual(overdue.rotationSlots.map((slot) => slot?.index ?? null), [0, 1, null, 2, 0]);
   assert.equal(overdue.nextRotationIndex, 1);
+  assert.equal(overdue.fatigue, state.rider_condition[0].fatigue);
 
   await run(state, createFake(state), { deadlineReached: true, now: new Date("2026-11-10T01:00:00Z") });
   const actual = reports(state);
   assert.equal(actual[2].intensity, "unknown_pending");
   assert.equal(actual[2].rotation, undefined);
   assert.deepEqual(overdue.rotationSlots.map((slot) => slot?.index ?? null), actual.map((report) => report.rotation?.index ?? null));
-  assert.equal(overdue.fatigue, state.rider_condition[0].fatigue);
+  assert.equal((await forecastAt(new Date(`${DATE1}T15:00:01Z`))).riders[RIDER].fatigue, state.rider_condition[0].fatigue);
 });
 
 test("#8646: rotation pending fields belong to the current Copenhagen date", async () => {
@@ -303,6 +306,84 @@ test("#8646: rotation pending fields belong to the current Copenhagen date", asy
   assert.equal(after.tickDate, DATE2);
   assert.equal(after.available, true, after.reason);
   assert.equal(after.riders[RIDER].pendingSlots, undefined);
+});
+
+test("#8666: a saved selection without a binding reserves the stage field before start", async () => {
+  const { state, settle } = scenario({ lock: 4, race: [4], pending: true });
+  state.race_entry_days.length = 0;
+  const load = () => loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase),
+    team: state.teams[0], seasonId: SEASON.id, now: new Date(`${DATE1}T13:59:59Z`),
+  });
+  assert.deepEqual((await load()).riders[RIDER].raceSlots, [4]);
+  settle();
+  await run(state);
+  assert.equal(reports(state)[4].race_day, true);
+  assert.deepEqual((await load()).riders[RIDER].raceSlots, [4]);
+});
+
+test("#8666: previous-date retry publishes no intermediate forecast value at midnight or deadline", async () => {
+  const { state, forecastAt } = overdueRotationScenario();
+  const fake = createFake(state);
+  const before = new Date("2026-11-09T22:59:59.999Z");
+  const midnight = new Date("2026-11-09T23:00:00.000Z");
+  const deadline = new Date("2026-11-10T01:00:00.000Z");
+  const readiness = (now) => resolveTrainingDateReadiness({
+    tickDate: DATE1, now, riderIds: [RIDER],
+    stages: state.race_stage_schedule.filter((row) => row.race_id === RACE),
+    races: state.races, runs: state.race_simulation_runs, entries: state.race_entries,
+    loads: state.training_race_loads,
+  });
+  const retry = (now) => sweep(state, fake, { now, tickDate: DATE1, deadlineReached: readiness(now).deadlineReached });
+
+  await retry(before);
+  const first = await forecastAt(before);
+  const initialFatigue = state.rider_condition[0].fatigue;
+  assert.equal(first.riders[RIDER].fatigue, initialFatigue);
+  assert.equal(readiness(midnight).deadlineReached, false);
+  await retry(midnight);
+  const afterDeadline = new Date(deadline.getTime() + 5 * 60_000);
+  for (const now of [midnight, deadline, afterDeadline]) {
+    const during = await forecastAt(now);
+    assert.equal(during.tickDate, DATE2);
+    assert.equal(during.riders[RIDER].fatigue, initialFatigue);
+    assert.equal(during.riders[RIDER].pendingSlots, undefined);
+  }
+  assert.equal(readiness(deadline).deadlineReached, true);
+  await retry(deadline);
+  assert.equal(reports(state)[2].intensity, "unknown_pending");
+  assert.notEqual(state.rider_condition[0].fatigue, initialFatigue);
+  const published = await forecastAt(deadline);
+  assert.equal(published.riders[RIDER].fatigue, state.rider_condition[0].fatigue);
+  assert.equal((await forecastAt(afterDeadline)).riders[RIDER].fatigue, published.riders[RIDER].fatigue);
+  await retry(deadline);
+  assert.deepEqual(await forecastAt(deadline), published);
+});
+
+test("#8666: a delayed first registration holds the motor's figures across midnight", async () => {
+  const { state, forecastAt } = overdueRotationScenario();
+  state.teams[0].created_at = "2026-10-01T12:00:00Z";
+  const before = await forecastAt(new Date("2026-11-09T22:59:59.999Z"));
+  assert.equal(state.training_date_work.length, 0);
+  for (const at of ["2026-11-09T23:00:00Z", "2026-11-10T01:05:00Z"]) {
+    const forecast = await forecastAt(new Date(at));
+    assert.equal(forecast.tickDate, DATE2);
+    assert.equal(forecast.riders[RIDER].fatigue, before.riders[RIDER].fatigue);
+    assert.equal(forecast.riders[RIDER].fatigueIsActual, true);
+  }
+});
+
+test("#8666: an ordinary completed evening keeps its published number overnight", async () => {
+  const { state } = scenario({ lock: 4, secondDate: true });
+  await run(state);
+  const stable = state.rider_condition[0].fatigue;
+  for (const at of ["2026-11-09T22:59:59.999Z", "2026-11-09T23:00:00Z", "2026-11-10T01:00:00Z", "2026-11-10T01:05:00Z"]) {
+    const forecast = await loadTeamFatigueForecast({
+      supabase: withScheduleJoin(createFake(state).supabase),
+      team: state.teams[0], seasonId: SEASON.id, now: new Date(at),
+    });
+    assert.equal(forecast.riders[RIDER].fatigue, stable);
+  }
 });
 
 test("Rotation forecast and evening run both free the slots of a known non-starter", async () => {
