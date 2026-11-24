@@ -223,6 +223,22 @@ test("fund E: kontakten off: prognosen er som før (frigivelsen hører til Week 
   assert.deepEqual(svar.riders[RIDER].raceSlots, [3, 4]);
 });
 
+test("Rotation forecast and evening run both free the slots of a known non-starter", async () => {
+  const { state } = scenario({ lock: 4, race: [3, 4], dns: true, stage: "off" });
+  state.app_config.push({ key: "training_rotation", value: "on" });
+  const row = state.training_week_plans.find((plan) => plan.rider_id === RIDER);
+  row.plan_kind = "rotation";
+  row.rotation = { v: 1, rev: 1, passes: [{ session: "sprint" }, { session: "endurance" }] };
+  const before = await loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase), team: state.teams[0], seasonId: SEASON.id, now: EVENING_AT,
+  });
+  await run(state);
+  const result = before.riders[RIDER];
+  assert.deepEqual(result.raceSlots, []);
+  assert.deepEqual(result.rotationSlots.map((slot) => slot?.index), [0, 1, 0, 1, 0]);
+  assert.deepEqual(reports(state).map((report) => report.rotation?.index), [0, 1, 0, 1, 0]);
+});
+
 test("WB-7: træthed erstatter låsen i LD3 og beholder kilden", async () => {
   const { state, forecast } = scenario({ lock: 1, race: [1], fatigue: true });
   const before = forecast([]);

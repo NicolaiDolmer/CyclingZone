@@ -44,7 +44,9 @@ export function validateGo({ issue, area, quote }) {
   const q = String(quote ?? '').replace(/\s+/g, ' ').trim();
   if (!q) throw Error('--quote skal være ejerens ordrette ja');
   if (/["“”„]/.test(q)) throw Error("--quote må ikke indeholde dobbelte anførselstegn (brug ')");
-  if (/<!--|-->/.test(q)) throw Error('--quote må ikke indeholde HTML-kommentarer');
+  // CodeQL #397: et regex for HTML-kommentarer misser varianter som `--!>`. Citatet er
+  // ejerens ord og skal aldrig kunne lukke eller åbne markøren, så < og > afvises helt.
+  if (/[<>]/.test(q)) throw Error('--quote må ikke indeholde < eller >');
   if (/[`~]/.test(q)) throw Error('--quote må ikke indeholde ` eller ~ (markdown-kode tæller ikke i byggestoppet)');
   return { issue: n, area: a, quote: q };
 }

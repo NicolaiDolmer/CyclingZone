@@ -28,7 +28,7 @@ export default function FatigueForecast({
   label?: string | null;
 }) {
   const { t } = useTranslation("training");
-  if (!entry || !Number.isFinite(entry.fatigue)) return null;
+  if (entry?.fatigue == null || !Number.isFinite(entry.fatigue)) return null;
   const tone = forecastTone(entry);
   const value = Math.round(entry.fatigue);
   const bandText = t(`forecast.band_${tone}`);

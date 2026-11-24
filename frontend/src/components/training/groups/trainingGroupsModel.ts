@@ -1,8 +1,10 @@
 // trainingGroupsModel — ren logik bag traeningsgrupper (#6000). Ingen React,
 // ingen fetch, saa node --test kan koere den uden en browser.
 
+import type { RotationPlan } from "../r5/programR5Model.ts";
+
 export type GroupMember = { riderId: string; followsGroup: boolean };
-export type TrainingGroup = {
+export type TrainingGroup = Partial<RotationPlan> & {
   id: string;
   name: string;
   days: Record<string, unknown> | null;
@@ -66,13 +68,15 @@ export function groupNameByRider(groups: readonly TrainingGroup[]): Map<string, 
 
 // Mockup pin 2: "Fatigue tonight" for en gruppe = gruppens mest traette rytter.
 export function groupForecastEntry(
-  riders: Record<string, ForecastEntryLike> | null | undefined,
+  riders: Record<string, Omit<ForecastEntryLike, "fatigue"> & { fatigue: number | null }> | null | undefined,
   memberIds: readonly string[],
 ): ForecastEntryLike | null {
   let top: ForecastEntryLike | null = null;
   for (const id of memberIds) {
     const entry = riders?.[id];
-    if (entry && Number.isFinite(entry.fatigue) && (!top || entry.fatigue > top.fatigue)) top = entry;
+    if (entry?.fatigue != null && Number.isFinite(entry.fatigue) && (!top || entry.fatigue > top.fatigue)) {
+      top = { ...entry, fatigue: entry.fatigue };
+    }
   }
   return top;
 }
