@@ -1,0 +1,22 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Market",
+      "area": "interface",
+      "en": {
+        "title": "Full ability names on the market",
+        "body": "Auctions and transfers use full ability names in tables, sorting choices and swap previews."
+      },
+      "da": {
+        "title": "Fulde evnenavne på markedet",
+        "body": "Auktioner og transfers bruger fulde evnenavne i tabeller, sorteringsvalg og forhåndsvisning af bytter."
+      },
+      "refs": [
+        8651
+      ]
+    }
+  ]
+}
