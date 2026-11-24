@@ -731,16 +731,23 @@ for (const atomic of [false, true]) {
       offer_amount: 200, status: "awaiting_confirmation", buyer_confirmed: false, seller_confirmed: true });
     const full = () => { throw new Error("club_roster_full"); };
     const client = makeSupabase(db, atomic ? { claimTransfer: full } : { beforeRiderUpdate: full });
-    const result = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer",
+    const notifications = [];
+    const notifyTeamOwner = async (...args) => notifications.push(args);
+    const result = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer", notifyTeamOwner,
       now: new Date("2026-11-24T10:00:00Z") });
     assert.equal(result.ok, false);
     assert.equal(result.status, 409);
     assert.equal(result.code, "club_roster_full");
     assert.equal(db.transfer_offers[0].status, "withdrawn");
-    const retry = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer",
+    assert.deepEqual(notifications.map(([team, type, , , id, metadata]) => [team, type, id, metadata.messageCode]), [
+      ["buyer", "transfer_offer_rejected", "offer-1", "notif.transfer.issue.clubRosterFull"],
+      ["seller", "transfer_offer_rejected", "offer-1", "notif.transfer.issue.clubRosterFull"],
+    ]);
+    const retry = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer", notifyTeamOwner,
       now: new Date("2026-11-24T10:01:00Z") });
     assert.equal(retry.ok, false);
     assert.notEqual(retry.code, "already_confirmed");
+    assert.equal(notifications.length, 2);
     assert.equal(db.riders.find(rider => rider.id === "rider-1").team_id, "seller");
     assert.equal(client._finance.length, 0);
   });
@@ -994,6 +1001,29 @@ test("#2176: en auktion der starter under byttet stopper det før betaling", asy
   assert.equal(db.riders.find((r) => r.id === "rider-1").team_id, "seller");
   assert.equal(supabase._finance.length, 0);
   assert.equal(db.swap_offers[0].status, "withdrawn");
+});
+
+test("#8034: a club capacity rejection cancels the swap and notifies both parties", async () => {
+  const db = lockedSwapDb();
+  const supabase = makeSupabase(db, {
+    claimSwap: () => { throw Object.assign(new Error("club_roster_full"), { details: "seller" }); },
+  });
+  const notifications = [];
+  const result = await confirmSwapOffer({
+    supabase, swapId: "swap-1", confirmingTeamId: "buyer",
+    notifyTeamOwner: async (...args) => notifications.push(args),
+    now: new Date("2026-11-24T10:00:00Z"),
+  });
+  assert.equal(result.status, 409);
+  assert.equal(result.code, "club_roster_full");
+  assert.equal(db.swap_offers[0].status, "withdrawn");
+  assert.deepEqual(notifications.map(([team, type, , , id, metadata]) => [team, type, id, metadata.titleCode, metadata.messageCode, metadata.riderId]), [
+    ["seller", "transfer_offer_rejected", "swap-1", "notif.transfer.issue.swapTitle", "notif.transfer.issue.clubRosterFull", "buyer-rider-1"],
+    ["buyer", "transfer_offer_rejected", "swap-1", "notif.transfer.issue.swapTitle", "notif.transfer.issue.clubRosterFull", "buyer-rider-1"],
+  ]);
+  assert.equal(db.riders.find(rider => rider.id === "rider-1").team_id, "seller");
+  assert.equal(db.riders.find(rider => rider.id === "buyer-rider-1").team_id, "buyer");
+  assert.equal(supabase._finance.length, 0);
 });
 
 test("beta cash-swap committed receipt prevents either legacy payment leg",async()=>{

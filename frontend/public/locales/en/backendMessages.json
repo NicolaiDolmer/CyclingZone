@@ -512,6 +512,7 @@
         "sellerNoLongerOwns": "{riderName} could not be completed because the rider is no longer on the seller's team.",
         "sellerSquadTooSmall": "{riderName} could not be sold because the seller would otherwise drop below {minRiders} riders in Division {division}.",
         "sellerSquadRiskTooSmall": "{riderName} could not be sold because the seller would otherwise drop below {minRiders} riders once riders leaving at the next season change (contract expiry or retirement risk) are counted.",
+        "clubRosterFull": "The buying club has no free places. Sell or release a rider first.",
         "buyerSquadFull": "{riderName} could not be transferred because the buyer's team is already full.",
         "buyerCannotAfford": "The deal on {riderName} could not be completed because the buyer lacks funds.",
         "offeredMoved": "{offeredName} is no longer available for the swap.",

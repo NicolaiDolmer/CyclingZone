@@ -512,6 +512,7 @@
         "sellerNoLongerOwns": "{riderName} n'a pas pu être finalisé car le coureur n'est plus dans l'équipe du vendeur.",
         "sellerSquadTooSmall": "{riderName} n'a pas pu être vendu car le vendeur descendrait sinon sous {minRiders} coureurs en division {division}.",
         "sellerSquadRiskTooSmall": "{riderName} n'a pas pu être vendu car le vendeur descendrait sinon sous {minRiders} coureurs une fois comptés les coureurs qui partent au prochain changement de saison (fin de contrat ou risque de retraite).",
+        "clubRosterFull": "Le club acheteur n’a plus de place. Vendez ou libérez d’abord un coureur.",
         "buyerSquadFull": "{riderName} n'a pas pu être transféré car l'équipe de l'acheteur est déjà complète.",
         "buyerCannotAfford": "L'accord sur {riderName} n'a pas pu être finalisé car l'acheteur manque de fonds.",
         "offeredMoved": "{offeredName} n'est plus disponible pour l'échange.",

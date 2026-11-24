@@ -592,6 +592,19 @@ test("swap ownership is atomic regardless of the auto-accept flag", async () => 
   await assert.rejects(claimSwapUnderTeamLock(odd, args), /unexpected status/);
 });
 
+for (const marketBeta of [false, true]) {
+  test(`#8034: swap claim preserves club capacity errors in ${marketBeta ? "paid" : "legacy"} mode`, async () => {
+    const client = fakeSupabase({ rpc: () => ({
+      data: null, error: { code: "23514", message: "club_roster_full", details: "A" },
+    }) });
+    const result = await claimSwapUnderTeamLock(client, {
+      offeredRiderId: "R1", requestedRiderId: "R2", proposingTeamId: "A", receivingTeamId: "B",
+      marketBeta, now: "2026-11-24T10:00:00.000Z",
+    });
+    assert.deepEqual(result, { issue: { code: "club_roster_full", teamId: "A" } });
+  });
+}
+
 test("listing gate uses the current rider owner", async () => {
   const client = fakeSupabase({ flag: "on", respond: table => ({ data: table === "riders" ? { id: "R1", team_id: "C" } : null, error: null }) });
   const issue = await getOfferAutoAcceptIssue(client, { listing: { id: "L1", rider_id: "R1", seller_team_id: "A", status: "open", auto_accept_price: 2 }, offerAmount: 2 });

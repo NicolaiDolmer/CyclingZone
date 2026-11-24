@@ -399,6 +399,10 @@ function describeSwapIssue(issue, { offered, requested }) {
   const requestedName = `${requested.firstname} ${requested.lastname}`;
   const cancelTitle = { notificationTitle: "Swap cancelled", notificationTitleCode: "notif.transfer.issue.swapTitle" };
 
+  if (issue.code === "club_roster_full") {
+    return { ...clubRosterFull, ...cancelTitle };
+  }
+
   if (issue.code === "offered_rider_moved") {
     return {
       error: "Your offered rider is no longer on your team. The swap was cancelled",
@@ -437,6 +441,14 @@ function describeSwapIssue(issue, { offered, requested }) {
     notificationParams: { offeredName, requestedName },
   };
 }
+
+const clubRosterFull = {
+  error: "The buying club has no free places. Sell or release a rider first.",
+  notificationTitle: "Transfer cancelled",
+  notificationTitleCode: "notif.transfer.issue.title",
+  notificationMessage: "The buying club has no free places. Sell or release a rider first.",
+  notificationMessageCode: "notif.transfer.issue.clubRosterFull",
+};
 
 // #2174 · Byg notify-metadata fra en describe*-issue-payload.
 function issueNotificationMetadata(message, riderId = null) {
@@ -667,7 +679,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     }
   } catch (error) {
     if (error && typeof error === "object" && "message" in error && error.message === "club_roster_full") {
-      return failure(409, "The buying club has no free places. Sell or release a rider first.", "club_roster_full");
+      return failure(409, clubRosterFull.error, "club_roster_full");
     }
     throw error;
   }
@@ -1007,7 +1019,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     const meta = issueNotificationMetadata(message, incomingRider.id);
     await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id, meta);
     await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id, meta);
-    return failure(400, message.error, claimIssue.code, "errorParams" in message ? { errorParams: message.errorParams } : {});
+    return failure(claimIssue.code === "club_roster_full" ? 409 : 400, message.error, claimIssue.code, "errorParams" in message ? { errorParams: message.errorParams } : {});
   }
   const movedOffered = lockedSwap?.data ?? null;
 
@@ -1119,7 +1131,7 @@ export async function confirmTransferOffer({
   supabase,
   offerId,
   confirmingTeamId,
-  notifyTeamOwner,
+  notifyTeamOwner = NOOP,
   logActivity = NOOP,
   notifyDiscordHistory = NOOP,
   auditCtx = null,
@@ -1218,7 +1230,13 @@ export async function confirmTransferOffer({
       .eq("offer_amount",confirmedOffer.offer_amount);
     recovery = confirmedOffer.counter_amount == null ? recovery.is("counter_amount",null)
       : recovery.eq("counter_amount",confirmedOffer.counter_amount);
-    await expectMutation(recovery);
+    const withdrawnOffer = await expectMaybeSingle(recovery.select("id"));
+    if (withdrawnOffer && result.code === "club_roster_full") {
+      const meta = issueNotificationMetadata(clubRosterFull, confirmedOffer.rider_id);
+      for (const teamId of [confirmedOffer.buyer_team_id, confirmedOffer.seller_team_id]) {
+        await notifyTeamOwner(teamId, "transfer_offer_rejected", clubRosterFull.notificationTitle, clubRosterFull.notificationMessage, confirmedOffer.id, meta);
+      }
+    }
   }
   return result;
 }

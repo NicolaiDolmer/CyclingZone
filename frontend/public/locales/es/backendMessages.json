@@ -512,6 +512,7 @@
         "sellerNoLongerOwns": "No se pudo completar lo de {riderName} porque el ciclista ya no está en el equipo del vendedor.",
         "sellerSquadTooSmall": "{riderName} no se pudo vender porque el vendedor bajaría de {minRiders} ciclistas en la División {division}.",
         "sellerSquadRiskTooSmall": "{riderName} no se pudo vender porque el vendedor bajaría de {minRiders} ciclistas una vez contados los que se van en el próximo cambio de temporada (fin de contrato o riesgo de retirada).",
+        "clubRosterFull": "El club comprador no tiene plazas libres. Vende o libera a un ciclista primero.",
         "buyerSquadFull": "{riderName} no se pudo traspasar porque el equipo del comprador ya está lleno.",
         "buyerCannotAfford": "El trato por {riderName} no se pudo completar porque el comprador no tiene fondos.",
         "offeredMoved": "{offeredName} ya no está disponible para el intercambio.",

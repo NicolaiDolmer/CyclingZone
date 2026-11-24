@@ -89,12 +89,12 @@ test("computer: navnecellen er kun flag + navn, status staar fuldt skrevet i sin
   for (const row of rows) {
     const name = row.slice(row.indexOf('data-testid="r5-name-cell"'), row.indexOf("</td>", row.indexOf('data-testid="r5-name-cell"')));
     assert.match(name, /class="fi fi-/, "flaget");
-    assert.doesNotMatch(name, /r5-row-status|Høj skaderisiko|Under 23/, "intet andet end navnet");
+    assert.doesNotMatch(name, /r5-row-status|Høj skaderisiko|U23/, "intet andet end navnet");
   }
-  assert.match(rows[0], /data-status="u23"[^>]*>Under 23</);
+  assert.match(rows[0], /data-status="u23"[^>]*>U23</);
   assert.match(rows[1], /data-status="injuryRisk"[^>]*>Høj skaderisiko</);
   assert.match(rows[1], /data-status="days70"[^>]*>2 dage på 70\+</);
-  assert.doesNotMatch(html, />(U23|JR|AKAD|UDLØB|SKD)</, "ingen forkortede maerker");
+  assert.doesNotMatch(html, />(JR|AKAD|UDLØB|SKD)</, "andre statusmaerker forkortes ikke");
   assert.doesNotMatch(html, /\{[a-z]+\}|\{\{/i, "ICU-pladsholdere udfyldt");
 });
 
