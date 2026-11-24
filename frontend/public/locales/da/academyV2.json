@@ -6,6 +6,7 @@
       "intake": "Ugens optag",
       "talents": "Dine talenter",
       "ledger": "Akademi-regnskab",
+      "profileAndAge": "Profil og alder",
       "profile": "Profil"
     },
     "stats": {
@@ -38,18 +39,9 @@
     "age": {
       "label": "Aldersfokus",
       "mixed": "Blandet",
-      "distributionLabel": "Forventet optag pr. alder",
-      "row": "{age}: {share}",
-      "share": {
-        "many": "mange",
-        "some": "nogle",
-        "few": "få"
-      },
-      "intro": "Vælg den alder, dine ugentlige kandidater hælder mod. Alle aldre dukker stadig op.",
-      "toU23": "19-årige kommer altid på U23-truppen.",
+      "intro": "Vælg en alder for at gøre den mere sandsynlig i ugens optag. Blandet følger det almindelige træk. Andre aldre kan stadig dukke op.",
       "inline": "aldersfokus {focus}",
-      "errorTitle": "Akademiets profil kunne ikke hentes",
-      "errorBody": "Intet blev ændret. Genindlæs siden for at prøve igen."
+      "errorTitle": "Akademiets profil kunne ikke hentes"
     }
   }
 }

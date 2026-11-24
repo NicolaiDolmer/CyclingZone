@@ -5,7 +5,6 @@ import {
   ACADEMY_PAGE_V2_FLAG_KEY,
   AGE_FOCUS_OPTIONS,
   ageFocusChoice,
-  ageFocusDistribution,
   ageFocusForSave,
   buildTalentOrigins,
   ownAcademyTalents,
@@ -44,18 +43,6 @@ test("talentets trup: riders.squad først, ellers sæsonalderen", () => {
   assert.equal(talentSquad({ squad: null, birthdate: null }, null), null);
 });
 
-test("fordeling pr. alder: Blandet efter skitsen, et valgt fokus fylder mest, kun ord", () => {
-  const line = (focus: string | null) => ageFocusDistribution(focus).map((r) => `${r.age}:${r.share}:${r.squad}`).join(" ");
-  assert.equal(line("mixed"), "16:many:junior 17:some:junior 18:some:junior 19:few:u23");
-  assert.equal(line(null), line("mixed"), "Blandet er standard (null)");
-  assert.equal(line("17"), "16:few:junior 17:many:junior 18:few:junior 19:few:u23");
-  assert.equal(line("19"), "16:few:junior 17:few:junior 18:few:junior 19:many:u23");
-  for (const focus of ["mixed", "16", "17", "18", "19"]) {
-    const rows = ageFocusDistribution(focus);
-    assert.equal(rows.filter((r) => r.share === "many").length, 1, `${focus}: én alder fylder mest`);
-    for (const r of rows) assert.ok(["many", "some", "few"].includes(r.share), "kun kvalitative ord");
-  }
-});
 
 test("Kom via: signeret tilbud vinder, ellers vundet ungdomsauktion, ellers intet", () => {
   const origins = buildTalentOrigins({

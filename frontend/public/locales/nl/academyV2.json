@@ -6,6 +6,7 @@
       "intake": "Instroom van deze week",
       "talents": "Jouw talenten",
       "ledger": "Academieboekhouding",
+      "profileAndAge": "Profiel en leeftijd",
       "profile": "Profiel"
     },
     "stats": {
@@ -38,18 +39,9 @@
     "age": {
       "label": "Leeftijdsfocus",
       "mixed": "Gemengd",
-      "distributionLabel": "Verwachte instroom per leeftijd",
-      "row": "{age}: {share}",
-      "share": {
-        "many": "veel",
-        "some": "enkele",
-        "few": "weinig"
-      },
-      "intro": "Kies de leeftijd waar je wekelijkse kandidaten naar neigen. Alle leeftijden blijven voorkomen.",
-      "toU23": "19-jarigen gaan altijd naar de U23-ploeg.",
+      "intro": "Kies een leeftijd om de kans daarop bij de wekelijkse instroom te vergroten. Gemengd gebruikt de gebruikelijke trekking. Andere leeftijden blijven mogelijk.",
       "inline": "leeftijdsfocus {focus}",
-      "errorTitle": "Het academieprofiel kon niet worden geladen",
-      "errorBody": "Er is niets gewijzigd. Laad de pagina opnieuw om het nog eens te proberen."
+      "errorTitle": "Het academieprofiel kon niet worden geladen"
     }
   }
 }
