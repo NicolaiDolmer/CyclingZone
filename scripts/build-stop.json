@@ -540,11 +540,6 @@
       "why": "Ejer-go 25/11 (PC1): forsiden statisk + CDN-cachet, byg i dag. https://github.com/NicolaiDolmer/CyclingZone/issues/8584"
     },
     {
-      "issue": 7659,
-      "area": "web-experience",
-      "why": "Ejer-go 25/11 (PC1): Supabase-besparelser/ranglisten #7664→#8003 i dag. https://github.com/NicolaiDolmer/CyclingZone/issues/8584"
-    },
-    {
       "issue": 8660,
       "area": "web-experience",
       "why": "Ejer-go 25/11 (PC1): flag-løkken rettes i dag. https://github.com/NicolaiDolmer/CyclingZone/issues/8584"
