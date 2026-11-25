@@ -350,6 +350,7 @@ function renderNotificationMessage(notification, tBackend) {
   return notification.message;
 }
 
+/** @type {Map<string, {top: number, expanded: Set<string>}>} */
 const inboxScrollByEntry = new Map();
 
 export default function NotificationsPage() {
@@ -426,7 +427,7 @@ export default function NotificationsPage() {
   // "ingen notifikationer". ErrorState + retry gør fejlen synlig.
   const [notifLoadError, setNotifLoadError] = useState(false);
   const mineFilterParam = searchParams.get("mineFilter");
-  const mineFilter = mineFilterParam === "unread" || Object.hasOwn(MINE_FILTER_TYPES, mineFilterParam)
+  const mineFilter = mineFilterParam && (mineFilterParam === "unread" || Object.hasOwn(MINE_FILTER_TYPES, mineFilterParam))
     ? mineFilterParam
     : "all";
   const [markingAll, setMarkingAll] = useState(false);
@@ -458,13 +459,17 @@ export default function NotificationsPage() {
   const [feedLoaded, setFeedLoaded] = useState(false);
   const [feedLoadError, setFeedLoadError] = useState(false);
   const feedFilterParam = searchParams.get("feedFilter");
-  const feedFilter = Object.hasOwn(FEED_FILTER_TYPES, feedFilterParam) ? feedFilterParam : "all";
+  const feedFilter = feedFilterParam && Object.hasOwn(FEED_FILTER_TYPES, feedFilterParam) ? feedFilterParam : "all";
 
   // Skal handles tab — kanonisk "kræver handling"-summary (#271 Slice A).
   // Hook'en henter + realtime-opdaterer via /api/inbox/pending, så badge-tallet
   // matcher Dashboard "Næste træk" og Min Aktivitet uden duplikeret logik.
   const { pending, loading: pendingLoading, loaded: pendingLoaded } = useActionSummary();
 
+  /**
+   * @param {"mineFilter" | "feedFilter"} key
+   * @param {string} value
+   */
   function setInboxFilter(key, value) {
     setSearchParams(previous => {
       const next = new URLSearchParams(previous);
@@ -477,14 +482,17 @@ export default function NotificationsPage() {
   function rememberInboxPosition() {
     // Store the history entry's position before the destination unmounts the list.
     inboxScrollByEntry.set(entryKey, { top: window.scrollY, expanded: expandedAggregates });
-    if (inboxScrollByEntry.size > 20) inboxScrollByEntry.delete(inboxScrollByEntry.keys().next().value);
+    const oldest = inboxScrollByEntry.keys().next().value;
+    if (inboxScrollByEntry.size > 20 && oldest !== undefined) inboxScrollByEntry.delete(oldest);
   }
 
+  /** @param {string} destination */
   function navigateFromInbox(destination) {
     rememberInboxPosition();
     navigate(destination);
   }
 
+  /** @param {import("react").MouseEvent<HTMLDivElement>} event */
   function rememberEmbeddedLink(event) {
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey ||
         !(event.target instanceof Element)) return;
@@ -498,10 +506,11 @@ export default function NotificationsPage() {
     (tab === "ligaen" && feedLoaded && !feedLoading && !feedLoadError) ||
     (tab === "skal_handles" && pendingLoaded && !pendingLoading);
   useLayoutEffect(() => {
-    if (navigationType !== "POP" || !listReady || !inboxScrollByEntry.has(entryKey)) return;
-    const { top } = inboxScrollByEntry.get(entryKey);
+    if (navigationType !== "POP" || !listReady) return;
+    const saved = inboxScrollByEntry.get(entryKey);
+    if (!saved) return;
     inboxScrollByEntry.delete(entryKey);
-    window.scrollTo({ top, behavior: "instant" });
+    window.scrollTo({ top: saved.top, behavior: "instant" });
   }, [entryKey, listReady, navigationType]);
 
   useEffect(() => { loadNotifications(); }, []);

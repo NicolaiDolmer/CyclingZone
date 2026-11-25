@@ -137,13 +137,15 @@ test("Tilbage genskaber Indbakkens filter og position efter en løbsbesked", asy
     message: "Resultatet er klar.",
     related_id: index === 17 ? RACE_ID : `other-race-${index}`,
     user_id: TEST_USER.id,
-    is_read: false,
+    is_read: index === 0,
     created_at: RESULT_AT,
     metadata: {},
   }));
   await page.route("**/rest/v1/notifications**", route => json(route, route.request().method() === "GET" ? rows : []));
   await login(page);
   await page.goto("/notifications");
+  // Verify the app restores the list even when native history scroll is unavailable.
+  await page.evaluate(() => { history.scrollRestoration = "manual"; });
   const filter = page.locator('select:has(option[value="unread"])');
   await filter.selectOption("unread");
   const notification = page.getByText(targetTitle, { exact: true });
@@ -152,10 +154,11 @@ test("Tilbage genskaber Indbakkens filter og position efter en løbsbesked", asy
   expect(originalTop).toBeGreaterThan(250);
   await notification.click();
   await expect(page).toHaveURL(new RegExp(`/races/${RACE_ID}`));
-
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.goBack();
   await expect(filter).toHaveValue("unread");
   await expect.poll(() => page.evaluate(expected => Math.abs(window.scrollY - expected), originalTop)).toBeLessThanOrEqual(2);
+  await expect(page.getByText("Løbsbesked 1", { exact: true })).toHaveCount(0);
   if (process.env.INBOX_BACK_EVIDENCE) {
     await page.screenshot({ path: evidenceShotPath(`pr-screens/8280-inbox-back/after-${isPhone ? 390 : 1440}.png`) });
   }
