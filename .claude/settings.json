@@ -160,6 +160,11 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/block-unsafe-delete.sh\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/block-direct-pr-update.mjs\"",
+            "timeout": 5
           }
         ]
       },

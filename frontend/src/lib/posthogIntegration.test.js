@@ -48,6 +48,23 @@ const vercelConfig = JSON.parse(
   readFileSync(join(__dirname, "..", "..", "vercel.json"), "utf8"),
 );
 
+test("the capture bridge is inert before the optional SDK and forwards to its current gate", async () => {
+  const bridge = await import(new URL("./posthogCapture.ts?test", import.meta.url).href);
+  assert.equal(bridge.isPosthogCapturing(), false);
+  assert.doesNotThrow(() => bridge.capturePosthogEvent("fixture"));
+  const capture = test.mock.fn();
+  let allowed = false;
+  bridge.registerPosthogCapture({ isCapturing: () => allowed, capture });
+  const properties = { example: true };
+  const options = { userId: "fixture-user" };
+  bridge.capturePosthogEvent("fixture", properties, options);
+  assert.equal(capture.mock.callCount(), 0);
+  allowed = true;
+  assert.equal(bridge.isPosthogCapturing(), true);
+  bridge.capturePosthogEvent("fixture", properties, options);
+  assert.deepEqual(capture.mock.calls[0].arguments, ["fixture", properties, options]);
+});
+
 test("PostHog er slået fra uden PROD (og dermed i test/dev)", () => {
   assert.equal(POSTHOG_ENABLED, false);
 });
@@ -192,7 +209,7 @@ function installFakeBrowser() {
   globalThis.localStorage = localStorage;
   globalThis.sessionStorage = sessionStorage;
   globalThis.fetch = async (url, options) => {
-    sent.push({ url: String(url), body: options?.body ? JSON.parse(options.body) : null });
+    sent.push({ url: String(url), body: options?.body ? JSON.parse(options.body) : null, keepalive: options?.keepalive });
     return { status: 200, ok: true, text: async () => "{}", json: async () => ({}) };
   };
   const restore = () => {
@@ -407,7 +424,7 @@ test("vercel.json: /ingest-rewritene peger på EU og ligger før SPA-fallbacken"
 // --- logEvent.js: to adskilte gates ------------------------------------------
 
 test("logEvent.js spejler til PostHog uden at røre Postgres-skrivningen", () => {
-  assert.match(logEventSource, /import \{ capturePosthogEvent, isPosthogCapturing \} from "\.\/posthogClient\.js"/);
+  assert.match(logEventSource, /import \{ capturePosthogEvent, isPosthogCapturing \} from "\.\/posthogCapture\.ts"/);
   const inserts = logEventSource.match(/supabase\.from\("player_events"\)\.insert\(/g) || [];
   assert.equal(inserts.length, 3, "de tre player_events-inserts skal stå uændrede tilbage");
   const mirrors = logEventSource.match(/mirrorToPosthog\(/g) || [];
@@ -500,6 +517,76 @@ test("the real SDK sends first-touch properties and strips click IDs from URLs",
   } finally {
     env.restore();
   }
+});
+
+test("the real SDK sends only the template URL for field Web Vitals", async () => {
+  const env = installFakeBrowser();
+  try {
+    window.location.href = "https://cyclingzone.org/riders/actual-rider?private_query=value#detail";
+    window.location.pathname = "/riders/actual-rider";
+    Object.defineProperty(document, "referrer", { value: "https://cyclingzone.org/teams/actual-team?internal=1" });
+
+    const { PostHog } = await import("posthog-js-lite");
+    const { buildWebVitalProperties } = await import("./webVitalsPosthog.ts");
+    const client = createPosthogClient(PostHog, "test-project-key");
+    client.identify("11111111-1111-1111-1111-111111111111");
+    await settle();
+    const properties = buildWebVitalProperties({
+      name: "CLS", value: 0.0123, id: "v6-test", navigationType: "navigate",
+      navigationURL: window.location.href,
+    });
+    assert.ok(properties);
+    client.capture("web_vital_measured", properties);
+    await settle();
+
+    const event = env.sent.flatMap(request => request.body?.batch || []).find(item => item.event === "web_vital_measured");
+    assert.ok(event);
+    assert.equal(event.properties.$current_url, "https://cyclingzone.org/riders/:id");
+    assert.equal(event.properties.$pathname, "/riders/:id");
+    assert.doesNotMatch(JSON.stringify(event), /actual-rider|actual-team|private_query/);
+    const request = env.sent.find(entry => entry.body?.batch?.some(item => item.event === "web_vital_measured"));
+    assert.equal(request?.keepalive, true);
+    const identityRequest = env.sent.find(entry => entry.body?.batch?.some(item => item.event === "$identify"));
+    assert.notEqual(identityRequest?.keepalive, true);
+  } finally {
+    env.restore();
+  }
+});
+
+test("early Web Vital flushes only for its identified account and current consent", async () => {
+  const { readFileSync } = await import("node:fs");
+  const source = readFileSync(new URL("./posthogClient.js", import.meta.url), "utf8");
+  const start = source.indexOf("export function capturePosthogWebVital(");
+  const end = source.indexOf("// KUN den interne UUID", start);
+  let allowed = true;
+  const pendingUserEvents = [];
+  const capture = test.mock.fn();
+  const runtime = {
+    POSTHOG_ENABLED: true,
+    posthogOptedOut: false,
+    identifiedUserId: /** @type {string | null} */ (null),
+    isPosthogCapturing: () => Boolean(runtime.identifiedUserId),
+    pendingUserEvents,
+    MAX_PENDING_USER_EVENTS: 50,
+    WEB_VITAL_EVENT: "web_vital_measured",
+    capture,
+  };
+  const hooks = runInNewContext(source.slice(start, end).replace("export ", "") +
+    "\n({ submit: capturePosthogWebVital, flush: flushPendingUserEvents });", runtime);
+  const accepted = { metric_name: "LCP", metric_value: 1000 };
+  hooks.submit(accepted, "player", () => true);
+  hooks.submit({ metric_name: "INP" }, "player", () => allowed);
+  hooks.submit({ metric_name: "CLS" }, "other-player", () => true);
+  assert.equal(capture.mock.callCount(), 0);
+  assert.equal(pendingUserEvents.length, 3);
+
+  allowed = false;
+  runtime.identifiedUserId = "player";
+  hooks.flush();
+  assert.equal(pendingUserEvents.length, 0);
+  assert.equal(capture.mock.callCount(), 1);
+  assert.equal(capture.mock.calls[0].arguments[0], "web_vital_measured");
+  assert.equal(capture.mock.calls[0].arguments[1], accepted);
 });
 
 test("identify bruger profilens UUID når opslaget af sessionsmetadata fejler", async () => {

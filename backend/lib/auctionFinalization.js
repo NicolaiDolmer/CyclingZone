@@ -19,8 +19,8 @@ import { isSaleLockedForDeal } from "./saleEscrowView6181.js";
 import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { notifyIfContractExpiresThisSeason, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
-import { resolvePendingGraduationOnSale, resolveUnsoldGraduate } from "./academyGraduation.js";
-import { applySeniorSquadFilter, seniorSquadPatch, academyPlacementSquad, squadCapRpcArgs, isYouthSquad } from "./squads.js";
+import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
+import { applySeniorSquadFilter, seniorSquadPatch, academyPlacementSquad, squadCapRpcArgs, isYouthSquad, CLUB_RIDER_CAP } from "./squads.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
 import { safeReconcileOrphanPausedListings, safeResumePausedTransferListings } from "./auctionTransferListPause.ts";
@@ -207,24 +207,6 @@ async function closeAuction({
 // #4484): en ældre 'sold'-række der aldrig blev restemplet må ikke gøre en
 // senere frivillig auktion til en graduate-auktion. Kaster ved læsefejl
 // (expectMaybeSingle) — kalderen ligger før enhver skrivning.
-/**
- * @param {any} supabase
- * @param {{ teamId: string, riderId: string }} args
- * @returns {Promise<boolean>}
- */
-async function hasSoldGraduationRow(supabase, { teamId, riderId }) {
-  const row = await expectMaybeSingle(
-    supabase
-      .from("academy_graduation")
-      .select("status")
-      .eq("team_id", teamId)
-      .eq("rider_id", riderId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-  );
-  return row?.status === "sold";
-}
-
 async function resolveAuctionSellerContext({ supabase, auction }) {
   // #6474: rytteren er allerede hos vinderen (afbrudt tidligere kørsel). Den
   // nuværende ejer er køberen og må aldrig udbetales som sælger. Den egentlige
@@ -487,6 +469,46 @@ async function creditIntakeExpiryCompensationIfNeeded({
 // Retry-sikkerhed: ved success lukkes auktionen 'completed' af kalderen, så en
 // cron-retry ser not_finalizable og stopper. Skulle en retry alligevel nå hertil
 // (crash mellem debit og closeAuction), no-op'er idempotency_key debiten (23505).
+/**
+ * @param {import("@supabase/supabase-js").SupabaseClient} supabase
+ * @param {{id: string, current_bidder_id?: string|null}} auction
+ * @param {string} bidderId
+ * @param {string} squad
+ */
+async function getAuctionPromotionAllowance(supabase, auction, bidderId, squad) {
+  if (auction.current_bidder_id !== bidderId) return 0;
+  const { data, error } = await supabase.rpc("auction_promotion_allowance_7323", {
+    p_auction_id: auction.id, p_team_id: bidderId, p_squad: squad,
+  });
+  if (error) throw new Error(`Could not check the winning bid capacity: ${error.message}`);
+  return Number.isInteger(data) && data > 0 ? data : 0;
+}
+
+/**
+ * @param {import("@supabase/supabase-js").SupabaseClient} supabase
+ * @param {{id: string, current_bidder_id?: string|null}} auction
+ * @param {string} bidderId
+ * @param {Parameters<typeof getIncomingSquadViolation>[0]} buyer
+ */
+async function getAuctionIncomingSquadViolation(supabase, auction, bidderId, buyer) {
+  if (auction.current_bidder_id === bidderId && Object.hasOwn(auction, "reservation_squad")) {
+    // Use projected registrations only to consume a place already reserved.
+    // The incoming half of a swap can register before the outgoing half.
+    buyer = { ...buyer, rider_count: buyer.future_count ?? buyer.rider_count };
+    if ((buyer.club_count ?? 0) >= CLUB_RIDER_CAP) {
+      const { data: registeredCount, error } = await supabase.rpc("auction_settlement_club_count_8034", { p_team: bidderId });
+      if (error || !Number.isInteger(registeredCount)) {
+        throw new Error(`Could not check the winning bid club capacity: ${error?.message ?? "invalid count"}`);
+      }
+      buyer.club_count = registeredCount;
+    }
+  }
+  const violation = getIncomingSquadViolation(buyer, { softCapBuffer: 0 });
+  if (!violation || violation.scope === "club") return violation;
+  const allowance = await getAuctionPromotionAllowance(supabase, auction, bidderId, "senior");
+  return getIncomingSquadViolation(buyer, { softCapBuffer: allowance }) ? violation : null;
+}
+
 async function tryPlaceYouthWinnerOnSenior({
   supabase,
   auction,
@@ -501,44 +523,42 @@ async function tryPlaceYouthWinnerOnSenior({
   awardXP,
   squadLimits = AUCTION_SQUAD_LIMITS,
 }) {
-  const baseBuyerState = await getTeamMarketState(supabase, bidderId);
-  const buyer = {
-    ...baseBuyerState,
-    squad_limits: squadLimits[baseBuyerState.division || 3] || baseBuyerState.squad_limits,
-  };
-
-  if (!buyer || buyer.balance < price) {
-    return { placed: false, reason: "insufficient_balance" };
-  }
-  // #16 altid-åben handel: intet transfervindue → hard cap ved handlen (buffer 0).
-  const squadViolation = getIncomingSquadViolation(buyer, { softCapBuffer: 0 });
-  if (squadViolation) {
-    return { placed: false, reason: "squad_full" };
-  }
-
-  // Placér på senior: team_id + trup-patchen (så han tæller mod 30-cap og
-  // behandles som senior), senior-kontrakt (kontraktløs free agent → standard-
-  // kontrakt via contractOnAcquirePatch). Ingen defer-logik: en fri ungdomsrytter
-  // kan ikke være i et aktivt løb for en sælger (der er ingen sælger).
-  // #4619: squad OG is_academy skrives sammen (seniorSquadPatch) — efter
-  // backfill'en ville et bart is_academy=false efterlade squad='u23'/'junior',
-  // og rytteren ville optage en ungdomsplads på vinderens loft.
   const winnerContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
-  // #3580: verificér at ejerskabsskiftet FAKTISK ramte en række, FØR debiten
-  // nedenfor kører — se expectMutationAffectingRows' doc-comment i marketUtils.js.
-  await expectMutationAffectingRows(
-    supabase
-      .from("riders")
-      .update({
-        team_id: bidderId,
-        pending_team_id: null,
-        acquired_at: actualEnd,
-        ...seniorSquadPatch(),
-        ...winnerContractPatch,
-      })
-      .eq("id", rider.id),
-    { context: `youth_senior_placement auction=${auction.id} rider=${rider.id}` }
-  );
+  // On retry the delivered rider already occupies the place. Continue into
+  // the idempotent debit without treating the delivery as another acquisition.
+  if (!riderAlreadyWithAuctionWinner(auction) || rider.is_academy) {
+    const baseBuyerState = await getTeamMarketState(supabase, bidderId);
+    const buyer = {
+      ...baseBuyerState,
+      squad_limits: squadLimits[baseBuyerState.division || 3] || baseBuyerState.squad_limits,
+    };
+    if (buyer.balance < price) return { placed: false, reason: "insufficient_balance" };
+    const squadViolation = await getAuctionIncomingSquadViolation(supabase, auction, bidderId, buyer);
+    if (squadViolation) {
+      return { placed: false, reason: squadViolation.scope === "club" ? "club_full" : "squad_full" };
+    }
+
+    try {
+      await expectMutationAffectingRows(
+        supabase
+          .from("riders")
+          .update({
+            team_id: bidderId,
+            pending_team_id: null,
+            acquired_at: actualEnd,
+            ...seniorSquadPatch(),
+            ...winnerContractPatch,
+          })
+          .eq("id", rider.id),
+        { context: `youth_senior_placement auction=${auction.id} rider=${rider.id}` }
+      );
+    } catch (error) {
+      if (error?.message === "club_roster_full") return { placed: false, reason: "club_full" };
+      // The locked database gate also sees places reserved by other auctions.
+      if (error?.message === "squad_full") return { placed: false, reason: "squad_full" };
+      throw error;
+    }
+  }
 
   await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "youth_auction_senior_win" });
   await closeTransferListingsForRiders(supabase, [rider.id], "sold");
@@ -635,6 +655,36 @@ async function tryPlaceYouthWinnerOnSenior({
 // intake-udløbs-auktioner, jf. academyIntakeExpirySweep), krediteres bud-
 // summen den manager i stedet for at forblive et rent sink — kompensation
 // for det udløbne intake-tilbud (ejer-beslutning 18/7). Gælder BEGGE placeringer.
+/**
+ * @param {{
+ *   supabase: import("@supabase/supabase-js").SupabaseClient,
+ *   auction: { id: string },
+ *   actualEnd: string,
+ *   bidderId: string,
+ *   rider: { id: string, firstname?: string | null, lastname?: string | null },
+ *   notifyTeamOwner: Parameters<typeof auctionNotify>[0],
+ *   slots: number,
+ *   code: string
+ * }} args
+ */
+async function cancelYouthAuctionNoRoom({ supabase, auction, actualEnd, bidderId, rider, notifyTeamOwner, slots, code }) {
+  await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false, currentBidderId: undefined });
+  await auctionNotify(
+    notifyTeamOwner,
+    bidderId,
+    "auction_lost",
+    {
+      titleCode: "notif.auction.cancelledNoRoomTitle",
+      messageCode: "notif.auction.cancelledNoRoomMessage",
+      messageParams: { rider: [rider.firstname, rider.lastname].filter(Boolean).join(" "), slots },
+    },
+    auction.id,
+    { riderId: rider.id },
+  );
+  const riderDeleted = await deleteUnsoldYouthRider({ supabase, rider });
+  return { ok: true, code, auction_id: auction.id, rider_deleted: riderDeleted };
+}
+
 async function finalizeYouthAuctionRecord({
   supabase,
   auction,
@@ -677,19 +727,21 @@ async function finalizeYouthAuctionRecord({
 
   // #2701 SENIOR-FØRST: forsøg senior-placering før akademiet. Har vinderen plads
   // på senior (+ råd), lander rytteren dér med senior-kontrakt.
-  const senior = await tryPlaceYouthWinnerOnSenior({
-    supabase,
-    auction,
-    rider,
-    bidderId,
-    price,
-    actualEnd,
-    activeSeasonNumber,
-    activeSeasonId,
-    notifyTeamOwner,
-    logActivity,
-    awardXP,
-  });
+  const senior = auction.reservation_squad && auction.reservation_squad !== "senior"
+    ? { placed: false, reason: "squad_full" }
+    : await tryPlaceYouthWinnerOnSenior({
+        supabase,
+        auction,
+        rider,
+        bidderId,
+        price,
+        actualEnd,
+        activeSeasonNumber,
+        activeSeasonId,
+        notifyTeamOwner,
+        logActivity,
+        awardXP,
+      });
   if (senior.placed) {
     await creditIntakeExpiryCompensationIfNeeded({
       supabase,
@@ -730,6 +782,10 @@ async function finalizeYouthAuctionRecord({
     return { ok: true, code: "cancelled_insufficient_balance", auction_id: auction.id, rider_deleted: riderDeleted };
   }
 
+  if (senior.reason === "club_full") {
+    return cancelYouthAuctionNoRoom({ supabase, auction, actualEnd, bidderId, rider, notifyTeamOwner, slots: CLUB_RIDER_CAP, code: "club_roster_full" });
+  }
+
   // senior.reason === "squad_full" → senior fuldt. AKADEMI-fallback: placér i
   // akademiet med ungdomskontrakt (samme løn-/kontrakt-model som signAcademyCandidate;
   // akademiryttere bypasser senior-cap + transfervindue).
@@ -744,6 +800,7 @@ async function finalizeYouthAuctionRecord({
   // DEN trups loft (squads.js SQUAD_CAPS) der tælles mod — ikke et fladt akademital.
   const academySquad = academyPlacementSquad(rider.birthdate, activeSeasonNumber);
   const squadArgs = squadCapRpcArgs(academySquad);
+  squadArgs.p_squad_cap += await getAuctionPromotionAllowance(supabase, auction, bidderId, academySquad);
 
   // #1558: cap-check (loft pr. mål-trup, #5432) + balance-check + rider-update
   // (squad + is_academy i én skrivning) + debit sker
@@ -788,6 +845,9 @@ async function finalizeYouthAuctionRecord({
       await closeAuction({ supabase, auction, status: "completed", actualEnd, sellerOwned: false });
       return { ok: true, code: "youth_completed", auction_id: auction.id, academy: true, duplicate: true };
     }
+    if (acqErr.message === "club_roster_full") {
+      return cancelYouthAuctionNoRoom({ supabase, auction, actualEnd, bidderId, rider, notifyTeamOwner, slots: CLUB_RIDER_CAP, code: "club_roster_full" });
+    }
     throw acqErr;
   }
 
@@ -797,27 +857,7 @@ async function finalizeYouthAuctionRecord({
   // Bemærk: bud-gaten (#2701, api.js) blokerer normalt bud når begge er fulde, så
   // dette er nu primært en race-backstop (plads fyldt efter buddet blev afgivet).
   if (acq?.code === "academy_full") {
-    await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
-    await auctionNotify(
-      notifyTeamOwner,
-      bidderId,
-      "auction_lost",
-      {
-        titleCode: "notif.auction.cancelledNoRoomTitle",
-        messageCode: "notif.auction.cancelledNoRoomMessage",
-        // #5432: pladstallet er mål-truppens loft, ikke det gamle flade akademital.
-        messageParams: { rider: `${rider.firstname} ${rider.lastname}`, slots: squadArgs.p_squad_cap },
-      },
-      auction.id,
-      { riderId: rider.id }
-    );
-    const riderDeleted = await deleteUnsoldYouthRider({ supabase, rider });
-    return {
-      ok: true,
-      code: "academy_full",
-      auction_id: auction.id,
-      rider_deleted: riderDeleted,
-    };
+    return cancelYouthAuctionNoRoom({ supabase, auction, actualEnd, bidderId, rider, notifyTeamOwner, slots: squadArgs.p_squad_cap, code: "academy_full" });
   }
 
   // Utilstrækkelig balance (verificeret inde i låsen) → annullér; rytteren blev
@@ -1232,10 +1272,8 @@ async function finalizeAuctionRecord({
     const deferTeamChange =
       (await getRidersInActiveStageRace(supabase, [auction.rider.id])).length > 0;
     // #6474: rytteren tæller allerede med i køberens trup ved en retry (se saldo-tjekket).
-    const squadViolation = riderAlreadyWithWinner ? null : getIncomingSquadViolation(buyer, {
-      // #16 altid-åben handel: intet transfervindue → ingen vindue-grace → hard cap ved handlen.
-      softCapBuffer: 0,
-    });
+    const squadViolation = riderAlreadyWithWinner ? null
+      : await getAuctionIncomingSquadViolation(supabase, auction, effectiveBidderId, buyer);
     if (squadViolation) {
       await closeAuction({
         supabase,
@@ -1630,22 +1668,6 @@ async function finalizeAuctionRecord({
       )
     : null;
 
-  // #6320: afgør FØR nogen skrivning/notifikation om denne usolgte auktion er en
-  // ÆGTE graduate-auktion. #3650 lod et hold sætte sin EGEN akademirytter
-  // (U23/junior) på auktion som et frivilligt salg — sådan en auktion har samme
-  // form (sellerOwned, is_youth=false, rider.is_academy=true), men ingen
-  // grad-række bag sig. Kun createGraduateAuction-auktioner har det: deres
-  // grad-række stemples 'sold' ved oprettelsen (finishGraduation). Uden dette
-  // tjek ramte #4495's oprykning/frigivelse også de frivillige salg, så en
-  // rytter ingen bød på blev rykket op uden managerens valg eller forsvandt fra
-  // holdet ved fuld seniortrup. Opslaget ligger før closeAuction, så en
-  // læsefejl kaster mens auktionen stadig er åben og cron'en kan prøve igen.
-  const soldToBank = Boolean(auction.is_guaranteed_sale && sellerOwned && bankTeam);
-  const isUnsoldGraduateAuction =
-    !soldToBank && !auction.is_youth && sellerOwned && auction.seller_team_id && auction.rider?.is_academy === true
-      ? await hasSoldGraduationRow(supabase, { teamId: auction.seller_team_id, riderId: auction.rider.id })
-      : false;
-
   if (auction.is_guaranteed_sale && sellerOwned && bankTeam) {
     const salePrice = auction.guaranteed_price;
 
@@ -1760,46 +1782,6 @@ async function finalizeAuctionRecord({
     actualEnd,
     sellerOwned,
   });
-
-  // #4495: en GRADUATE-auktion uden bud. createGraduateAuction lader bevidst
-  // rytteren stå is_academy=true (uden for senior-cap) mens auktionen kører, og
-  // dens docblok har hele tiden lovet at finalization sætter is_academy=false
-  // ved salg / fri agent ved ingen bud — men kun vinder-stiens graduatePatch
-  // fandtes. Uden denne gren lukkede auktionen som 'completed', ingen penge
-  // flyttede, og rytteren blev liggende hos sælgeren med is_academy=true mens
-  // grad-rækken allerede var stemplet 'sold': hverken solgt, promoveret,
-  // sluppet eller fri agent (8 fastlåste ryttere på 6 hold målt i prod 31/8).
-  //
-  // EJER-ÆNDRING 6/9: udgangen er IKKE længere "slip" som første svar.
-  // resolveUnsoldGraduate prøver først oprykning til seniortruppen igen med et
-  // FRISKT plads+råd-tjek (samme kriterier som default-kædens promovér-trin) og
-  // slipper kun rytteren hvis truppen er fuld eller saldoen negativ. Manageren
-  // hentede ham selv til akademiet; at han er vokset ud af det er ikke en grund
-  // til at forære ham væk, bare fordi ingen bød.
-  //
-  // Placeret EFTER closeAuction af samme grund som #2456's ungdoms-sletning
-  // (deleteUnsoldYouthRider): først når auktionen er lukket kan et nyt bud
-  // ikke længere lande, så udgangen kan ikke kappe en levende auktion over.
-  // Begge udgange er conditional + idempotent (se resolveUnsoldGraduate), så en
-  // cron-retry på samme auktion ikke rører en rytter der er kommet videre.
-  //
-  // #6320: KUN ægte graduate-auktioner (se isUnsoldGraduateAuction ovenfor). Et
-  // frivilligt salg af egen akademirytter (#3650) uden bud lukker blot som
-  // 'no_bids': rytteren bliver på holdet med uændret is_academy/squad/kontrakt,
-  // og manageren får den almindelige expiredNoBids-besked.
-  if (isUnsoldGraduateAuction) {
-    await resolveUnsoldGraduate(supabase, {
-      teamId: auction.seller_team_id,
-      riderId: auction.rider.id,
-      rider: auction.rider,
-      seasonNumber: activeSeasonNumber,
-      now: new Date(actualEnd),
-      // notifyTeamOwner er positionel her, men objekt-signeret i
-      // notificationService — adaptér, så finalizerens injicerede spy bruges.
-      notify: async ({ teamId, type, title, message, relatedId, metadata }) =>
-        notifyTeamOwner(teamId, type, title, message, relatedId, metadata),
-    });
-  }
 
   return {
     ok: true,

@@ -339,31 +339,65 @@ test("#8666: a withdrawal keeps the saved lineup without reserving a race field"
 });
 
 
-test("#8678: only pending and partial work holds yesterday's number before the deadline", async () => {
+test("#8678: the recorded overnight value remains an estimate until the worker closes the date", async () => {
   const { state, forecastAt } = overdueRotationScenario();
-  const midnight = new Date("2026-11-09T23:00:00.000Z");
-  const justBeforeDeadline = new Date("2026-11-10T00:59:59.999Z");
-  const deadline = new Date("2026-11-10T01:00:00.000Z");
-  const morning = [
-    deadline, new Date("2026-11-10T01:05:00Z"), new Date("2026-11-10T09:00:00Z"),
-  ];
   const recorded = state.rider_condition[0].fatigue;
+  const work = { tick_date: DATE1, team_id: TEAM, season_id: SEASON.id,
+    status: "pending", expected_rider_ids: [RIDER] };
+  state.training_date_work = [work];
   for (const status of ["pending", "partial"]) {
-    state.training_date_work = [{ tick_date: DATE1, team_id: TEAM, season_id: SEASON.id,
-      status, expected_rider_ids: [RIDER] }];
-    for (const now of [midnight, justBeforeDeadline]) {
-      const result = await forecastAt(now);
+    work.status = status;
+    for (const at of ["2026-11-09T23:00:00.000Z", "2026-11-10T00:59:59.999Z", "2026-11-10T01:05:00Z"]) {
+      const result = await forecastAt(new Date(at));
       assert.equal(result.tickDate, DATE2);
-      assert.equal(result.riders[RIDER].fatigueIsActual, true);
+      assert.equal(result.settled, false);
+      assert.notEqual(result.riders[RIDER].fatigueIsActual, true);
       assert.equal(result.riders[RIDER].fatigue, recorded);
     }
-    for (const now of morning) {
-      const result = await forecastAt(now);
-      assert.equal(result.tickDate, DATE2);
-      assert.equal(result.riders[RIDER].fatigueIsActual, undefined);
-      assert.equal(result.riders[RIDER].pendingSlots, undefined);
-    }
   }
+  work.status = "complete";
+  const closed = await forecastAt(new Date("2026-11-10T01:05:00Z"));
+  assert.notEqual(closed.riders[RIDER].fatigue, recorded);
+});
+
+test("#8678: admitting a late rider does not put already settled riders back on hold", async () => {
+  const { state } = scenario({ lock: 4, secondDate: true });
+  await run(state);
+  const work = state.training_date_work.find((row) => row.tick_date === DATE1);
+  const now = new Date("2026-11-09T23:30:00Z");
+  const load = () => loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase), team: state.teams[0], seasonId: SEASON.id, now,
+  });
+  assert.equal(work.status, "complete");
+  assert.ok(state.training_condition_settlements.some((row) => row.rider_id === RIDER && row.tick_date === DATE1));
+  const complete = await load();
+  work.status = "partial";
+  work.expected_rider_ids = [...work.expected_rider_ids, rider(1)];
+  const reopened = await load();
+  assert.deepEqual(reopened.riders[RIDER], complete.riders[RIDER]);
+});
+
+test("#8678: a stage starting during the overnight hold has an explicitly projected start value", async (t) => {
+  for (const [previousDate, now, scheduledAt] of [
+    [DATE1, "2026-11-09T23:15:00Z", "2026-11-10T00:30:00Z"],
+    ["2027-03-27", "2027-03-28T00:15:00Z", "2027-03-28T00:30:00Z"],
+  ]) await t.test(scheduledAt, async () => {
+    const { state } = scenario({ lock: 4, secondDate: true });
+    state.app_config.find((row) => row.key === "fatigue_now_7801").value = "on";
+    const next = state.race_stage_schedule.find((row) => row.game_day === 55);
+    next.scheduled_at = scheduledAt;
+    state.race_entry_days.push({ rider_id: RIDER, team_id: TEAM, season_id: SEASON.id,
+      race_id: next.race_id, game_day: next.game_day });
+    state.training_date_work = [{ tick_date: previousDate, team_id: TEAM, season_id: SEASON.id,
+      status: "partial", expected_rider_ids: [RIDER] }];
+    const outlook = await fatigueOutlookForTeam({
+      supabase: withScheduleJoin(createFake(state).supabase), team: state.teams[0], seasonId: SEASON.id,
+      now: new Date(now), conditions: state.rider_condition,
+      abilityByRider: new Map([[RIDER, state.rider_derived_abilities[0]]]),
+    });
+    assert.ok(Number.isFinite(outlook?.get(RIDER)?.fatigueAtStart));
+    assert.equal(outlook.get(RIDER).fatigueAtStartIsForecast, true);
+  });
 });
 
 test("#8678: absent and completed work both publish today's plan and react to edits", async () => {

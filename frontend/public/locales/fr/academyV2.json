@@ -6,6 +6,7 @@
       "intake": "Recrutement de la semaine",
       "talents": "Tes talents",
       "ledger": "Comptes de l'académie",
+      "profileAndAge": "Profil et âge",
       "profile": "Profil"
     },
     "stats": {
@@ -38,18 +39,9 @@
     "age": {
       "label": "Âge ciblé",
       "mixed": "Mixte",
-      "distributionLabel": "Recrutement attendu par âge",
-      "row": "{age} : {share}",
-      "share": {
-        "many": "beaucoup",
-        "some": "quelques-uns",
-        "few": "peu"
-      },
-      "intro": "Choisis l'âge vers lequel penchent tes candidats hebdomadaires. Tous les âges continuent d'apparaître.",
-      "toU23": "Les coureurs de 19 ans rejoignent toujours l'équipe U23.",
+      "intro": "Choisissez un âge pour le rendre plus probable dans le recrutement de la semaine. Le choix mixte suit le tirage habituel. Les autres âges restent possibles.",
       "inline": "âge ciblé {focus}",
-      "errorTitle": "Le profil du centre de formation n'a pas pu être chargé",
-      "errorBody": "Rien n'a été modifié. Recharge la page pour réessayer."
+      "errorTitle": "Le profil du centre de formation n'a pas pu être chargé"
     }
   }
 }

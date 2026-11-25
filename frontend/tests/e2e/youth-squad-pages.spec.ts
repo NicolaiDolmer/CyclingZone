@@ -104,8 +104,8 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     // Menu-vejen dækkes af "kontakt ON"-testen; her gælder det selve siden.
     await page.goto("/squads/u23");
     await expect(page.getByRole("heading", { name: "E2E Racing U23" })).toBeVisible();
-    // #5631: truppens loft (SQUAD_CAPS.u23 = 12) står i meta-linjen.
-    await expect(page.getByText(`${U23.length}/12`)).toBeVisible();
+    // #5631: meta-linjen viser det nye trup-loft fra #8034.
+    await expect(page.getByText(`${U23.length}/30`)).toBeVisible();
 
     const tabs = page.getByRole("tablist");
     await expect(tabs.getByRole("tab")).toHaveCount(6); // #5631: + Stats
@@ -167,7 +167,7 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     test.skip(testInfo.project.name !== "desktop-chromium", "Tom-tilstanden er ens på alle projekter.");
     await setup(page, { on: true });
     // #5631: bevidst UDEN caps-feltet, så testen samtidig beviser
-    // frontend-fallbacken (SQUAD_CAPS 12/10) for en ældre backend.
+    // frontend-fallbacken (SQUAD_CAPS fra #8034) for en ældre backend.
     await page.route("**/api/youth-squads", (route) => {
       if (preflight(route)) return;
       return json(route, { seasonNumber: 1, squads: { u23: { riderIds: [] }, junior: { riderIds: [] } } });
@@ -178,6 +178,6 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     await expect(page.locator("main").getByRole("link", { name: /Go to academy|Gå til akademiet/ })).toHaveAttribute("href", "/academy");
     await expect(page.locator("main table")).toHaveCount(0);
     // #5631: en tom trup viser stadig sit loft i stedet for at skjule meta-linjen.
-    await expect(page.getByText(/^0\/12$/) /* #8278: HeroStats viser loftet som tallet n/loft */).toBeVisible();
+    await expect(page.getByText(/^0\/30$/) /* #8278: HeroStats viser loftet som tallet n/loft */).toBeVisible();
   });
 });

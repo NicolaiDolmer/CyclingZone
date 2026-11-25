@@ -1,4 +1,6 @@
 {
+  "clubRoster": "Club roster",
+  "clubFull": "Your club has no free places.",
   "title": "Academy",
   "subtitle": "Sign young talent for your U23 and junior teams, and follow what your youth work earns.",
   "slotsU23": "U23 {used}/{max}",

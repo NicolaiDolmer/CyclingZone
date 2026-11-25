@@ -4,10 +4,10 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
+> **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · slet `backup_7401_20261101_riders`, `backup_7488_20261102_riders`, `backup_7508_20261102_notif_ids` (forfaldne) · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (24/11 eftermiddag, PC1):** Startprompt = seneste "Startprompt" på #8584. Claude: prognosefald #8604 + gammel score/løbsudvikling #8476 · selv-verificér og luk #7855/#8386/#8428/#7233/#8434 · rotation-SQL efter aftenkørslen (#8548). Codex: oprykning #7323 + lofter #8034 + bestyrelse #8100 før 28/11 · #8666 rotation-del · akademi #8081 rettelser · tog-vagt #8665. Torsdag: #8449, #7645, sæsonskifte-session. Beslutninger: #8584 + MASTERPLAN.
-> **24/11:** toget låst 03:06-09:15 (patch note 7.506 → rød main); rettet #8664 (`d4407a3`). Tændt: `training_rotation` = beta. Akademiside #8081 IKKE tændt (Fable blokerende). Graduation Day erstattes af automatisk oprykning; Uge 48-rækkefølge i MASTERPLAN. **Åbent:** `backup_7153_wander_*` må ikke slettes; Division 4 A/B/C har 25 hold.
+> **🎯 Next action (tor 26/11, #8584):** 1) Facebook-annonce (ejeren vælger 1 af 3 i Codex' varianter.png; Claude udfylder i Chrome, ejeren trykker Udgiv) → 2) sæsonskifte (#8668+#8605, S6-kalender, mail 1, akademisiden #8081) → 3) #8678 med ejeren → 4) motor (#6649 #7715 #8189 #8609 #8663 #4596 #7644) → 5) W1-W4 (#7947). Fre: moms #4511 + Founder + udgifter + Play Store. Man 30/11: ejer-liste.
+> **24/11:** #8606-migration verificeret. `academy_age_focus_params` = 0,4; akademisiden IKKE tændt (billeder + ejerens ja). Division 4 A/B/C 25 hold løst selv 17:26 (AI-trim efter løb). **Åbent:** `backup_7153_wander_*` må ikke slettes.
 >
 > **🤖 Working agent:** Ingen aktiv session.
 

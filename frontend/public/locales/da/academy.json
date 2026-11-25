@@ -1,4 +1,6 @@
 {
+  "clubRoster": "Klubbens ryttere",
+  "clubFull": "Din klub har ingen ledige pladser.",
   "title": "Akademi",
   "subtitle": "Signér unge talenter til dit U23-hold og dit juniorhold, og følg hvad ungdomsarbejdet giver.",
   "slotsU23": "U23 {used}/{max}",

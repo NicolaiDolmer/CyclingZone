@@ -523,6 +523,31 @@
       "issue": 8084,
       "area": "prioritering-2311",
       "why": "Ejer 23/11 (PC1, prioriteringssessionen, AskUserQuestion pr. punkt): placeret i denne uge, uge 49 eller december; ordret pr. punkt paa #8584 (runde 1 og 3). Merge kraever stadig ejerens ordrette merge."
+    },
+    {
+      "issue": 8023,
+      "area": "web-experience",
+      "why": "Ejer-go 25/11 (PC1, AskUserQuestion: 'Codex PR i dag'): offline-siden lover 'genindlæser selv' men gør det kun ved online-event. https://github.com/NicolaiDolmer/CyclingZone/issues/8584#issuecomment-7158022792"
+    },
+    {
+      "issue": 8605,
+      "area": "web-experience",
+      "why": "Ejer-go 25/11 (PC1): akademioptag direkte på seniortruppen, før sæsonskiftet 28/11, med #8668. https://github.com/NicolaiDolmer/CyclingZone/issues/8584"
+    },
+    {
+      "issue": 5249,
+      "area": "web-experience",
+      "why": "Ejer-go 25/11 (PC1): forsiden statisk + CDN-cachet, byg i dag. https://github.com/NicolaiDolmer/CyclingZone/issues/8584"
+    },
+    {
+      "issue": 8660,
+      "area": "web-experience",
+      "why": "Ejer-go 25/11 (PC1): flag-løkken rettes i dag. https://github.com/NicolaiDolmer/CyclingZone/issues/8584"
+    },
+    {
+      "issue": 8687,
+      "area": "udvikling-2",
+      "why": "Ejer-go 25/11 (PC1): evnenavne i skift-dialogen rettes nu. https://github.com/NicolaiDolmer/CyclingZone/issues/8584"
     }
   ],
   "cleanupList": [

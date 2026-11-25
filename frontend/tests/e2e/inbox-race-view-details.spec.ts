@@ -124,6 +124,46 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/rest/v1/race_stage_passages**", (route) => json(route, []));
 });
 
+test("Tilbage genskaber Indbakkens filter og position efter en løbsbesked", async ({ page }, testInfo) => {
+  const isPhone = testInfo.project.name === "mobile-chromium";
+  test.skip(!isPhone && testInfo.project.name !== "desktop-chromium");
+  await page.setViewportSize(isPhone ? { width: 390, height: 844 } : { width: 1440, height: 900 });
+
+  const targetTitle = "Find tilbage til løbet";
+  const rows = Array.from({ length: 32 }, (_, index) => ({
+    id: `restore-${index}`,
+    type: "race_result",
+    title: index === 17 ? targetTitle : `Løbsbesked ${index + 1}`,
+    message: "Resultatet er klar.",
+    related_id: index === 17 ? RACE_ID : `other-race-${index}`,
+    user_id: TEST_USER.id,
+    is_read: index === 0,
+    created_at: RESULT_AT,
+    metadata: {},
+  }));
+  await page.route("**/rest/v1/notifications**", route => json(route, route.request().method() === "GET" ? rows : []));
+  await login(page);
+  await page.goto("/notifications");
+  // Verify the app restores the list even when native history scroll is unavailable.
+  await page.evaluate(() => { history.scrollRestoration = "manual"; });
+  const filter = page.locator('select:has(option[value="unread"])');
+  await filter.selectOption("unread");
+  const notification = page.getByText(targetTitle, { exact: true });
+  await notification.scrollIntoViewIfNeeded();
+  const originalTop = await page.evaluate(() => window.scrollY);
+  expect(originalTop).toBeGreaterThan(250);
+  await notification.click();
+  await expect(page).toHaveURL(new RegExp(`/races/${RACE_ID}`));
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.goBack();
+  await expect(filter).toHaveValue("unread");
+  await expect.poll(() => page.evaluate(expected => Math.abs(window.scrollY - expected), originalTop)).toBeLessThanOrEqual(2);
+  await expect(page.getByText("Løbsbesked 1", { exact: true })).toHaveCount(0);
+  if (process.env.INBOX_BACK_EVIDENCE) {
+    await page.screenshot({ path: evidenceShotPath(`pr-screens/8280-inbox-back/after-${isPhone ? 390 : 1440}.png`) });
+  }
+});
+
 test("'Vis detaljer' på en samlet løbslinje åbner løbets resultat med eget hold synligt (#5417)", async ({ page }, testInfo) => {
   const project = testInfo.project.name;
   if (project === "mobile-chromium") await page.setViewportSize({ width: 390, height: 844 });

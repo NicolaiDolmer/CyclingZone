@@ -284,6 +284,14 @@ function createTeamMarketStateSupabase({
   function ridersQuery() {
     const filters = { eq: {}, notIsNull: new Set(), neq: {} };
     const builder = {
+      or(expression) {
+        assert.equal(expression, `team_id.eq.${team.id},pending_team_id.eq.${team.id}`);
+        return { eq: async (column, value) => {
+          assert.equal(column, "is_retired");
+          assert.equal(value, false);
+          return { count: riderCount + pendingCount, error: null };
+        } };
+      },
       eq(col, val) { filters.eq[col] = val; return promiseOrBuilder(); },
       not(col, op, val) {
         if (op === "is" && val === null) filters.notIsNull.add(col);
@@ -367,6 +375,7 @@ test("getTeamMarketState sums rider + pending counts in the total squad count", 
   assert.equal(teamState.pending_count, 1);
   assert.equal(teamState.outgoing_count, 0);
   assert.equal(teamState.total_count, 15);
+  assert.equal(teamState.club_count, 15);
   assert.equal(teamState.future_count, 15);
   assert.deepEqual(teamState.squad_limits, { min: 0, max: 30 });
 });
@@ -466,7 +475,7 @@ test("resolveRiderSalary: NULL salary + NULL current_production_value → fallba
 test("#1308: getTeamMarketState — akademiryttere udelades fra alle tre tælle-queries", async () => {
   const TEAM_ID = "team-academy";
   const SENIOR_COUNT = 30;
-  const _ACADEMY_COUNT = 5; // skal aldrig bidrage til rider_count
+  const ACADEMY_COUNT = 5; // klubloftet inkluderer akademiryttere
 
   // Assertiv mock: verificerer at is_academy=false ER i eq-filtrene.
   function createAcademyAwareSupabase() {
@@ -475,6 +484,14 @@ test("#1308: getTeamMarketState — akademiryttere udelades fra alle tre tælle-
       const notIsNullCols = new Set();
       const neqFilters = {};
       const builder = {
+        or(expression) {
+          assert.equal(expression, `team_id.eq.${TEAM_ID},pending_team_id.eq.${TEAM_ID}`);
+          return { eq: async (column, value) => {
+            assert.equal(column, "is_retired");
+            assert.equal(value, false);
+            return { count: SENIOR_COUNT + ACADEMY_COUNT, error: null };
+          } };
+        },
         eq(col, val) { eqFilters[col] = val; return promiseOrBuilder(); },
         not(col, op, val) {
           if (op === "is" && val === null) notIsNullCols.add(col);

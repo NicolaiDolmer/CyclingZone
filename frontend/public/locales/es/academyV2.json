@@ -6,6 +6,7 @@
       "intake": "Captación de la semana",
       "talents": "Tus talentos",
       "ledger": "Contabilidad de la academia",
+      "profileAndAge": "Perfil y edad",
       "profile": "Perfil"
     },
     "stats": {
@@ -38,18 +39,9 @@
     "age": {
       "label": "Edad preferente",
       "mixed": "Mixta",
-      "distributionLabel": "Captación prevista por edad",
-      "row": "{age}: {share}",
-      "share": {
-        "many": "muchos",
-        "some": "algunos",
-        "few": "pocos"
-      },
-      "intro": "Elige la edad hacia la que se inclinan tus candidatos semanales. Siguen apareciendo todas las edades.",
-      "toU23": "Los de 19 años siempre van al equipo sub-23.",
+      "intro": "Elige una edad para que sea más probable en la convocatoria semanal. La opción mixta usa el sorteo habitual. Pueden aparecer otras edades.",
       "inline": "edad preferente {focus}",
-      "errorTitle": "No se pudo cargar el perfil de la academia",
-      "errorBody": "No se ha cambiado nada. Recarga la página para volver a intentarlo."
+      "errorTitle": "No se pudo cargar el perfil de la academia"
     }
   }
 }

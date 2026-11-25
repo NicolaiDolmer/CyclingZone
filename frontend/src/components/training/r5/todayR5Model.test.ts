@@ -459,7 +459,7 @@ test("indsatsvaelgeren: kun et eksplicit true taender den, og effort sendes kun 
 
 // --- En linje pr. rytter (#7947, ejer 23/11) ------------------------------------
 
-test("status som ord: hvert maerke har sin fulde tekst i begge sprog, aldrig en forkortelse", () => {
+test("status bruger U23 på dansk og engelsk og fuld tekst for øvrige mærker", () => {
   const keys = ["injured", "injuryRisk", "days70", "u23", "junior", "academy", "contractExpiring", "retirementRisk"] as const;
   for (const key of keys) assert.ok(STATUS_TONE[key], `tone for ${key}`);
   assert.equal(STATUS_TONE.injured, "danger");
@@ -472,6 +472,10 @@ test("status som ord: hvert maerke har sin fulde tekst i begge sprog, aldrig en 
       if (!k) continue;
       const word = k.split(".").reduce((o: Record<string, unknown>, p) => o?.[p] as Record<string, unknown>, loc) as unknown as string;
       assert.equal(typeof word, "string", `${lang}: ${k}`);
+      if (key === "u23" && (lang === "da" || lang === "en")) {
+        assert.equal(word, "U23", lang);
+        continue;
+      }
       assert.doesNotMatch(word, /^(U23|JR|ACAD|AKAD|EXP|UDLØB|35\+)$/i, `${lang}: ${key} skrives fuldt ud`);
       assert.ok(word.length >= 5, `${lang}: ${key} er et ord, ikke en forkortelse (${word})`);
     }
@@ -492,10 +496,10 @@ test("assistentens dom: enig, forslag med eet tryk, eller ingen dom", () => {
 });
 
 test("TodayR5 en linje: navnecellen er kun flag + navn; status, traening, indsats og menu har egne kolonner", () => {
-  const src = readFileSync(join(here, "TodayR5.tsx"), "utf8");
+  const src = readFileSync(join(here, "TodayR5.tsx"), "utf8").replaceAll("\r\n", "\n");
   const name = src.slice(src.indexOf("function NameCell("), src.indexOf("\n}\n", src.indexOf("function NameCell(")));
   assert.doesNotMatch(name, /Status|RiderBadges|row\.status/, "intet andet end flag og navn i navnecellen");
-  assert.doesNotMatch(src, /RiderBadges/, "ingen korte maerker (U23/JR/AKAD) paa fanen");
+  assert.doesNotMatch(src, /RiderBadges/, "status vises i sin egen kolonne frem for med RiderBadges");
   for (const key of ["row.col.status", "row.col.training", "row.col.effort"]) assert.ok(src.includes(`tR5("${key}")`), key);
   assert.doesNotMatch(src, /group-hover\/row:flex|top-full/, "Din dag er ingen boble oven paa naeste raekke");
   assert.match(src, /<span className="sr-only"><RowNote /, "Din dag staar i raekken for skaermlaeseren og synligt i den udfoldede raekke");

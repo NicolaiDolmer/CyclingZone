@@ -191,6 +191,14 @@ Navne med præfikset `feature_` grupperes af `get_sprint_metrics` som "top featu
 | `discord_invite_clicked` | ja | `DiscordJoinLink.jsx:28`, `NotificationsPage.jsx:708` | Klik på Discord-invitationen. Bærer `{source}`: `notification` (velkomstbeskeden i indbakken) eller `discord_join_link_<variant>` (footer/knap). Måler konvertering fra velkomstbeskeden ([#5130](https://github.com/NicolaiDolmer/CyclingZone/issues/5130)) |
 | `table_control_used` | ja | `TableTitleBar.tsx` | Første gang en spiller bruger en kontrol i en tabels titellinje (et valg, filter-arket, kolonne-knappen, søg, en kolonne), én gang pr. kontrol pr. sidebesøg. Bærer KUN `{page, control[, item]}` (`item` er en statisk kolonnenøgle): aldrig søgetekst, filterværdier eller id'er. Bruges til at vælge standardfiltre og standardkolonner ud fra faktisk brug ([#8280](https://github.com/NicolaiDolmer/CyclingZone/issues/8280)) |
 
+### Core Web Vitals i PostHog (#8584)
+
+`web_vital_measured` er Web Vitals for identificerede konti på produktionsdomænet med aktivt analytics-ja. PostHogs eksisterende kontogate udelukker admin og testhold. Målingen genbruger klientens EU-ingest og ændrer ikke GA4-strømmen.
+
+Grupper efter `route_template`, `metric_name`, `navigation_scope` og enhedstype. Navigation og ruteskabelon kommer fra web-vitals' `navigationURL`. Observerens soft-navigation-målinger holdes adskilt fra dokumentmålingerne. Dokumentmålinger på browsere uden soft-navigation-støtte kan dække flere SPA-sider. Vis derfor den gruppe som målinger for indgangsruten og hold den adskilt fra SPA-målinger. Kun kendte spillerruter må sendes. Ruteskabelonen udelader konkrete id'er, URL-parametre og fragmenter.
+
+LCP og INP er i ms. CLS er et decimaltal, og målt nul bevares. Brug senest modtagne hele `metric_value` pr. `metric_id` og vis antal gyldige målinger sammen med p75. `cz_frontend` skelner builds i før/efter-sammenligninger. En manglende måling er ukendt. Eksempelvis har INP ingen værdi uden en målt interaktion. Feltaggregater og målegrundlag deles privat.
+
 ### Dashboard (kun PostHog, #8448)
 
 `dashboard_card_viewed` registrerer første synlighed af et kort pr. dashboardbesøg. `dashboard_card_clicked` registrerer klik i kortet, også hvor der ingen aktiv handling er. Begge har den faste, ikke-personlige egenskab `card_id`. Hændelserne bruger PostHogs eksisterende samtykke- og kontogate og skrives ikke til `player_events`.

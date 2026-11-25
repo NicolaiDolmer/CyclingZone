@@ -109,13 +109,11 @@ export function writeSeasonStartDismissed(seasonId) {
  *           "udført" der får manageren til at springe en beslutning over.
  *
  * @param {object} p
- * @param {number} p.squadCount            ejede senior-ryttere nu (ownedNow)
+ * @param {number} [p.squadCount]          ejede senior-ryttere nu (ownedNow)
  * @param {number} [p.squadTarget]
- * @param {number|null} p.trainingPlanCount rækker i training_plans for aktiv sæson
- * @param {boolean} p.boardPlanMissing      dashboardets eksisterende D3-signal
- * @param {boolean} p.boardStatusLoaded     blev /api/board/status besvaret?
- * @param {number|null} p.pendingGraduations pending rækker i academy_graduation
- * @param {boolean} p.academyEnabled        har holdet overhovedet et akademi?
+ * @param {number|null} [p.trainingPlanCount] rækker i training_plans for aktiv sæson
+ * @param {boolean} [p.boardPlanMissing]      dashboardets eksisterende D3-signal
+ * @param {boolean} [p.boardStatusLoaded]     blev /api/board/status besvaret?
  */
 export function buildSeasonStartItems({
   squadCount = 0,
@@ -123,8 +121,6 @@ export function buildSeasonStartItems({
   trainingPlanCount = null,
   boardPlanMissing = false,
   boardStatusLoaded = false,
-  pendingGraduations = null,
-  academyEnabled = false,
 } = {}) {
   const items = [
     // Rækkefølgen er auditens prioritering: "byg din trup" er reelt den vigtigste,
@@ -134,15 +130,6 @@ export function buildSeasonStartItems({
     // Ukendt board-status (fetch fejlede) må ikke læses som "forhandlet færdig".
     { key: "board", to: "/board", done: boardStatusLoaded ? !boardPlanMissing : null },
   ];
-  // Akademiet er feature-gated (Layout.jsx / academyNavVisibility.js). Hold uden
-  // akademi skal ikke se et punkt de ikke kan handle på.
-  if (academyEnabled) {
-    items.push({
-      key: "academy",
-      to: "/academy",
-      done: pendingGraduations === null ? null : pendingGraduations === 0,
-    });
-  }
   return items;
 }
 

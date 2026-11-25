@@ -100,12 +100,29 @@ test("a saved selection stays a race, and overnight numbers follow completed mot
   await page.getByRole("button", { name: "Sessions and details for " + rider.firstname + " " + rider.lastname }).click();
   await expect(page.getByTestId("r5-session-pending").filter({ visible: true })).toContainText("Did not start · Sprint");
 
-  if (isMobile) return; // The engine regression covers the same timestamps for every screen.
   forecastDate = "2026-11-24";
   await page.clock.setFixedTime(new Date("2026-11-23T23:00:00Z"));
   await openProgram();
   await expect(raceField).toHaveCount(0);
-  await expect(stableNumber).toHaveAccessibleName(/Fatigue tonight: 35/);
+  const capturePhase = process.env.CZ_8678_ROLLOVER_SHOTS;
+  await expect(stableNumber).toHaveAccessibleName(capturePhase === "before"
+    ? /Fatigue tonight: 35/
+    : /Fatigue tonight: approx. 35/);
+  if (capturePhase && testInfo.project.name !== "mobile-webkit") {
+    await stableNumber.evaluate((element) => {
+      element.scrollIntoView({ block: "center" });
+      element.style.outline = "2px solid #a07800";
+      element.style.outlineOffset = "3px";
+    });
+    await page.screenshot({
+      path: evidenceShotPath("pr-screens/8678/" + width + "-overnight-" + capturePhase + ".png"),
+      animations: "disabled", scale: "css",
+    });
+  }
+  if (capturePhase === "before") return;
+  await page.clock.setFixedTime(new Date("2026-11-24T01:05:00Z"));
+  await openProgram();
+  await expect(stableNumber).toHaveAccessibleName(/Fatigue tonight: approx. 35/);
   published = true;
   for (const at of ["2026-11-24T01:05:00Z", "2026-11-24T09:00:00Z"]) {
     await page.clock.setFixedTime(new Date(at));

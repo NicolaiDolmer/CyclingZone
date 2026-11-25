@@ -23,7 +23,15 @@ import { YOUTH_SQUADS, type YouthSquad } from "./youthSquadPages.ts";
 import type { supabase as appSupabase } from "./supabase.ts";
 
 /** Loft pr. ungdomstrup. Spejl af backend/lib/squads.js SQUAD_CAPS. */
-export const SQUAD_CAPS: Readonly<Record<YouthSquad, number>> = Object.freeze({ u23: 12, junior: 10 });
+export const CLUB_RIDER_CAP = 60;
+
+export const SQUAD_CAPS: Readonly<Record<YouthSquad, number>> = Object.freeze({ u23: 30, junior: 30 });
+
+/** Truppens serverloft med det fælles frontendloft som fallback (#5631). */
+export function capForSquad(payload: unknown, squad: YouthSquad): number {
+  const cap = (payload as { caps?: Partial<Record<YouthSquad, unknown>> } | null)?.caps?.[squad];
+  return typeof cap === "number" && Number.isFinite(cap) ? cap : SQUAD_CAPS[squad];
+}
 
 /** Højeste sæsonalder i junior-truppen. Spejl af squads.js SQUAD_MAX_AGE.junior. */
 export const JUNIOR_MAX_SEASON_AGE = 18;
@@ -83,14 +91,17 @@ export function academyLandingSquad(
   targetSquad: YouthSquad | null | undefined,
   seasonAge: number | null | undefined,
   counts: Partial<SquadCounts> | null | undefined,
-): { squad: YouthSquad | null; full: boolean; movedToU23: boolean; options: YouthSquad[] } {
+  senior?: { used: number; max: number },
+): { squad: YouthSquad | "senior" | null; full: boolean; movedToU23: boolean; options: Array<YouthSquad | "senior"> } {
   if (!targetSquad || !(targetSquad in SQUAD_CAPS)) return { squad: null, full: false, movedToU23: false, options: [] };
-  const options: YouthSquad[] = [targetSquad];
+  const options: Array<YouthSquad | "senior"> = [targetSquad];
   if (targetSquad === "junior" && typeof seasonAge === "number" && Number.isFinite(seasonAge) && seasonAge <= U23_MAX_SEASON_AGE) {
     options.push("u23");
   }
-  const squad = options.find((s) => !isSquadFull(s, counts)) ?? null;
-  return { squad, full: squad === null, movedToU23: squad !== null && squad !== targetSquad, options };
+  if (senior && Number.isFinite(seasonAge)) options.push("senior");
+  const seniorFull = senior != null && senior.used >= senior.max;
+  const squad = options.find(s => s === "senior" ? !seniorFull : !isSquadFull(s, counts)) ?? null;
+  return { squad, full: squad === null, movedToU23: squad === "u23" && targetSquad === "junior", options };
 }
 
 /** Rækkerne i trup-linjen "U23 5/12 · Junior 3/10", i fast rækkefølge. */

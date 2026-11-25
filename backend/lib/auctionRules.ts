@@ -10,7 +10,11 @@ type AuctionRider = {
   pending_team_id?: OptionalId;
 };
 
+import { CLUB_RIDER_CAP } from "./squads.js";
+
 type TeamSquadState = {
+  rider_count?: number | null;
+  club_count?: number | null;
   squad_limits?: { max?: number | null } | null;
   future_count?: number | null;
   total_count?: number | null;
@@ -442,7 +446,7 @@ export function getAuctionBidSquadBlock({
   const maxRiders = teamState?.squad_limits?.max;
   if (!maxRiders) return null;
 
-  const baseCount = teamState?.future_count ?? teamState?.total_count ?? 0;
+  const baseCount = Math.max(teamState?.rider_count ?? 0, teamState?.future_count ?? teamState?.total_count ?? 0);
   const reservedWins = alreadyLeadingThisAuction ? activeLeadingCount : activeLeadingCount + 1;
   const projected = baseCount + reservedWins;
 
@@ -467,15 +471,21 @@ export function getAuctionBidRoomBlock({
   academyCount = 0,
   academySlots,
   activeLeadingCount = 0,
+  activeLeadingSeniorCount = activeLeadingCount,
   alreadyLeadingThisAuction = false,
 }: SquadBidOptions & {
   isYouth?: boolean;
   academyCount?: number;
   academySlots?: number | null;
+  activeLeadingSeniorCount?: number;
 } = {}) {
+  const reservedWins = activeLeadingCount + 1;
+  if (!alreadyLeadingThisAuction && teamState?.club_count != null && teamState.club_count + reservedWins > CLUB_RIDER_CAP) {
+    return { code: "squad_full_bid", maxRiders: CLUB_RIDER_CAP, projected: teamState.club_count + reservedWins };
+  }
   const seniorBlock = getAuctionBidSquadBlock({
     teamState,
-    activeLeadingCount,
+    activeLeadingCount: activeLeadingSeniorCount,
     alreadyLeadingThisAuction,
   });
 

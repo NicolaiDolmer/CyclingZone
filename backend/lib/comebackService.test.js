@@ -504,6 +504,34 @@ test("deploy-vinduet: mangler teams.comeback_at, flyttes holdet alligevel", asyn
   assert.equal(payloads.filter((p) => "parked_at" in p).length, 2, "én gentagelse uden kolonnen");
 });
 
+test("the deploy fallback retries each missing optional comeback column separately", async () => {
+  const supabase = fakeDb(baseState());
+  const from = supabase.from;
+  const failedFields = [];
+  supabase.from = (table) => {
+    const t = from(table);
+    if (table !== "teams") return t;
+    const update = t.update;
+    t.update = (payload) => {
+      const missing = ["comeback_board_season_number", "comeback_at"].find(field => field in payload);
+      if (!missing) return update(payload);
+      failedFields.push(missing);
+      const q = { eq() { return q; }, select: async () => ({
+        data: null, error: { code: "PGRST204", message: `Could not find the '${missing}' column of 'teams'` },
+      }) };
+      return q;
+    };
+    return t;
+  };
+  const { deps } = makeDeps(supabase);
+  const result = await returnParkedTeam({ supabase, teamId: TEAM, now: new Date("2026-10-12T08:00:00Z"), deps });
+  assert.equal(result.returned, true);
+  const team = supabase.state.teams.find(t => t.id === TEAM);
+  assert.equal(team.parked_at, null);
+  assert.equal(team.comeback_season_id, SEASON);
+  assert.deepEqual(failedFields, ["comeback_board_season_number", "comeback_at"]);
+});
+
 test("isMissingComebackAtColumn: kun fejl om netop kolonnen tæller", () => {
   assert.equal(isMissingComebackAtColumn({ code: "42703", message: "column teams.comeback_at does not exist" }), true);
   assert.equal(isMissingComebackAtColumn({ code: "42703", message: "column teams.other does not exist" }), false);

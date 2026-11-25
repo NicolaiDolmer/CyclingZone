@@ -87,9 +87,6 @@
     "ai-recovery-sweep": [
       "backend/lib/aiRecoverySweep.js"
     ],
-    "graduation-sweep": [
-      "backend/lib/academyGraduationSweep.js"
-    ],
     "scout-sweep": [
       "backend/lib/scoutSweep.js"
     ],

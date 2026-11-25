@@ -6,6 +6,7 @@
       "intake": "This week's intake",
       "talents": "Your talents",
       "ledger": "Academy ledger",
+      "profileAndAge": "Profile and age",
       "profile": "Profile"
     },
     "stats": {
@@ -38,18 +39,9 @@
     "age": {
       "label": "Age focus",
       "mixed": "Mixed",
-      "distributionLabel": "Expected intake by age",
-      "row": "{age}: {share}",
-      "share": {
-        "many": "many",
-        "some": "some",
-        "few": "few"
-      },
-      "intro": "Pick the age your weekly candidates lean towards. Every age still turns up.",
-      "toU23": "19-year-olds always join the U23 squad.",
+      "intro": "Choose an age to make it more likely in the weekly intake. Mixed uses the usual draw. Other ages can still appear.",
       "inline": "age focus {focus}",
-      "errorTitle": "The academy profile didn't load",
-      "errorBody": "Nothing was changed. Reload the page to try again."
+      "errorTitle": "The academy profile didn't load"
     }
   }
 }

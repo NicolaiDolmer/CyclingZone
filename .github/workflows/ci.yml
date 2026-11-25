@@ -23,6 +23,52 @@ permissions:
   contents: read
 
 jobs:
+  # Kun en enkelt, verificeret nummerering må undlade den tunge main-CI.
+  # Commitbeskeden bruges til at finde kandidater, og selve Git-diffet
+  # sammenholdes med nummererens output. Andre pushes og PR'er kører normalt.
+  patch-notes-mode:
+    if: "${{ github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore(patch-notes): nummerer ') }}"
+    runs-on: ubuntu-latest
+    outputs:
+      numbering_only: ${{ steps.classify.outputs.numbering_only }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          filter: blob:none
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Verify generated numbering commit
+        id: classify
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          result=$(node scripts/patch-notes-number.mjs verify-numbering --before "$BEFORE_SHA" --after "$AFTER_SHA")
+          echo "numbering_only=$result" >> "$GITHUB_OUTPUT"
+
+  # Merge-køen kan afvente dette job alene på nummererings-SHA'en.
+  patch-notes-numbering:
+    needs: patch-notes-mode
+    if: needs.patch-notes-mode.outputs.numbering_only == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Test the numbered patch notes
+        run: node --test frontend/src/lib/patchNotes.test.js
+
   # #7582 (CI-hastighed del 2, punkt 4+5): backend-tests er delt i tre:
   #   backend-changes     afgoer om PR'en kan paavirke backend-testene
   #   backend-test-shard  koerer testene i 3 parallelle dele (--test-shard=i/3)
@@ -30,9 +76,11 @@ jobs:
   # Samle-jobbet er kun groent naar (a) alle 3 dele er groenne OG hver backend-
   # testfil koerte i praecis een del (talt mod hele listen, se job-summary),
   # eller (b) backend-changes har afgjort at PR'en ikke kan paavirke testene.
-  # Push til main og merge_group koerer altid fuldt. Afgoerelsen og tallene
+  # Almindelige main-pushes og merge_group koerer fuldt. Afgoerelsen og tallene
   # bor i scripts/ci/backend-test-shards.mjs (enhedstestet).
   backend-changes:
+    needs: patch-notes-mode
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       # contents: read til checkout (scanneren laeser backend-koden), og
@@ -57,6 +105,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          NUMBERING_ONLY: ${{ needs.patch-notes-mode.outputs.numbering_only }}
           PR_DRAFT: ${{ github.event.pull_request.draft }}
           REPO: ${{ github.repository }}
         run: |
@@ -65,8 +114,11 @@ jobs:
             echo "backend=$1" >> "$GITHUB_OUTPUT"
             echo "backend-changes (\`$EVENT_NAME\`): $2 -> \`backend=$1\`" >> "$GITHUB_STEP_SUMMARY"
           }
-          # Kun pull_request kan springe over. push til main, merge_group og
-          # enhver ukendt event-type koerer altid hele suiten.
+          if [[ "$NUMBERING_ONLY" == "true" ]]; then
+            record "false" "verificeret nummereringscommit"
+            exit 0
+          fi
+          # Andre events end PR'er koerer hele suiten.
           if [[ "$EVENT_NAME" != "pull_request" ]]; then
             record "true" "ikke en PR, koerer altid fuldt"
             exit 0
@@ -98,7 +150,7 @@ jobs:
   backend-test-shard:
     name: backend-test-shard ${{ matrix.shard }}/3
     needs: backend-changes
-    if: needs.backend-changes.outputs.backend == 'true'
+    if: ${{ !cancelled() && needs.backend-changes.result == 'success' && needs.backend-changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -247,6 +299,8 @@ jobs:
         run: node scripts/ci/backend-test-shards.mjs verify --logs-dir "$RUNNER_TEMP/backend-test-files"
 
   frontend-build:
+    needs: patch-notes-mode
+    if: ${{ !cancelled() && needs.patch-notes-mode.outputs.numbering_only != 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -631,6 +685,8 @@ jobs:
   # blokere. Navnet skal tilfoejes main's required status checks + spejlet i
   # scripts/ci-required-checks.json (ejer-handling, kraever admin).
   build-determinism-two-builds:
+    needs: patch-notes-mode
+    if: ${{ !cancelled() && needs.patch-notes-mode.outputs.numbering_only != 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -755,6 +811,8 @@ jobs:
           retention-days: 14
 
   warning-budget:
+    needs: patch-notes-mode
+    if: ${{ !cancelled() && needs.patch-notes-mode.outputs.numbering_only != 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -781,6 +839,8 @@ jobs:
         run: node scripts/check-eslint-warning-budget.mjs
 
   static-guards:
+    needs: patch-notes-mode
+    if: ${{ !cancelled() && needs.patch-notes-mode.outputs.numbering_only != 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1108,6 +1168,8 @@ jobs:
         run: node --test scripts/preflight-static-guard-parity.test.mjs
 
   ops-script-tests:
+    needs: patch-notes-mode
+    if: ${{ !cancelled() && needs.patch-notes-mode.outputs.numbering_only != 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1145,7 +1207,7 @@ jobs:
         run: node --test scripts/monday-numbers.test.mjs
 
       - name: Test patch-note Discord sentence boundaries
-        run: node --test scripts/patch-notes-discord.test.mjs
+        run: node --test scripts/patch-notes-discord.test.mjs scripts/patch-notes-number.test.mjs scripts/merge-queue-closeout.test.mjs
 
       - name: Test shared wave admission and Codex lifecycle fixtures
         run: |
@@ -1187,6 +1249,8 @@ jobs:
           node --test scripts/check-workflow-concurrency.test.mjs
 
   migration-idempotency:
+    needs: patch-notes-mode
+    if: ${{ !cancelled() && needs.patch-notes-mode.outputs.numbering_only != 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1215,6 +1279,14 @@ jobs:
 
       - name: Run idempotency guard
         run: node scripts/lint-migration-idempotency.mjs
+
+      # #8668: CI replays as superuser; prod's migration role cannot attach
+      # a custom setting to a function, so auto-migrate rolled back.
+      - name: Test function-setting guard
+        run: node --test scripts/lint-migration-function-settings.test.mjs
+
+      - name: Run function-setting guard
+        run: node scripts/lint-migration-function-settings.mjs
 
       # #6342: lock-safety (lock_timeout, CONCURRENTLY, atomic grants).
       - name: Test migration lock guard

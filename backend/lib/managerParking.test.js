@@ -405,6 +405,44 @@ test("#6773 unparkTeam: et genindplaceret hold får sit mandat for den angivne s
   assert.deepEqual(calls, [{ teamId: "t1", seasonNumber: 6 }]);
 });
 
+for (const seasonAvailable of [true, false]) {
+  test(`the unpark deploy fallback ${seasonAvailable ? "records the receiving season" : "keeps the signup parked"}`, async () => {
+    const parkedAt = daysAgo(90);
+    const signupAt = daysAgo(2);
+    const db = makeFakeDb({ teams: [team({ id: "t1", parked_at: parkedAt, next_season_signup_at: signupAt })] });
+    const from = db.from;
+    db.from = (table) => {
+      if (table === "seasons") {
+        const q = { select: () => q, eq(column, number) { assert.equal(column, "number"); assert.equal(number, 6); return q; },
+          maybeSingle: async () => ({ data: seasonAvailable ? { id: "season-6" } : null, error: null }) };
+        return q;
+      }
+      const builder = from(table);
+      const update = builder.update;
+      builder.update = (payload) => {
+        if (!("comeback_board_season_number" in payload)) return update(payload);
+        const q = { eq: () => q, not: () => q, select: async () => ({
+          data: null, error: { code: "PGRST204", message: "Could not find comeback_board_season_number" },
+        }) };
+        return q;
+      };
+      return builder;
+    };
+    const unpark = () => unparkTeam({ supabase: db, teamId: "t1", mandateSeasonNumber: 6,
+      pickDivision: async () => ({ division: 4, leagueDivisionId: "pool" }),
+      reconcileAiTeams: async () => {}, ensureReturningMandate: async () => {} });
+    if (seasonAvailable) {
+      assert.equal((await unpark()).unparked, true);
+      assert.equal(db.row("t1").parked_at, null);
+      assert.equal(db.row("t1").comeback_season_id, "season-6");
+    } else {
+      await assert.rejects(unpark(), /receiving season is not available/);
+      assert.equal(db.row("t1").parked_at, parkedAt);
+      assert.equal(db.row("t1").next_season_signup_at, signupAt);
+    }
+  });
+}
+
 test("unparkTeam: en fejlende AI-reconcile vælter ikke genindplaceringen", async () => {
   const db = makeFakeDb({ teams: [team({ id: "t1", parked_at: daysAgo(90), league_division_id: null })] });
   const result = await unparkTeam({

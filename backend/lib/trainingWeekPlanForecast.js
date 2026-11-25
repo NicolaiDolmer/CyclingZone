@@ -34,7 +34,7 @@ import { dayTypeForProgram, sessionForProgram } from "./trainingDayTypes.js";
 import { isInjuredOnRaceDay } from "./injuryRaceDays.js";
 import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { fetchAllRows } from "./supabasePagination.js";
-import { stageEntrantSnapshotIds, trainingDateBounds, trainingDateDeadline } from "./trainingDateReadiness.js";
+import { stageEntrantSnapshotIds, trainingDateBounds } from "./trainingDateReadiness.js";
 import { resolveDayCloseStatus } from "./trainingDayCloseTrigger.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
@@ -348,10 +348,31 @@ async function loadSelectedStageFields({ supabase, team, seasonId, tickDate, sta
   return selected.flatMap((entry) => stagesByRace.get(entry.race_id).map((stage) => ({ ...entry, game_day: stage.game_day })));
 }
 
+export async function loadOvernightForecastHold({ supabase, teamId, seasonId, tickDate, riderIds, previousWork }) {
+  if (!teamId || !seasonId || !riderIds.length) return new Set();
+  const previousDate = previousDateString(tickDate);
+  const work = previousWork === undefined
+    ? (await rows(supabase.from("training_date_work").select("status, expected_rider_ids, quarantined_rider_ids")
+      .eq("team_id", teamId).eq("season_id", seasonId).eq("tick_date", previousDate), "overnight forecast work"))[0]
+    : previousWork;
+  if (work?.status !== "pending" && work?.status !== "partial") return new Set();
+
+  const expected = new Set(work.expected_rider_ids ?? []);
+  const quarantined = new Set(work.quarantined_rider_ids ?? []);
+  const pending = riderIds.filter((id) => expected.has(id) && !quarantined.has(id));
+  if (!pending.length) return new Set();
+
+  // A late admission can reopen the team date without invalidating an existing rider's settlement.
+  // pagination-safe: one settlement per rider on a single date for this roster.
+  const settlements = await rows(supabase.from("training_condition_settlements").select("rider_id")
+    .eq("season_id", seasonId).eq("tick_date", previousDate).in("rider_id", pending), "overnight forecast settlements");
+  const settledIds = new Set(settlements.map((row) => row.rider_id));
+  return new Set(pending.filter((id) => !settledIds.has(id)));
+}
 function showRecordedFatigue(entry, condition) {
   const fatigue = condition?.fatigue;
   if (!Number.isFinite(fatigue)) return entry;
-  return { ...entry, fatigue, band: forecastBand(fatigue), fatigueIsActual: true };
+  return { ...entry, fatigue, band: forecastBand(fatigue) };
 }
 
 // Et opslags udfald som vaerdi: et opslag, der er sendt men ikke bruges, kan ikke vaelte noget.
@@ -409,7 +430,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     rows(supabase.from("training_rider_ticks").select("rider_id, game_day, tick_date, team_id, report").eq("season_id", seasonId).in("game_day", dateGameDays).in("rider_id", riderIds), "forecast receipts"),
     // pagination-safe: roster x five game days.
     rows(supabase.from("training_race_loads").select("*").eq("season_id", seasonId).eq("tick_date", tickDate).in("rider_id", riderIds), "forecast race loads"),
-    rows(supabase.from("training_date_work").select("tick_date, opening_conditions, status, expected_rider_ids").eq("team_id", team.id).eq("season_id", seasonId).in("tick_date", [previousDate, tickDate]), "forecast date work"),
+    rows(supabase.from("training_date_work").select("tick_date, opening_conditions, status, expected_rider_ids, quarantined_rider_ids").eq("team_id", team.id).eq("season_id", seasonId).in("tick_date", [previousDate, tickDate]), "forecast date work"),
     // pagination-safe: roster x five game days, UNIQUE (rider_id, season_id, game_day).
     rows(supabase.from("race_entry_days").select("rider_id, race_id, game_day").eq("season_id", seasonId).in("game_day", dateGameDays).in("rider_id", riderIds), "forecast bindings"),
     isRaceDayEngineEnabled(supabase),
@@ -421,9 +442,9 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const instant = unwrap(await instantP);
   const work = workRows.find((row) => row.tick_date === tickDate);
   const previousWork = workRows.find((row) => row.tick_date === previousDate);
-  const previousOpen = previousWork?.status === "pending" || previousWork?.status === "partial";
-  const holdPrevious = previousOpen && now < trainingDateDeadline(previousDate);
-  const previousRiders = new Set(holdPrevious ? previousWork.expected_rider_ids ?? [] : []);
+  const previousRiders = await loadOvernightForecastHold({
+    supabase, teamId: team.id, seasonId, tickDate, riderIds, previousWork: previousWork ?? null,
+  });
   const openingByRider = new Map(Object.entries(work?.opening_conditions ?? {}));
   for (const [id, opening] of instant.openingByRider) openingByRider.set(id, opening);
   const conditionByRider = new Map(conditions.map((row) => [row.rider_id, row]));

@@ -56,18 +56,15 @@ test("seasonStartDismissKey: nøglen er pr. sæson, så guiden vender tilbage n�
   assert.match(seasonStartDismissKey("s2"), /s2$/);
 });
 
-test("buildSeasonStartItems: fire punkter med akademi, tre uden", () => {
-  const withAcademy = buildSeasonStartItems({ academyEnabled: true });
-  assert.deepEqual(withAcademy.map((i) => i.key), ["squad", "training", "board", "academy"]);
-  const withoutAcademy = buildSeasonStartItems({ academyEnabled: false });
-  assert.deepEqual(withoutAcademy.map((i) => i.key), ["squad", "training", "board"]);
+test("buildSeasonStartItems omits the retired graduation task", () => {
+  assert.deepEqual(buildSeasonStartItems().map((item) => item.key), ["squad", "training", "board"]);
 });
 
 test("buildSeasonStartItems: hvert punkt deep-linker til den side beslutningen træffes på", () => {
-  const items = buildSeasonStartItems({ academyEnabled: true });
+  const items = buildSeasonStartItems();
   assert.deepEqual(
     Object.fromEntries(items.map((i) => [i.key, i.to])),
-    { squad: "/auctions", training: "/training", board: "/board", academy: "/academy" },
+    { squad: "/auctions", training: "/training", board: "/board" },
   );
 });
 
@@ -85,23 +82,14 @@ test("buildSeasonStartItems: træningsplan udført når der findes rækker for s
 test("buildSeasonStartItems: ukendt data giver null, ALDRIG et falsk udført", () => {
   const items = buildSeasonStartItems({
     trainingPlanCount: null, boardStatusLoaded: false,
-    pendingGraduations: null, academyEnabled: true,
   });
   assert.equal(items[1].done, null); // træning ikke hentet
   assert.equal(items[2].done, null); // board-status fejlede
-  assert.equal(items[3].done, null); // graduates ikke hentet
 });
 
 test("buildSeasonStartItems: board er udført når en plan er forhandlet færdig", () => {
   assert.equal(buildSeasonStartItems({ boardStatusLoaded: true, boardPlanMissing: false })[2].done, true);
   assert.equal(buildSeasonStartItems({ boardStatusLoaded: true, boardPlanMissing: true })[2].done, false);
-});
-
-test("buildSeasonStartItems: akademi udført når ingen graduates afventer", () => {
-  const done = buildSeasonStartItems({ academyEnabled: true, pendingGraduations: 0 });
-  assert.equal(done[3].done, true);
-  const pending = buildSeasonStartItems({ academyEnabled: true, pendingGraduations: 3 });
-  assert.equal(pending[3].done, false);
 });
 
 test("countDoneItems: kun bekræftet udførte tæller med", () => {

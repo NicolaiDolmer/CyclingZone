@@ -195,9 +195,8 @@ export function findBrokenContexts(contexts, workflows) {
     // Et required check skal kunne rapportere PÅ EN PR. Har vi triggere for
     // mindst én producent, og kører INGEN af dem på `pull_request`, er
     // resultatet det samme dødvande som et slettet job: branch protection
-    // venter for evigt. Nok at ÉN producent kører på pull_request — det er
-    // netop mønstret bag perf-gate (lighthouse-ci.yml er paths-filtreret,
-    // lighthouse-ci-skip-stub.yml dækker resten med samme job-navn).
+    // venter for evigt. Nok at ÉN producent kører på pull_request. perf-gate
+    // bruger et step-filter, så docs og kladder får det samme check-navn.
     const withTriggers = producers.filter((p) => Array.isArray(p.triggers));
     // A trusted workflow_run publisher explicitly attaches its check to the PR
     // head through Checks API. Merely using workflow_run is NOT sufficient.

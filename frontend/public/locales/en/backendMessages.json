@@ -213,6 +213,10 @@
       "title": "Academy signing complete",
       "message": "Your academy prospect has joined your academy."
     },
+    "academySignedSenior": {
+      "title": "Academy signing complete",
+      "message": "{riderName} has joined your senior squad."
+    },
     "academyGraduationReady": {
       "title": "Academy graduation",
       "message": "{name} has aged out of your academy. Promote, sell or release before the deadline."
@@ -512,6 +516,9 @@
         "sellerNoLongerOwns": "{riderName} could not be completed because the rider is no longer on the seller's team.",
         "sellerSquadTooSmall": "{riderName} could not be sold because the seller would otherwise drop below {minRiders} riders in Division {division}.",
         "sellerSquadRiskTooSmall": "{riderName} could not be sold because the seller would otherwise drop below {minRiders} riders once riders leaving at the next season change (contract expiry or retirement risk) are counted.",
+        "swapClubRosterFull": "One of the clubs has no free places for this swap.",
+        "swapPendingRegistration": "Wait for the earlier rider move to be registered before proposing this swap again.",
+        "clubRosterFull": "The buying club has no free places. Sell or release a rider first.",
         "buyerSquadFull": "{riderName} could not be transferred because the buyer's team is already full.",
         "buyerCannotAfford": "The deal on {riderName} could not be completed because the buyer lacks funds.",
         "offeredMoved": "{offeredName} is no longer available for the swap.",

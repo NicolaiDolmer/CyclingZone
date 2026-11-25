@@ -65,6 +65,7 @@ function createMockSupabase({
   // tom → 0 overtrædelser.
   humanTeams = [],
   seniorRiders = [],
+  automaticPromotions = [],
   ridersError = null,
   // #6181: holdte escrows, der skal afregnes foer skiftet.
   heldSaleEscrows = [],
@@ -111,6 +112,9 @@ function createMockSupabase({
             return pagedChain(teamRows);
           },
         };
+      }
+      if (table === "academy_graduation") {
+        return { select: () => pagedChain(automaticPromotions) };
       }
       if (table === "auctions") {
         return { select: () => ({ in: () => thenableCount(activeAuctionCount) }) };
@@ -728,4 +732,13 @@ test("#6120 Deadline Day-cron er væk: intet modul, intet cron-kald, intet monit
   }
   const slugs = ALL_CRON_MONITORS.map(([slug]) => slug);
   assert.ok(!slugs.includes("deadline-day"), "deadline-day monitor-slug skal være fjernet");
+});
+
+test("#7323 readiness accepts promotion overflow only for the same club", async () => {
+  const supabase = createMockSupabase({
+    humanTeams: [{ id: "hold-a", division: 1 }],
+    seniorRiders: ridersFor("hold-a", MAX_D1 + 1),
+    automaticPromotions: [{ rider_id: "hold-a-r0", team_id: "hold-a" }],
+  });
+  assert.equal((await countSquadLimitViolations({ supabase })).violations, 0);
 });

@@ -293,6 +293,26 @@ export function commitMessage(assigned) {
   ].join('\n');
 }
 
+/** A push qualifies only when its single commit is exactly what the numberer generates. */
+export function isNumberingCommit({ git, before, after }) {
+  if (!/^[a-f0-9]{40}$/.test(before) || !/^[a-f0-9]{40}$/.test(after)) return false;
+  if (String(git(['show', '-s', '--format=%P', after])).trim() !== before) return false;
+
+  const now = new Date(String(git(['show', '-s', '--format=%cI', after])).trim());
+  if (!Number.isFinite(now.getTime())) return false;
+  const { fragments } = planFromGit({ git, ref: before, now });
+  if (!fragments.length) return false;
+  const { source, assigned } = numberFragments(String(git(['show', before + ':' + PATCH_FILE])), fragments);
+  const changes = String(git(['diff', '--name-status', '--no-renames', before, after, '--'])).trimEnd().split(/\r?\n/);
+  const expected = ['M\t' + PATCH_FILE, ...assigned.map(({ path }) => 'D\t' + path)];
+  if (changes.sort().join('\n') !== expected.sort().join('\n')) return false;
+  if (String(git(['diff', '--summary', before, after, '--', PATCH_FILE])).trim()) return false;
+  if (String(git(['show', '-s', '--format=%B', after])).trimEnd() !== commitMessage(assigned)) return false;
+  if (String(git(['show', after + ':' + PATCH_FILE])) !== source) return false;
+  assertNumbered(source, assigned);
+  return true;
+}
+
 // ---------------------------------------------------------------- skrivning via GitHub
 
 function runGhJson(gh, args, body) {
@@ -378,7 +398,7 @@ export function numberPendingOnMain({ repo = DEFAULT_REPO, dryRun = false, git =
     if (res.ok) {
       lines.push(`patch notes: ${assigned.length} fragment(er) nummereret paa main som ${String(res.sha).slice(0, 8)}: ${summary}.`);
       // Codex P1 (PR #8353): commit'et er nyt efter togets verifikation. Maskinlinjen giver
-      // SHA'en tilbage til merge-koeen, som kraever main-CI + deploy-verifikation af den,
+      // SHA'en tilbage til merge-koeen, som kraever patch notes-CI + deploy-verifikation af den,
       // foer close-out er faerdig (AGENTS regel 20). Koeres `push` manuelt, verificeres den selv.
       lines.push(numberedShaLine(res.sha));
       return lines;
@@ -433,6 +453,18 @@ export async function main(argv = process.argv.slice(2), { out = (l) => process.
     out(`patch-notes-number: ${fragments.length} gyldige ventende fragment(er), ${errors.length} fejl.`);
     return errors.length ? 1 : 0;
   }
+  if (cmd === 'verify-numbering') {
+    const before = argValue(argv, '--before');
+    const after = argValue(argv, '--after');
+    let verified = false;
+    try {
+      verified = isNumberingCommit({ git: defaultGit(), before, after });
+    } catch (error) {
+      err('patch-notes-number: kunne ikke bevise nummereringscommit: ' + error.message);
+    }
+    out(String(verified));
+    return 0;
+  }
   if (cmd === 'plan') {
     const ref = argValue(argv, '--ref') ?? 'HEAD';
     const git = defaultGit();
@@ -455,7 +487,7 @@ export async function main(argv = process.argv.slice(2), { out = (l) => process.
     for (const l of lines) out(l);
     return 0;
   }
-  err('Brug: node scripts/patch-notes-number.mjs check | plan [--ref <ref>] | local | push [--repo o/n] [--dry-run]');
+  err('Brug: node scripts/patch-notes-number.mjs check | plan [--ref <ref>] | local | push [--repo o/n] [--dry-run] | verify-numbering --before <sha> --after <sha>');
   return 2;
 }
 

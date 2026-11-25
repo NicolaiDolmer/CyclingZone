@@ -72,6 +72,7 @@ const SECTION_DEFS = [
     Icon: ClipboardIcon,
     blocks: [
       { id: "whatBoard", kind: "text" },
+      { id: "afterBreak", kind: "text" },
       { id: "season1Baseline", kind: "text" },
       // #5483 · national kerne-taerskel forklaret lige efter den foerste
       // omtale (season1Baseline), foer selve plan-onboardingen.
@@ -485,9 +486,6 @@ const SECTION_DEFS = [
       { id: "youthAuctions", kind: "text" },
       { id: "upkeepCost", kind: "text" },
       { id: "graduation", kind: "text" },
-      // #2491: hvor selve valget traeffes (Graduation Day-siden). Prosaen bor
-      // her, ikke paa fladen (ejer 20/8: kort tekst paa UI, manualer i Hjaelp).
-      { id: "graduationDayPage", kind: "steps" },
       // #4066: wired in — promoting/demoting between academy and senior
       // squad outside graduation already had translated copy but no
       // reachable docs.
@@ -497,7 +495,7 @@ const SECTION_DEFS = [
   // #5519 · U23 team og Junior team faar egne sider (Clubhouse-navigationen,
   // ved siden af My Team), bag youth_squad_pages (HELP_SECTION_FLAGS i
   // ./helpFlagGates.js). Sektionen supplerer academy-sektionen ovenfor, den
-  // erstatter den ikke: intake, Graduation Day og trup-flyt er stadig beskrevet
+  // erstatter den ikke: optag, automatisk oprykning og trup-flyt er stadig beskrevet
   // der og aendrer sig ikke. Denne sektion forklarer kun det nye: at trupperne
   // har faaet egne sider, og at ungdomsloeb koerer fra S4.
   {
@@ -627,6 +625,7 @@ const FAQ_KEYS = [
   "riderSalaryView",
   "riderDevelopment",
   "academyIntakeScoutingFaq",
+  "academyAgeFocusFaq",
   "academyIntakeExpiryFaq",
   "academySigningMidRaceFaq",
   "howToWinRace",

@@ -109,8 +109,9 @@ test("AcademyPage skelner backend-fejl fra slukket flag (#2796)", () => {
 });
 
 test("#6155: fuld juniortrup spærrer ikke, når U23 har plads; kortet siger hvor han kommer hen", () => {
-  assert.match(pageSource, /const landing = academyLandingSquad\(targetSquad, ageForSeason\(rider\.birthdate, seasonYear\), squadCounts\);/);
-  assert.match(pageSource, /const isFull = landing\.full;/, "spærringen afgøres af ALLE mulige trupper, ikke kun aldersplaceringen");
+  // #8605: the senior landing counts like the signing (reserved auction places), falling back to seniorCount.
+  assert.match(pageSource, /const landing = academyLandingSquad\(targetSquad, ageForSeason\(rider\.birthdate, seasonYear\), squadCounts,\s*seniorLanding \?\? \{ used: seniorCount, max: seniorMax \}\);/);
+  assert.match(pageSource, /const isFull = landing\.full \|\| clubFull;/, "spærringen afgøres af ALLE mulige trupper, ikke kun aldersplaceringen");
   assert.match(pageSource, /landing\.movedToU23 && \(\s*<p[^>]*data-testid="intake-lands-u23">\{t\("landsOnU23"\)\}/);
   assert.match(pageSource, /blockedBoth \? t\("fullNoteBoth"\)/);
 });
@@ -276,10 +277,10 @@ test("#8081: udgave A vises kun bag kontakten; den normale gren og kortet er uæ
   assert.match(pageSource, /const pageV2 = useAcademyPageV2Flag\(\);/);
   // Udgave A står bag en ready-gate for det lazy navnerum academyV2 (perf-gaten).
   assert.match(pageSource, /if \(pageV2\) \{\s*return \([\s\S]{0,300}?<I18nReadyGate ns="academyV2">\s*<AcademyV2\b/);
-  // Den normale side kalder stadig kortet via .map, og "Lander på" kræver showLanding.
+  // Den normale side kalder stadig kortet via .map, og seniorplacering vises i begge udgaver.
   assert.match(pageSource, /regularIntake\.map\(renderIntakeCard\)/);
-  assert.match(pageSource, /\{!showLanding && landing\.movedToU23 && \(/);
-  assert.match(pageSource, /showLanding && landing\.squad && \(/);
+  assert.match(pageSource, /\{!showLanding && !clubFull && landing\.movedToU23 && \(/);
+  assert.match(pageSource, /!clubFull && landing\.squad && \(showLanding \|\| landing\.squad === "senior"\) && \(/);
   // #8060 (ejervalg 16/11, godkendt 17/11): regnskabet er en fane i udgave A; det gamle AcademyPnl
   // vises ikke under fanerne der (det ville modsige fanen). Den gamle side har det stadig.
   assert.match(pageSource, /footer=\{null\}/);
@@ -331,15 +332,15 @@ test("#8081 (ejer 16/11): Dine talenter viser kun egen avl; oprindelsen læses r
   assert.equal(academyV2Locale("da").v2.talents.colVia, undefined);
 });
 
-test("#8081: fordelingen pr. alder står under aldersvælgeren i ord og følger det valgte fokus (ingen tal)", () => {
-  assert.match(ageFieldSource, /const distribution = ageFocusDistribution\(value\);/);
-  assert.ok(ageFieldSource.indexOf("<Segmented") < ageFieldSource.indexOf('data-testid="academy-age-distribution"'), "linjen står under vælgeren");
+test("#6944: viser det virksomme aldersvalg uden en skønnet fordeling", () => {
+  assert.match(v2Source, /ageFocus\.state\?\.unlocked/);
+  assert.match(v2Source, /v2\.tabs\.profileAndAge/);
+  assert.match(ageFieldSource, /<Segmented/);
+  assert.doesNotMatch(ageFieldSource, /ageFocusDistribution|distributionLabel/);
   for (const lng of ["en", "da", "es", "fr", "nl"]) {
-    const age = academyV2Locale(lng).v2.age;
-    for (const word of Object.values(age.share)) assert.doesNotMatch(String(word), /\d|%/, `${lng}: kun ord, ingen tal`);
-    assert.doesNotMatch(age.row, /%/, `${lng}: ingen procent`);
+    assert.ok(academyV2Locale(lng).v2.age.intro);
+    assert.doesNotMatch(academyV2Locale(lng).v2.age.intro, /\d|%|—/);
   }
-  assert.deepEqual(academyV2Locale("da").v2.age.share, { many: "mange", some: "nogle", few: "få" });
 });
 
 test("#8081 (Codex-fund): en fejlet genhentning efter et gemt valg viser ikke 'intet blev ændret'", () => {

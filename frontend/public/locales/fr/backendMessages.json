@@ -213,6 +213,10 @@
       "title": "Signature à l'académie terminée",
       "message": "Ton jeune talent a rejoint ton académie."
     },
+    "academySignedSenior": {
+      "title": "Signature à l'académie terminée",
+      "message": "{riderName} a rejoint ton équipe senior."
+    },
     "academyGraduationReady": {
       "title": "Fin de formation à l'académie",
       "message": "{name} est trop âgé pour ton académie. Promeus, vends ou libère avant la date limite."
@@ -512,6 +516,9 @@
         "sellerNoLongerOwns": "{riderName} n'a pas pu être finalisé car le coureur n'est plus dans l'équipe du vendeur.",
         "sellerSquadTooSmall": "{riderName} n'a pas pu être vendu car le vendeur descendrait sinon sous {minRiders} coureurs en division {division}.",
         "sellerSquadRiskTooSmall": "{riderName} n'a pas pu être vendu car le vendeur descendrait sinon sous {minRiders} coureurs une fois comptés les coureurs qui partent au prochain changement de saison (fin de contrat ou risque de retraite).",
+        "swapClubRosterFull": "L’un des clubs n’a plus de place pour cet échange.",
+        "swapPendingRegistration": "Attendez que le mouvement précédent soit enregistré avant de proposer de nouveau cet échange.",
+        "clubRosterFull": "Le club acheteur n’a plus de place. Vendez ou libérez d’abord un coureur.",
         "buyerSquadFull": "{riderName} n'a pas pu être transféré car l'équipe de l'acheteur est déjà complète.",
         "buyerCannotAfford": "L'accord sur {riderName} n'a pas pu être finalisé car l'acheteur manque de fonds.",
         "offeredMoved": "{offeredName} n'est plus disponible pour l'échange.",

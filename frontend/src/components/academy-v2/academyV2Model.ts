@@ -2,7 +2,7 @@
 //
 // Siden vises kun med kontakten academy_page_v2_8081 tændt (GET /api/feature-flags).
 // Slukket står akademisiden præcis som før. Ren .ts uden React, så node --test kan loade den.
-import { academyTargetSquad, JUNIOR_MAX_SEASON_AGE } from "../../lib/squadCaps.ts";
+import { academyTargetSquad } from "../../lib/squadCaps.ts";
 import { isYouthSquad, type YouthSquad } from "../../lib/youthSquadPages.ts";
 
 export const ACADEMY_PAGE_V2_FLAG_KEY = "academy_page_v2_8081";
@@ -16,28 +16,6 @@ export const AGE_FOCUS_OPTIONS: readonly string[] = Object.freeze([AGE_FOCUS_MIX
 /** null/ukendt = Blandet; ellers alderen som streng. */
 export function ageFocusChoice(value: string | null | undefined): string {
   return value && AGE_FOCUS_OPTIONS.includes(value) ? value : AGE_FOCUS_MIXED;
-}
-
-export type AgeShare = "many" | "some" | "few";
-export interface AgeShareRow { age: number; share: AgeShare; squad: YouthSquad }
-
-const FOCUS_AGES: readonly number[] = Object.freeze([16, 17, 18, 19]);
-// Ejerens valgte skitse B (PR #8185): Blandet giver flest 16-årige, derefter 17 og 18, færrest 19.
-const MIXED_SHARE: Readonly<Record<number, AgeShare>> = Object.freeze({ 16: "many", 17: "some", 18: "some", 19: "few" });
-
-/**
- * Fordelingen pr. alder under aldersvælgeren, KUN i ord (mange / nogle / få), aldrig i tal.
- * Reglen er skitse B fra PR #8185 (ejervalg): Blandet = MIXED_SHARE; en valgt alder fylder mest,
- * de andre dukker stadig op, bare sjældnere. Truppen er den alderen lander på (junior til og
- * med JUNIOR_MAX_SEASON_AGE, ellers U23). Ugens træk læser endnu ikke fokus (se PR #8271).
- */
-export function ageFocusDistribution(focus: string | null | undefined): AgeShareRow[] {
-  const choice = ageFocusChoice(focus);
-  return FOCUS_AGES.map((age) => ({
-    age,
-    share: choice === AGE_FOCUS_MIXED ? (MIXED_SHARE[age] ?? "few") : (String(age) === choice ? "many" : "few"),
-    squad: age <= JUNIOR_MAX_SEASON_AGE ? "junior" : "u23",
-  }));
 }
 
 /** Hvordan et talent kom til holdet: et signeret akademi-tilbud eller en vundet ungdomsauktion. */

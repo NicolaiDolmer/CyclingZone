@@ -127,7 +127,20 @@ test('guard: every migration touching the gated functions, in filename order, ke
     'a migration between beta scope and atomic payments patches a gated function: add it to PATCHED_AFTER_BETA_2176');
   // Beta scope is already applied by the fixture; replay every later one, twice.
   const db = await betaDatabase2176(t);
-  for (let pass = 0; pass < 2; pass++) for (const name of touching.slice(1)) await db.exec(await migrationSource2176(name));
+  // #8034 uses the promotion allowance from #7323, which does not itself
+  // edit a gated market function and therefore is outside the discovery scan.
+  await db.exec(`
+    ALTER TABLE seasons ADD COLUMN status text, ADD COLUMN number integer;
+    ALTER TABLE riders ADD COLUMN birthdate date, ADD COLUMN promotion_pending_to text,
+      ADD COLUMN promotion_pending_since timestamptz, ADD COLUMN firstname text, ADD COLUMN lastname text;
+    ALTER TABLE teams ADD COLUMN is_ai boolean DEFAULT false, ADD COLUMN is_bank boolean DEFAULT false;
+    CREATE TABLE academy_graduation (
+      rider_id uuid, team_id uuid, season_id uuid, from_squad text, to_squad text,
+      status text, deadline timestamptz, resolved_at timestamptz, PRIMARY KEY(rider_id, season_id)
+    );
+  `);
+  const later = [...new Set([...touching.slice(1), "2026-11-24-7323-season-squad-promotion.sql"])].sort();
+  for (let pass = 0; pass < 2; pass++) for (const name of later) await db.exec(await migrationSource2176(name));
   assert.match(await definition(db, CREATE), FLOOR_8015, 'a later migration rewrote create_market_auction_2176 with an older body');
   for (const signature of GATED) {
     const def = await definition(db, signature);

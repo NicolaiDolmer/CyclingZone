@@ -12,9 +12,10 @@ on:
 
 jobs:
   claude:
-    # Offentligt repo: kun ejer/medlem/collaborator maa starte jobbet (#7029). Actionen
-    # tjekker selv skriveadgang, men saa naar en fremmed aldrig ind i et job med secrets.
+    # Ejerbeslutning #4189: kun ejeren maa starte jobbet med repoets secrets.
+    # Tjek afsenderen foer eventets eksisterende tag- og author-association-regler.
     if: |
+      github.event.sender.login == 'NicolaiDolmer' &&
       (
         (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||

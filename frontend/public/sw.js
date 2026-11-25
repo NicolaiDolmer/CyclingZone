@@ -36,7 +36,7 @@
  */
 "use strict";
 
-const SW_VERSION = "2026-11-12.1";
+const SW_VERSION = "2026-11-25.1";
 const CACHE_PREFIX = "cz-sw-";
 const OFFLINE_CACHE = `${CACHE_PREFIX}offline-${SW_VERSION}`;
 // Kun en cache-noegle: ingen rute hedder dette, workeren slaar den selv op.
@@ -93,7 +93,124 @@ function offlineHtml(copy) {
     <button type="button" onclick="location.reload()">${copy.action}</button>
   </div>
 </main>
-<script>addEventListener("online", function () { location.reload(); });</script>
+<script>
+(() => {
+  const MIN_DELAY = 5000;
+  const MAX_DELAY = 60000;
+  const PROBE_TIMEOUT = 8000;
+  const RELOAD_KEY = "cz-offline-recovery-last-reload";
+  let delay = MIN_DELAY;
+  let retryAt = performance.now() + Math.max(MIN_DELAY, reloadCooldown());
+  let retryTimer;
+  let activeProbe;
+  let pageHidden = false;
+  let stopped = false;
+
+  function reloadCooldown() {
+    try {
+      const saved = sessionStorage.getItem(RELOAD_KEY);
+      if (saved === null) return 0;
+      const lastReload = Number(saved);
+      return Number.isFinite(lastReload)
+        ? Math.max(0, Math.min(MAX_DELAY, lastReload + MAX_DELAY - Date.now()))
+        : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function canProbe() {
+    return !stopped && !pageHidden && document.visibilityState === "visible";
+  }
+
+  function schedule(wait) {
+    clearTimeout(retryTimer);
+    if (canProbe()) retryTimer = setTimeout(probe, wait);
+  }
+
+  function suspend() {
+    clearTimeout(retryTimer);
+    const pending = activeProbe;
+    activeProbe = undefined;
+    pending?.abort();
+  }
+
+  function onVisibility() {
+    if (canProbe()) probe();
+    else suspend();
+  }
+
+  function onPageHide() {
+    pageHidden = true;
+    suspend();
+  }
+
+  function onPageShow() {
+    pageHidden = false;
+    probe();
+  }
+
+  function stop() {
+    stopped = true;
+    suspend();
+    removeEventListener("online", probe);
+    removeEventListener("pageshow", onPageShow);
+    removeEventListener("pagehide", onPageHide);
+    document.removeEventListener("visibilitychange", onVisibility);
+  }
+
+  async function probe() {
+    if (!canProbe() || activeProbe) return;
+    const wait = retryAt - performance.now();
+    if (wait > 0) {
+      schedule(wait);
+      return;
+    }
+
+    clearTimeout(retryTimer);
+    const controller = new AbortController();
+    activeProbe = controller;
+    const timeout = setTimeout(() => controller.abort(), PROBE_TIMEOUT);
+    let recovered = false;
+    try {
+      // HEAD checks the original route without downloading or caching a document.
+      const response = await fetch(location.href.split("#")[0], {
+        method: "HEAD", mode: "same-origin", cache: "no-store", signal: controller.signal,
+      });
+      recovered = response.ok;
+    } catch {
+      // Transport failures and timeouts use the same backoff as HTTP errors.
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (activeProbe !== controller) return;
+    activeProbe = undefined;
+    if (!canProbe()) return;
+    if (recovered) {
+      try {
+        // A successful HEAD followed by a failed navigation can return a new
+        // offline document. Keep that document from immediately reloading.
+        sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+      } catch {
+        // The initial delay remains available if tab storage is blocked.
+      }
+      stop();
+      location.reload();
+      return;
+    }
+
+    retryAt = performance.now() + delay;
+    schedule(delay);
+    delay = Math.min(delay * 2, MAX_DELAY);
+  }
+
+  addEventListener("online", probe);
+  addEventListener("pageshow", onPageShow);
+  addEventListener("pagehide", onPageHide);
+  document.addEventListener("visibilitychange", onVisibility);
+  schedule(retryAt - performance.now());
+})();
+</script>
 </body>
 </html>`;
 }

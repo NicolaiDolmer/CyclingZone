@@ -158,7 +158,6 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | CI | [.github/workflows/i18n-check.yml](../.github/workflows/i18n-check.yml) | tone-em-dash: tone-em-dash | aldrig bevist |
 | CI | [.github/workflows/i18n-check.yml](../.github/workflows/i18n-check.yml) | tone-terms: tone-terms | aldrig bevist |
 | CI | [.github/workflows/league-size-invariant-audit.yml](../.github/workflows/league-size-invariant-audit.yml) | audit: league-size-invariant | aldrig bevist |
-| CI | [.github/workflows/lighthouse-ci-skip-stub.yml](../.github/workflows/lighthouse-ci-skip-stub.yml) | perf-gate: perf-gate | aldrig bevist |
 | CI | [.github/workflows/lighthouse-ci.yml](../.github/workflows/lighthouse-ci.yml) | perf-gate: perf-gate | aldrig bevist |
 | CI | [.github/workflows/lockfile-drift-check.yml](../.github/workflows/lockfile-drift-check.yml) | lockfile-drift: npm ci + install-parity | aldrig bevist |
 | CI | [.github/workflows/patch-notes-coverage-check.yml](../.github/workflows/patch-notes-coverage-check.yml) | patch-notes-coverage: patch-notes-coverage (advisory) | aldrig bevist |

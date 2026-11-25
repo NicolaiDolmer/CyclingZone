@@ -1,3 +1,5 @@
+import { loadProtectedSeniorRiderIds } from "./seasonSquadPromotion.js";
+
 /**
  * #1346 — Readiness-gate for manuel sæson-transition.
  * =====================================================
@@ -107,11 +109,21 @@ export async function countSquadLimitViolations({ supabase } = {}) {
   }
   const countByTeam = new Map();
   for (const teamId of effectiveTeamById.values()) countByTeam.set(teamId, (countByTeam.get(teamId) || 0) + 1);
+  const overLimitTeamIds = new Set(teams.filter((team) => (
+    (countByTeam.get(team.id) || 0) > getSquadLimits(team.division).max
+  )).map(({ id }) => id));
+  const overLimitRiders = new Map([...effectiveTeamById].filter(([, teamId]) => overLimitTeamIds.has(teamId)));
+  const protectedIds = await loadProtectedSeniorRiderIds(supabase, overLimitRiders);
+  const protectedByTeam = new Map();
+  for (const riderId of protectedIds) {
+    const teamId = overLimitRiders.get(riderId);
+    protectedByTeam.set(teamId, (protectedByTeam.get(teamId) || 0) + 1);
+  }
   const violatingTeams = [];
   for (const t of teams || []) {
     const limits = getSquadLimits(t.division);
     const n = countByTeam.get(t.id) || 0;
-    if (n > limits.max || n < limits.min) {
+    if (n > limits.max + (protectedByTeam.get(t.id) || 0) || n < limits.min) {
       violatingTeams.push({ teamId: t.id, teamName: t.name ?? null, count: n, min: limits.min, max: limits.max });
     }
   }
@@ -185,7 +197,7 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
 
   // #5855: trup-loftet maales altid paa data (ingen vindue-markoer at stole paa).
   const { violations, violating_teams: violatingTeams = [] } = await countSquadLimitViolations({ supabase });
-  const squadOk = violations === 0;
+  const squadOk = season.number >= 6 || violations === 0;
   // #6784: admin skal kunne handle paa fundet, saa de foerste 5 hold vises med antal.
   const shownTeams = violatingTeams.slice(0, 5)
     .map((t) => `${t.teamName ?? t.teamId} ${t.count} (${t.count > t.max ? `max ${t.max}` : `min ${t.min}`})`)

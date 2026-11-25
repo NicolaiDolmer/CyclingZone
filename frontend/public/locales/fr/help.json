@@ -42,6 +42,10 @@
     },
     "board": {
       "label": "Direction",
+      "afterBreak": {
+        "title": "Repartir après une pause",
+        "text": "Lorsque votre club revient après une pause, la direction lève les sanctions imposées avant votre départ. Elle reprend son évaluation du club la saison suivante."
+      },
       "whatBoard": {
         "title": "Que fait la direction ?",
         "text": "La direction fixe des objectifs à ton équipe et suit ta saison en direct : la satisfaction se met à jour après chaque week-end de course (elle bouge de 5 points au maximum par week-end) vers ce que donnerait une évaluation complète de la saison. La satisfaction détermine ton modificateur de sponsor, c'est-à-dire la part du revenu de sponsor qui est versée, et le modificateur suit la satisfaction en direct. Les conséquences dures (plafond salarial, restriction de signature, vente forcée) ne sont évaluées qu'à deux points de contrôle prévisibles : la mi-saison et la fin de saison. Tu ne peux pas être renvoyé ; les conséquences sont graduelles et toujours prévisibles. Tu peux suivre ça course par course dans les détails du plan sur la page Direction, où un historique week-end par week-end montre si la satisfaction a monté ou baissé et quel domaine d'objectif l'a fait bouger."
@@ -1719,7 +1723,7 @@
       },
       "academySize": {
         "title": "Taille de l'académie (par équipe)",
-        "text": "Ton académie compte deux équipes, chacune avec son propre plafond : jusqu'à {u23SquadCap} coureurs dans ton équipe U23 et jusqu'à {juniorSquadCap} dans ton équipe juniors. Un coureur prend une place dans l'équipe où son âge le place. Ces places sont totalement séparées de ton plafond d'effectif senior de {squadCap}. Les coureurs de l'académie ne comptent jamais dans ta limite d'effectif senior et ne courent jamais dans les courses seniors ; à partir de la saison 4, ils courent à la place dans leurs propres courses de jeunes."
+        "text": "Chaque équipe peut compter jusqu’à {squadCap} coureurs et le club peut en compter jusqu’à {clubRiderCap} au total. Les enchères, les achats et les échanges exigent une place dans une équipe où le coureur peut courir. Si le club a atteint sa limite, vendez ou libérez un coureur avant d’en recruter un autre. Vous pouvez toujours échanger un coureur contre un autre si les limites des équipes sont respectées. Un transfert interne demande une place dans l’équipe de destination. Une promotion automatique peut dépasser la limite de l’équipe. Vous pouvez toujours courir, entraîner et vendre des coureurs."
       },
       "dailyTrainingBoost": {
         "title": "Entraînement quotidien à l'académie",
@@ -1742,17 +1746,8 @@
         "text": "À partir de la saison 5, l'académie n'a plus de coût d'entretien par place. Tes coureurs de l'académie ne coûtent que leur salaire."
       },
       "graduation": {
-        "title": "Jour de la remise des diplômes",
-        "text": "Les coureurs qui ont dépassé leur effectif passent à l'étape suivante au changement de saison. Un junior qui a 19 ans passe dans ton équipe U23, et un coureur U23 qui a 23 ans passe dans ton équipe senior. La liste ouvre la semaine avant le changement de saison, et la date limite est le changement lui-même. Tant que tu n'as pas déplacé un coureur, il s'entraîne et court dans son ancien effectif. Pour chaque coureur, tu choisis Monter (demande une place libre dans l'effectif où il va, et il garde son contrat exactement tel quel), Vendre sur le marché des transferts, ou Libérer comme agent libre. Si tu ne fais rien, le club choisit pour toi au changement : monter quand il y a de la place, sinon vendre. Ton coach donne un court avis sur chaque coureur, et ce n'est jamais qu'un avis, jamais une promesse."
-      },
-      "graduationDayPage": {
-        "title": "Où faire le choix",
-        "steps": [
-          "Une bannière apparaît sur la page Académie, et tu reçois un message dans ta boîte de réception, quand des coureurs attendent.",
-          "Ouvre le Jour de la remise des diplômes depuis l'un ou l'autre.",
-          "Chaque transition a sa propre carte, avec une ligne par coureur : note, potentiel, contrat et avis de ton coach.",
-          "Choisis Monter, Vendre ou Libérer pour chaque coureur, puis appuie sur Tout confirmer."
-        ]
+        "title": "Promotion automatique dans un autre effectif",
+        "text": "Au changement de saison, je fais passer les juniors dans l’équipe U23 à 19 ans et les U23 dans l’équipe senior à 23 ans, selon leur âge de saison. Les coureurs qui restent dans ton club conservent leur contrat et leur salaire. Leurs enchères et annonces de transfert se poursuivent. Je les fais monter même si l’effectif est complet. Tu peux continuer à courir, à t’entraîner et à vendre. Tu peux de nouveau recruter dans cet effectif dès qu’une place se libère. Les promotions figurent dans ton message de changement de saison."
       },
       "promoteDemote": {
         "title": "Déplacer des coureurs entre les effectifs",
@@ -1774,8 +1769,8 @@
         "text": "Oui, monter est toujours autorisé s'il y a une place libre : un coureur de 17 ans peut être dans l'équipe U23, un coureur de 20 ans dans l'équipe senior, quand tu veux. Descendre ne fonctionne que dans la limite d'âge propre à l'effectif : un coureur de 19 ans ne peut pas retourner chez les juniors, et un coureur de 23 ans ne peut pas retourner en U23."
       },
       "graduationDayAt23": {
-        "title": "Que se passe-t-il quand un coureur dépasse l'âge de son effectif ?",
-        "text": "Au changement de saison, les coureurs qui ont dépassé leur effectif passent à l'étape suivante : de juniors à l'équipe U23 à l'âge de saison 19 ans, de U23 à senior à l'âge de saison 23 ans. Tu as le premier choix au Jour de la remise des diplômes ; si tu ne fais rien avant la date limite, le club le fait monter quand il y a de la place et que tu en as les moyens, sinon le vend, sinon le libère comme agent libre. Au changement de saison, les contrats qui expirent prennent fin d'abord : seuls les coureurs encore sous contrat peuvent monter. Prolonge le contrat d'un jeune coureur avant la fin de la saison si tu veux qu'il monte."
+        "title": "Promotion automatique dans un autre effectif",
+        "text": "Au changement de saison, je fais passer les juniors dans l’équipe U23 à 19 ans et les U23 dans l’équipe senior à 23 ans, selon leur âge de saison. Les coureurs qui restent dans ton club conservent leur contrat et leur salaire. Leurs enchères et annonces de transfert se poursuivent. Je les fais monter même si l’effectif est complet. Tu peux continuer à courir, à t’entraîner et à vendre. Tu peux de nouveau recruter dans cet effectif dès qu’une place se libère. Les promotions figurent dans ton message de changement de saison."
       },
       "youthRacesFromS4": {
         "title": "L'équipe U23 et l'équipe juniors courent-elles vraiment ?",
@@ -2427,6 +2422,10 @@
     "academyIntakeScoutingFaq": {
       "q": "À quelle fréquence ai-je de nouveaux jeunes talents d'académie, et la détection se remet-elle à zéro ?",
       "a": "Tu reçois une petite cohorte de jeunes talents quand tu mets ton équipe en place, et en plus de nouveaux candidats de l'académie arrivent chaque dimanche. Passe en revue chaque candidat et signe-le ou refuse-le à ton rythme, mais n'attends pas trop longtemps : les offres ouvertes expirent après 7 jours. La détection fonctionne différemment : tu as 15 actions de détection par saison, réapprovisionnées automatiquement au début de la saison suivante, et tu peux les dépenser sur n'importe quel coureur, pas seulement sur tes propres jeunes talents d'académie, pour préciser à quel point ils sont vraiment bons."
+    },
+    "academyAgeFocusFaq": {
+      "q": "Comment cibler un âge pour le recrutement de la semaine à l’académie ?",
+      "a": "Dans l’onglet Profil et âge, choisissez un âge pour le rendre plus probable dans le recrutement de la semaine. Les autres âges restent possibles. Le choix mixte conserve la répartition habituelle. Les changements prennent effet après quatorze jours."
     },
     "academyIntakeExpiryFaq": {
       "q": "Les offres de recrutement de l'académie expirent-elles ?",

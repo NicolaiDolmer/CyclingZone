@@ -33,7 +33,7 @@ export default function FatigueForecast({
   const value = Math.round(entry.fatigue);
   const bandText = t(`forecast.band_${tone}`);
   const pct = Math.max(0, Math.min(100, value));
-  const actual = settled || entry.fatigueIsActual === true;
+  const actual = settled;
   return (
     <div
       className={`flex items-center gap-2 ${className}`}

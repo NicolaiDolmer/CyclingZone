@@ -1827,9 +1827,13 @@ export default function RiderStatsPage() {
 
   // Full-bleed-ruten får ingen Layout-padding (#2849 bølge 5) — loading/fejl-
   // grenene sætter derfor selv side-padding (RaceDetailPage-mønstret).
+  // Behold profilens fuldbrede yderramme, når React genbruger den ved skift
+  // fra indlæsning eller fejl. Breddeloftet hører til i den indre ramme.
   if (loading) return (
-    <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8">
-      <PageLoader label={t("page.loadingAria")} />
+    <div>
+      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8">
+        <PageLoader label={t("page.loadingAria")} />
+      </div>
     </div>
   );
 
@@ -1837,15 +1841,17 @@ export default function RiderStatsPage() {
   // hentning) må ikke ligne en tavs blank side — ErrorState med retry (samme
   // loadRider-kald som useEffect'en bruger, ingen ny hente-logik).
   if (!rider) return (
-    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
-      <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-4">
-        <ChevronLeftIcon size={13} aria-hidden="true" />
-        {t("page.back")}
-      </button>
-      <ErrorState
-        title={t("page.notFound")}
-        action={<Button size="sm" variant="secondary" onClick={loadRider}>{t("page.retry")}</Button>}
-      />
+    <div>
+      <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
+        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-4">
+          <ChevronLeftIcon size={13} aria-hidden="true" />
+          {t("page.back")}
+        </button>
+        <ErrorState
+          title={t("page.notFound")}
+          action={<Button size="sm" variant="secondary" onClick={loadRider}>{t("page.retry")}</Button>}
+        />
+      </div>
     </div>
   );
 

@@ -623,6 +623,23 @@ function makeSupabase(db, { claimTransfer = null, claimSwap = null, beforeRiderU
       if (["auto_accept_claim_swap","auto_accept_claim_swap_paid"].includes(name) && claimSwap) {
         return Promise.resolve({ data: claimSwap(params), error: null });
       }
+      if (name === "auto_accept_claim_swap") {
+        const offered = db.riders.find(rider => rider.id === params.p_offered_rider_id);
+        const requested = db.riders.find(rider => rider.id === params.p_requested_rider_id);
+        if (offered?.team_id !== params.p_proposing_team_id || requested?.team_id !== params.p_receiving_team_id) {
+          return Promise.resolve({ data: { status: "rider_state_changed" }, error: null });
+        }
+        for (const [rider, teamId, patch] of [
+          [offered, params.p_receiving_team_id, params.p_offered_patch],
+          [requested, params.p_proposing_team_id, params.p_requested_patch],
+        ]) {
+          const placement = params.p_defer_registration
+            ? { pending_team_id: teamId, updated_at: params.p_now }
+            : { team_id: teamId, pending_team_id: null, acquired_at: params.p_now };
+          Object.assign(rider, placement, patch);
+        }
+        return Promise.resolve({ data: { status: "claimed", offered_rider_id: offered.id }, error: null });
+      }
       assert.equal(name, "increment_balance_with_audit");
       const key = params.p_finance_payload?.idempotency_key;
       if (key && seenIdempotencyKeys.has(key)) {
@@ -705,6 +722,36 @@ test("#2176: atomic transfer claim refusing a raced seller floor stops before ow
   assert.equal(db.riders.find(r => r.id === "rider-1").team_id, "seller");
   assert.equal(client._finance.length, 0);
 });
+
+for (const atomic of [false, true]) {
+  test(`#8034: a full club during ${atomic ? "atomic" : "legacy"} settlement returns a capacity error`, async () => {
+    const db = baseDb({ windowStatus: "open" });
+    db.app_config = atomic ? [{ key: "auto_accept_enabled", value: "on" }] : [];
+    db.transfer_offers.push({ id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+      offer_amount: 200, status: "awaiting_confirmation", buyer_confirmed: false, seller_confirmed: true });
+    const full = () => { throw new Error("club_roster_full"); };
+    const client = makeSupabase(db, atomic ? { claimTransfer: full } : { beforeRiderUpdate: full });
+    const notifications = [];
+    const notifyTeamOwner = async (...args) => notifications.push(args);
+    const result = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer", notifyTeamOwner,
+      now: new Date("2026-11-24T10:00:00Z") });
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 409);
+    assert.equal(result.code, "club_roster_full");
+    assert.equal(db.transfer_offers[0].status, "withdrawn");
+    assert.deepEqual(notifications.map(([team, type, , , id, metadata]) => [team, type, id, metadata.messageCode]), [
+      ["buyer", "transfer_offer_rejected", "offer-1", "notif.transfer.issue.clubRosterFull"],
+      ["seller", "transfer_offer_rejected", "offer-1", "notif.transfer.issue.clubRosterFull"],
+    ]);
+    const retry = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer", notifyTeamOwner,
+      now: new Date("2026-11-24T10:01:00Z") });
+    assert.equal(retry.ok, false);
+    assert.notEqual(retry.code, "already_confirmed");
+    assert.equal(notifications.length, 2);
+    assert.equal(db.riders.find(rider => rider.id === "rider-1").team_id, "seller");
+    assert.equal(client._finance.length, 0);
+  });
+}
 
 test("#6181: claim refusing the buyer money under the team lock stops before ownership and payment", async () => {
   const db = baseDb({ windowStatus: "open" });
@@ -955,6 +1002,36 @@ test("#2176: en auktion der starter under byttet stopper det før betaling", asy
   assert.equal(supabase._finance.length, 0);
   assert.equal(db.swap_offers[0].status, "withdrawn");
 });
+
+for (const [dbCode, responseCode, messageCode, text] of [
+  ["club_roster_full", "swap_club_roster_full", "swapClubRosterFull", "One of the clubs has no free places for this swap."],
+  ["swap_pending_registration", "swap_pending_registration", "swapPendingRegistration", "Wait for the earlier rider move to be registered before proposing this swap again."],
+]) {
+  test(`#8034: ${dbCode} cancels the swap and notifies both parties with the swap-specific reason`, async () => {
+    const db = lockedSwapDb();
+    const supabase = makeSupabase(db, {
+      claimSwap: () => { throw Object.assign(new Error(dbCode), { details: "seller" }); },
+    });
+    const notifications = [];
+    const result = await confirmSwapOffer({
+      supabase, swapId: "swap-1", confirmingTeamId: "buyer",
+      notifyTeamOwner: async (...args) => notifications.push(args),
+      now: new Date("2026-11-24T10:00:00Z"),
+    });
+    assert.equal(result.status, 409);
+    assert.equal(result.code, responseCode);
+    assert.equal(result.error, text);
+    assert.equal(db.swap_offers[0].status, "withdrawn");
+    assert.deepEqual(notifications.map(([team, type, , message, id, metadata]) => [team, type, message, id, metadata.titleCode, metadata.messageCode, metadata.riderId]), [
+      ["seller", "transfer_offer_rejected", text, "swap-1", "notif.transfer.issue.swapTitle", `notif.transfer.issue.${messageCode}`, "buyer-rider-1"],
+      ["buyer", "transfer_offer_rejected", text, "swap-1", "notif.transfer.issue.swapTitle", `notif.transfer.issue.${messageCode}`, "buyer-rider-1"],
+    ]);
+    assert.equal(db.riders.find(rider => rider.id === "rider-1").team_id, "seller");
+    assert.equal(db.riders.find(rider => rider.id === "buyer-rider-1").team_id, "buyer");
+    assert.equal(supabase._finance.length, 0);
+  });
+
+}
 
 test("beta cash-swap committed receipt prevents either legacy payment leg",async()=>{
   const db=lockedSwapDb();db.app_config=[{key:"auto_accept_enabled",value:"beta"},{key:"market_commitment_6181",value:"beta"}];

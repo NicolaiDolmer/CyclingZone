@@ -56,6 +56,26 @@ async function submitSignup(page, email = TYPO_EMAIL) {
   await page.getByRole("button", { name: /Create account and team|Opret konto og hold/i }).click();
 }
 
+test("390 px reduced viewport keeps the focused signup field and submit visible", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/login?mode=signup");
+  const submit = page.locator('form button[type="submit"]');
+  await page.locator("#auth-email").focus();
+  await page.setViewportSize({ width: 390, height: 360 });
+  for (const field of ["team-name", "manager-name", "email", "password"]) {
+    const input = page.locator(`#auth-${field}`);
+    await input.focus();
+    await expect(input).toBeInViewport({ ratio: 0.99 });
+    await expect(submit).toBeInViewport({ ratio: 0.99 });
+    await expect.poll(async () => {
+      const [inputBox, submitBox] = await Promise.all([input.boundingBox(), submit.boundingBox()]);
+      return inputBox && submitBox ? inputBox.y + inputBox.height <= submitBox.y + 1 : false;
+    }).toBe(true);
+  }
+  await page.screenshot({ path: testInfo.outputPath("signup-390-reduced-viewport.png") });
+});
+
 test("bekræftelses-skærmen viser adressen, spam-hint og en vej tilbage (#2826)", async ({ page }, testInfo) => {
   await submitSignup(page);
 

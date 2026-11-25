@@ -319,7 +319,7 @@ import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjure
 // #5517: withSeniorSquadScope er puljernes og løbenes senior-scope — alle liste-læsere
 // af league_divisions og sæson-læsere af races i denne fil går gennem den
 // (forward-guard: lib/squadSeniorReaders.test.js).
-import { applySeniorSquadFilter, SQUAD_CAPS, withSeniorSquadScope, academyPlacementSquad, seniorSquadPatch } from "../lib/squads.js";
+import { applySeniorSquadFilter, CLUB_RIDER_CAP, SQUAD_CAPS, withSeniorSquadScope, academyPlacementSquad, seniorSquadPatch } from "../lib/squads.js";
 import { youthSquadRoom, youthSquadRooms } from "../lib/youthSquadRoom.js"; // #5568: loft pr. ungdomstrup
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
@@ -340,8 +340,7 @@ import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { intakeOfferExpiryDaysFor, signingFeeForSource, isMissingSchemaError as isMissingIntakeSourceSchema } from "../lib/academyIntakeSource.ts";
-import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
-import { handleListPendingRequest, handlePromotePendingRequest } from "../lib/promotionPendingAction.js"; // #6710
+import { findPendingGraduation } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.ts";
@@ -899,11 +898,7 @@ async function fetchTeamCommitment(supabaseClient, teamId) {
   if (!teamId) return { leadingAuctions: [], allMyProxies: [], commitment: 0 };
 
   const [leadingRes, allProxies] = await Promise.all([
-    supabaseClient
-      .from("auctions")
-      .select("id, current_price")
-      .in("status", ["active", "extended"])
-      .eq("current_bidder_id", teamId),
+    fetchLeadingMarketAuctions(supabaseClient, teamId),
     fetchAllMyActiveProxies(supabaseClient, teamId),
   ]);
 
@@ -911,6 +906,14 @@ async function fetchTeamCommitment(supabaseClient, teamId) {
   const commitment = computeWorstCaseCommitment({ leadingAuctions, allMyProxies: allProxies });
 
   return { leadingAuctions, allMyProxies: allProxies, commitment };
+}
+
+async function fetchLeadingMarketAuctions(supabaseClient, teamId) {
+  const result = await supabaseClient.rpc("market_leading_auctions_8034", { p_team: teamId });
+  if (!["42883", "PGRST202"].includes(result.error?.code)) return result;
+  // During rollout the backend can be deployed before the new migration.
+  return supabaseClient.from("auctions").select("id, current_price")
+    .in("status", ["active", "extended"]).eq("current_bidder_id", teamId);
 }
 
 
@@ -1933,6 +1936,20 @@ async function getActiveSeasonNumber() {
 // Før sammenlignede gaten alle akademiryttere med det gamle flade akademi-loft,
 // så et hold med 8 akademiryttere blev afvist, selv om truppen havde plads.
 async function youthAuctionAcademyRoom(teamId, riderId) {
+  const destination = await supabase.rpc("auction_youth_squad_8034", { p_rider: riderId });
+  if (!destination.error) {
+    const squad = destination.data ?? "junior";
+    const { data: used, error } = await supabase.rpc("count_team_squad_members", {
+      p_team_id: teamId, p_squad: squad, p_exclude_rider_id: riderId,
+    });
+    if (error || !Number.isInteger(used)) {
+      throw new Error(`youthAuctionAcademyRoom: ${error?.message ?? "invalid count"}`);
+    }
+    return { squad, used, max: SQUAD_CAPS[squad] };
+  }
+  if (!["42883", "PGRST202"].includes(destination.error.code)) {
+    throw new Error(`youthAuctionAcademyRoom: ${destination.error.message}`);
+  }
   const [{ data: rider, error }, seasonNumber] = await Promise.all([
     supabase.from("riders").select("birthdate").eq("id", riderId).maybeSingle(),
     getActiveSeasonNumber(),
@@ -3357,6 +3374,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
         form: outlook?.form ?? row.form,
         fatigue,
         ...(outlook ? { fatigue_at_start: outlook.fatigueAtStart ?? null } : {}),
+        ...(outlook?.fatigueAtStartIsForecast ? { fatigue_at_start_is_forecast: true } : {}),
         injured_until: row.injured_until ?? null,
         // #5462: resterende LOEBSDAGE inkl. i dag. null = skaden ejes af
         // kalenderdagen (flag off, eller skrevet foer flippet).
@@ -7885,14 +7903,13 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   let creationWarnings = [];
   if (initialBidderId) {
     const [leadingAuctions, teamState] = await Promise.all([
-      supabase
-        .from("auctions")
-        .select("id, current_price")
-        .in("status", ["active", "extended"])
-        .eq("current_bidder_id", initialBidderId),
+      fetchLeadingMarketAuctions(supabase, initialBidderId),
       getTeamMarketState(supabase, initialBidderId),
     ]);
     const activeLeading = leadingAuctions.data || [];
+    const noRoom = getAuctionBidRoomBlock({ teamState, activeLeadingCount: activeLeading.length,
+      activeLeadingSeniorCount: activeLeading.filter(row => (row.reservation_squad ?? "senior") === "senior").length });
+    if (noRoom) return res.status(400).json({ error: "No room for another rider", errorCode: "squad_full_bid", maxRiders: noRoom.maxRiders });
     // #6181 PR 5: taendt kraever startbuddet penge (worst case) OG plads, ikke kun en advarsel.
     const startGate = await auctionStartCommitmentResponse6181(supabase, { teamId: initialBidderId, teamState, price });
     if (startGate) return res.status(startGate.status).json(startGate.body);
@@ -8134,6 +8151,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     academyCount: academyRoom?.used ?? 0,
     academySlots: academyRoom?.max,
     activeLeadingCount: activeLeadingExceptCurrent.length,
+    activeLeadingSeniorCount: activeLeadingExceptCurrent.filter(row => (row.reservation_squad ?? "senior") === "senior").length,
     alreadyLeadingThisAuction,
   });
   if (squadBlock?.code === "no_eligible_room_bid") {
@@ -8218,11 +8236,8 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   });
 
   // Update auction (price + leader only — no extension yet).
-  if (marketGateOn) await syncBidLeader6181(supabase, { auctionId: auction.id, amount: numericAmount, teamId: req.team.id });
-  else await supabase.from("auctions").update({
-    current_price: numericAmount,
-    current_bidder_id: req.team.id,
-  }).eq("id", auction.id);
+  await syncBidLeader6181(supabase, { auctionId: auction.id, amount: numericAmount, teamId: req.team.id,
+    openingAtStartPrice: !auction.current_bidder_id && numericAmount === Number(auction.current_price) });
 
   // Store proxy max-loft if provided with the bid
   const numericProxyMax = Number(proxy_max);
@@ -8457,12 +8472,14 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     const proxyAcademyRoom = auction.is_youth
       ? await youthAuctionAcademyRoom(req.team.id, auction.rider_id)
       : null;
+    const otherLeads = leadingAuctions.filter(row => row.id !== req.params.id);
     const squadBlock = getAuctionBidRoomBlock({
       isYouth: auction.is_youth,
       teamState,
       academyCount: proxyAcademyRoom?.used ?? 0,
       academySlots: proxyAcademyRoom?.max,
-      activeLeadingCount: leadingAuctions.filter((row) => row.id !== req.params.id).length,
+      activeLeadingCount: otherLeads.length,
+      activeLeadingSeniorCount: otherLeads.filter(row => (row.reservation_squad ?? "senior") === "senior").length,
       alreadyLeadingThisAuction: false,
     });
     if (squadBlock?.code === "no_eligible_room_bid") {
@@ -8491,18 +8508,31 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     }
   }
 
-  const atomicProxyBidTime = marketGateOn ? new Date() : null;
-  const { data: acceptedProxyContext, error: proxyUpsertError } = marketGateOn
+  let legacyOpening = !marketGateOn && openingBidAmount !== null;
+  const atomicProxyBidTime = marketGateOn || legacyOpening ? new Date() : null;
+  const upsertLegacyProxy = () => supabase.from("auction_proxy_bids").upsert(
+    { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
+    { onConflict: "auction_id,team_id" }
+  );
+  let { data: acceptedProxyContext, error: proxyUpsertError } = marketGateOn
     ? await supabase.rpc("set_auction_proxy_context_6181", {
         p_auction_id: req.params.id, p_team_id: req.team.id, p_max_amount: numericMax,
         p_opening_amount: openingBidAmount, p_bid_time: atomicProxyBidTime.toISOString(),
       })
-    : await supabase.from("auction_proxy_bids").upsert(
-        { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
-        { onConflict: "auction_id,team_id" }
-      );
+    : legacyOpening
+      ? await supabase.rpc("set_legacy_proxy_opening_bid_8034", {
+          p_auction_id: req.params.id, p_team_id: req.team.id, p_max_amount: numericMax,
+          p_opening_amount: openingBidAmount, p_bid_time: atomicProxyBidTime.toISOString(),
+        })
+      : await upsertLegacyProxy();
+  if (legacyOpening && proxyUpsertError?.code === "PGRST202") {
+    // Backend can briefly lead the SQL deployment. Keep the previous flow
+    // solely when PostgREST confirms the new RPC could not have executed.
+    legacyOpening = false;
+    ({ error: proxyUpsertError } = await upsertLegacyProxy());
+  }
   if (proxyUpsertError) {
-    if (marketGateOn && isLateBidTriggerError(proxyUpsertError)) {
+    if (isLateBidTriggerError(proxyUpsertError)) {
       return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
     }
     const proxyGate = await marketGateResponse6181(supabase, proxyUpsertError, { kind: "proxy", teamId: req.team.id, auctionId: req.params.id }); // #6181 PR 5
@@ -8524,38 +8554,20 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       alreadyLeadingThisAuction: false,
     });
 
-    // #269: oversæt reject_late_auction_bid trigger-fejl til 400 i stedet for 500.
-    const { error: bidInsertError } = marketGateOn ? { error: null } : await supabase.from("auction_bids").insert({
-      auction_id: auction.id,
-      team_id: req.team.id,
-      amount: openingBidAmount,
-      bid_time: proxyBidTime.toISOString(),
-      triggered_extension: false,
-      is_proxy: true,
-    });
-    if (bidInsertError) {
-      if (isLateBidTriggerError(bidInsertError)) {
-        return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
-      }
-      const openingGate = await marketGateResponse6181(supabase, bidInsertError, { kind: "proxy", teamId: req.team.id, auctionId: auction.id }); // #6181 PR 5
-      if (openingGate) return res.status(openingGate.status).json(openingGate.body);
-      return res.status(500).json({ error: "Autobud kunne ikke placeres", errorCode: "proxy_place_failed" });
-    }
-
-    if (marketGateOn) {
-      await syncBidLeader6181(supabase, { auctionId: auction.id, amount: openingBidAmount, teamId: req.team.id });
-    } else {
-      const { error: auctionUpdateError } = await supabase
-        .from("auctions")
-        .update({
-          current_price: openingBidAmount,
-          current_bidder_id: req.team.id,
-        })
-        .eq("id", auction.id);
-      if (auctionUpdateError) {
-        return res.status(500).json({ error: "Autobud kunne ikke opdatere auktionen", errorCode: "proxy_update_failed" });
+    if (!marketGateOn && !legacyOpening) {
+      const { error } = await supabase.from("auction_bids").insert({
+        auction_id: auction.id, team_id: req.team.id, amount: openingBidAmount,
+        bid_time: proxyBidTime.toISOString(), triggered_extension: false, is_proxy: true,
+      });
+      if (error) {
+        if (isLateBidTriggerError(error)) return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
+        const openingGate = await marketGateResponse6181(supabase, error, { kind: "proxy", teamId: req.team.id, auctionId: auction.id });
+        if (openingGate) return res.status(openingGate.status).json(openingGate.body);
+        return res.status(500).json({ error: "Autobud kunne ikke placeres", errorCode: "proxy_place_failed" });
       }
     }
+    await syncBidLeader6181(supabase, { auctionId: auction.id, amount: openingBidAmount, teamId: req.team.id,
+      openingAtStartPrice: !auction.current_bidder_id && openingBidAmount === Number(auction.current_price) });
 
     const riderName = `${auction.rider?.firstname || "Ukendt"} ${auction.rider?.lastname || "rytter"}`.trim();
     // #1740: outbid-notif til den forrige fører flyttes til EFTER cascaden — et
@@ -19220,6 +19232,13 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     const seniorState = await getTeamMarketState(supabase, teamId);
     const seniorCount = seniorState?.future_count ?? seniorState?.rider_count ?? 0;
     const seniorMax = seniorState?.squad_limits?.max ?? 30;
+    // #8605: the intake card's senior landing uses the signing's own count,
+    // which includes places reserved by leading auctions (#8034). Before that
+    // migration, or on an error, the card falls back to seniorCount.
+    const { data: seniorLandingUsed, error: seniorLandingErr } = await supabase.rpc("count_team_squad_members", {
+      p_team_id: teamId, p_squad: "senior", p_exclude_rider_id: null,
+    });
+    if (seniorLandingErr) console.warn("academy senior landing count failed:", seniorLandingErr.message);
 
     // Hent potentiale-værdier separat til estimat-beregning (#1162 whitelist: id, potentiale, birthdate, team_id).
     // #2454: `primary_type` og evne-rækken kommer med, så kandidatens potentiale
@@ -19370,80 +19389,6 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // #2456: fri-agent-butikken ("frie ungdoms-free-agents") er fjernet — talenter
     // kommer via eget intake eller ungdomsauktionen; usolgte slettes ved finalisering.
 
-    // Pending graduates (#932): akademiryttere der har passeret 21 og afventer
-    // promover/sælg/slip-valg inden override-vinduets (deadline) udløb.
-    // #2796: kortet bad om promovér/sælg/slip på navn + alder alene. Payloaden
-    // bærer nu også type, markedsværdi og løn (samme felter rosteret allerede
-    // viser), så de tre knapper ikke længere er konsekvensblinde. Potentiale
-    // udelades bevidst: en graduate er 21+ og dermed færdig med ungdomskurven —
-    // markedsværdien er det beslutningsrelevante tal her.
-    //
-    // #2491 (Graduation Day-siden, ejer-godkendt mockup 3g): rækken bærer nu
-    // HVILKEN overgang det er (`from_squad`/`to_squad`, #4619) plus de felter
-    // siden viser pr. rytter — evne-rækken (så rating-pladen kan regnes med
-    // frontendens ratingForRole-SSOT, samme mønster som alle andre rytter-
-    // flader), kontrakt-længde/-slutsæson og produktionsværdien. Potentiale-
-    // båndet hentes IKKE her: siden bruger ScoutablePotentiale, der går
-    // gennem det maskerede POST /api/scouting/estimates som alle andre flader
-    // — råt potentiale forlader stadig aldrig serveren (#1162).
-    const { data: gradRows } = await supabase
-      .from("academy_graduation")
-      .select(`rider_id, deadline, status, from_squad, to_squad, riders(firstname, lastname, birthdate, nationality_code, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus, current_production_value, primary_type, secondary_type, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")}))`)
-      .eq("team_id", teamId)
-      .eq("status", "pending")
-      .order("deadline", { ascending: true });
-
-    // #2491: hvor mange pladser er der i MÅL-truppen? Graduation Day skal kunne
-    // vise "Move up" som blokeret MED årsag, og blokeringen skal være den
-    // SAMME gate som resolveGraduation's promote-gren bruger
-    // (academyGraduation.hasRoomInTargetSquad): ungdomstrupper mod SQUAD_CAPS,
-    // senior mod divisionens cap. Tælles kun når der faktisk er en pending
-    // graduering — ellers er det en gratis forespørgsel pr. sidevisning.
-    //
-    // youthSquadRooms ovenfor bruger allerede countSquadMembers, samme
-    // tælling som skrive-siden. Genbrug resultatet frem for nye parallelle HEADs.
-    const youthSquadCounts = { junior: 0, u23: 0 };
-    if ((gradRows ?? []).length > 0) {
-      youthSquadCounts.junior = squads.junior.used;
-      youthSquadCounts.u23 = squads.u23.used;
-    }
-
-    // #5943: sæson-alder (ageForSeason), ikke wall-clock — ellers står en rytter
-    // der er 19 i sæsonen som 16 ved oprykningen, når sæsonåret ligger foran kalenderen.
-    const graduationSeasonNumber = await getActiveSeasonNumber();
-    const graduations = (gradRows ?? []).map((g) => {
-      const r = g.riders ?? {};
-      const age = ageForSeason(r.birthdate, graduationSeasonNumber);
-      // Nullable på rækker fra før #4619: fallback er 'senior', præcis samme
-      // adfærd som graduationSquadPatch — en graduering uden trup-information
-      // ER den gamle akademi → senior-overgang. Vi gætter aldrig `from`.
-      const toSquad = g.to_squad ?? "senior";
-      const targetCount = toSquad === "senior" ? seniorCount : youthSquadCounts[toSquad] ?? 0;
-      const targetMax = toSquad === "senior" ? seniorMax : (SQUAD_CAPS[toSquad] ?? null);
-      const ab = Array.isArray(r.rider_derived_abilities) ? r.rider_derived_abilities[0] : r.rider_derived_abilities;
-      return {
-        riderId: g.rider_id,
-        name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(),
-        firstname: r.firstname ?? null,
-        lastname: r.lastname ?? null,
-        age,
-        deadline: g.deadline,
-        nationality_code: r.nationality_code ?? null,
-        primary_type: r.primary_type ?? null,
-        secondary_type: r.secondary_type ?? null,
-        salary: r.salary ?? null,
-        contract_length: r.contract_length ?? null,
-        contract_end_season: r.contract_end_season ?? null,
-        current_production_value: r.current_production_value ?? null,
-        market_value: calculateRiderMarketValue(r),
-        fromSquad: g.from_squad ?? null,
-        toSquad,
-        targetSquadCount: targetCount,
-        targetSquadMax: targetMax,
-        rider_derived_abilities: ab ?? null,
-      };
-    });
-
     // #3550: pull-baseret intake — flag-status + "hentet denne uge"-markør, så
     // frontend'en kan vise knap-tilstanden vs. kandidat-kortene uden en ekstra
     // roundtrip. Flag OFF (default indtil cutover) → intakePull.enabled=false,
@@ -19454,7 +19399,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       : false;
     // #6666 Optag 2.0 (samme flag): potentiale læres gennem træning + akademiets profil.
     const intake2 = intakePullEnabled
-      ? await buildIntake2View(supabase, { teamId, roster, intake, seasonNumber: graduationSeasonNumber })
+      ? await buildIntake2View(supabase, { teamId, roster, intake, seasonNumber: await getActiveSeasonNumber() })
       : null;
     const estimateViews = await isPotentialEstimateOn(req)
       ? await buildAcademyFromViews(supabase, { teamId, roster: intake2?.roster ?? roster, intake: intake2?.intake ?? intake })
@@ -19465,9 +19410,11 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       squads,
       seniorCount,
       seniorMax,
+      seniorLanding: Number.isInteger(seniorLandingUsed) ? { used: seniorLandingUsed, max: SQUAD_CAPS.senior } : null,
+      clubCapacity: { used: seniorState.club_count, max: CLUB_RIDER_CAP },
       roster: estimateViews?.roster ?? intake2?.roster ?? roster,
       intake: estimateViews?.intake ?? intake2?.intake ?? intake,
-      graduations,
+      graduations: [], // Compatibility for clients cached before #7323.
       intakePull: { enabled: intakePullEnabled, pulledThisWeek: intakePulledThisWeek },
       academyProfile: intake2?.profile ?? null,
     });
@@ -19578,7 +19525,7 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
 
     // #5568: pladserne er summen af ungdomstruppernes lofter (U23 + junior),
     // afledt af SQUAD_CAPS — ikke det gamle flade akademi-loft.
-    const youthPlacesMax = Object.values(SQUAD_CAPS).reduce((sum, cap) => sum + cap, 0);
+    const youthPlacesMax = SQUAD_CAPS.u23 + SQUAD_CAPS.junior;
     const current = computeAcademyCurrent(rosterRows ?? [], { slotsMax: youthPlacesMax });
     const { driftPaid, signingFeesPaid } = computeAcademyCumulative(financeRows ?? []);
     const sales = buildAcademySales(auctionRows, transferRows, riderById);
@@ -19609,7 +19556,7 @@ router.post("/academy/intake/pull", requireAuth, marketWriteLimiter, async (req,
     const pullEnabled = await isAcademyIntakePullEnabled(supabase);
     if (!pullEnabled) return res.status(409).json({ error: "intake_pull_disabled" });
 
-    const result = await pullWeeklyAcademyIntake(supabase, { teamId: req.team.id });
+    const result = await pullWeeklyAcademyIntake(supabase, { teamId: req.team.id, isBetaTester });
     if (!result.ok) return res.status(409).json({ error: result.reason });
 
     res.json(result);
@@ -19665,7 +19612,7 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     res.json(result);
   } catch (err) {
     const msg = err?.message ?? "";
-    if (msg === "academy_full") return res.status(409).json({ error: "academy_full" });
+    if (msg === "club_roster_full" || msg === "academy_full") return res.status(409).json({ error: msg });
     if (msg === "not_offered") return res.status(409).json({ error: "not_offered" });
     // #2796: signAcademyCandidate kaster også insufficient_balance og
     // already_assigned. De faldt tidligere igennem til captureException + 500,
@@ -19685,42 +19632,7 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
   }
 });
 
-// POST /api/academy/graduate — resolvér en akademirytter der har passeret 21.
-// Body: { riderId, action } hvor action ∈ promote|sell|release (#932).
-router.post("/academy/graduate", requireAuth, marketWriteLimiter, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
-  try {
-    const isBetaTester = await isViewerBetaTester(req);
-    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
-    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
-
-    const { riderId, action } = req.body || {};
-    if (!riderId || !action) return res.status(400).json({ error: "riderId and action required" });
-
-    const { data: season } = await supabase
-      .from("seasons")
-      .select("number")
-      .eq("status", "active")
-      .maybeSingle();
-    const seasonNumber = season?.number ?? 1;
-
-    const result = await resolveGraduation(supabase, {
-      teamId: req.team.id,
-      riderId,
-      action,
-      seasonNumber,
-    });
-
-    res.json(result);
-  } catch (err) {
-    const msg = err?.message ?? "";
-    if (["not_pending", "squad_cap_violation", "invalid_action", "rider_not_found"].includes(msg)) {
-      return res.status(409).json({ error: msg });
-    }
-    captureException(err);
-    res.status(500).json({ error: msg });
-  }
-});
+router.post("/academy/graduate", requireAuth, marketWriteLimiter, (_req, res) => res.sendStatus(410));
 
 // POST /api/academy/reject — afvis en tilbudt akademi-kandidat.
 // Body: { riderId }
@@ -19854,20 +19766,7 @@ router.post("/riders/:id/squad", requireAuth, marketWriteLimiter, async (req, re
   }
 });
 
-// #6710: "Afventer oprykning" — trupsidens liste + "Ryk op" (promotionPendingAction.js).
-router.get("/team/promotion-pending", requireAuth, presencePulseLimiter, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
-  try {
-    const out = await handleListPendingRequest(supabase, { teamId: req.team.id, seasonNumber: await getActiveSeasonNumber() });
-    res.status(out.status).json(out.body);
-  } catch (err) { captureException(err); res.status(500).json({ error: "Could not load riders awaiting promotion", errorCode: "promotion_pending_failed" }); }
-});
-router.post("/riders/:id/promote-pending", requireAuth, marketWriteLimiter, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
-  try {
-    const out = await handlePromotePendingRequest(supabase, { teamId: req.team.id, riderId: req.params.id, seasonNumber: await getActiveSeasonNumber() });
-    res.status(out.status).json(out.body);
-  } catch (err) { captureException(err); res.status(500).json({ error: "Could not promote the rider", errorCode: "promotion_pending_failed" }); }
-});
+router.get("/team/promotion-pending", requireAuth, presencePulseLimiter, (_req, res) => res.json({ riders: [] }));
+router.post("/riders/:id/promote-pending", requireAuth, marketWriteLimiter, (_req, res) => res.sendStatus(410));
 
 export default router;

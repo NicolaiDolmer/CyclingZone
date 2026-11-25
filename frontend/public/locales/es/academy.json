@@ -1,4 +1,6 @@
 {
+  "clubRoster": "Ciclistas del club",
+  "clubFull": "Tu club no tiene plazas libres.",
   "title": "Academia",
   "subtitle": "Ficha a jóvenes talentos para tus equipos sub-23 y júnior, y sigue lo que te aporta el trabajo con la cantera.",
   "slotsU23": "Sub-23 {used}/{max}",

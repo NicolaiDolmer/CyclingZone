@@ -20,14 +20,6 @@ const apiSource = readFileSync(
   "utf8",
 );
 
-const academyMeBlock = (() => {
-  const start = apiSource.indexOf('router.get("/academy/me"');
-  assert.ok(start > 0, "kunne ikke finde GET /academy/me i backend/routes/api.js");
-  const end = apiSource.indexOf('router.get("/academy/pnl"', start);
-  assert.ok(end > start, "kunne ikke finde slutningen af /academy/me-handleren");
-  return apiSource.slice(start, end);
-})();
-
 test("siden foelger T1: max-w-4xl og den kanoniske PageHeader (PAGE_TEMPLATES)", () => {
   assert.match(pageSource, /max-w-4xl/, "Graduation Day er T1 (896 px) per YOUTH_RULES par. 2.6");
   assert.doesNotMatch(pageSource, /max-w-\[1600px\]|max-w-5xl/, "T1 har ingen T2/T3-bredde");
@@ -83,50 +75,17 @@ test("tal er tabulaere, og teksten baerer ingen emoji eller em-dash paa fladen",
   assert.doesNotMatch(pageSource, /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u, "ingen emoji");
 });
 
-test("Academy har KUN et banner tilbage, ingen anden graduerings-flade", () => {
-  assert.match(academySource, /\/academy\/graduation/, "Academy skal linke til Graduation Day-siden");
-  assert.match(academySource, /graduationBanner\.title/, "banneret er den eneste graduerings-flade paa Academy");
-  // Den gamle blok kaldte ruten direkte pr. kort. Ingen dobbelt flade.
-  assert.doesNotMatch(academySource, /resolveGraduate/, "AcademyPage maa ikke laengere resolve'e en graduate selv");
-  assert.doesNotMatch(academySource, /handleGraduate/, "den gamle kort-handler skal vaere slettet, ikke efterladt som doed kode");
+test("automatic promotion leaves Academy without a manual decision", () => {
+  assert.doesNotMatch(academySource, /graduationBanner|resolveGraduate|handleGraduate/);
+  const legacyRoute = apiSource.split(/\r?\n/).find(line => line.includes('router.post("/academy/graduate",'));
+  assert.ok(legacyRoute?.includes("res.sendStatus(410)"));
 });
 
-test("Inbox-notifikationen peger paa den nye side, ikke paa Academy (HANDOFF pkt. 8)", () => {
-  const row = notificationsSource
-    .split("\n")
-    .find((l) => l.includes("academy_graduation_ready:"));
-  assert.ok(row, "academy_graduation_ready mangler i notifikations-kortet");
-  assert.match(row, /link: "\/academy\/graduation"/, "notifikationen skal foere til Graduation Day");
-});
-
-test("ruten findes og er lazy, som resten af app-siderne", () => {
-  assert.match(appSource, /path="academy\/graduation"/, "ruten /academy/graduation mangler i App.jsx");
-  // `.js`-endelsen: TypeScripts konvention for et .tsx-modul, samme moenster som
-  // TransfersPage's import af TradeListPage.tsx. Uden den er importen
-  // extensionless, hvilket bestaar Vite men fejler i Node's ESM-loader (#803).
-  assert.match(appSource, /lazy\(\(\) => import\("\.\/pages\/GraduationDayPage\.js"\)\)/, "siden skal lazy-loades med .js-endelsen");
-});
-
-test("backend sender de felter raekken renderer (#2491)", () => {
-  for (const field of [
-    "from_squad",
-    "to_squad",
-    "targetSquadCount",
-    "targetSquadMax",
-    "contract_end_season",
-    "rider_derived_abilities",
-  ]) {
-    assert.match(
-      academyMeBlock,
-      new RegExp(`\\b${field}\\b`),
-      `/academy/me mangler '${field}' — Graduation Day renderer det`,
-    );
-  }
-  assert.match(
-    academyMeBlock,
-    /SQUAD_CAPS/,
-    "maal-truppens loft skal komme fra SQUAD_CAPS (backend/lib/squads.js), ikke fra et tal skrevet her",
-  );
+test("historical graduation links resolve to the Academy", () => {
+  const oldNotification = notificationsSource.split("\n").find(line => line.includes("academy_graduation_ready:"));
+  assert.ok(oldNotification);
+  assert.match(oldNotification, /link: "\/academy"/);
+  assert.match(appSource, /path="academy\/graduation" element=\{<Navigate to="\/academy" replace \/>\}/);
 });
 
 test("siden opfinder ikke sin egen graduerings-rute", () => {

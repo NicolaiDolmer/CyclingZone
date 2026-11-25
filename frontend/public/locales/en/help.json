@@ -42,6 +42,10 @@
     },
     "board": {
       "label": "Board",
+      "afterBreak": {
+        "title": "A fresh start after a break",
+        "text": "When your club returns from a break, the board lifts the penalties it imposed before you left. The board starts assessing your club again the following season."
+      },
       "whatBoard": {
         "title": "What does the board do?",
         "text": "The board sets targets for your team and follows your season live: satisfaction now updates after every race weekend (it moves at most 5 points per weekend) towards what a full season evaluation would give. Satisfaction determines your sponsor modifier, i.e. how much of the sponsor income gets paid out, and the modifier follows satisfaction live. Hard consequences (salary cap, signing restriction, forced sale) are only evaluated at two predictable checkpoints: mid-season and season end. You cannot be fired; consequences are graduated and always predictable. You can follow this race by race in the plan details on the Board page, where a weekend-by-weekend history shows whether satisfaction went up or down and which goal area drove it."
@@ -1719,7 +1723,7 @@
       },
       "academySize": {
         "title": "Academy size (per team)",
-        "text": "Your Academy has two teams, each with its own cap: up to {u23SquadCap} riders on your U23 team and up to {juniorSquadCap} on your junior team. A rider takes a place on the team his age puts him in. These places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and never race in Senior races; from season 4 they race in their own youth races instead."
+        "text": "Each squad can hold up to {squadCap} riders and your club can have up to {clubRiderCap} in total. New bids and purchases require room in an eligible squad. At the club limit, sell or release a rider before adding another. You can swap one rider for one if no squad gets bigger, even when a squad is already over its limit. A swap that makes a squad bigger requires room in that squad. To move a rider already at your club, you need a free place in the destination squad. Automatic promotions can go over a squad limit. You can still race, train and sell riders."
       },
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",
@@ -1742,17 +1746,8 @@
         "text": "From season 5 the Academy has no running cost per place. Your academy riders only cost their salaries."
       },
       "graduation": {
-        "title": "Graduation Day",
-        "text": "Riders who have outgrown their squad move on at the season turn. A junior who turns 19 moves to your U23 team, and a U23 rider who turns 23 moves to your senior team. The list opens the week before the season turns, and the deadline is the turn itself. Until you move a rider, he trains in his old squad, but he is over its age limit and cannot race for it. For each rider you choose Move up (needs a free place in the squad he is moving to, and he keeps his contract exactly as it is), Sell on the transfer market, or Release as a free agent. If you do nothing, the club picks for you at the turn: move up when there is room. If that squad is full, he waits under Awaiting promotion and keeps training in his current squad on the same contract, but cannot race until you free a spot and press Promote. Your coach gives a short read on each rider, and it is only ever a read, never a promise."
-      },
-      "graduationDayPage": {
-        "title": "Where to make the choice",
-        "steps": [
-          "A banner appears on the Academy page, and you get a message in your inbox, when riders are waiting.",
-          "Open Graduation Day from either one.",
-          "Each transition gets its own card, with one row per rider: rating, potential, contract and your coach's read.",
-          "Set Move up, Sell or Release per rider, then press Confirm all."
-        ]
+        "title": "Automatic squad promotion",
+        "text": "At the season change, I move juniors to the U23 team at season age 19 and U23 riders to the senior team at 23. Riders who stay with your club keep their contract and pay. Their auctions and transfer listings continue. I move them even if the new squad is full. You can keep racing, training and selling, and can bring riders into that squad again when it has a free place. I list the moves in your season change message."
       },
       "promoteDemote": {
         "title": "Moving riders between squads",
@@ -1774,8 +1769,8 @@
         "text": "Yes, moving up is always allowed if there is a free place: a 17-year-old can stand on U23 team, a 20-year-old on Senior team, whenever you choose. Moving down only works within the squad's own age limit, a 19-year-old cannot go back to Junior team, and a 23-year-old cannot go back to U23 team."
       },
       "graduationDayAt23": {
-        "title": "What happens when a rider ages out of his squad?",
-        "text": "At the season turn, riders who have outgrown their squad move on: junior to U23 team at season age 19, U23 to senior at season age 23. You get first choice on Graduation Day; if you do nothing before the deadline the club moves him up when there is room and you can afford it. If the squad is full, he waits under Awaiting promotion until you free a spot. If there is room but the club cannot afford him, he is sold, and if nobody buys him he is released as a free agent. Expiring contracts run out first at the season turn, so only riders who still have a contract can move up. Extend a youth rider's contract before the season ends if you want him to move up."
+        "title": "Automatic squad promotion",
+        "text": "At the season change, I move juniors to the U23 team at season age 19 and U23 riders to the senior team at 23. Riders who stay with your club keep their contract and pay. Their auctions and transfer listings continue. I move them even if the new squad is full. You can keep racing, training and selling, and can bring riders into that squad again when it has a free place. I list the moves in your season change message."
       },
       "youthRacesFromS4": {
         "title": "Do U23 team and Junior team actually race?",
@@ -2427,6 +2422,10 @@
     "academyIntakeScoutingFaq": {
       "q": "How often do I get new Academy prospects, and does scouting reset?",
       "a": "You get a small cohort of prospects when you first set up your team, and on top of that new Academy candidates arrive every Sunday. Review each candidate and sign or reject them at your own pace, but don't wait too long: open offers expire after 7 days. Scouting works differently: you get 15 scouting actions per season, refilled automatically at the next season start, and you can spend them on any rider, not just your own Academy prospects, to narrow down how good they really are."
+    },
+    "academyAgeFocusFaq": {
+      "q": "How does age focus affect the weekly academy intake?",
+      "a": "On the Profile and age tab, choose an age to make it more likely in your weekly intake. Other ages can still appear. Mixed keeps the usual age distribution. Changes take effect after fourteen days."
     },
     "academyIntakeExpiryFaq": {
       "q": "Do Academy intake offers expire?",

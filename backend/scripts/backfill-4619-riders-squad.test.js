@@ -156,8 +156,8 @@ test("planSquadBackfill: hold over loft rapporteres med navn og antal", () => {
   ];
   const plan = planSquadBackfill({ riders: crowded, teams: TEAMS, graduations: [], seasonNumber: SEASON, seasonId: SEASON_ID });
   assert.deepEqual(plan.overCap, [
-    { team: "Alpha Cycling", teamId: "t1", squad: "u23", count: 14, cap: 12 },
-    { team: "Beta Racing", teamId: "t2", squad: "junior", count: 11, cap: 10 },
+    { team: "Alpha Cycling", teamId: "t1", squad: "u23", count: SQUAD_CAPS.u23 + 2, cap: SQUAD_CAPS.u23 },
+    { team: "Beta Racing", teamId: "t2", squad: "junior", count: SQUAD_CAPS.junior + 1, cap: SQUAD_CAPS.junior },
   ]);
   // Præcis paa loftet er IKKE over loftet.
   assert.equal(plan.overCap.some((o) => o.teamId === "t1" && o.squad === "junior"), false);

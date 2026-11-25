@@ -65,4 +65,7 @@ jobs:
         run: |
           CHANGED_FILES="$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA")"
           export CHANGED_FILES
-          node scripts/check-build-stop-pr.mjs
+          # Ejer 25/11 (#8584): byggestoppet er en ADVARSEL, ikke en blokering.
+          if ! node scripts/check-build-stop-pr.mjs; then
+            echo "::warning title=Byggestop (advarsel)::Issuet står ikke på godkendelseslisten. Tjek at ejeren har givet go. Blokerer ikke (ejer 25/11)."
+          fi

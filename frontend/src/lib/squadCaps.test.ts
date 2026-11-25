@@ -72,10 +72,10 @@ test("#6155 academyLandingSquad: ukendt alder → ingen U23-mulighed; ukendt tru
   assert.equal(academyLandingSquad("junior", 17, { u23: null, junior: null }).squad, "junior");
 });
 
-test("squadCapRows: 'U23 5/12 · Junior 3/10' i fast rækkefølge", () => {
-  assert.deepEqual(squadCapRows({ u23: 5, junior: 10 }), [
+test("squadCapRows: each squad reports its current limit in stable order", () => {
+  assert.deepEqual(squadCapRows({ u23: 5, junior: SQUAD_CAPS.junior }), [
     { squad: "u23", used: 5, max: SQUAD_CAPS.u23, full: false },
-    { squad: "junior", used: 10, max: SQUAD_CAPS.junior, full: true },
+    { squad: "junior", used: SQUAD_CAPS.junior, max: SQUAD_CAPS.junior, full: true },
   ]);
   assert.deepEqual(squadCapRows(null).map((r) => r.used), [0, 0]);
 });
@@ -121,4 +121,11 @@ test("fetchAcademySquadCounts: én head-optælling pr. trup på riders.squad", a
   assert.deepEqual(await fetchAcademySquadCounts(client, "team-A"), { u23: 8, junior: 2 });
   assert.deepEqual(calls, [{ team_id: "team-A", squad: "u23" }, { team_id: "team-A", squad: "junior" }]);
   assert.deepEqual(await fetchAcademySquadCounts(client, null), { u23: null, junior: null });
+});
+
+test("#8605: the academy card uses a legal senior vacancy after U23", () => {
+  const counts = { u23: SQUAD_CAPS.u23, junior: 0 };
+  assert.equal(academyLandingSquad("u23", 20, counts, { used: 10, max: 30 }).squad, "senior");
+  assert.equal(academyLandingSquad("u23", 20, counts, { used: 30, max: 30 }).full, true);
+  assert.equal(academyLandingSquad("junior", null, { ...counts, junior: SQUAD_CAPS.junior }, { used: 10, max: 30 }).full, true);
 });

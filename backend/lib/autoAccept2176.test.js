@@ -570,13 +570,13 @@ test("fejlteksten paa en listing naevner den rigtige aarsag", () => {
   assert.equal(getListingPriceUpdateErrorResponse(null), null);
 });
 
-test("bytte-claim: slukket laeser kun kontakten; taendt sender begge ben og oversaetter status", async () => {
+test("swap ownership is atomic regardless of the auto-accept flag", async () => {
   const args = { offeredRiderId: "R1", requestedRiderId: "R2", proposingTeamId: "A", receivingTeamId: "B",
     deferRegistration: true, now: "2026-11-09T10:00:00.000Z", offeredPatch: { squad: "senior" }, requestedPatch: {} };
-  const off = fakeSupabase({ flag: "off" });
-  assert.equal(await claimSwapUnderTeamLock(off, args), null);
-  assert.deepEqual(tablesTouched(off), ["app_config"]);
-  assert.equal(off.rpcCalls.length, 0);
+  const off = fakeSupabase({ flag: "off", rpc: () => ({ data: { status: "claimed", offered_rider_id: "R1" }, error: null }) });
+  assert.deepEqual(await claimSwapUnderTeamLock(off, args), { data: { id: "R1" } });
+  assert.deepEqual(tablesTouched(off), []);
+  assert.equal(off.rpcCalls[0].name, "auto_accept_claim_swap");
 
   const on = fakeSupabase({ flag: "on", rpc: () => ({ data: { status: "claimed", offered_rider_id: "R1" }, error: null }) });
   assert.deepEqual(await claimSwapUnderTeamLock(on, args), { data: { id: "R1" } });
@@ -591,6 +591,19 @@ test("bytte-claim: slukket laeser kun kontakten; taendt sender begge ben og over
   const odd = fakeSupabase({ flag: "on", rpc: () => ({ data: { status: "nope" }, error: null }) });
   await assert.rejects(claimSwapUnderTeamLock(odd, args), /unexpected status/);
 });
+
+for (const marketBeta of [false, true]) {
+  test(`#8034: swap claim preserves club capacity errors in ${marketBeta ? "paid" : "legacy"} mode`, async () => {
+    const client = fakeSupabase({ rpc: () => ({
+      data: null, error: { code: "23514", message: "club_roster_full", details: "A" },
+    }) });
+    const result = await claimSwapUnderTeamLock(client, {
+      offeredRiderId: "R1", requestedRiderId: "R2", proposingTeamId: "A", receivingTeamId: "B",
+      marketBeta, now: "2026-11-24T10:00:00.000Z",
+    });
+    assert.deepEqual(result, { issue: { code: "swap_club_roster_full", teamId: "A" } });
+  });
+}
 
 test("listing gate uses the current rider owner", async () => {
   const client = fakeSupabase({ flag: "on", respond: table => ({ data: table === "riders" ? { id: "R1", team_id: "C" } : null, error: null }) });
@@ -607,6 +620,21 @@ test("editable bid is separate from expected listing price and reaches atomic re
   assert.equal(client.rpcCalls[0].name, "start_auto_accept_auction_bid");
   assert.equal(client.rpcCalls[0].args.p_expected_price, 2);
   assert.equal(client.rpcCalls[0].args.p_bid_amount, 7);
+});
+
+test("an opening bid is rejected cleanly when the club has no reserved place", async () => {
+  const { client, handler, identity, announced } = startedFixture();
+  const invoke = client.rpc.bind(client);
+  client.rpc = (name, args) => name === "start_auto_accept_auction_bid"
+    ? Promise.resolve({ data: null, error: { code: "23514", message: "club_roster_full" } })
+    : invoke(name, args);
+  const res = fakeRes();
+  await handler(START_REQ, res);
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.errorCode, "auto_accept_squad_full");
+  assert.equal(res.body.errorParams.maxRiders, 60);
+  assert.equal(identity.length, 0);
+  assert.equal(announced.length, 0);
 });
 
 test("editable bid rejects invalid and below-minimum amounts before mutation", async () => {

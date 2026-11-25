@@ -1,5 +1,121 @@
 export const PATCHES = [
 {
+  "version": "7.517",
+  "date": "2026-11-25",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Offline",
+      "area": "interface",
+      "en": {
+        "title": "The page reloads by itself when you're back online.",
+        "body": "Bids, money and results need a live connection, so I don't show old numbers here."
+      },
+      "da": {
+        "title": "Siden genindlæser selv, når du er online igen.",
+        "body": "Bud, penge og resultater kræver forbindelse, så jeg viser ikke gamle tal her."
+      },
+      "refs": [
+        8023
+      ]
+    }
+  ]
+},
+{
+  "version": "7.516",
+  "date": "2026-11-25",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "topic": "Academy",
+      "area": "academy",
+      "en": {
+        "title": "Youth riders move up at the season change",
+        "body": "I move juniors to the U23 team at season age 19 and U23 riders to the senior team at 23. They keep their contracts and pay, and their sales continue. If a squad goes over its limit, you can keep racing, training and selling. You can bring riders into that squad again once it has a free place. See who moved up in your season change message."
+      },
+      "da": {
+        "title": "Ungdomsryttere rykker op ved sæsonskiftet",
+        "body": "Jeg rykker juniorer op på U23-holdet ved sæsonalder 19 og U23-ryttere op på seniorholdet ved 23. De beholder kontrakt og løn, og deres salg fortsætter. Kommer en trup over loftet, kan du stadig køre løb, træne og sælge. Du kan få nye ryttere ind i truppen igen, når der er en ledig plads. Se, hvem der rykkede op, i din sæsonskiftebesked."
+      },
+      "refs": [
+        7323
+      ],
+      "rollout": "live"
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "topic": "Academy",
+      "area": "academy",
+      "en": {
+        "title": "More room in each squad",
+        "body": "Each squad can hold up to 30 riders and your club can have up to 60 in total. New bids and purchases require room in an eligible squad. At the club limit, sell or release a rider before adding another. You can swap one rider for one if no squad gets bigger, even when a squad is already over its limit. A swap that makes a squad bigger requires room in that squad. To move a rider already at your club, you need a free place in the destination squad. Automatic promotions can go over a squad limit. You can still race, train and sell riders."
+      },
+      "da": {
+        "title": "Plads til flere ryttere i hver trup",
+        "body": "Hver trup kan have op til 30 ryttere, og klubben kan have op til 60 i alt. Nye bud og køb kræver plads i en trup, rytteren kan køre for. Ved klubgrænsen skal du sælge eller frigive en rytter, før du tilføjer en ny. Du kan bytte én rytter for én, hvis ingen trup bliver større, også når en trup allerede er over grænsen. Et bytte, der gør en trup større, kræver plads i den trup. For at flytte en rytter, du allerede har, skal der være en ledig plads i den nye trup. Automatiske oprykninger må overskride trupgrænsen. Du kan stadig køre løb, træne og sælge ryttere."
+      },
+      "refs": [
+        8034
+      ],
+      "rollout": "live"
+    }
+  ]
+},
+{
+  "version": "7.515",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "topic": "Board",
+      "area": "board",
+      "en": {
+        "title": "A fresh start after a break",
+        "body": "When your club returns from a break, the board lifts the penalties it imposed before you left. Board satisfaction starts from a neutral level. The board starts assessing your club again the following season."
+      },
+      "da": {
+        "title": "En frisk start efter en pause",
+        "body": "Når din klub vender tilbage efter en pause, ophæver bestyrelsen de straffe, den gav før pausen. Bestyrelsens tilfredshed starter neutralt. Bestyrelsen vurderer først klubben igen i den følgende sæson."
+      },
+      "refs": [
+        8100
+      ],
+      "rollout": "live"
+    }
+  ]
+},
+{
+  "version": "7.514",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "academy_page_v2_8081",
+      "topic": "Academy",
+      "area": "academy",
+      "en": {
+        "title": "Choose an age focus for your academy",
+        "body": "Your weekly intake is more likely to include the age you choose. Other ages can still appear. Mixed keeps the usual draw. Changes take effect after fourteen days."
+      },
+      "da": {
+        "title": "Vælg aldersfokus i akademiet",
+        "body": "Den alder, du vælger, bliver mere sandsynlig i ugens optag. Andre aldre kan stadig dukke op. Blandet følger det almindelige træk. Ændringer træder i kraft efter fjorten dage."
+      },
+      "refs": [
+        6944,
+        8081
+      ]
+    }
+  ]
+},
+{
   "version": "7.513",
   "date": "2026-11-24",
   "changes": [

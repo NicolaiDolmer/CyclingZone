@@ -49,6 +49,7 @@ test("buildHelpNumbers reflects RULES_NUMBERS (the help→RULES_NUMBERS pin)", (
   assert.equal(en.startingBalance, RULES_NUMBERS.startingBalance.toLocaleString("en-US"));
   assert.equal(en.prizePerPoint, String(RULES_NUMBERS.prizePerPoint));
   assert.equal(en.squadCap, String(RULES_NUMBERS.squadCap));
+  assert.equal(en.clubRiderCap, String(RULES_NUMBERS.clubRiderCap));
   assert.equal(en.initialSquad, String(RULES_NUMBERS.initialSquadSize));
   assert.equal(en.u23SquadCap, String(RULES_NUMBERS.u23SquadCap));
   assert.equal(en.juniorSquadCap, String(RULES_NUMBERS.juniorSquadCap));

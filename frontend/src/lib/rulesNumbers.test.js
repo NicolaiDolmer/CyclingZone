@@ -28,21 +28,20 @@ import {
   MAX_DIVISION,
   DIVISION_BONUSES,
   FIRST_PROMOTION_RELEGATION_SEASON,
+  SQUAD_FINE_AMOUNT,
+  SQUAD_PENALTY_POINTS,
 } from "../../../backend/lib/economyConstants.js";
 import {
   MAX_SQUAD_SIZE,
   MIN_RIDERS_FOR_RACE,
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "../../../backend/lib/marketUtils.js";
-import {
-  SQUAD_FINE_AMOUNT,
-  SQUAD_PENALTY_POINTS,
-} from "../../../backend/lib/squadEnforcement.js";
 import { ACADEMY } from "../../../backend/lib/academyFlag.js";
-import { SQUAD_CAPS } from "../../../backend/lib/squads.js";
+import { CLUB_RIDER_CAP, SQUAD_CAPS } from "../../../backend/lib/squads.js";
 
 test("squad numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.squadCap, MAX_SQUAD_SIZE);
+  assert.equal(RULES_NUMBERS.clubRiderCap, CLUB_RIDER_CAP);
   assert.equal(RULES_NUMBERS.windowBuffer, TRANSFER_WINDOW_SOFT_CAP_BUFFER);
   assert.equal(RULES_NUMBERS.squadFine, SQUAD_FINE_AMOUNT);
   assert.equal(RULES_NUMBERS.squadPenaltyPoints, SQUAD_PENALTY_POINTS);

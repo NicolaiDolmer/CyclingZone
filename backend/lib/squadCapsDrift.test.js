@@ -35,7 +35,7 @@ function parseFrontendSquadCaps(source) {
 }
 
 test("drift: frontend SQUAD_CAPS er identisk med backend squads.js SQUAD_CAPS", () => {
-  assert.deepEqual(parseFrontendSquadCaps(frontendCaps), { ...SQUAD_CAPS });
+  assert.deepEqual(parseFrontendSquadCaps(frontendCaps), { u23: SQUAD_CAPS.u23, junior: SQUAD_CAPS.junior });
 });
 
 test("drift: frontendens junior-aldersgrænse er identisk med SQUAD_MAX_AGE.junior", () => {
