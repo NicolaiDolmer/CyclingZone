@@ -57,6 +57,7 @@ import {
   DataTable,
   EmptyState,
   ErrorState,
+  Skeleton,
   SkeletonLines,
   BikeIcon,
   ToastViewport,
@@ -735,7 +736,9 @@ export default function RidersPage() {
           action-cluster — kontrakten tillader op til TO saadanne uden en primaer. */}
       <PageHeader
         title={t("page.title")}
-        subtitle={t("page.subtitle", { count: formatNumber(total) })}
+        subtitle={loading || error
+          ? <Skeleton className="inline-block h-3 w-20" />
+          : t("page.subtitle", { count: formatNumber(total) })}
         actions={
           <>
             {/* #8280: på computer er evne-kolonnerne en del af kolonne-knappen i tabellens
