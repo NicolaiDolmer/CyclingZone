@@ -109,7 +109,8 @@ test("AcademyPage skelner backend-fejl fra slukket flag (#2796)", () => {
 });
 
 test("#6155: fuld juniortrup spærrer ikke, når U23 har plads; kortet siger hvor han kommer hen", () => {
-  assert.match(pageSource, /const landing = academyLandingSquad\(targetSquad, ageForSeason\(rider\.birthdate, seasonYear\), squadCounts, \{\s*used: seniorCount, max: seniorMax,/);
+  // #8605: the senior landing counts like the signing (reserved auction places), falling back to seniorCount.
+  assert.match(pageSource, /const landing = academyLandingSquad\(targetSquad, ageForSeason\(rider\.birthdate, seasonYear\), squadCounts,\s*seniorLanding \?\? \{ used: seniorCount, max: seniorMax \}\);/);
   assert.match(pageSource, /const isFull = landing\.full \|\| clubFull;/, "spærringen afgøres af ALLE mulige trupper, ikke kun aldersplaceringen");
   assert.match(pageSource, /landing\.movedToU23 && \(\s*<p[^>]*data-testid="intake-lands-u23">\{t\("landsOnU23"\)\}/);
   assert.match(pageSource, /blockedBoth \? t\("fullNoteBoth"\)/);

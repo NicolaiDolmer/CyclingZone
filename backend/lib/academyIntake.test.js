@@ -566,6 +566,7 @@ function makeSignRejectSupabase({
   leadingAuctions = [], // #6261-#6264: førende bud der låser penge
   riderBirthdate, // #6155: undefined = ingen fødselsdato (ukendt alder)
   fullSquads = [], // #6155: trupper hvor RPC'en svarer academy_full
+  legacySenior = false, // #8605: RPC uden migrationen svarer invalid_squad paa senior
   blockedByReservation = [],
   rejectLostRace = false,
 } = {}) {
@@ -686,6 +687,9 @@ function makeSignRejectSupabase({
       // #4213: lad tests simulere RPC-guardens afvisningskoder (fx rider_owned).
       if (rpcCode) {
         return Promise.resolve({ data: { ok: false, code: rpcCode }, error: null });
+      }
+      if (legacySenior && _args.p_squad === "senior") {
+        return Promise.resolve({ data: { ok: false, code: "invalid_squad" }, error: null });
       }
       const price = Number(_args.p_price);
       if (blockedByReservation.includes(_args.p_squad)) {
@@ -1281,6 +1285,24 @@ test("#8605: a full U23 squad falls back to senior for the same intake", async (
   assert.deepEqual(senior.p_finance_payload, u23.p_finance_payload);
   assert.equal(senior.p_finance_payload.academy_intake_id, "intake-row-1");
   assert.equal(supabase._riderUpdates.length, 1);
+});
+
+test("#8605: before the migration, a senior invalid_squad answers academy_full (409, not 500)", async () => {
+  const supabase = makeSignRejectSupabase({ riderBirthdate: birthdateForSeasonAge(20), fullSquads: ["u23"], legacySenior: true });
+  await assert.rejects(
+    () => signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: SIGN_SEASON, now: SIGN_NOW }),
+    /academy_full/,
+  );
+  assert.equal(supabase._intakeUpdates.length, 0);
+});
+
+test("#8605: a senior placement tells the owner he joined the senior squad", async () => {
+  const supabase = makeSignRejectSupabase({ riderBirthdate: birthdateForSeasonAge(20), fullSquads: ["u23"] });
+  await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: SIGN_SEASON, now: SIGN_NOW });
+  const notif = supabase._notificationInserts.find((n) => n.type === "academy_signed");
+  assert.equal(notif.metadata.messageCode, "notif.academySignedSenior.message");
+  assert.ok(notif.metadata.messageParams.riderName);
+  assert.match(notif.message, /senior squad/);
 });
 
 test("signAcademyCandidate (#6155): ukendt alder + fuld junior → academy_full uden gæt op på U23", async () => {

@@ -213,6 +213,10 @@
       "title": "Academy signing complete",
       "message": "Your academy prospect has joined your academy."
     },
+    "academySignedSenior": {
+      "title": "Academy signing complete",
+      "message": "{riderName} has joined your senior squad."
+    },
     "academyGraduationReady": {
       "title": "Academy graduation",
       "message": "{name} has aged out of your academy. Promote, sell or release before the deadline."

@@ -213,6 +213,10 @@
       "title": "Signature à l'académie terminée",
       "message": "Ton jeune talent a rejoint ton académie."
     },
+    "academySignedSenior": {
+      "title": "Signature à l'académie terminée",
+      "message": "{riderName} a rejoint ton équipe senior."
+    },
     "academyGraduationReady": {
       "title": "Fin de formation à l'académie",
       "message": "{name} est trop âgé pour ton académie. Promeus, vends ou libère avant la date limite."

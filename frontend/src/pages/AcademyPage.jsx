@@ -96,7 +96,7 @@ export default function AcademyPage() {
   // #5519: med U23/Junior-siderne tændt erstatter links Youth squads-kortet (3a).
   const youthSquadPagesOn = useYouthSquadPages();
   const {
-    enabled, squads, intake, balance, clubCapacity, seniorCount, seniorMax,
+    enabled, squads, intake, balance, clubCapacity, seniorCount, seniorMax, seniorLanding,
     intakePull, loading, error, signCandidate, rejectCandidate,
     pullIntake, academyProfile, saveProfile, roster, refresh,
   } = useAcademy();
@@ -241,9 +241,9 @@ export default function AcademyPage() {
     // #6155: er hans trup fuld, lander han på U23, når han er ung nok og der
     // er plads (academyLandingSquad, spejl af signeringens prøve-rækkefølge).
     const targetSquad = item.targetSquad ?? academyTargetSquad(rider.birthdate, seasonYear);
-    const landing = academyLandingSquad(targetSquad, ageForSeason(rider.birthdate, seasonYear), squadCounts, {
-      used: seniorCount, max: seniorMax,
-    });
+    // #8605: seniorLanding counts like the signing (reserved auction places included).
+    const landing = academyLandingSquad(targetSquad, ageForSeason(rider.birthdate, seasonYear), squadCounts,
+      seniorLanding ?? { used: seniorCount, max: seniorMax });
     const clubFull = clubCapacity != null && clubCapacity.used >= clubCapacity.max;
     const isFull = landing.full || clubFull;
     const blockedBoth = isFull && landing.options.includes("junior") && landing.options.includes("u23");

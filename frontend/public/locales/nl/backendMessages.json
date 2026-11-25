@@ -213,6 +213,10 @@
       "title": "Academiecontract afgerond",
       "message": "Je academietalent is bij je academie aangesloten."
     },
+    "academySignedSenior": {
+      "title": "Academiecontract afgerond",
+      "message": "{riderName} is bij je seniorenploeg aangesloten."
+    },
     "academyGraduationReady": {
       "title": "Academie-afstuderen",
       "message": "{name} is te oud geworden voor je academie. Promoveer, verkoop of geef hem vrij vóór de deadline."

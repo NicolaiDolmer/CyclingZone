@@ -607,6 +607,9 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
       acq = { ok: false, code: "academy_full" };
       acqErr = null;
     }
+    // Before the #8605 migration runs, the RPC rejects a senior placement as
+    // invalid_squad. Both youth squads were full, so answer academy_full (409).
+    if (squad === "senior" && acq?.code === "invalid_squad") acq = { ok: false, code: "academy_full" };
     if (acqErr || acq?.code !== "academy_full") break;
   }
 
@@ -654,6 +657,8 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // udskudt, sender flushDeferredAcademySigningsForRace (raceRunner.js, ved
   // løbs-finalisering) den "han er nu ankommet"-besked senere.
   const deferred = acq?.deferred === true;
+  // #8605: a senior placement never defers and does not join the academy.
+  const senior = placedSquad === "senior";
   await notifyTeamOwner({
     supabase,
     teamId,
@@ -663,7 +668,9 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     title: deferred ? "Academy signing confirmed" : "Academy signing complete",
     message: deferred
       ? `${riderName || "Your academy prospect"} will join your academy once his current stage race is finished. He keeps racing for your senior squad until then.`
-      : "Your academy prospect has joined your academy.",
+      : senior
+        ? `${riderName || "Your academy prospect"} has joined your senior squad.`
+        : "Your academy prospect has joined your academy.",
     relatedId: riderId,
     metadata: deferred
       ? {
@@ -672,10 +679,16 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
           titleParams: { riderName: riderName || riderId },
           messageParams: { riderName: riderName || riderId },
         }
-      : {
-          titleCode: "notif.academySigned.title",
-          messageCode: "notif.academySigned.message",
-        },
+      : senior
+        ? {
+            titleCode: "notif.academySignedSenior.title",
+            messageCode: "notif.academySignedSenior.message",
+            messageParams: { riderName: riderName || riderId },
+          }
+        : {
+            titleCode: "notif.academySigned.title",
+            messageCode: "notif.academySigned.message",
+          },
   });
 
   return { riderId, salary, fee, contractEndSeason, deferred, squad: placedSquad };
