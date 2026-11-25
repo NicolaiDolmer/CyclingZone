@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
@@ -183,6 +183,32 @@ export default function LoginPage() {
 
   const isLoginMode = mode === "login";
   const isSignupMode = mode === "signup";
+  const [focusedSignupInput, setFocusedSignupInput] = useState(/** @type {HTMLInputElement | null} */ (null));
+  const [signupViewport, setSignupViewport] = useState(/** @type {{height: number, top: number} | null} */ (null));
+  useEffect(() => {
+    if (!isSignupMode || !focusedSignupInput) return;
+    const viewport = window.visualViewport;
+    const updateViewport = () => {
+      const height = Math.floor(viewport?.height ?? window.innerHeight);
+      const top = viewport?.offsetTop ?? 0;
+      setSignupViewport(previous => previous?.height === height && previous.top === top ? previous : { height, top });
+    };
+    updateViewport();
+    viewport?.addEventListener("resize", updateViewport);
+    viewport?.addEventListener("scroll", updateViewport);
+    window.addEventListener("resize", updateViewport);
+    return () => {
+      viewport?.removeEventListener("resize", updateViewport);
+      viewport?.removeEventListener("scroll", updateViewport);
+      window.removeEventListener("resize", updateViewport);
+    };
+  }, [isSignupMode, focusedSignupInput]);
+
+  const signupViewportHeight = signupViewport?.height;
+  const compactSignup = isSignupMode && focusedSignupInput?.isConnected && signupViewportHeight != null && signupViewportHeight < 540;
+  useLayoutEffect(() => {
+    if (compactSignup) focusedSignupInput.scrollIntoView({ block: "nearest" });
+  }, [compactSignup, focusedSignupInput, signupViewportHeight]);
   const isForgotMode = mode === "forgot";
 
   // #2826: en af de ubekræftede konti i prod var oprettet på "gmal.com" — den
@@ -490,7 +516,13 @@ export default function LoginPage() {
     // React's tekst-noder på denne flade og udløste NotFoundError-crashes i prod
     // (Sentry CYCLINGZONE-1D m.fl., url=/login). Målrettet i stedet for globalt
     // så statisk indhold stadig kan browser-oversættes (ejer-beslutning PR #2272).
-    <div translate="no" className="relative flex min-h-screen items-center justify-center bg-cz-body p-4">
+    <div
+      translate="no"
+      className={`flex justify-center bg-cz-body ${compactSignup
+        ? "fixed inset-x-0 items-start overflow-y-auto overscroll-contain p-2 [scroll-padding-block:0.5rem_4rem]"
+        : "relative min-h-screen items-center p-4"}`}
+      style={compactSignup ? { height: signupViewportHeight, top: signupViewport?.top } : undefined}
+    >
       <div className="absolute right-4 top-4">
         <LanguageSwitcher />
       </div>
@@ -631,7 +663,19 @@ export default function LoginPage() {
               )}
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col gap-4"
+              onFocus={event => {
+                if (isSignupMode && event.target instanceof HTMLInputElement) setFocusedSignupInput(event.target);
+              }}
+              onBlur={event => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setFocusedSignupInput(null);
+                  setSignupViewport(null);
+                }
+              }}
+            >
               {isSignupMode && (
                 <>
                   <div>
@@ -788,9 +832,11 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <Button type="submit" variant="primary" fullWidth loading={loading}>
-                {submitLabel}
-              </Button>
+              <div className={compactSignup ? "sticky bottom-0 bg-cz-card py-2" : undefined}>
+                <Button type="submit" variant="primary" fullWidth loading={loading}>
+                  {submitLabel}
+                </Button>
+              </div>
             </form>
           )}
 
