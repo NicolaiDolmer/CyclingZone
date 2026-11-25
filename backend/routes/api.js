@@ -14019,7 +14019,7 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
     if (!season) return res.json({ riders: [] });
     // #7664: kontakten taendt -> samme tabel og omfang som "Fuld rangliste"; slukket eller fejl i
     // den nye vej -> null (fejlen rapporteres til Sentry), og dagens RPC nedenfor bruges.
-    const shadowRiders = await readDashboardTopRiders7664(supabase, { seasonId: season.id, leagueDivisionId: req.team.league_division_id ?? null, captureExceptionFn: captureException });
+    const shadowRiders = await readDashboardTopRiders7664(supabase, { seasonId: season.id, leagueDivisionId: req.team.league_division_id ?? null, captureExceptionFn: captureException, preferRpc: true });
     if (shadowRiders) return res.json({ riders: shadowRiders });
 
     // Aggregeringen kører nu i Postgres via dashboard_rider_ranking-RPC'en
@@ -19231,6 +19231,13 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     const seniorState = await getTeamMarketState(supabase, teamId);
     const seniorCount = seniorState?.future_count ?? seniorState?.rider_count ?? 0;
     const seniorMax = seniorState?.squad_limits?.max ?? 30;
+    // #8605: the intake card's senior landing uses the signing's own count,
+    // which includes places reserved by leading auctions (#8034). Before that
+    // migration, or on an error, the card falls back to seniorCount.
+    const { data: seniorLandingUsed, error: seniorLandingErr } = await supabase.rpc("count_team_squad_members", {
+      p_team_id: teamId, p_squad: "senior", p_exclude_rider_id: null,
+    });
+    if (seniorLandingErr) console.warn("academy senior landing count failed:", seniorLandingErr.message);
 
     // Hent potentiale-værdier separat til estimat-beregning (#1162 whitelist: id, potentiale, birthdate, team_id).
     // #2454: `primary_type` og evne-rækken kommer med, så kandidatens potentiale
@@ -19402,6 +19409,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       squads,
       seniorCount,
       seniorMax,
+      seniorLanding: Number.isInteger(seniorLandingUsed) ? { used: seniorLandingUsed, max: SQUAD_CAPS.senior } : null,
       clubCapacity: { used: seniorState.club_count, max: CLUB_RIDER_CAP },
       roster: estimateViews?.roster ?? intake2?.roster ?? roster,
       intake: estimateViews?.intake ?? intake2?.intake ?? intake,

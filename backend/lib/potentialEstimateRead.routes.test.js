@@ -52,6 +52,11 @@ function fakeSupabase(stage) {
   const reads = [];
   return {
     reads,
+    // #8605: /api/academy counts the senior landing like the signing.
+    async rpc(name) {
+      if (name === "count_team_squad_members") return { data: 0, error: null };
+      return { data: null, error: { message: `unexpected rpc ${name}` } };
+    },
     from(table) {
       reads.push(table);
       const filters = [];

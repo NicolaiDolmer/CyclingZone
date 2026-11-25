@@ -213,6 +213,10 @@
       "title": "Akademi-signing gennemført",
       "message": "Din akademikandidat er nu en del af dit akademi."
     },
+    "academySignedSenior": {
+      "title": "Akademi-signing gennemført",
+      "message": "{riderName} er nu en del af din seniortrup."
+    },
     "academyGraduationReady": {
       "title": "Akademi-graduering",
       "message": "{name} er vokset ud af dit akademi. Ryk ham op, sælg ham eller slip ham, inden fristen udløber."

@@ -1,7 +1,8 @@
 # #8215: dashboard ranking latency investigation
 
-Status: investigation and additive migration design only. No runtime change,
-migration file, flag change, production write, merge or deployment.
+Status: migration and backend candidate in draft PR #8736. The first sections
+record the original investigation. See the final section for the candidate and
+local HTTP evidence. No migration has been applied to production.
 
 Owner mandate: [25 November coordination decision](https://github.com/NicolaiDolmer/CyclingZone/issues/8719#issuecomment-7175611595).
 Scope: [#8215](https://github.com/NicolaiDolmer/CyclingZone/issues/8215),
@@ -178,3 +179,41 @@ specified in #8215; obtain a named acceptance target before claiming green.
 No UI or player text changes are proposed here, so before/after screenshots
 and a player patch note do not apply to this docs-only investigation. A later
 runtime delivery must follow the wave's consolidated patch-note process.
+
+## Implementation and local HTTP verification, 26 November 2026
+
+PR #8736 adds the service-only PostgreSQL reader and ordered index. The existing
+shadow eligibility and fallback remain in place. During an additive migration's
+deployment window, a missing RPC or stale PostgREST schema cache uses the previous
+shadow reader within the existing budget. Other RPC errors use the existing legacy
+path. The function has no per-function settings. The transaction sets a short
+lock timeout before creating the index and requests a schema-cache reload.
+
+The same Express GET handler was mounted from the previous revision and from
+this candidate, with actual response caching, controlled authentication and
+source-readiness fixtures, an in-process PostgreSQL 17 (PGlite) database and a
+PostgREST-shaped query adapter. Both variants used the earlier 22,140-row
+synthetic ranking fixture. Each sample starts before the localhost HTTP request
+and ends after reading the body. Application cache and source-read cache were
+invalidated for cold samples. Each cold request was followed by a verified cache
+hit. All four scopes returned deeply equal JSON before and after. These figures
+measure the complete local HTTP request with fixture authentication and query
+transport. Deployed authentication, PostgREST network latency, read concurrency
+and shadow-writer overhead were outside this measurement.
+
+| Scope | Cold n/side | p50 before to after (ms) | p90 before to after (ms) | Backend calls |
+| --- | ---: | ---: | ---: | ---: |
+| Global | 10 | 9.19 to 1.86 | 11.27 to 2.26 | 5 to 4 |
+| Populated pool 1 | 10 | 24.29 to 2.52 | 26.94 to 3.68 | 25 to 4 |
+| Populated pool 2 | 10 | 34.04 to 2.39 | 36.78 to 3.04 | 25 to 4 |
+| Empty pool | 10 | 1.11 to 1.66 | 1.51 to 2.04 | 4 to 4 |
+
+Cache hits made zero backend calls and measured 0.40–0.68 ms p50 across the
+eight samples of ten. The fixture did not reproduce the production timeout.
+The endpoint's earlier regression boundary remains the same. There is no
+owner-approved production improvement target or rollout measurement yet.
+
+The database test runs the actual migration twice, checks role grants and
+function settings, and locks the complete prior payload against the RPC on
+global, populated and empty pool fixtures, including decimal points, ties,
+NULLs, missing teams, other seasons and retired riders.

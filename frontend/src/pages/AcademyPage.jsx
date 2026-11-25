@@ -96,7 +96,7 @@ export default function AcademyPage() {
   // #5519: med U23/Junior-siderne tændt erstatter links Youth squads-kortet (3a).
   const youthSquadPagesOn = useYouthSquadPages();
   const {
-    enabled, squads, intake, balance, clubCapacity,
+    enabled, squads, intake, balance, clubCapacity, seniorCount, seniorMax, seniorLanding,
     intakePull, loading, error, signCandidate, rejectCandidate,
     pullIntake, academyProfile, saveProfile, roster, refresh,
   } = useAcademy();
@@ -241,10 +241,12 @@ export default function AcademyPage() {
     // #6155: er hans trup fuld, lander han på U23, når han er ung nok og der
     // er plads (academyLandingSquad, spejl af signeringens prøve-rækkefølge).
     const targetSquad = item.targetSquad ?? academyTargetSquad(rider.birthdate, seasonYear);
-    const landing = academyLandingSquad(targetSquad, ageForSeason(rider.birthdate, seasonYear), squadCounts);
+    // #8605: seniorLanding counts like the signing (reserved auction places included).
+    const landing = academyLandingSquad(targetSquad, ageForSeason(rider.birthdate, seasonYear), squadCounts,
+      seniorLanding ?? { used: seniorCount, max: seniorMax });
     const clubFull = clubCapacity != null && clubCapacity.used >= clubCapacity.max;
     const isFull = landing.full || clubFull;
-    const blockedBoth = isFull && landing.options.length > 1;
+    const blockedBoth = isFull && landing.options.includes("junior") && landing.options.includes("u23");
     const fullTooltip = clubFull
       ? t("clubFull")
       : blockedBoth
@@ -377,13 +379,15 @@ export default function AcademyPage() {
 
         {/* #6155: juniortruppen er fuld, men U23 har plads: sig hvor han kommer hen,
             FØR det irreversible klik. */}
-        {!showLanding && landing.movedToU23 && (
+        {!showLanding && !clubFull && landing.movedToU23 && (
           <p className="text-xs text-cz-2" data-testid="intake-lands-u23">{t("landsOnU23")}</p>
         )}
         {/* #8081/#7932: trupgrænserne er de gældende lofter (squadCaps.ts = backend SQUAD_CAPS). */}
-        {showLanding && landing.squad && (
+        {!clubFull && landing.squad && (showLanding || landing.squad === "senior") && (
           <p className="text-xs text-cz-2" data-testid="intake-lands-on">
-            {t("academyV2:v2.landsOn", { squad: t(`academyV2:v2.squad.${landing.squad}`) })}
+            {t("academyV2:v2.landsOn", {
+              squad: landing.squad === "senior" ? t("moveSquad.shortName.senior") : t(`academyV2:v2.squad.${landing.squad}`),
+            })}
           </p>
         )}
 
