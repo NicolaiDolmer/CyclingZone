@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
-import { Link as RouterLink, useNavigate, useSearchParams } from "react-router";
+import { Link as RouterLink, useLocation, useNavigate, useNavigationType, useSearchParams } from "react-router";
 import DiscordJoinLink from "../components/DiscordJoinLink.jsx"; // #2761
 import ActivityPage from "./ActivityPage.jsx";
 import MessagesPanel from "../components/messages/MessagesPanel.jsx"; // #3200
@@ -350,8 +350,12 @@ function renderNotificationMessage(notification, tBackend) {
   return notification.message;
 }
 
+const inboxScrollByEntry = new Map();
+
 export default function NotificationsPage() {
   const navigate = useNavigate();
+  const { key: entryKey } = useLocation();
+  const navigationType = useNavigationType();
   const { t, i18n } = useTranslation("notifications");
   const { t: tBackend } = useTranslation("backendMessages");
   const timeAgo = buildTimeAgo(t, i18n);
@@ -421,9 +425,12 @@ export default function NotificationsPage() {
   // tidligere tavst tilbage til en tom liste (data || []), umuligt at skelne fra
   // "ingen notifikationer". ErrorState + retry gør fejlen synlig.
   const [notifLoadError, setNotifLoadError] = useState(false);
-  const [mineFilter, setMineFilter] = useState("all");
+  const mineFilterParam = searchParams.get("mineFilter");
+  const mineFilter = mineFilterParam === "unread" || Object.hasOwn(MINE_FILTER_TYPES, mineFilterParam)
+    ? mineFilterParam
+    : "all";
   const [markingAll, setMarkingAll] = useState(false);
-  const [expandedAggregates, setExpandedAggregates] = useState(() => new Set());
+  const [expandedAggregates, setExpandedAggregates] = useState(() => inboxScrollByEntry.get(entryKey)?.expanded ?? new Set());
   // #4332: userId er STATE, ikke en ref. Realtime-effekten nedenfor skal
   // gen-subscribe når bruger-id'et lander, og en ref udløser ingen re-render —
   // den gamle `[userIdRef.current]`-dependency virkede kun fordi
@@ -450,12 +457,52 @@ export default function NotificationsPage() {
   const [feedLoading, setFeedLoading] = useState(false);
   const [feedLoaded, setFeedLoaded] = useState(false);
   const [feedLoadError, setFeedLoadError] = useState(false);
-  const [feedFilter, setFeedFilter] = useState("all");
+  const feedFilterParam = searchParams.get("feedFilter");
+  const feedFilter = Object.hasOwn(FEED_FILTER_TYPES, feedFilterParam) ? feedFilterParam : "all";
 
   // Skal handles tab — kanonisk "kræver handling"-summary (#271 Slice A).
   // Hook'en henter + realtime-opdaterer via /api/inbox/pending, så badge-tallet
   // matcher Dashboard "Næste træk" og Min Aktivitet uden duplikeret logik.
   const { pending, loading: pendingLoading, loaded: pendingLoaded } = useActionSummary();
+
+  function setInboxFilter(key, value) {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      if (value === "all") next.delete(key);
+      else next.set(key, value);
+      return next;
+    }, { replace: true });
+  }
+
+  function rememberInboxPosition() {
+    // Store the history entry's position before the destination unmounts the list.
+    inboxScrollByEntry.set(entryKey, { top: window.scrollY, expanded: expandedAggregates });
+    if (inboxScrollByEntry.size > 20) inboxScrollByEntry.delete(inboxScrollByEntry.keys().next().value);
+  }
+
+  function navigateFromInbox(destination) {
+    rememberInboxPosition();
+    navigate(destination);
+  }
+
+  function rememberEmbeddedLink(event) {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey ||
+        !(event.target instanceof Element)) return;
+    const link = event.target.closest("a[href]");
+    if (!(link instanceof HTMLAnchorElement) || (link.target && link.target !== "_self") ||
+        link.origin !== window.location.origin || link.pathname === window.location.pathname) return;
+    rememberInboxPosition();
+  }
+
+  const listReady = (tab === "mine" && !notifLoading && !notifLoadError) ||
+    (tab === "ligaen" && feedLoaded && !feedLoading && !feedLoadError) ||
+    (tab === "skal_handles" && pendingLoaded && !pendingLoading);
+  useLayoutEffect(() => {
+    if (navigationType !== "POP" || !listReady || !inboxScrollByEntry.has(entryKey)) return;
+    const { top } = inboxScrollByEntry.get(entryKey);
+    inboxScrollByEntry.delete(entryKey);
+    window.scrollTo({ top, behavior: "instant" });
+  }, [entryKey, listReady, navigationType]);
 
   useEffect(() => { loadNotifications(); }, []);
 
@@ -692,7 +739,7 @@ export default function NotificationsPage() {
   ].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto" onClickCapture={rememberEmbeddedLink}>
       {/* #2849 bølge 6: kanonisk PageHeader. actions-slotten bærer "marker alle
           læst" (secondary) + "slet læste" (danger) uændret — bevidst afvigelse
           fra action-cluster-kontraktens "max 1 select + 1 primær knap", samme
@@ -770,7 +817,7 @@ export default function NotificationsPage() {
               size="sm"
               aria-label={t("filter.mineSelectLabel")}
               value={mineFilter}
-              onChange={e => setMineFilter(e.target.value)}
+              onChange={e => setInboxFilter("mineFilter", e.target.value)}
               className="w-full sm:w-56"
             >
               <option value="all">{t("filter.all", { count: notifications.length })}</option>
@@ -800,7 +847,7 @@ export default function NotificationsPage() {
               title={mineFilter === "unread" ? t("empty.noneUnread") : t("empty.noneInCategory")}
               description={t("empty.noneHint")}
               action={
-                <Button size="sm" variant="secondary" onClick={() => setMineFilter("all")}>
+                <Button size="sm" variant="secondary" onClick={() => setInboxFilter("mineFilter", "all")}>
                   {t("empty.showAllCta")}
                 </Button>
               }
@@ -839,7 +886,7 @@ export default function NotificationsPage() {
                           logEvent("discord_invite_clicked", { source: "notification" });
                           window.open(link, "_blank", "noopener,noreferrer");
                         } else {
-                          navigate(link);
+                          navigateFromInbox(link);
                         }
                       } : undefined}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center
@@ -991,7 +1038,7 @@ export default function NotificationsPage() {
                         </ul>
                         {aggregateLink && (
                           <Button variant="secondary" size="sm" className="self-end inline-flex items-center gap-1"
-                            onClick={e => { e.stopPropagation(); navigate(aggregateLink); }}>
+                            onClick={e => { e.stopPropagation(); navigateFromInbox(aggregateLink); }}>
                             {/* #5384: bøtten dækker nu også race_completed (race_result/
                                 stage_result/career_milestone), ikke kun auktioner.
                                 Teksten afgøres af DESTINATIONEN, ikke bøtte-navnet —
@@ -1032,7 +1079,7 @@ export default function NotificationsPage() {
                 return (
                 <div key={`${item.kind}-${item.id}`}
                   className="flex items-start gap-3 p-3 sm:p-4 rounded-cz border border-cz-accent/30 bg-cz-accent/5 hover:bg-cz-accent/10 transition-colors cursor-pointer"
-                  onClick={() => { logEvent("notification_clicked", { kind: item.kind }); navigate(item.link); }}>
+                  onClick={() => { logEvent("notification_clicked", { kind: item.kind }); navigateFromInbox(item.link); }}>
                   <div className="w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center text-cz-accent-t shrink-0 mt-0.5">
                     {PendingIcon ? <PendingIcon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}
                   </div>
@@ -1073,7 +1120,7 @@ export default function NotificationsPage() {
               size="sm"
               aria-label={t("filter.feedSelectLabel")}
               value={feedFilter}
-              onChange={e => setFeedFilter(e.target.value)}
+              onChange={e => setInboxFilter("feedFilter", e.target.value)}
               className="w-full sm:w-56"
             >
               <option value="all">{t("filter.all", { count: events.length })}</option>
