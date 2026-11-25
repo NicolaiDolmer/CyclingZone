@@ -1473,8 +1473,7 @@ export async function runRaceEntryGenerator({
     // til skrivningen så en fremtidig refaktor ikke kan nulstille et aktivt startfelt.
     // (RPC'en håndhæver samme guard DB-side: sweep_race_lineup_frozen.)
     if (startedRaceIds.has(race_id)) {
-      failedUnits += 1;
-      if (errors.length < 5) errors.push(`${race_id}/${team_id}: race_lineup_frozen (refused to touch in-flight race)`);
+      skipped += 1;
       continue;
     }
 
@@ -1618,8 +1617,7 @@ export async function runRaceEntryGenerator({
         if (!nowFrozen.has(raceId)) continue;
         startedRaceIds.add(raceId);
         changed.splice(i, 1);
-        failedUnits += 1;
-        if (errors.length < 5) errors.push(`${raceId}/${team_id}: race_lineup_frozen (refused to touch in-flight race)`);
+        skipped += 1;
       }
       if (!changed.length) continue;
     }

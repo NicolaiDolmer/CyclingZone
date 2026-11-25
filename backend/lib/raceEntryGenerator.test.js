@@ -1774,9 +1774,10 @@ function seedSwapScenario() {
 }
 
 // Fang generatorens ønskede tildeling pr. løb, og returnér den KRYDSEDE seeding.
+const SWAP_SCENARIO_NOW = new Date("2026-06-30T10:00:00Z");
 async function crossedSeedFromDesired() {
   const { state, seasonId } = seedSwapScenario();
-  await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false });
+  await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false, now: SWAP_SCENARIO_NOW });
   const pick = (raceId) => state.race_entries
     .filter((e) => e.race_id === raceId)
     .map((e) => ({ rider_id: e.rider_id, race_role: e.race_role }));
@@ -2721,7 +2722,7 @@ test("#6680 (Codex P2): a live run clears the calendar cache, a dry run does not
 // sweep_race_lineup_frozen, men per-enheds-fallbacken skrev alligevel og udskiftede
 // 102 ryttere i et igangværende etapeløb. Fallbacken skal genlæse løbene og lade
 // de frosne enheder være.
-test("#7389: løb der starter midt i tick'et røres ikke af per-enheds-fallbacken", async () => {
+test("#7389/#8115: løb der starter midt i tick'et røres ikke af per-enheds-fallbacken", async () => {
   const { desiredA, desiredB, crossed } = await crossedSeedFromDesired();
   const { state, seasonId } = seedSwapScenario();
   for (const r of state.races) Object.assign(r, { status: "scheduled", stages_completed: 0 });
@@ -2736,10 +2737,12 @@ test("#7389: løb der starter midt i tick'et røres ikke af per-enheds-fallbacke
     raceA.status = "active";
     return realRpc(name, params);
   };
-  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false, now: SWAP_SCENARIO_NOW });
   const ids = (raceId) => state.race_entries.filter((e) => e.race_id === raceId).map((e) => e.rider_id).sort();
   assert.deepEqual(ids("A"), before("A"), "det startede løbs felt er uændret");
-  assert.equal(res.failed_units, 1, "kun den frosne enhed (A) tælles som afvist");  assert.ok(res.errors.some((e) => /race_lineup_frozen/.test(e)), "afvisningen er synlig i errors");
+  assert.equal(res.failed_units, 0, "a confirmed frozen unit is not an alarm-worthy failure");
+  assert.equal(res.skipped, 1, "the frozen unit is counted as skipped");
+  assert.deepEqual(res.errors, [], "the frozen unit does not occupy the error sample");
   assert.ok(desiredA.length && desiredB.length);
 });
 
