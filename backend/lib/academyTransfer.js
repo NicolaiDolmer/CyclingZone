@@ -161,6 +161,7 @@ export async function promote(supabase, {
   if (error) {
     // #8153: vagten paa riders afviser trupskiftet for en rytter med en ventende frigivelse.
     if (isPendingReleaseGuardError(error)) throw new Error(PENDING_RELEASE_SQUAD_CODE);
+    if (error.code === "23514" && error.message === "squad_full") throw new Error("squad_full");
     throw new Error(`promote update: ${error.message}`);
   }
   await notifyIfContractExpiresThisSeason({

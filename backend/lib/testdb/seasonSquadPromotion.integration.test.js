@@ -31,28 +31,29 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
       CREATE ROLE service_role;
       CREATE TABLE teams (id uuid PRIMARY KEY, is_ai boolean DEFAULT false, is_bank boolean DEFAULT false);
       INSERT INTO teams (id) VALUES ('${CLUB}'), ('${BUYER}');
-      CREATE TABLE seasons (id uuid PRIMARY KEY, status text);
+      CREATE TABLE seasons (id uuid PRIMARY KEY, status text, number integer);
       CREATE TABLE riders (
         id uuid PRIMARY KEY, team_id uuid, pending_team_id uuid, squad text, is_academy boolean, is_retired boolean DEFAULT false,
-        firstname text, lastname text, salary integer, contract_end_season integer,
+        firstname text, lastname text, salary integer, contract_end_season integer, birthdate date,
         promotion_pending_to text, promotion_pending_since timestamptz, acquired_at timestamptz, updated_at timestamptz
       );
       CREATE TABLE academy_graduation (
         rider_id uuid, team_id uuid, season_id uuid, status text, from_squad text, to_squad text,
         deadline timestamptz, resolved_at timestamptz, PRIMARY KEY (rider_id, season_id)
       );
-      CREATE TABLE auctions (id uuid PRIMARY KEY, rider_id uuid, status text, current_price integer, current_bidder_id uuid);
-      CREATE TABLE auction_bids (auction_id uuid, team_id uuid, bid_time timestamptz);
+      CREATE TABLE auctions (id uuid PRIMARY KEY, rider_id uuid, status text, current_price integer, current_bidder_id uuid, is_youth boolean DEFAULT false);
+      CREATE TABLE auction_bids (auction_id uuid, team_id uuid, bid_time timestamptz, amount integer, is_proxy boolean DEFAULT false);
       CREATE TABLE transfer_listings (rider_id uuid, asking_price integer);
       CREATE FUNCTION auto_accept_lock_teams(uuid, uuid) RETURNS void LANGUAGE plpgsql AS $fixture$
       BEGIN
         PERFORM pg_advisory_xact_lock(hashtextextended(least($1, $2)::text, 0));
         PERFORM pg_advisory_xact_lock(hashtextextended(greatest($1, $2)::text, 0));
       END; $fixture$;
+      CREATE FUNCTION market_transport_2176() RETURNS boolean LANGUAGE sql AS 'SELECT false';
       CREATE FUNCTION market_beta_mode_2176() RETURNS boolean LANGUAGE sql AS 'SELECT true';
       CREATE FUNCTION market_scope_2176(uuid, uuid) RETURNS boolean LANGUAGE sql AS 'SELECT true';
       CREATE FUNCTION market_squad_max() RETURNS integer LANGUAGE sql AS 'SELECT 30';
-      INSERT INTO seasons VALUES ('${S5}', 'completed'), ('${S6}', 'active');
+      INSERT INTO seasons VALUES ('${S5}', 'completed', 5), ('${S6}', 'active', 6);
       INSERT INTO riders (id, team_id, squad, is_academy, firstname, lastname, salary, contract_end_season, promotion_pending_to)
       VALUES ('${JUNIOR}', '${CLUB}', 'junior', true, 'Junior', 'Rider', 4000, 8, 'u23'),
              ('${U23}', '${CLUB}', 'u23', true, 'Older', 'Rider', 6000, 7, NULL),
@@ -117,11 +118,16 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
     assert.deepEqual((await db.query("SELECT id,team_id FROM riders WHERE id IN ($1,$2) ORDER BY id", [STAYS, SOLD])).rows,
       [{ id: SOLD, team_id: BUYER }, { id: STAYS, team_id: CLUB }]);
     await db.query("UPDATE riders SET team_id=$1 WHERE id IN (SELECT id FROM riders WHERE team_id=$2 AND squad='senior' LIMIT 4)", [BUYER, CLUB]);
+    // Use a rider outside the club for the now-live reservation. The
+    // earlier fixture reuses an owned rider only for the promotion allowance.
+    await db.query("UPDATE auctions SET rider_id=$1 WHERE id=$2", [uuid(70), EXISTING_WIN]);
     const openAuction = () => db.query("INSERT INTO auctions(id,status,current_bidder_id) VALUES (gen_random_uuid(), 'active', $1)", [CLUB]);
     await assert.rejects(openAuction(), /club_roster_full/);
     await db.query("UPDATE auctions SET status = 'completed' WHERE current_bidder_id=$1", [CLUB]);
     await openAuction();
     await assert.rejects(openAuction(), /club_roster_full/);
+    await assert.rejects(buy("team_id"), /club_roster_full/);
+    await db.query("UPDATE auctions SET status='completed' WHERE current_bidder_id=$1", [CLUB]);
     await buy("team_id");
     await assert.rejects(buy("team_id"), /club_roster_full/);
     await db.query("UPDATE riders SET squad = 'junior' WHERE id = $1", [SOLD]);
@@ -179,7 +185,8 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
               "SELECT count(*)::int AS count FROM riders WHERE coalesce(pending_team_id,team_id)=$1 AND squad='senior'",
               [CLUB],
             );
-            await db.query("UPDATE riders SET squad='senior' WHERE id = (SELECT id FROM riders WHERE team_id=$1 AND squad='u23' LIMIT 1)", [CLUB]);
+            const { rows: [eligible] } = await db.query("SELECT id FROM riders WHERE team_id=$1 AND squad='u23' LIMIT 1", [CLUB]);
+            await advance([{ rider_id: eligible.id, team_id: CLUB, from_squad: "u23", to_squad: "senior" }]);
             assert.deepEqual((await count()).rows, [{ count: 31 }]);
             await placeSwap(paid, 0, deferred);
             assert.deepEqual((await count()).rows, [{ count: 31 }]);
@@ -190,19 +197,25 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
       }
     }
 
-    await t.test("paid swaps that grow the senior squad still respect an auction reservation", async () => {
+    await t.test("both swap paths protect the reserved senior place", async () => {
       await db.exec("BEGIN");
       try {
         // Club has 29 seniors and one reserved auction place. Buyer has room
         // for the outgoing junior, so only the senior reservation can block it.
-        await db.query("UPDATE riders SET squad='u23' WHERE id=$1", [clubSeniors[1]]);
+        await db.query("UPDATE riders SET team_id=NULL WHERE id=$1", [clubSeniors[1]]);
         await db.query("UPDATE riders SET squad='u23' WHERE id=$1", [SOLD]);
-        const claim = await db.query(
-          "SELECT auto_accept_claim_swap_paid($1,$2,$3,$4,false,$5,'{}','{}',$6,0,NULL) AS result",
-          [STAYS, buyerSeniors[0], CLUB, BUYER, CUTOVER, uuid(120)],
-        );
-        assert.equal(claim.rows[0].result.status, "swap_squad_full");
-        assert.equal(claim.rows[0].result.team_id, CLUB);
+        await db.query("INSERT INTO auctions(id,status,current_bidder_id) VALUES (gen_random_uuid(), 'active', $1)", [CLUB]);
+        for (const paid of [false, true]) {
+          await db.exec("SAVEPOINT growth_swap");
+          const claim = paid
+            ? () => db.query(
+              "SELECT auto_accept_claim_swap_paid($1,$2,$3,$4,false,$5,'{}','{}',$6,0,NULL)",
+              [STAYS, buyerSeniors[0], CLUB, BUYER, CUTOVER, uuid(120)],
+            )
+            : () => swap(STAYS, buyerSeniors[0], false);
+          await assert.rejects(claim(), /swap_destination_squad_full/);
+          await db.exec("ROLLBACK TO SAVEPOINT growth_swap");
+        }
         assert.deepEqual((await db.query("SELECT team_id,pending_team_id FROM riders WHERE id=$1", [STAYS])).rows,
           [{ team_id: CLUB, pending_team_id: null }]);
         assert.deepEqual((await db.query("SELECT team_id,pending_team_id FROM riders WHERE id=$1", [buyerSeniors[0]])).rows,

@@ -690,7 +690,11 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     if (error && typeof error === "object" && "message" in error && error.message === "club_roster_full") {
       return failure(409, clubRosterFull.error, "club_roster_full");
     }
-    throw error;
+    if (error && typeof error === "object" && "message" in error && error.message === "squad_full") {
+      lockedClaim = { issue: { code: "buyer_squad_full", maxRiders: buyerState.squad_limits.max } };
+    } else {
+      throw error;
+    }
   }
 
   if (lockedClaim?.boundary) return failure(409, undefined, "offer_at_auto_accept_price", { errorParams: lockedClaim.boundary.body.errorParams });

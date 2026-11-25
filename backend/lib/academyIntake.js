@@ -598,6 +598,10 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   for (const squad of placementSquads) {
     placedSquad = squad;
     ({ data: acq, error: acqErr } = await finalizeAcquisition(squad));
+    if (acqErr?.code === "23514" && acqErr.message === "academy_full") {
+      acq = { ok: false, code: "academy_full" };
+      acqErr = null;
+    }
     if (acqErr || acq?.code !== "academy_full") break;
   }
 

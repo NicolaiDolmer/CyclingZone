@@ -566,6 +566,7 @@ function makeSignRejectSupabase({
   leadingAuctions = [], // #6261-#6264: førende bud der låser penge
   riderBirthdate, // #6155: undefined = ingen fødselsdato (ukendt alder)
   fullSquads = [], // #6155: trupper hvor RPC'en svarer academy_full
+  blockedByReservation = [],
 } = {}) {
   const riderUpdates = [];
   const intakeUpdates = [];
@@ -684,6 +685,9 @@ function makeSignRejectSupabase({
         return Promise.resolve({ data: { ok: false, code: rpcCode }, error: null });
       }
       const price = Number(_args.p_price);
+      if (blockedByReservation.includes(_args.p_squad)) {
+        return Promise.resolve({ data: null, error: { code: "23514", message: "academy_full" } });
+      }
       if (teamAcademyCount >= 8 || fullSquads.includes(_args.p_squad)) {
         return Promise.resolve({ data: { ok: false, code: "academy_full" }, error: null });
       }
@@ -1227,6 +1231,14 @@ test("signAcademyCandidate (#6155): juniortruppen fuld → talentet lander på U
     "andet forsøg er samme køb (pris, løn, idempotency_key); kun truppen skifter");
   assert.equal(supabase._riderUpdates.length, 1, "rytteren optages én gang");
   assert.equal(supabase._intakeUpdates.at(-1).status, "signed");
+});
+
+test("signAcademyCandidate: a reserved junior place still permits the U23 fallback", async () => {
+  const supabase = makeSignRejectSupabase({ riderBirthdate: birthdateForSeasonAge(17), blockedByReservation: ["junior"] });
+  const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: SIGN_SEASON, now: SIGN_NOW });
+  assert.equal(result.squad, "u23");
+  assert.deepEqual(supabase._rpcCalls.map(call => call._args.p_squad), ["junior", "u23"]);
+  assert.equal(supabase._riderUpdates.length, 1);
 });
 
 test("signAcademyCandidate (#6155): bestyrelsens gave-kuld følger samme regel (fuld junior → U23, stadig gratis)", async () => {

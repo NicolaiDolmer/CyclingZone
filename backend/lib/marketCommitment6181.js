@@ -23,6 +23,7 @@
 import { fetchAuctionCommitment } from "./availableBalance.js";
 import { getMinimumAuctionBid } from "./auctionRules.ts";
 import { MAX_SQUAD_SIZE } from "./marketUtils.js";
+import { CLUB_RIDER_CAP } from "./squads.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { isMarketProtectionEnabled2176, marketProtectedTeamIds2176 } from "./marketBeta2176.ts";
 
@@ -105,10 +106,10 @@ export function isLoweredProxy6181({ marketGateOn, proxies, auctionId, nextMax }
   return standing != null && nextMax <= Number(standing.max_amount);
 }
 
-const SQUAD_FULL_BODY = () => ({
-  error: `Your squad is full (${MAX_SQUAD_SIZE} riders). Sell a rider before you bid on a new one.`,
+const SQUAD_FULL_BODY = (maxRiders = MAX_SQUAD_SIZE) => ({
+  error: `Your squad is full (${maxRiders} riders). Sell a rider before you bid on a new one.`,
   errorCode: "squad_full_bid",
-  errorParams: { maxRiders: MAX_SQUAD_SIZE },
+  errorParams: { maxRiders },
 });
 
 /**
@@ -122,8 +123,8 @@ const SQUAD_FULL_BODY = () => ({
  */
 export async function marketGateResponse6181(supabase, error, { kind, teamId, auctionId = null }) {
   const code = marketGateCode(error);
+  if (code === "club_roster_full" || error?.message === "club_roster_full") return { status: 400, body: SQUAD_FULL_BODY(CLUB_RIDER_CAP) };
   if (!code) return null;
-
   if (code === "squad_full") return { status: 400, body: SQUAD_FULL_BODY() };
 
   if (code === "price_changed" && auctionId) {
@@ -182,13 +183,17 @@ export async function marketGateResponse6181(supabase, error, { kind, teamId, au
  * imellem; her opdateres kun, hvis prisen stadig er lavere (fx hvis kontakten
  * blev slaaet til i databasen mellem buddet og dette kald).
  */
-export async function syncBidLeader6181(supabase, { auctionId, amount, teamId }) {
-  const { error } = await supabase
+export async function syncBidLeader6181(supabase, { auctionId, amount, teamId, openingAtStartPrice = false }) {
+  const query = supabase
     .from("auctions")
     .update({ current_price: amount, current_bidder_id: teamId })
     .eq("id", auctionId)
-      .in("status", ["active", "extended"])
-    .lt("current_price", amount);
+    .in("status", ["active", "extended"]);
+  // Before the reservation migration, a first bid can equal the start price.
+  // Require both old values so this fallback never displaces a real leader.
+  const { error } = await (openingAtStartPrice
+    ? query.eq("current_price", amount).is("current_bidder_id", null)
+    : query.lt("current_price", amount));
   if (error) console.error("[marketCommitment6181] leader sync failed", { auctionId, error: error.message });
 }
 

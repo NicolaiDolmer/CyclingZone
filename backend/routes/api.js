@@ -898,11 +898,7 @@ async function fetchTeamCommitment(supabaseClient, teamId) {
   if (!teamId) return { leadingAuctions: [], allMyProxies: [], commitment: 0 };
 
   const [leadingRes, allProxies] = await Promise.all([
-    supabaseClient
-      .from("auctions")
-      .select("id, current_price")
-      .in("status", ["active", "extended"])
-      .eq("current_bidder_id", teamId),
+    fetchLeadingMarketAuctions(supabaseClient, teamId),
     fetchAllMyActiveProxies(supabaseClient, teamId),
   ]);
 
@@ -910,6 +906,16 @@ async function fetchTeamCommitment(supabaseClient, teamId) {
   const commitment = computeWorstCaseCommitment({ leadingAuctions, allMyProxies: allProxies });
 
   return { leadingAuctions, allMyProxies: allProxies, commitment };
+}
+
+async function fetchLeadingMarketAuctions(supabaseClient, teamId) {
+  const read = (columns) => supabaseClient.from("auctions").select(columns)
+    .in("status", ["active", "extended"]).eq("current_bidder_id", teamId);
+  const result = await read("id, current_price, reservation_squad");
+  if (["42703", "PGRST204"].includes(result.error?.code) && result.error.message.includes("reservation_squad")) {
+    return read("id, current_price");
+  }
+  return result;
 }
 
 
@@ -7884,15 +7890,12 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   let creationWarnings = [];
   if (initialBidderId) {
     const [leadingAuctions, teamState] = await Promise.all([
-      supabase
-        .from("auctions")
-        .select("id, current_price")
-        .in("status", ["active", "extended"])
-        .eq("current_bidder_id", initialBidderId),
+      fetchLeadingMarketAuctions(supabase, initialBidderId),
       getTeamMarketState(supabase, initialBidderId),
     ]);
     const activeLeading = leadingAuctions.data || [];
-    const noRoom = getAuctionBidRoomBlock({ teamState, activeLeadingCount: activeLeading.length });
+    const noRoom = getAuctionBidRoomBlock({ teamState, activeLeadingCount: activeLeading.length,
+      activeLeadingSeniorCount: activeLeading.filter(row => (row.reservation_squad ?? "senior") === "senior").length });
     if (noRoom) return res.status(400).json({ error: "No room for another rider", errorCode: "squad_full_bid", maxRiders: noRoom.maxRiders });
     // #6181 PR 5: taendt kraever startbuddet penge (worst case) OG plads, ikke kun en advarsel.
     const startGate = await auctionStartCommitmentResponse6181(supabase, { teamId: initialBidderId, teamState, price });
@@ -8132,9 +8135,10 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   const squadBlock = getAuctionBidRoomBlock({
     isYouth: auction.is_youth,
     teamState,
-    academyCount: academyRoom?.used ?? 0,
+    academyCount: (academyRoom?.used ?? 0) + activeLeadingExceptCurrent.filter(row => row.reservation_squad && row.reservation_squad === academyRoom?.squad).length,
     academySlots: academyRoom?.max,
     activeLeadingCount: activeLeadingExceptCurrent.length,
+    activeLeadingSeniorCount: activeLeadingExceptCurrent.filter(row => (row.reservation_squad ?? "senior") === "senior").length,
     alreadyLeadingThisAuction,
   });
   if (squadBlock?.code === "no_eligible_room_bid") {
@@ -8219,11 +8223,8 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   });
 
   // Update auction (price + leader only — no extension yet).
-  if (marketGateOn) await syncBidLeader6181(supabase, { auctionId: auction.id, amount: numericAmount, teamId: req.team.id });
-  else await supabase.from("auctions").update({
-    current_price: numericAmount,
-    current_bidder_id: req.team.id,
-  }).eq("id", auction.id);
+  await syncBidLeader6181(supabase, { auctionId: auction.id, amount: numericAmount, teamId: req.team.id,
+    openingAtStartPrice: !auction.current_bidder_id && numericAmount === Number(auction.current_price) });
 
   // Store proxy max-loft if provided with the bid
   const numericProxyMax = Number(proxy_max);
@@ -8458,12 +8459,14 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     const proxyAcademyRoom = auction.is_youth
       ? await youthAuctionAcademyRoom(req.team.id, auction.rider_id)
       : null;
+    const otherLeads = leadingAuctions.filter(row => row.id !== req.params.id);
     const squadBlock = getAuctionBidRoomBlock({
       isYouth: auction.is_youth,
       teamState,
-      academyCount: proxyAcademyRoom?.used ?? 0,
+      academyCount: (proxyAcademyRoom?.used ?? 0) + otherLeads.filter(row => row.reservation_squad && row.reservation_squad === proxyAcademyRoom?.squad).length,
       academySlots: proxyAcademyRoom?.max,
-      activeLeadingCount: leadingAuctions.filter((row) => row.id !== req.params.id).length,
+      activeLeadingCount: otherLeads.length,
+      activeLeadingSeniorCount: otherLeads.filter(row => (row.reservation_squad ?? "senior") === "senior").length,
       alreadyLeadingThisAuction: false,
     });
     if (squadBlock?.code === "no_eligible_room_bid") {
@@ -8492,18 +8495,31 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     }
   }
 
-  const atomicProxyBidTime = marketGateOn ? new Date() : null;
-  const { data: acceptedProxyContext, error: proxyUpsertError } = marketGateOn
+  let legacyOpening = !marketGateOn && openingBidAmount !== null;
+  const atomicProxyBidTime = marketGateOn || legacyOpening ? new Date() : null;
+  const upsertLegacyProxy = () => supabase.from("auction_proxy_bids").upsert(
+    { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
+    { onConflict: "auction_id,team_id" }
+  );
+  let { data: acceptedProxyContext, error: proxyUpsertError } = marketGateOn
     ? await supabase.rpc("set_auction_proxy_context_6181", {
         p_auction_id: req.params.id, p_team_id: req.team.id, p_max_amount: numericMax,
         p_opening_amount: openingBidAmount, p_bid_time: atomicProxyBidTime.toISOString(),
       })
-    : await supabase.from("auction_proxy_bids").upsert(
-        { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
-        { onConflict: "auction_id,team_id" }
-      );
+    : legacyOpening
+      ? await supabase.rpc("set_legacy_proxy_opening_bid_8034", {
+          p_auction_id: req.params.id, p_team_id: req.team.id, p_max_amount: numericMax,
+          p_opening_amount: openingBidAmount, p_bid_time: atomicProxyBidTime.toISOString(),
+        })
+      : await upsertLegacyProxy();
+  if (legacyOpening && proxyUpsertError?.code === "PGRST202") {
+    // Backend can briefly lead the SQL deployment. Keep the previous flow
+    // solely when PostgREST confirms the new RPC could not have executed.
+    legacyOpening = false;
+    ({ error: proxyUpsertError } = await upsertLegacyProxy());
+  }
   if (proxyUpsertError) {
-    if (marketGateOn && isLateBidTriggerError(proxyUpsertError)) {
+    if (isLateBidTriggerError(proxyUpsertError)) {
       return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
     }
     const proxyGate = await marketGateResponse6181(supabase, proxyUpsertError, { kind: "proxy", teamId: req.team.id, auctionId: req.params.id }); // #6181 PR 5
@@ -8525,38 +8541,20 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       alreadyLeadingThisAuction: false,
     });
 
-    // #269: oversæt reject_late_auction_bid trigger-fejl til 400 i stedet for 500.
-    const { error: bidInsertError } = marketGateOn ? { error: null } : await supabase.from("auction_bids").insert({
-      auction_id: auction.id,
-      team_id: req.team.id,
-      amount: openingBidAmount,
-      bid_time: proxyBidTime.toISOString(),
-      triggered_extension: false,
-      is_proxy: true,
-    });
-    if (bidInsertError) {
-      if (isLateBidTriggerError(bidInsertError)) {
-        return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
-      }
-      const openingGate = await marketGateResponse6181(supabase, bidInsertError, { kind: "proxy", teamId: req.team.id, auctionId: auction.id }); // #6181 PR 5
-      if (openingGate) return res.status(openingGate.status).json(openingGate.body);
-      return res.status(500).json({ error: "Autobud kunne ikke placeres", errorCode: "proxy_place_failed" });
-    }
-
-    if (marketGateOn) {
-      await syncBidLeader6181(supabase, { auctionId: auction.id, amount: openingBidAmount, teamId: req.team.id });
-    } else {
-      const { error: auctionUpdateError } = await supabase
-        .from("auctions")
-        .update({
-          current_price: openingBidAmount,
-          current_bidder_id: req.team.id,
-        })
-        .eq("id", auction.id);
-      if (auctionUpdateError) {
-        return res.status(500).json({ error: "Autobud kunne ikke opdatere auktionen", errorCode: "proxy_update_failed" });
+    if (!marketGateOn && !legacyOpening) {
+      const { error } = await supabase.from("auction_bids").insert({
+        auction_id: auction.id, team_id: req.team.id, amount: openingBidAmount,
+        bid_time: proxyBidTime.toISOString(), triggered_extension: false, is_proxy: true,
+      });
+      if (error) {
+        if (isLateBidTriggerError(error)) return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
+        const openingGate = await marketGateResponse6181(supabase, error, { kind: "proxy", teamId: req.team.id, auctionId: auction.id });
+        if (openingGate) return res.status(openingGate.status).json(openingGate.body);
+        return res.status(500).json({ error: "Autobud kunne ikke placeres", errorCode: "proxy_place_failed" });
       }
     }
+    await syncBidLeader6181(supabase, { auctionId: auction.id, amount: openingBidAmount, teamId: req.team.id,
+      openingAtStartPrice: !auction.current_bidder_id && openingBidAmount === Number(auction.current_price) });
 
     const riderName = `${auction.rider?.firstname || "Ukendt"} ${auction.rider?.lastname || "rytter"}`.trim();
     // #1740: outbid-notif til den forrige fører flyttes til EFTER cascaden — et

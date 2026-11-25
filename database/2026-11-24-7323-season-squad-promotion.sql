@@ -15,6 +15,7 @@ CREATE OR REPLACE FUNCTION public.promote_season_squads_7323(
 RETURNS TABLE (rider_id uuid, team_id uuid, to_squad text, firstname text, lastname text)
 LANGUAGE plpgsql
 SET search_path = ''
+SET cyclingzone.season_squad_promotion = 'on'
 AS $$
 #variable_conflict use_column
 DECLARE

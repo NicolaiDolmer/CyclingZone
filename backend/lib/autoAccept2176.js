@@ -602,8 +602,9 @@ export function makeStartAutoAcceptHandler({
       p_seller_at_risk_rider_ids: sellerFloorRiskIds(atRisk),
       p_now: startedAt.toISOString(),
     }).catch((error) => {
-      if (error?.message !== "club_roster_full") throw error;
-      return { status: "squad_full", max_riders: CLUB_RIDER_CAP };
+      if (error?.message === "club_roster_full") return { status: "squad_full", max_riders: CLUB_RIDER_CAP };
+      if (error?.message === "market_gate_6181:squad_full") return { status: "squad_full", max_riders: SQUAD_CAPS.senior };
+      throw error;
     });
     const mapped = mapStartAutoAcceptResult(result);
     if (result.status === "started") {

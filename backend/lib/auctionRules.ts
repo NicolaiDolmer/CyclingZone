@@ -471,11 +471,13 @@ export function getAuctionBidRoomBlock({
   academyCount = 0,
   academySlots,
   activeLeadingCount = 0,
+  activeLeadingSeniorCount = activeLeadingCount,
   alreadyLeadingThisAuction = false,
 }: SquadBidOptions & {
   isYouth?: boolean;
   academyCount?: number;
   academySlots?: number | null;
+  activeLeadingSeniorCount?: number;
 } = {}) {
   const reservedWins = activeLeadingCount + 1;
   if (!alreadyLeadingThisAuction && teamState?.club_count != null && teamState.club_count + reservedWins > CLUB_RIDER_CAP) {
@@ -483,7 +485,7 @@ export function getAuctionBidRoomBlock({
   }
   const seniorBlock = getAuctionBidSquadBlock({
     teamState,
-    activeLeadingCount,
+    activeLeadingCount: activeLeadingSeniorCount,
     alreadyLeadingThisAuction,
   });
 

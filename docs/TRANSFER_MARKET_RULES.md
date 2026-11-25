@@ -656,7 +656,7 @@ Tændt:
 
 ## 9. Trup-lofter
 
-Fra udrulningen har hver trup 30 pladser og klubben højst 60 ryttere på tværs (#8034). Nye bud og køb kræver plads under begge grænser. Et bytte én for én er tilladt ved og over lofterne, når ingen trup vokser, også mens et tidligere bytte afventer registrering. Vokser en trup, gælder loftet fortsat. Hvis en afventende rytterregistrering er årsag til afvisningen ved klubloftet, angiver beskeden, at registreringen først skal gennemføres. Begge ben ligger under samme transaktionslås. Intern flytning ændrer ikke klubtallet, men kræver plads i måltruppen. Automatisk oprykning kan overskride trupgrænsen uden at udløse sanktioner. Den gamle trupbøde og tvangssalgskørsel stopper fra sæson 6.
+Fra udrulningen har hver trup 30 pladser og klubben højst 60 ryttere på tværs (#8034). Nye bud og køb kræver plads under begge grænser. En ført auktion reserverer plads under begge lofter for alle erhvervelsesveje under holdlåsen. Et førerskift frigiver den gamle reservation. Ved overdragelse bruges auktionens egen reservation, også ved afventende registrering. Et bytte én for én er tilladt ved og over lofterne, når ingen trup vokser, også mens et tidligere bytte afventer registrering. Vokser en trup, gælder loftet fortsat. Hvis en afventende rytterregistrering er årsag til afvisningen ved klubloftet, angiver beskeden, at registreringen først skal gennemføres. Begge ben ligger under samme transaktionslås. Intern flytning ændrer ikke klubtallet, men kræver plads i måltruppen. Automatisk oprykning kan overskride trupgrænsen uden at udløse sanktioner. Den gamle trupbøde og tvangssalgskørsel stopper fra sæson 6.
 
 | Regel | Værdi | Hvor låst | Fil |
 |---|---|---|---|

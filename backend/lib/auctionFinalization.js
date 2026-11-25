@@ -722,19 +722,21 @@ async function finalizeYouthAuctionRecord({
 
   // #2701 SENIOR-FØRST: forsøg senior-placering før akademiet. Har vinderen plads
   // på senior (+ råd), lander rytteren dér med senior-kontrakt.
-  const senior = await tryPlaceYouthWinnerOnSenior({
-    supabase,
-    auction,
-    rider,
-    bidderId,
-    price,
-    actualEnd,
-    activeSeasonNumber,
-    activeSeasonId,
-    notifyTeamOwner,
-    logActivity,
-    awardXP,
-  });
+  const senior = auction.reservation_squad && auction.reservation_squad !== "senior"
+    ? { placed: false, reason: "squad_full" }
+    : await tryPlaceYouthWinnerOnSenior({
+        supabase,
+        auction,
+        rider,
+        bidderId,
+        price,
+        actualEnd,
+        activeSeasonNumber,
+        activeSeasonId,
+        notifyTeamOwner,
+        logActivity,
+        awardXP,
+      });
   if (senior.placed) {
     await creditIntakeExpiryCompensationIfNeeded({
       supabase,

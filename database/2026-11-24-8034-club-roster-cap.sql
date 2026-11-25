@@ -1,6 +1,96 @@
 BEGIN;
 SET LOCAL lock_timeout = '3s';
 
+-- An active lead reserves its seat until the rider joins or the lead ends.
+ALTER TABLE public.auctions ADD COLUMN IF NOT EXISTS reservation_squad text;
+
+CREATE OR REPLACE FUNCTION public.auction_reserved_places_8034(
+  p_team uuid, p_squad text DEFAULT NULL, p_exclude_auction uuid DEFAULT NULL
+) RETURNS integer
+LANGUAGE sql
+SET search_path = ''
+AS $$
+  SELECT count(*)::integer
+  FROM public.auctions a
+  WHERE a.current_bidder_id = p_team
+    AND a.status IN ('active', 'extended')
+    AND a.id IS DISTINCT FROM p_exclude_auction
+    AND (p_squad IS NULL OR coalesce(a.reservation_squad, 'senior') = p_squad)
+    AND NOT EXISTS (
+      SELECT 1 FROM public.riders r
+      WHERE r.id = a.rider_id AND (r.team_id = p_team OR r.pending_team_id = p_team)
+    );
+$$;
+REVOKE ALL ON FUNCTION public.auction_reserved_places_8034(uuid, text, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.auction_reserved_places_8034(uuid, text, uuid) TO service_role;
+
+-- Existing financial admission calls the same senior reservation count.
+CREATE OR REPLACE FUNCTION public.team_seat_commitment(p_team_id uuid, p_exclude_auction_id uuid DEFAULT NULL)
+RETURNS integer
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $$
+  SELECT (SELECT count(*)::integer FROM public.riders r
+          WHERE (r.team_id=p_team_id OR r.pending_team_id=p_team_id)
+            AND coalesce(r.squad,'senior')='senior' AND r.is_retired IS NOT TRUE)
+    + public.auction_reserved_places_8034(p_team_id, 'senior', p_exclude_auction_id);
+$$;
+REVOKE ALL ON FUNCTION public.team_seat_commitment(uuid, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.team_seat_commitment(uuid, uuid) TO service_role;
+
+-- Legacy auto-accept functions used to treat every leading auction as senior.
+-- Keep their installed validation and settlement bodies, replacing only the count.
+DO $seats$
+DECLARE
+  candidate record;
+  def text;
+  first_count integer;
+  next_check integer;
+  count_anchor constant text := 'SELECT count(*) INTO v_buyer_count';
+  check_anchor constant text := 'IF v_buyer_count + 1 > p_max_riders THEN';
+  new_count constant text := 'v_buyer_count := public.team_seat_commitment(p_buyer_team_id, NULL);';
+BEGIN
+  FOR candidate IN
+    SELECT p.oid, p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.proname IN ('start_auto_accept_auction_bid','start_auto_accept_auction','auto_accept_claim_transfer')
+  LOOP
+    def := pg_get_functiondef(candidate.oid);
+    IF strpos(def, new_count)>0 THEN CONTINUE; END IF;
+    next_check := strpos(def, check_anchor);
+    IF next_check=0 THEN CONTINUE; END IF; -- signature-only wrapper
+    first_count := strpos(def, count_anchor);
+    IF first_count=0 OR first_count>=next_check
+       OR strpos(substr(def, first_count, next_check-first_count), 'v_buyer_count := v_buyer_count +')=0 THEN
+      RAISE EXCEPTION '#8034: unexpected senior count in %', candidate.proname;
+    END IF;
+    EXECUTE left(def,first_count-1) || new_count || E'\n  ' || substr(def,next_check);
+  END LOOP;
+END
+$seats$;
+
+-- The existing locked voluntary youth moves and signings use this count.
+CREATE OR REPLACE FUNCTION public.count_team_squad_members(
+  p_team_id uuid, p_squad text, p_exclude_rider_id uuid DEFAULT NULL
+) RETURNS integer
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $$
+  SELECT (
+    SELECT count(*)::integer FROM public.riders r
+    WHERE (r.team_id = p_team_id OR r.pending_team_id = p_team_id)
+      AND r.id IS DISTINCT FROM p_exclude_rider_id AND r.is_retired IS NOT TRUE
+      AND (r.squad = p_squad OR (r.is_academy AND r.squad = 'senior'))
+  ) + public.auction_reserved_places_8034(p_team_id, p_squad, (
+    SELECT a.id FROM public.auctions a
+    WHERE a.rider_id = p_exclude_rider_id AND a.current_bidder_id = p_team_id
+      AND a.status IN ('active', 'extended') ORDER BY a.id LIMIT 1
+  ));
+$$;
+REVOKE ALL ON FUNCTION public.count_team_squad_members(uuid, text, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.count_team_squad_members(uuid, text, uuid) TO service_role;
+
 -- Serialize new places across the market and academy with their existing team lock.
 CREATE OR REPLACE FUNCTION public.enforce_club_roster_cap_8034()
 RETURNS trigger
@@ -14,6 +104,10 @@ DECLARE
   departing_rider uuid;
   occupied_count integer;
   after_registration_count integer;
+  reserved integer;
+  own_auction uuid;
+  incoming_squad text := coalesce(NEW.squad, 'senior');
+  squad_allowance integer;
 BEGIN
   IF NEW.is_retired IS TRUE THEN RETURN NEW; END IF;
 
@@ -21,6 +115,18 @@ BEGIN
     previous_teams := array_remove(ARRAY[OLD.team_id, OLD.pending_team_id], NULL);
     IF pg_has_role(current_user, 'service_role', 'USAGE') THEN
       swap_leg := nullif(current_setting('cyclingzone.swap_departure', true), '')::jsonb;
+    END IF;
+    -- A voluntary promotion enters the senior squad without changing owner.
+    -- The automatic cutover is the only scoped exception to this admission.
+    IF NEW.team_id IS NOT NULL AND NEW.team_id IS NOT DISTINCT FROM OLD.team_id
+       AND NEW.pending_team_id IS NOT DISTINCT FROM OLD.pending_team_id
+       AND OLD.squad IS DISTINCT FROM NEW.squad AND incoming_squad = 'senior'
+       AND NOT (pg_has_role(current_user, 'service_role', 'USAGE')
+         AND coalesce(current_setting('cyclingzone.season_squad_promotion', true), '') = 'on') THEN
+      PERFORM pg_advisory_xact_lock(hashtextextended(NEW.team_id::text, 0));
+      IF public.team_seat_commitment(NEW.team_id) >= 30 THEN
+        RAISE EXCEPTION 'squad_full' USING ERRCODE = '23514';
+      END IF;
     END IF;
   END IF;
 
@@ -49,11 +155,36 @@ BEGIN
       WHERE (r.team_id = incoming_team OR r.pending_team_id = incoming_team)
         AND r.is_retired IS NOT TRUE
         AND (r.id IS DISTINCT FROM departing_rider OR r.team_id IS DISTINCT FROM incoming_team);
-    IF occupied_count >= 60 THEN
-      IF departing_rider IS NOT NULL AND after_registration_count < 60 THEN
+    -- Only the winning rider can consume the exact reservation. Once the
+    -- rider is owned or pending in, the reservation is no longer counted.
+    own_auction := NULL;
+    IF departing_rider IS NULL AND pg_has_role(current_user, 'service_role', 'USAGE') THEN
+      SELECT a.id INTO own_auction FROM public.auctions a
+      WHERE a.rider_id = NEW.id AND a.current_bidder_id = incoming_team
+        AND a.status IN ('active', 'extended')
+      ORDER BY a.id LIMIT 1;
+    END IF;
+    reserved := public.auction_reserved_places_8034(incoming_team, NULL, own_auction);
+    IF occupied_count + reserved >= 60 THEN
+      IF departing_rider IS NOT NULL AND after_registration_count + reserved < 60 THEN
         RAISE EXCEPTION USING MESSAGE = 'swap_pending_registration', ERRCODE = '23514', DETAIL = incoming_team::text;
       END IF;
       RAISE EXCEPTION USING MESSAGE = 'club_roster_full', ERRCODE = '23514', DETAIL = incoming_team::text;
+    END IF;
+    squad_allowance := CASE WHEN own_auction IS NULL THEN 0
+      ELSE public.auction_promotion_allowance_7323(own_auction, incoming_team, incoming_squad) END;
+    IF (
+      SELECT count(*) FROM public.riders r
+      WHERE (r.team_id = incoming_team OR r.pending_team_id = incoming_team)
+        AND coalesce(r.squad, 'senior') = incoming_squad
+        AND r.is_retired IS NOT TRUE
+        AND (r.id IS DISTINCT FROM departing_rider OR r.team_id IS DISTINCT FROM incoming_team)
+    ) + public.auction_reserved_places_8034(incoming_team, incoming_squad, own_auction) >= 30 + squad_allowance THEN
+      IF departing_rider IS NOT NULL THEN
+        RAISE EXCEPTION USING MESSAGE = 'swap_destination_squad_full', ERRCODE = '23514', DETAIL = incoming_team::text;
+      END IF;
+      RAISE EXCEPTION USING MESSAGE = CASE WHEN incoming_squad = 'senior' THEN 'squad_full' ELSE 'academy_full' END,
+        ERRCODE = '23514', DETAIL = incoming_team::text;
     END IF;
   END LOOP;
   RETURN NEW;
@@ -64,17 +195,26 @@ REVOKE ALL ON FUNCTION public.enforce_club_roster_cap_8034() FROM PUBLIC, anon, 
 
 DROP TRIGGER IF EXISTS enforce_club_roster_cap_8034 ON public.riders;
 CREATE TRIGGER enforce_club_roster_cap_8034
-BEFORE INSERT OR UPDATE OF team_id, pending_team_id, is_retired ON public.riders
+BEFORE INSERT OR UPDATE OF team_id, pending_team_id, is_retired, squad ON public.riders
 FOR EACH ROW EXECUTE FUNCTION public.enforce_club_roster_cap_8034();
 
--- Auction starts with an opening bidder, including auto-accept, reserve a place
--- before either a rider or a payment changes hands.
+-- Admission and ownership changes use the same per-team lock. Release is
+-- derived from the committed lead, so an outbid club needs no cleanup job.
 CREATE OR REPLACE FUNCTION public.enforce_club_opening_bid_cap_8034()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
 AS $$
+DECLARE
+  destination text;
+  occupied integer;
+  is_opening boolean := TG_OP = 'INSERT';
 BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.current_bidder_id IS NOT DISTINCT FROM NEW.current_bidder_id
+     AND OLD.status IN ('active', 'extended') THEN
+    NEW.reservation_squad := OLD.reservation_squad;
+    RETURN NEW;
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.teams t
     WHERE t.id = NEW.current_bidder_id AND NOT coalesce(t.is_ai, false) AND NOT coalesce(t.is_bank, false)
@@ -85,13 +225,36 @@ BEGIN
     SELECT count(*) FROM public.riders r
     WHERE (r.team_id = NEW.current_bidder_id OR r.pending_team_id = NEW.current_bidder_id)
       AND r.is_retired IS NOT TRUE
-  ) + (
-    SELECT count(*) FROM public.auctions a
-    WHERE a.current_bidder_id = NEW.current_bidder_id
-      AND a.status IN ('active', 'extended') AND a.id IS DISTINCT FROM NEW.id
-  ) >= 60 THEN
-    RAISE EXCEPTION USING MESSAGE = 'club_roster_full', ERRCODE = '23514', DETAIL = NEW.current_bidder_id::text;
+  ) + public.auction_reserved_places_8034(NEW.current_bidder_id, NULL, NEW.id) >= 60 THEN
+    IF is_opening THEN
+      RAISE EXCEPTION USING MESSAGE = 'club_roster_full', ERRCODE = '23514', DETAIL = NEW.current_bidder_id::text;
+    END IF;
+    RAISE EXCEPTION 'market_gate_6181:club_roster_full' USING ERRCODE = 'P0001';
   END IF;
+
+  destination := 'senior';
+  SELECT count(*) INTO occupied FROM public.riders r
+  WHERE (r.team_id = NEW.current_bidder_id OR r.pending_team_id = NEW.current_bidder_id)
+    AND coalesce(r.squad, 'senior') = destination AND r.is_retired IS NOT TRUE;
+  IF occupied + public.auction_reserved_places_8034(NEW.current_bidder_id, destination, NEW.id) >= 30 THEN
+    IF NOT coalesce(NEW.is_youth, false) THEN
+      RAISE EXCEPTION 'market_gate_6181:squad_full' USING ERRCODE = 'P0001';
+    END IF;
+    -- Mirror academyPlacementSquad: Season 1 is 2026, and an unknown age
+    -- follows the junior default. Youth auctions try senior first.
+    SELECT CASE WHEN 2025 + s.number - extract(year FROM r.birthdate) >= 19 THEN 'u23' ELSE 'junior' END
+      INTO destination FROM public.riders r
+      LEFT JOIN LATERAL (SELECT number FROM public.seasons WHERE status='active' ORDER BY number DESC LIMIT 1) s ON true
+      WHERE r.id = NEW.rider_id;
+    destination := coalesce(destination, 'junior');
+    SELECT count(*) INTO occupied FROM public.riders r
+    WHERE (r.team_id = NEW.current_bidder_id OR r.pending_team_id = NEW.current_bidder_id)
+      AND coalesce(r.squad, 'senior') = destination AND r.is_retired IS NOT TRUE;
+    IF occupied + public.auction_reserved_places_8034(NEW.current_bidder_id, destination, NEW.id) >= 30 THEN
+      RAISE EXCEPTION 'market_gate_6181:squad_full' USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  NEW.reservation_squad := destination;
   RETURN NEW;
 END;
 $$;
@@ -100,10 +263,104 @@ REVOKE ALL ON FUNCTION public.enforce_club_opening_bid_cap_8034() FROM PUBLIC, a
 
 DROP TRIGGER IF EXISTS enforce_club_opening_bid_cap_8034 ON public.auctions;
 CREATE TRIGGER enforce_club_opening_bid_cap_8034
-BEFORE INSERT ON public.auctions
+BEFORE INSERT OR UPDATE OF current_bidder_id, status, reservation_squad ON public.auctions
 FOR EACH ROW
 WHEN (NEW.current_bidder_id IS NOT NULL AND NEW.status IN ('active', 'extended'))
 EXECUTE FUNCTION public.enforce_club_opening_bid_cap_8034();
+
+-- The atomic market already syncs the leader from its bid trigger. Legacy
+-- bids need the same transaction boundary before their row becomes visible.
+CREATE OR REPLACE FUNCTION public.sync_legacy_auction_bid_8034()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  a public.auctions;
+BEGIN
+  IF public.market_transport_2176() THEN RETURN NEW; END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(NEW.team_id::text, 0));
+  SELECT * INTO a FROM public.auctions WHERE id=NEW.auction_id FOR UPDATE;
+  IF NOT FOUND OR a.status NOT IN ('active', 'extended') THEN
+    RAISE EXCEPTION 'auction_not_active' USING ERRCODE = 'P0001';
+  END IF;
+  IF NEW.amount < a.current_price OR
+     (NEW.amount = a.current_price AND a.current_bidder_id IS NOT NULL
+      AND a.current_bidder_id IS DISTINCT FROM NEW.team_id) THEN
+    RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE = 'P0001';
+  END IF;
+  UPDATE public.auctions SET current_price=NEW.amount, current_bidder_id=NEW.team_id
+  WHERE id=a.id AND (current_price IS DISTINCT FROM NEW.amount OR current_bidder_id IS DISTINCT FROM NEW.team_id);
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.sync_legacy_auction_bid_8034() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS trg_sync_legacy_auction_bid_8034 ON public.auction_bids;
+CREATE TRIGGER trg_sync_legacy_auction_bid_8034 BEFORE INSERT ON public.auction_bids
+FOR EACH ROW EXECUTE FUNCTION public.sync_legacy_auction_bid_8034();
+
+-- A legacy proxy's opening bid and its money commitment are one operation.
+CREATE OR REPLACE FUNCTION public.set_legacy_proxy_opening_bid_8034(
+  p_auction_id uuid, p_team_id uuid, p_max_amount bigint, p_opening_amount integer, p_bid_time timestamptz
+) RETURNS void
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  a public.auctions;
+BEGIN
+  IF p_max_amount IS NULL OR p_opening_amount IS NULL OR p_opening_amount <= 0 OR p_max_amount < p_opening_amount THEN
+    RAISE EXCEPTION 'set_legacy_proxy_opening_bid_8034: invalid amount' USING ERRCODE='22023';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_team_id::text,0));
+  SELECT * INTO a FROM public.auctions WHERE id=p_auction_id FOR UPDATE;
+  IF NOT FOUND OR a.status NOT IN ('active', 'extended') THEN
+    RAISE EXCEPTION 'auction_not_active' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_opening_amount < a.current_price OR (p_opening_amount = a.current_price AND a.current_bidder_id IS NOT NULL) THEN
+    RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE = 'P0001';
+  END IF;
+  INSERT INTO public.auction_proxy_bids(auction_id,team_id,max_amount)
+    VALUES(p_auction_id,p_team_id,p_max_amount)
+    ON CONFLICT(auction_id,team_id) DO UPDATE SET max_amount=EXCLUDED.max_amount;
+  INSERT INTO public.auction_bids(auction_id,team_id,amount,bid_time,triggered_extension,is_proxy)
+    VALUES(p_auction_id,p_team_id,p_opening_amount,p_bid_time,false,true);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.set_legacy_proxy_opening_bid_8034(uuid,uuid,bigint,integer,timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.set_legacy_proxy_opening_bid_8034(uuid,uuid,bigint,integer,timestamptz) TO service_role;
+
+-- A tie is only valid for the observed incumbent's exact proxy ceiling.
+CREATE OR REPLACE FUNCTION public.match_legacy_auction_proxy_tie_8034(
+  p_auction_id uuid, p_team_id uuid, p_expected_price bigint, p_expected_leader_id uuid, p_bid_time timestamptz
+) RETURNS void
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  a public.auctions;
+  cap bigint;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_team_id::text,0));
+  SELECT * INTO a FROM public.auctions WHERE id=p_auction_id FOR UPDATE;
+  IF NOT FOUND OR a.status NOT IN ('active', 'extended') THEN
+    RAISE EXCEPTION 'auction_not_active' USING ERRCODE = 'P0001';
+  END IF;
+  SELECT max_amount INTO cap FROM public.auction_proxy_bids
+  WHERE auction_id=p_auction_id AND team_id=p_team_id;
+  IF p_team_id IS NOT DISTINCT FROM p_expected_leader_id OR p_expected_price IS NULL
+     OR a.current_price IS DISTINCT FROM p_expected_price
+     OR a.current_bidder_id IS DISTINCT FROM p_expected_leader_id
+     OR cap IS DISTINCT FROM p_expected_price THEN
+    RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE = 'P0001';
+  END IF;
+  UPDATE public.auctions SET current_bidder_id=p_team_id WHERE id=a.id;
+  INSERT INTO public.auction_bids(auction_id,team_id,amount,bid_time,triggered_extension,is_proxy)
+    VALUES(p_auction_id,p_team_id,p_expected_price,p_bid_time,false,true);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.match_legacy_auction_proxy_tie_8034(uuid,uuid,bigint,uuid,timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.match_legacy_auction_proxy_tie_8034(uuid,uuid,bigint,uuid,timestamptz) TO service_role;
 
 -- The paid swap calls this same ownership claim. A function-local setting
 -- restores the caller context on exit, including after a failed leg.
@@ -227,21 +484,45 @@ $$;
 REVOKE ALL ON FUNCTION public.auto_accept_claim_swap(uuid, uuid, uuid, uuid, boolean, timestamptz, jsonb, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.auto_accept_claim_swap(uuid, uuid, uuid, uuid, boolean, timestamptz, jsonb, jsonb) TO service_role;
 
--- Keep the paid wrapper's reservation check for senior growth. Patch the
--- installed definition so the atomic payment gate and settlement stay intact.
+-- The ownership claim now checks reserved places for both payment modes.
+-- Remove the paid-only check, preserving the installed finance and escrow logic.
 DO $migration$
 DECLARE
   old_guard constant text := 'IF public.market_scope_2176(v_team,NULL) AND public.team_seat_commitment(v_team,NULL)>public.market_squad_max() THEN';
-  new_guard constant text := 'IF coalesce(v_claim->''senior_growth_team_ids'' ? v_team::text, true) AND public.market_scope_2176(v_team,NULL) AND public.team_seat_commitment(v_team,NULL)>public.market_squad_max() THEN';
+  old_loop constant text := $old$   FOREACH v_team IN ARRAY ARRAY[p_proposing_team_id,p_receiving_team_id] LOOP
+     IF public.market_scope_2176(v_team,NULL) AND public.team_seat_commitment(v_team,NULL)>public.market_squad_max() THEN
+       RAISE EXCEPTION 'market_beta_2176:swap_squad_full' USING ERRCODE='P0001',DETAIL=v_team::text;
+     END IF;
+   END LOOP;$old$;
+  new_guard constant text := '-- Seat growth was already checked under the shared team lock by the ownership claim.';
   def text := pg_get_functiondef('public.auto_accept_claim_swap_paid(uuid,uuid,uuid,uuid,boolean,timestamptz,jsonb,jsonb,uuid,bigint,jsonb)'::regprocedure);
 BEGIN
   IF strpos(def, new_guard) > 0 THEN RETURN; END IF;
   IF strpos(def, old_guard) = 0 OR (length(def) - length(replace(def, old_guard, ''))) <> length(old_guard) THEN
     RAISE EXCEPTION '#8034: unexpected paid swap reservation guard';
   END IF;
-  EXECUTE replace(def, old_guard, new_guard);
+  IF strpos(def, old_loop) = 0 THEN RAISE EXCEPTION '#8034: unexpected paid swap reservation loop'; END IF;
+  EXECUTE replace(def, old_loop, new_guard);
 END
 $migration$;
+
+-- A rejected automatic tie must not roll back an already accepted challenger.
+DO $tie$
+DECLARE
+  signature regprocedure := to_regprocedure('public.try_auction_proxy_tie_6181(uuid,uuid,bigint,uuid,timestamptz)');
+  def text;
+  old_check constant text := $old$ELSIF v_message='market_gate_6181:squad_full' THEN$old$;
+  new_check constant text := $new$ELSIF v_message IN ('market_gate_6181:squad_full', 'market_gate_6181:club_roster_full') THEN$new$;
+BEGIN
+  IF signature IS NULL THEN RETURN; END IF;
+  def := pg_get_functiondef(signature);
+  IF strpos(def, new_check) > 0 THEN RETURN; END IF;
+  IF (length(def) - length(replace(def, old_check, ''))) <> length(old_check) THEN
+    RAISE EXCEPTION '#8034: unexpected proxy tie capacity guard';
+  END IF;
+  EXECUTE replace(def, old_check, new_check);
+END
+$tie$;
 
 NOTIFY pgrst, 'reload schema';
 
