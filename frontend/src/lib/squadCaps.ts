@@ -91,14 +91,17 @@ export function academyLandingSquad(
   targetSquad: YouthSquad | null | undefined,
   seasonAge: number | null | undefined,
   counts: Partial<SquadCounts> | null | undefined,
-): { squad: YouthSquad | null; full: boolean; movedToU23: boolean; options: YouthSquad[] } {
+  senior?: { used: number; max: number },
+): { squad: YouthSquad | "senior" | null; full: boolean; movedToU23: boolean; options: Array<YouthSquad | "senior"> } {
   if (!targetSquad || !(targetSquad in SQUAD_CAPS)) return { squad: null, full: false, movedToU23: false, options: [] };
-  const options: YouthSquad[] = [targetSquad];
+  const options: Array<YouthSquad | "senior"> = [targetSquad];
   if (targetSquad === "junior" && typeof seasonAge === "number" && Number.isFinite(seasonAge) && seasonAge <= U23_MAX_SEASON_AGE) {
     options.push("u23");
   }
-  const squad = options.find((s) => !isSquadFull(s, counts)) ?? null;
-  return { squad, full: squad === null, movedToU23: squad !== null && squad !== targetSquad, options };
+  if (senior && Number.isFinite(seasonAge)) options.push("senior");
+  const seniorFull = senior != null && senior.used >= senior.max;
+  const squad = options.find(s => s === "senior" ? !seniorFull : !isSquadFull(s, counts)) ?? null;
+  return { squad, full: squad === null, movedToU23: squad === "u23" && targetSquad === "junior", options };
 }
 
 /** Rækkerne i trup-linjen "U23 5/12 · Junior 3/10", i fast rækkefølge. */

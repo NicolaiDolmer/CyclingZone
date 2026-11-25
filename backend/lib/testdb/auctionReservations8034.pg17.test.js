@@ -110,9 +110,10 @@ test("PG17: independent market transactions cannot claim the same reserved place
   const args = ["-X", "-qAt", "-h", "127.0.0.1", "-p", String(port), "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1"];
   const env = { ...process.env, PGCLIENTENCODING: "UTF8" };
   const binary = name => join(PG_BIN, process.platform === "win32" ? name + ".exe" : name);
-  const run = (name, command, input, expected = 0) => {
+  const run = (name, command, input, expected = 0, expectedError) => {
     const result = spawnSync(binary(name), command, { input, encoding: "utf8", env, windowsHide: true, timeout: 60000 });
     assert.equal(result.status, expected, result.error?.message ?? result.stderr);
+    if (expectedError) assert.match(result.stderr, expectedError);
     return result.stdout.trim();
   };
   const psql = input => run("psql", args, input);
@@ -189,6 +190,8 @@ test("PG17: independent market transactions cannot claim the same reserved place
       CREATE TABLE races(id uuid, race_type text, status text, stages_completed int);
       CREATE TABLE race_entries(race_id uuid, rider_id uuid, team_id uuid);
       CREATE TABLE sale_escrows(deal_type text, deal_id uuid);
+      CREATE TABLE academy_intake(id uuid PRIMARY KEY, team_id uuid, rider_id uuid,
+        status text, resolved_at timestamptz, signing_fee bigint);
       CREATE TABLE fixture_race_gate(opened boolean NOT NULL);
       INSERT INTO fixture_race_gate VALUES (false);
       CREATE FUNCTION fixture_wait_for_release() RETURNS void LANGUAGE plpgsql AS $$
@@ -238,7 +241,7 @@ test("PG17: independent market transactions cannot claim the same reserved place
       const senior = cap === "club" ? 20 : 29;
       const youth = cap === "club" ? 39 : 1;
       psql(`
-        TRUNCATE finance_transactions,auction_bids,auction_proxy_bids,auctions,transfer_listings,riders,teams,app_config,seasons;
+        TRUNCATE academy_intake,finance_transactions,auction_bids,auction_proxy_bids,auctions,transfer_listings,riders,teams,app_config,seasons;
         INSERT INTO seasons VALUES ('${id(400)}','active',6);
         INSERT INTO app_config VALUES ('fixture_atomic','${mode === "atomic"}'::jsonb,NULL);
         INSERT INTO teams(id,balance) VALUES ('${buyer}',100000),('${seller}',100000),('${rival}',100000);
@@ -258,6 +261,85 @@ test("PG17: independent market transactions cannot claim the same reserved place
       supabase: pgAuctionClient(psql, beforeRpc), auctionId: id(20), notifyTeamOwner: async () => {},
       now: new Date("2026-11-28T15:10:00Z"),
     });
+    const seniorSigning = (n, price = 200) => `public.finalize_academy_acquisition(
+      '${buyer}', '${id(n)}', ${price}, 1000, 1, 6, '${time}',
+      '${JSON.stringify({ type: "academy_signing", amount: -price,
+        description: "fixture", idempotency_key: "academy_signing:" + id(n), academy_intake_id: id(n + 100) })}',
+      'senior', 30)`;
+    const seedOffer = n => psql(`
+      INSERT INTO riders(id,squad,birthdate) VALUES ('${id(n)}','u23','2010-06-01');
+      INSERT INTO academy_intake(id,team_id,rider_id,status) VALUES
+        ('${id(n + 100)}','${buyer}','${id(n)}','offered');
+    `);
+    const resultOf = (n, price) => JSON.parse(psql(`SELECT ${seniorSigning(n, price)};`));
+
+    await t.test("#8605: the installed youth RPC rejects senior before the migration", () => {
+      reset("legacy", "senior");
+      seedOffer(800);
+      assert.deepEqual(resultOf(800), {ok: false, code: "invalid_squad"});
+    });
+    for (let i = 0; i < 2; i += 1) psql(sql("2026-11-25-8605-academy-intake-senior.sql"));
+
+    await t.test("#8605: senior registration consumes one seat and one debit", () => {
+      reset("legacy", "senior");
+      psql(`INSERT INTO riders(id,team_id,squad,is_academy)
+        SELECT gen_random_uuid(),'${buyer}','u23',true FROM generate_series(1,29);`);
+      seedOffer(800);
+      assert.equal(resultOf(800).ok, true);
+      assert.equal(psql(`SELECT squad || ':' || is_academy FROM riders WHERE id='${id(800)}';`), "senior:false");
+      assert.equal(psql(`SELECT status || ':' || signing_fee FROM academy_intake WHERE rider_id='${id(800)}';`), "signed:200");
+      assert.equal(resultOf(800).code, "not_offered");
+      assert.equal(psql("SELECT count(*) FROM finance_transactions;"), "1");
+      assert.equal(psql(`SELECT balance FROM teams WHERE id='${buyer}';`), "99800");
+    });
+
+    await t.test("#8605: a free signing cannot be replayed into a freed youth seat", () => {
+      reset("legacy", "senior");
+      seedOffer(800);
+      assert.equal(resultOf(800, 0).ok, true);
+      const replay = seniorSigning(800, 0).replace("'senior', 30", "'u23', 30");
+      assert.equal(JSON.parse(psql(`SELECT ${replay};`)).code, "not_offered");
+      const oldBackend = replay.replace(/,"academy_intake_id":"[^"]+"/, "");
+      assert.equal(JSON.parse(psql(`SELECT ${oldBackend};`)).code, "not_offered");
+      run("psql", args, `UPDATE academy_intake SET status='rejected' WHERE rider_id='${id(800)}';`, 3, /not_offered/);
+      assert.equal(psql(`SELECT status FROM academy_intake WHERE rider_id='${id(800)}';`), "signed");
+      assert.equal(psql(`SELECT squad FROM riders WHERE id='${id(800)}';`), "senior");
+      assert.equal(psql("SELECT count(*) FROM finance_transactions;"), "0");
+    });
+
+    await t.test("#8605: a leading auction protects the final senior seat", () => {
+      reset("legacy", "senior");
+      psql(bid("legacy", id(20)));
+      seedOffer(800);
+      assert.equal(resultOf(800).code, "academy_full");
+      assert.equal(psql(`SELECT status FROM academy_intake WHERE rider_id='${id(800)}';`), "offered");
+      assert.equal(psql("SELECT count(*) FROM finance_transactions;"), "0");
+    });
+
+    await t.test("#8605: a full club rejects intake with no payment or status change", () => {
+      reset("legacy", "club");
+      psql(`INSERT INTO riders(id,team_id,squad,is_academy)
+        VALUES (gen_random_uuid(),'${buyer}','junior',true);`);
+      seedOffer(800);
+      run("psql", args, `SELECT ${seniorSigning(800)};`, 3, /club_roster_full/);
+      assert.equal(psql(`SELECT status FROM academy_intake WHERE rider_id='${id(800)}';`), "offered");
+      assert.equal(psql("SELECT count(*) FROM finance_transactions;"), "0");
+    });
+
+    await t.test("#8605: two intakes contend for the same last senior place", async () => {
+      reset("legacy", "senior");
+      seedOffer(800);
+      seedOffer(801);
+      await collision(`SELECT ${seniorSigning(800)};`, `DO $$ BEGIN
+        IF (${seniorSigning(801)})->>'code' = 'academy_full' THEN
+          RAISE EXCEPTION 'squad_full';
+        END IF;
+      END $$;`, state => {
+        assert.equal(state.payments, 1);
+        assert.equal(psql("SELECT count(*) FROM academy_intake WHERE status='signed';"), "1");
+      });
+    });
+
     function openYouthAuction() {
       psql(`
         UPDATE riders SET team_id=NULL,birthdate='2012-04-20',firstname='Fixture',lastname='Winner' WHERE id='${id(10)}';

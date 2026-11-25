@@ -213,6 +213,10 @@
       "title": "Fichaje para la academia completado",
       "message": "Tu promesa de la academia se ha unido a tu academia."
     },
+    "academySignedSenior": {
+      "title": "Fichaje para la academia completado",
+      "message": "{riderName} se ha unido a tu equipo sénior."
+    },
     "academyGraduationReady": {
       "title": "Graduación de la academia",
       "message": "{name} ha superado la edad de tu academia. Asciéndelo, véndelo o libéralo antes del plazo."

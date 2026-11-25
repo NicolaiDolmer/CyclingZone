@@ -15,8 +15,8 @@ import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { notifyTeamOwner, notifyIfContractExpiresThisSeason } from "./notificationService.js";
 import { checkAvailableSpend, INSUFFICIENT_AVAILABLE_BALANCE } from "./availableBalance.js";
 import { deriveForRiderIds } from "./backfillCores.js";
-import { seasonReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
-import { academyIntakePlacementSquads, squadCapRpcArgs } from "./squads.js";
+import { ageForSeason, seasonReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
+import { academyIntakePlacementSquads, squadCapRpcArgs, SQUAD_CAPS } from "./squads.js";
 import { isMissingSchemaError, signingFeeForSource } from "./academyIntakeSource.ts";
 
 // Deterministisk 32-bit hash (FNV-1a) — samme algoritme som
@@ -555,11 +555,9 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // #1483: struktureret metadata så Historik-fanen renderer rytternavnet via
   // backendMessages-i18n i stedet for den rå UUID i description-fallbacken.
   //
-  // #6155 (ejer 9/11): aldersplaceringen prøves først. Svarer RPC'en academy_full
-  // for juniortruppen, prøves U23, når talentets alder passer dér
-  // (academyIntakePlacementSquads). academy_full afvises i RPC'en før enhver
-  // skrivning og debitering, så det andet kald er en ren ny prøve.
-  /** @param {"junior"|"u23"} squad */
+  // #8605: eligible youth squads keep priority. Capacity failures are
+  // side-effect free, so the same intake can then try a senior seat.
+  /** @param {"junior"|"u23"|"senior"} squad */
   const finalizeAcquisition = (squad) => supabase.rpc("finalize_academy_acquisition", {
     p_team_id: teamId,
     p_rider_id: riderId,
@@ -570,6 +568,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     p_acquired_at: acquiredAt,
     p_finance_payload: {
       type: "academy_signing",
+      academy_intake_id: intakeRow.id,
       amount: -fee,
       description: riderName
         ? `Akademi-signing af ${riderName}`
@@ -586,10 +585,15 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     },
     // #5432: kandidaten tælles mod sin ungdomstrups loft (squads.js), og RPC'en
     // skriver truppen i samme række-skrivning som is_academy.
-    ...squadCapRpcArgs(squad),
+    ...(squad === "senior"
+      ? { p_squad: squad, p_squad_cap: SQUAD_CAPS.senior }
+      : squadCapRpcArgs(squad)),
   });
 
-  const placementSquads = academyIntakePlacementSquads(rider.birthdate, seasonNumber);
+  const youthSquads = academyIntakePlacementSquads(rider.birthdate, seasonNumber);
+  const placementSquads = ageForSeason(rider.birthdate, seasonNumber) === null
+    ? youthSquads
+    : [...youthSquads, /** @type {const} */ ("senior")];
   let placedSquad = placementSquads[0];
   /** @type {any} */
   let acq = null;
@@ -598,10 +602,14 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   for (const squad of placementSquads) {
     placedSquad = squad;
     ({ data: acq, error: acqErr } = await finalizeAcquisition(squad));
-    if (acqErr?.code === "23514" && acqErr.message === "academy_full") {
+    if (acqErr?.code === "23514" &&
+        (acqErr.message === "academy_full" || (squad === "senior" && acqErr.message === "squad_full"))) {
       acq = { ok: false, code: "academy_full" };
       acqErr = null;
     }
+    // Before the #8605 migration runs, the RPC rejects a senior placement as
+    // invalid_squad. Both youth squads were full, so answer academy_full (409).
+    if (squad === "senior" && acq?.code === "invalid_squad") acq = { ok: false, code: "academy_full" };
     if (acqErr || acq?.code !== "academy_full") break;
   }
 
@@ -615,6 +623,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     throw acqErr;
   }
   if (acq?.code === "academy_full") throw new Error("academy_full");
+  if (acq?.code === "not_offered") throw new Error("not_offered");
   if (acq?.code === "insufficient_balance") throw new Error("insufficient_balance");
   if (acq?.code === "already_assigned") throw new Error("already_assigned");
   // #4213: RPC'ens ejerskabs-guard slog til (rytteren blev ejet i vinduet mellem
@@ -624,18 +633,21 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
 
   await notifyIfContractExpiresThisSeason({
     supabase, teamId, seasonNumber, now, notify,
-    rider: { ...rider, contract_end_season: contractEndSeason, squad: placedSquad, is_academy: true },
+    rider: { ...rider, contract_end_season: contractEndSeason, squad: placedSquad, is_academy: placedSquad !== "senior" },
   });
 
   // 4. Opdatér academy_intake → signed. #2793: persistér signing-fee'en som
   // rytterens kostbasis — uden dette kunne hverken akademi-P&L'en (kostbasis
   // pr. rytter) eller transfer-profit-panelet (køb→salg-parring) regne et
   // realiseret salg af en akademi-udviklet rytter.
-  const { error: intakeUpdateErr } = await supabase
-    .from("academy_intake")
-    .update({ status: "signed", resolved_at: now.toISOString(), signing_fee: fee })
-    .eq("id", intakeRow.id);
-  if (intakeUpdateErr) throw new Error(`signAcademyCandidate intake update: ${intakeUpdateErr.message}`);
+  // Older database versions do not resolve the offer in the RPC.
+  if (acq.intake_resolved !== true) {
+    const { error: intakeUpdateErr } = await supabase
+      .from("academy_intake")
+      .update({ status: "signed", resolved_at: now.toISOString(), signing_fee: fee })
+      .eq("id", intakeRow.id);
+    if (intakeUpdateErr) throw new Error(`signAcademyCandidate intake update: ${intakeUpdateErr.message}`);
+  }
 
   // 5. Notifikation til hold-ejeren. notifyTeamOwner henter user_id selv.
   // #4423: RPC'en kan have UDSKUDT selve akademi-optagelsen (rytteren har en
@@ -645,6 +657,8 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // udskudt, sender flushDeferredAcademySigningsForRace (raceRunner.js, ved
   // løbs-finalisering) den "han er nu ankommet"-besked senere.
   const deferred = acq?.deferred === true;
+  // #8605: a senior placement never defers and does not join the academy.
+  const senior = placedSquad === "senior";
   await notifyTeamOwner({
     supabase,
     teamId,
@@ -654,7 +668,9 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     title: deferred ? "Academy signing confirmed" : "Academy signing complete",
     message: deferred
       ? `${riderName || "Your academy prospect"} will join your academy once his current stage race is finished. He keeps racing for your senior squad until then.`
-      : "Your academy prospect has joined your academy.",
+      : senior
+        ? `${riderName || "Your academy prospect"} has joined your senior squad.`
+        : "Your academy prospect has joined your academy.",
     relatedId: riderId,
     metadata: deferred
       ? {
@@ -663,10 +679,16 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
           titleParams: { riderName: riderName || riderId },
           messageParams: { riderName: riderName || riderId },
         }
-      : {
-          titleCode: "notif.academySigned.title",
-          messageCode: "notif.academySigned.message",
-        },
+      : senior
+        ? {
+            titleCode: "notif.academySignedSenior.title",
+            messageCode: "notif.academySignedSenior.message",
+            messageParams: { riderName: riderName || riderId },
+          }
+        : {
+            titleCode: "notif.academySigned.title",
+            messageCode: "notif.academySigned.message",
+          },
   });
 
   return { riderId, salary, fee, contractEndSeason, deferred, squad: placedSquad };
@@ -706,11 +728,15 @@ export async function rejectAcademyCandidate(supabase, { teamId, riderId, listYo
   if (!intakeRow || intakeRow.status !== "offered") throw new Error("not_offered");
 
   // Opdatér status → rejected.
-  const { error: updateErr } = await supabase
+  const { data: rejected, error: updateErr } = await supabase
     .from("academy_intake")
     .update({ status: "rejected", resolved_at: new Date().toISOString() })
-    .eq("id", intakeRow.id);
+    .eq("id", intakeRow.id)
+    .eq("status", "offered")
+    .select("id")
+    .maybeSingle();
   if (updateErr) throw new Error(`rejectAcademyCandidate update: ${updateErr.message}`);
+  if (!rejected) throw new Error("not_offered");
 
   // Fase B: list rytteren som ungdomsauktion. Ejerskabet ændres ikke her —
   // rytteren forbliver team_id=NULL indtil en auktionsvinder optager ham i sit
