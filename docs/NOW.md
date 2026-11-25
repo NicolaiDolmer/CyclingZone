@@ -7,7 +7,7 @@
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · slet `backup_7401_20261101_riders`, `backup_7488_20261102_riders`, `backup_7508_20261102_notif_ids` (forfaldne) · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
 > **🎯 Next action (24/11 aften → torsdag 26/11):** Codex er koordinator på Dolmer PC: startprompt = "Startprompt: Codex-koordinator på Dolmer PC" på #8584 (Codex-topmodel som dommer indtil torsdag). Rækkefølge: #8675 (merget + migreret senest torsdag aften, sæsonskifte lørdag 28/11) + #8668 → weboplevelse → prognose #8678/#8604 (model 2: simulér frem) → #8681 tilmelding (måling). Claude 25/11: #8679 Codex P1/P2 (kildehash dækker XP-model) + TRAINING_RULES; udbetaling #8606 besluttes 25/11. Torsdag Claude: løbsmotor-måling, dashboard "Kommende etaper", #8672.
-> **25/11:** ejerbeslutninger på #8584 + MASTERPLAN. Torsdag Claude: #6649 #7715 #8189 #8609 #8663, mail 1 emne A. **24/11:** #8606-migration verificeret. `academy_age_focus_params` = 0,4; akademisiden IKKE tændt (billeder + ejerens ja). Division 4 A/B/C 25 hold løst selv 17:26 (AI-trim efter løb). **Åbent:** `backup_7153_wander_*` må ikke slettes.
+> **25/11:** ejerbeslutninger på #8584 + MASTERPLAN. Tor: annonce → skifte → #8678 → motor → W1-W4 (#8584). **24/11:** #8606-migration verificeret. `academy_age_focus_params` = 0,4; akademisiden IKKE tændt (billeder + ejerens ja). Division 4 A/B/C 25 hold løst selv 17:26 (AI-trim efter løb). **Åbent:** `backup_7153_wander_*` må ikke slettes.
 >
 > **🤖 Working agent:** Ingen aktiv session.
 
