@@ -89,20 +89,14 @@ test('tom filliste er ikke en docs/ops-undtagelse (fail closed)', () => {
   assert.equal(r.ok, false);
 });
 
-test('CLI: den rigtige scripts/build-stop.json laeses og afviser et ukendt issue', () => {
-  assert.equal(loadBuildStop().active, true);
-  assert.throws(
-    () => execFileSync(process.execPath, ['scripts/check-build-stop-pr.mjs'], {
-      env: { ...process.env, CZ_BUILD_STOP_NO_GH: '1', PR_BODY: 'Refs #1', PR_BRANCH: 'feat/ny', PR_AUTHOR: 'a', CHANGED_FILES: 'backend/lib/x.js' },
-      stdio: 'pipe',
-    }),
-    (err) => err.status === 1 && /AFVIST/.test(String(err.stdout)),
-  );
+// Ejer 25/11: byggestoppet er slukket, så den rigtige fil lukker et ukendt issue igennem.
+test('CLI: den rigtige scripts/build-stop.json er slukket og afviser intet', () => {
+  assert.equal(loadBuildStop().active, false);
   const ok = execFileSync(process.execPath, ['scripts/check-build-stop-pr.mjs'], {
-    env: { ...process.env, PR_BODY: 'Refs #7336', PR_BRANCH: 'chore/7336-x', PR_AUTHOR: 'a', CHANGED_FILES: 'backend/lib/x.js' },
+    env: { ...process.env, CZ_BUILD_STOP_NO_GH: '1', PR_BODY: 'Refs #1', PR_BRANCH: 'feat/ny', PR_AUTHOR: 'a', CHANGED_FILES: 'backend/lib/x.js' },
     encoding: 'utf8',
   });
-  assert.match(ok, /OK \(listed\)/);
+  assert.doesNotMatch(ok, /AFVIST/);
 });
 
 test('issuesFromBody: indlejrede og uafsluttede HTML-kommentarer fjernes helt (CodeQL #384)', () => {
