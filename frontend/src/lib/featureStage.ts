@@ -13,7 +13,7 @@
 // eksisterende, offentlig rute er dermed altid i sync med et admin-flip —
 // ingen liste at vedligeholde, og backend sender fortsat aldrig "beta" til en
 // spiller der ikke er beta-tester (den ser blot to `false`-svar).
-import { apiFetch } from "./apiFetch.ts";
+import { readPlayerFeatureFlags } from "./featureFlagRequests.ts";
 // #5259/#5322-moenstret: INGEN statisk top-level import af "./supabase.ts" —
 // den fil laeser import.meta.env.VITE_SUPABASE_URL UDEN optional chaining
 // (modsat apiBase.ts) og krasher derfor ved blot at blive importeret under
@@ -47,20 +47,9 @@ export function deriveFlagStage(mine: boolean | null | undefined, anonymous: boo
 // "flaget er falsk" — det ville lade en anonym-fejl (netvaerk/429/5xx) tolkes
 // som "kun jeg ser den", altsaa "beta", selv naar flaget faktisk staar paa
 // "on" for alle. `null` = kaldet lykkedes ikke og siger INTET om flaget.
-async function fetchFlags(headers: Record<string, string>): Promise<Record<string, boolean> | null> {
-  try {
-    const res = await apiFetch("/api/feature-flags", { headers });
-    if (!res.ok) return null;
-    const flags = (res.data as { flags?: unknown } | null)?.flags;
-    return flags && typeof flags === "object" ? (flags as Record<string, boolean>) : null;
-  } catch {
-    return null;
-  }
-}
-
 /** #6154: de anonymt evaluerede flag (sand = on for alle), eller null ved fejl. */
 export function loadAnonymousFlags(): Promise<Record<string, boolean> | null> {
-  return fetchFlags({});
+  return readPlayerFeatureFlags({});
 }
 
 /**
@@ -70,17 +59,15 @@ export function loadAnonymousFlags(): Promise<Record<string, boolean> | null> {
  * resultatet {} — INGEN stadier kendes, badgen viser sig ikke, i stedet for
  * at gætte "beta" på et delvist svar (CodeRabbit-fund, #5404).
  *
- * Ingen deling af igangværende løfter på tværs af kaldere: et løfte der blev
- * startet for viewer A og landet efter viewer B er logget ind i samme faneblad
- * (log ud/log ind uden remount) må ALDRIG kunne levere A's stadier til B
- * (CodeRabbit-fund, #5404) — hvert kald henter derfor sit eget, friske svar.
+ * Igangvaerende HTTP-kald deles kun med samme authorization-header.
+ * Anonyme opslag og opslag med forskellige tokens forbliver adskilte.
  */
 export async function loadFeatureFlagStages(): Promise<Record<string, FlagStage>> {
   const { authHeaders } = await import("./supabase.ts");
   const headers = (await authHeaders({ json: false })) ?? null;
   const [anonymous, mine] = await Promise.all([
-    fetchFlags({}),
-    headers ? fetchFlags(headers) : Promise.resolve<Record<string, boolean> | null>({}),
+    loadAnonymousFlags(),
+    headers ? readPlayerFeatureFlags(headers) : Promise.resolve<Record<string, boolean> | null>({}),
   ]);
   if (anonymous === null || mine === null) return {};
   const keys = new Set([...Object.keys(anonymous), ...Object.keys(mine)]);
