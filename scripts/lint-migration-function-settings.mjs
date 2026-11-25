@@ -26,7 +26,7 @@ import { join, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const STATEMENT_HEAD = /^\s*(?:CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)|ALTER\s+(?:FUNCTION|PROCEDURE|ROUTINE|ROLE|USER|DATABASE))\b/i;
-const CUSTOM_SETTING = /\bSET\s+("?[A-Za-z_][\w$]*"?\s*\.\s*"?[A-Za-z_][\w$]*"?)\s*(?:=|\bTO\b)/i;
+const CUSTOM_SETTING = /\bSET\s+("?[A-Za-z_][\w$]*"?\s*\.\s*"?[A-Za-z_][\w$]*"?)\s*(?:=|\bTO\b|\bFROM\s+CURRENT\b)/i;
 
 /** Replace comments, quoted strings and dollar-quoted bodies with spaces, keeping newlines. */
 export function stripSql(source) {
@@ -59,8 +59,11 @@ export function stripSql(source) {
       continue;
     }
     if (source[i] === "'") {
+      // E'...' strings also escape a quote with a backslash.
+      const escaped = /[Ee]/.test(source[i - 1] ?? '') && !/[\w$]/.test(source[i - 2] ?? '');
       let j = i + 1;
       while (j < source.length) {
+        if (escaped && source[j] === '\\') { j += 2; continue; }
         if (source[j] === "'" && source[j + 1] === "'") { j += 2; continue; }
         if (source[j] === "'") break;
         j += 1;

@@ -20,6 +20,13 @@ test('flags ALTER FUNCTION/ROLE/DATABASE ... SET custom TO', () => {
   assert.equal(findFunctionSettings(`ALTER DATABASE postgres SET "app"."x" = '1';`).length, 1);
 });
 
+test('flags SET ... FROM CURRENT and survives an earlier E-string', () => {
+  assert.equal(findFunctionSettings(`ALTER FUNCTION public.f() SET cyclingzone.x FROM CURRENT;`).length, 1);
+  const sql = `COMMENT ON TABLE public.t IS E'it\\'s fine';
+CREATE FUNCTION public.g() RETURNS void LANGUAGE sql SET cyclingzone.y = 'on' AS $$ SELECT 1 $$;`;
+  assert.equal(findFunctionSettings(sql).length, 1);
+});
+
 test('allows built-in settings, body set_config and session SET', () => {
   const sql = `SET lock_timeout = '3s';
 SET cyclingzone.session_only = 'on';
