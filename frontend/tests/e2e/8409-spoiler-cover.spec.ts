@@ -10,8 +10,8 @@ const SHOTS = process.env.CZ_8409_SHOTS === "1";
 const BEFORE = process.env.CZ_8409_BEFORE === "1";
 const PANEL = '[data-race-page-version="v6"] [role="tabpanel"]';
 
-async function openRace(page: Page, { shield, opened = [], oneDay = false, completed = false, tab = "start", roleStagesCompleted }: {
-  shield: boolean; opened?: number[]; oneDay?: boolean; completed?: boolean; tab?: string; roleStagesCompleted?: number;
+async function openRace(page: Page, { shield, opened = [], oneDay = false, completed = false, tab = "start", roleStagesCompleted, beforeSpoilerReady }: {
+  shield: boolean; opened?: number[]; oneDay?: boolean; completed?: boolean; tab?: string; roleStagesCompleted?: number; beforeSpoilerReady?: () => Promise<void>;
 }) {
   const stages = oneDay ? 1 : 3;
   const stage = completed ? stages : 1;
@@ -57,8 +57,36 @@ async function openRace(page: Page, { shield, opened = [], oneDay = false, compl
   await login(page);
   await page.goto("/races/" + RACE_ID + "?tab=" + tab + "&stage=" + (tab === "stage" ? 2 : stage));
   await expect(page.locator(PANEL)).toBeVisible();
+  await beforeSpoilerReady?.();
   await expect(page.locator('[data-spoiler-switch="' + (shield ? "on" : "off") + '"]')).toBeVisible();
 }
+
+test("the spoiler namespace uses a control-sized skeleton in the race hero", async ({ page }) => {
+  let releaseNamespace!: () => void;
+  let markNamespaceRequested!: () => void;
+  const namespaceRequested = new Promise<void>(resolve => { markNamespaceRequested = resolve; });
+  const namespaceReady = new Promise<void>(resolve => { releaseNamespace = resolve; });
+  await page.route("**/locales/*/spoiler.json", async route => {
+    markNamespaceRequested();
+    await namespaceReady;
+    await route.continue();
+  });
+  try {
+    await openRace(page, {
+      shield: false,
+      tab: "results",
+      beforeSpoilerReady: async () => {
+        await namespaceRequested;
+        const pendingControl = page.getByTestId("race-spoiler-skeleton");
+        await expect(pendingControl).toBeVisible();
+        expect(await pendingControl.boundingBox()).toMatchObject({ height: 44 });
+        releaseNamespace();
+      },
+    });
+  } finally {
+    releaseNamespace();
+  }
+});
 
 async function takeShot(page: Page, name: string, anchor: string) {
   if (!SHOTS || (BEFORE && name.endsWith("-off"))) return;

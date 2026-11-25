@@ -13,7 +13,7 @@ import {
   ArrowDownIcon,
   LightningIcon,
   Portal,
-  PageLoader,
+  Skeleton,
   Button,
   CategoryTag,
   Section,
@@ -984,9 +984,25 @@ export default function RaceDetailPage() {
   // Full-bleed-ruten får ingen Layout-padding — loading/fejl/not-found-grenene
   // sætter derfor selv side-padding, nu efter T3-kort-revisionens ydre
   // container-opskrift (#2849 bølge 5c: pt-4 md:pt-6, samme som kortet nedenfor).
+  const pageWidth = v6 ? "max-w-[1600px]" : "max-w-5xl";
   if (loading) return (
-    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
-      <PageLoader />
+    <div aria-busy="true" className="mx-auto max-w-[1600px] px-4 pt-4 md:px-8 md:pt-6">
+      <Skeleton className="mb-3 h-4 w-24" />
+      <section className="overflow-hidden rounded-cz border border-cz-border border-t-2 border-t-cz-accent bg-cz-card">
+        <div className="grid items-center gap-2 px-4 pb-3 pt-3.5 md:px-5 xl:grid-cols-[minmax(0,1fr)_23rem]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <Skeleton className="h-9 w-64 max-w-full" />
+            <Skeleton className="h-5 w-40" />
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row xl:justify-end">
+            <Skeleton className="h-11 w-40" />
+            <Skeleton className="h-11 w-40" />
+          </div>
+        </div>
+        <div className="grid min-h-24 grid-cols-2 gap-4 border-t border-cz-border px-4 py-2.5 sm:flex sm:min-h-16 md:px-5">
+          {[1, 2, 3, 4].map(slot => <Skeleton key={slot} className="h-9 w-20" />)}
+        </div>
+      </section>
     </div>
   );
 
@@ -1414,7 +1430,6 @@ export default function RaceDetailPage() {
           }} />
   );
   // valg 3: bred side, loft 1600 px. #7865: de genbrugte faner står på max-w-5xl inde i RacePageV6.
-  const pageWidth = v6 ? "max-w-[1600px]" : "max-w-5xl";
   const heroMeta = [
     showsStageCount(race.race_type) ? t("raceType.stages", { count: race.stages }) : null,
     race.season?.number != null ? t("library.seasonOption", { number: race.season.number }) : null,
