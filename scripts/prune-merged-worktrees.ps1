@@ -33,6 +33,7 @@ param(
   [string] $RepoRoot = "C:\Dev\CyclingZone",
   [string] $BaseRef = "origin/main",
   [switch] $Execute,
+  [switch] $SessionStart,
   [switch] $Force
 )
 
@@ -47,9 +48,66 @@ $ErrorActionPreference = "Stop"
 $dry = -not $Execute
 $mode = if ($dry) { "DRY-RUN (intet slettes — kør med -Execute)" } else { "EXECUTE" }
 Write-Host "=== prune-merged-worktrees [$mode] ===" -ForegroundColor Cyan
+if ($SessionStart) {
+  if ($Force) { throw 'Startup cleanup cannot force-remove worktrees.' }
+  $originUrl = & git -C $RepoRoot remote get-url origin
+  if ($LASTEXITCODE -ne 0 -or $originUrl -notmatch '^(https://github\.com/|git@github\.com:)NicolaiDolmer/CyclingZone(\.git)?$') {
+    throw 'Startup cleanup is scoped to the CyclingZone GitHub repository.'
+  }
+}
 
 # Hold remote-tracking refs friske, så 'lever på origin' og ancestry er korrekte.
 & git -C $RepoRoot fetch --prune origin --quiet 2>$null
+if ($SessionStart -and $LASTEXITCODE -ne 0) { throw 'Remote refs could not be refreshed; startup cleanup skipped.' }
+
+function Get-StartupBranchHead([string]$branch) {
+  $localHead = & git -C $RepoRoot rev-parse --verify "refs/heads/$branch" 2>$null
+  if ($LASTEXITCODE -ne 0 -or -not $localHead) { return $null }
+  $repo = 'NicolaiDolmer/CyclingZone'
+  $pulls = & gh pr list --repo $repo --head $branch --state merged --base main --json headRefOid 2>$null
+  if ($LASTEXITCODE -ne 0 -or -not $pulls) { return $null }
+  foreach ($pull in @($pulls | ConvertFrom-Json)) {
+    if ($pull -and $pull.headRefOid -eq $localHead) { return $localHead }
+  }
+  return $null
+}
+
+function Save-StartupBranch([string]$branch, [string]$head) {
+  if ($dry) { return $true }
+  $archiveRoot = Get-WorktreeArchiveRoot
+  if (-not $archiveRoot) { return $false }
+  try {
+    $now = Get-Date -Format 'yyyy-MM-dd'
+    $name = $branch -replace '[^a-zA-Z0-9._-]', '_'
+    $branchKey = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($branch))).Substring(0, 12)
+    $archive = Join-Path (Join-Path $archiveRoot $now) "$name-$branchKey-$head"
+    New-Item -ItemType Directory -Path $archive -Force | Out-Null
+    $current = & git -C $RepoRoot rev-parse --verify "refs/heads/$branch"
+    if ($LASTEXITCODE -ne 0 -or $current -ne $head) { return $false }
+    $base = & git -C $RepoRoot merge-base $head $BaseRef
+    if ($LASTEXITCODE -ne 0 -or -not $base) { return $false }
+    $bundle = $null
+    if ($head -ne $base) {
+      $bundle = Join-Path $archive 'branch.bundle'
+      & git -C $RepoRoot bundle create $bundle "refs/heads/$branch" "^$base" 2>$null
+      if ($LASTEXITCODE -ne 0) { return $false }
+      & git -C $RepoRoot bundle verify $bundle 2>$null | Out-Null
+      if ($LASTEXITCODE -ne 0) { return $false }
+      $archivedHead = & git -C $RepoRoot bundle list-heads $bundle "refs/heads/$branch"
+      if ($LASTEXITCODE -ne 0 -or $archivedHead -ne "$head refs/heads/$branch") { return $false }
+    }
+    $manifest = Join-Path $archive 'branch.json'
+    @{ branch = $branch; head = $head; base = $base; bundle = $(if ($bundle) { 'branch.bundle' }) } |
+      ConvertTo-Json -Compress | Set-Content -LiteralPath $manifest -Encoding utf8
+    $saved = Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json
+    if ($saved.head -ne $head -or $saved.branch -ne $branch) { return $false }
+    Write-Host "      [branch archive] $archive"
+    return $true
+  } catch {
+    Write-Warning "Branch archive failed for $branch. Kept locally."
+    return $false
+  }
+}
 
 # Branches der stadig lever på origin → rør dem aldrig (kan være aktivt arbejde).
 $liveOnOrigin = [System.Collections.Generic.HashSet[string]]::new()
@@ -107,6 +165,9 @@ foreach ($b in $blocks) {
   if ($selfTop -and $path -eq $selfTop) { $skipped += "aktiv session         : $tag"; continue }
   if ($b.PSObject.Properties.Name -contains 'locked')   { $skipped += "locked (i brug)       : $tag"; continue }
   if (-not $branch)                  { $skipped += "detached HEAD         : $tag"; continue }
+  # At startup a second runtime can acquire or write to a worktree during archival.
+  # Leave all checked-out refs and directories to the explicit worktree cleanup.
+  if ($SessionStart)                { $skipped += "checked out (startup): $tag"; continue }
   if ($liveOnOrigin.Contains($branch)) { $skipped += "branch lever på origin: $tag"; continue }
 
   # Uncommitted?
@@ -130,8 +191,6 @@ foreach ($b in $blocks) {
 
   $detail = if ($removeForFresh) { "frisk worktree, fjernet via -Force" } else { $decision.Detail }
   $forceDel = $decision.ForceDelete -or $removeForFresh
-  Write-Host ("  {0} {1}  [{2}]  ({3})" -f ($(if ($dry) {'[would-remove]'} else {'[remove]'})), $path, $branch, $detail) -ForegroundColor Yellow
-
   # #6687: fjern junctions/symlinks (fx node_modules -> hovedcheckoutens) FOER
   # 'git worktree remove' - ellers foelger --force linket og toemmer maalet.
   # Kan et link ikke fjernes (eller et maal forsvinder), nægtes fjernelsen.
@@ -142,6 +201,7 @@ foreach ($b in $blocks) {
     $skipped += "ikke arkiveret/links ikke fjernet (worktree BEHOLDT): $tag"
     continue
   }
+  Write-Host ("  {0} {1}  [{2}]  ({3})" -f ($(if ($dry) {'[would-remove]'} else {'[remove]'})), $path, $branch, $detail) -ForegroundColor Yellow
   Write-Host "      [arkiv] $($safe.ArchiveDir)" -ForegroundColor DarkGray
   Remove-MemoryJunction $path
   [void]$branchesToSweep.Add("$branch|$forceDel")
@@ -177,15 +237,39 @@ foreach ($line in (& git -C $RepoRoot branch --format='%(refname:short)' 2>$null
   if ($decision.Merged) { $delBranches += [pscustomobject]@{ name = $n; force = $decision.ForceDelete } }
 }
 
+$branchCount = 0
 foreach ($d in $delBranches) {
+  if ($SessionStart) {
+    $startupHead = Get-StartupBranchHead $d.name
+    if (-not $startupHead -or -not (Save-StartupBranch $d.name $startupHead)) { continue }
+    $ref = "refs/heads/$($d.name)"
+    $checkedOut = & git -C $RepoRoot worktree list --porcelain
+    if ($LASTEXITCODE -ne 0 -or $checkedOut -contains "branch $ref") { continue }
+    if ($dry) {
+      Write-Host "  [would-delete archived-ref] $ref"
+    } else {
+      & git -C $RepoRoot update-ref -d $ref $startupHead
+      if ($LASTEXITCODE -ne 0) { Write-Warning "Branch changed after archive: $ref"; continue }
+      Write-Host "  [deleted archived-ref] $ref"
+    }
+    $branchCount++
+    continue
+  }
   $flag = if ($d.force) { '-D' } else { '-d' }
   Write-Host ("  {0} git branch {1} {2}" -f ($(if ($dry) {'[would-run]'} else {'[run]'})), $flag, $d.name) -ForegroundColor Yellow
-  if (-not $dry) { & git -C $RepoRoot branch $flag $d.name 2>&1 | Out-Null }
+  if (-not $dry) {
+    & git -C $RepoRoot branch $flag $d.name 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      Write-Warning "Branch deletion did not complete for $($d.name). Kept locally."
+      continue
+    }
+  }
+  $branchCount++
 }
 
 Write-Host "`n--- Sprunget over ($($skipped.Count)) ---" -ForegroundColor DarkGray
 foreach ($s in $skipped) { Write-Host "  $s" -ForegroundColor DarkGray }
 
 Write-Host ""
-Write-Host ("Resultat: {0} worktree(s), {1} branch(es) {2}." -f $removed.Count, $delBranches.Count, ($(if ($dry) {'ville blive fjernet'} else {'fjernet'}))) -ForegroundColor Green
+Write-Host ("Resultat: {0} worktree(s), {1} branch(es) {2}." -f $removed.Count, $branchCount, ($(if ($dry) {'ville blive fjernet'} else {'fjernet'}))) -ForegroundColor Green
 if ($dry) { Write-Host "Kør igen med -Execute for at udføre." -ForegroundColor Cyan }

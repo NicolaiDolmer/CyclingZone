@@ -15,6 +15,7 @@ if (!Object.keys(config).some(pattern => {
   console.log('Staged lint: no matching files; lint-staged/ESLint not started.');
   process.exit(0);
 }
-const result = spawnSync(process.execPath, ['node_modules/lint-staged/bin/lint-staged.js', '--config', 'lint-staged.config.mjs'], { stdio: 'inherit' });
+// The staged checks are validators. Keep the normal hooks, without making a Git stash.
+const result = spawnSync(process.execPath, ['node_modules/lint-staged/bin/lint-staged.js', '--no-stash', '--config', 'lint-staged.config.mjs'], { stdio: 'inherit' });
 if (result.error) console.error(result.error.message);
 process.exit(result.status ?? 1);
