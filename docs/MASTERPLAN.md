@@ -44,13 +44,13 @@
 **3. Marketing, fastholdelse, nye spillere** ("uden spillere er der intet spil")
 - Tracking før annonce (ejer 23/11): #8621 + #8629 live, #8623 ejer "merge" · penge pr. kampagne (Pro-køb med kampagne, udgiftstabel, PostHog "Kampagner") · Codex N3.
 - Annonce Facebook DK 500 kr. · ejer starter efter egen testtilmelding · **stop-grænse 50 kr. pr. ny aktiv spiller** (dag 3; over = pause + ejer). Mails 26/11 + 29/11 løftes til best practice #8396 · Claude-spor.
-- Gratis kanaler + Google-sider #5249 · Codex J · overskredet (uge 47).
+- Gratis kanaler + Google-sider #5249 · Codex · byg 25/11.
 - Første oplevelse + alle mails (Codex I): forside, oprettelse, mails, første session · Codex · kø (rapport). Første dage #8084 · forsiden #8431 · login #8428 · små tekster #8430 · byg.
-- Comeback uden bestyrelsesdom #8100 · Codex · overskredet (lovet uge 47).
+- Comeback uden bestyrelsesdom #8100 · merget (#8675), prod-bevis #7829.
 - Mailrytme (ejer 23/11): nyhedsmail hver 2. uge + ved store nyheder; maks 3/md pr. person; samtykke, afmelding med ét klik, måling.
 
 **4. Kernefunktioner til dørs** (ejer 23/11, ordret; loftet rangeret 4/11; **Forstå løbet #7716 før #6110**)
-- **Motor og løbsfilm:** motor-dom #6649, #6940, #6299, #7290 · Claude (Fable) · overskredet (20/11). Selektion #7645 (A først) · ejer vælger mulighed 1/2. Nedkørsler #7644 · bjergudbrud #6912 · #7899 · #7902 · tidsgrænse ved træthed #7715 · slukket, frist overskredet. Tidsstempling #6350 · design. Realisme-gaten #7588 PR 4-6 · næste motorsession (ejer 23/11). Årsag til alt: #7714, #7725-#7730, #7754. Samleliste #7260; plan: [RACE_ENGINE_PLAN](RACE_ENGINE_PLAN.md).
+- **Motor og løbsfilm:** motor-dom #6649, #6940, #6299, #7290 · Claude (Fable) · tor 26/11 (favoritmåling Codex 25/11). Selektion #7645 (A først) · ejer vælger mulighed 1/2. Nedkørsler #7644 · bjergudbrud #6912 · #7899 · #7902 · tidsgrænse ved træthed #7715 · slukket · tor 26/11. Tidsstempling #6350 · design. Realisme-gaten #7588 PR 4-6 · næste motorsession (ejer 23/11). Årsag til alt: #7714, #7725-#7730, #7754. Samleliste #7260; plan: [RACE_ENGINE_PLAN](RACE_ENGINE_PLAN.md).
 - **Løbsside v6:** live 21/11 · prod-bevis + luk · #8343, #8355, #8287.
 - **Taktik:** ændringerne gennemgås med ejeren. Træthed pr. indstilling #7638 · indsatskortet #5101 (mockup først) · delt kaptajn #7326 · #7266 · #7557 · trøjejagt #7855 (prod-bevis) · holdplaner #8013.
 - **Udvikling 2.0 #6110 og træning:** XP live; søndagsjob #7685 · XP fra P 1-99 #8545 (ejer 23/11: torsdag 26/11) · træthed nu #7801/#7982 (prod-bevis; #7536 forklaret) · træningssiden #7947 (skitse #8248) · Træn nu-øjeblikket #8363 · #3924 · bagefter #2798 og #3564; #3813 og #5238 med · Claude/Codex.
@@ -58,7 +58,7 @@
 - **Codex-kø fra 19/11 (#8374):** #8425 · #8428-#8430 · #6850 · #7233 · dashboard #8448 → #8019 → #8447 · UX #8434-#8442 · farveblind #7988 (lovet) · dashboard C #8300 når #8448 har en uges data · Codex · kø efter G-P.
 
 **5. Drift**
-- Supabase målt read-only (Codex L) → første besparelser · ejer ser live før sletning, intet uden arkiv. Plan v3 #7659: #7663 · ranglisten #7664 → #8003 · overskredet (uge 47).
+- Supabase målt read-only (Codex L) → første besparelser · ejer ser live før sletning, intet uden arkiv. Plan v3 #7659: #7663 · ranglisten #7664 → #8003 · Codex · 25/11.
 - Sentry-rodårsager (Codex M): små PR'er; motor/træning = Fable · uge 48. Flag-løkke #8660 · Codex.
 - Udgiftsliste med pris/brug/nedgrader/sluk · Claude · uge 48; ejeren opsiger selv.
 - Bestyrelsen tændes ved rigtige skyggetal + ejer-go.
