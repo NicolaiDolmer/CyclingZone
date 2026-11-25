@@ -1080,6 +1080,17 @@ tr:hover .sticky-name-cell {
 }
 }
 
+/* Match the T3 back label line height and its original mb-3 spacing.
+   Use the surrounding space for a real 44px control without moving the label or card. */
+@layer components {
+  .cz-profile-back-target {
+    min-inline-size: 44px;
+    min-block-size: 44px;
+    --profile-back-expansion: max(0px, calc((44px - 1rem) / 2));
+    margin-block: calc(0px - var(--profile-back-expansion)) calc(0.75rem - var(--profile-back-expansion));
+  }
+}
+
 /* P16: native fields keep their DOM/ref/label contracts. Component-layer
    defaults let explicit larger utility minima (e.g. FilterBar's min-w-36)
    remain larger instead of a responsive 44px utility replacing them. */

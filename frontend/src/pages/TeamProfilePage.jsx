@@ -234,7 +234,7 @@ export default function TeamProfilePage() {
   if (loadError) return (
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <button type="button" onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+        className="cz-profile-back-target inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors">
         <ChevronLeftIcon size={16} />{t("profile.back")}
       </button>
       <ErrorState
@@ -247,7 +247,7 @@ export default function TeamProfilePage() {
   if (!team) return (
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <button type="button" onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+        className="cz-profile-back-target inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors">
         <ChevronLeftIcon size={16} />{t("profile.back")}
       </button>
       <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("profile.notFound")} />
@@ -415,7 +415,7 @@ export default function TeamProfilePage() {
           kortet på sidens baggrund (rytterprofil-mønstret, RiderStatsPage). */}
       <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
         <button type="button" onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+          className="cz-profile-back-target inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors">
           <ChevronLeftIcon size={16} />{t("profile.back")}
         </button>
 
