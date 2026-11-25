@@ -27,6 +27,7 @@ import DiscordJoinLink from "./DiscordJoinLink";
 import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
 import Skeleton from "./ui/Skeleton";
 import { readAcademyMenuVisibility } from "../lib/featureFlagRequests.ts";
+import { readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
 import { facilitiesNavItem } from "../lib/facilitiesNavVisibility";
 import { useFacilities } from "../lib/useFacilities";
 import { scoutingNavItem } from "../lib/scoutingNavVisibility";
@@ -537,7 +538,7 @@ export default function Layout() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const location = useLocation();
-  const [session, setSession]               = useState(null);
+  const [session, setSession]               = useState(/** @type {import("@supabase/supabase-js").Session | null} */ (null));
   const [team, setTeam]                     = useState(null);
   const [balance, setBalance]               = useState(null);
   // #8357: én kilde. Sidemenuen viser den delte holdsaldo (samme som dashboard og
@@ -575,11 +576,15 @@ export default function Layout() {
   const [setupPrefill, setSetupPrefill]     = useState({ teamName: "", managerName: "" });
   // Init fra cache (#1792-klasse): vis akademiet med det samme hvis brugeren har
   // set det før, så et forbigående fetch-hikke ikke skjuler et fungerende akademi.
-  const academyTeam = /** @type {{ id: string } | null} */ (team);
-  const academyProfile = /** @type {{ role?: string, is_beta_tester?: boolean } | null} */ (profile);
-  const academyViewer = userId && academyTeam?.id && JSON.stringify([userId, academyTeam.id, academyProfile?.role, academyProfile?.is_beta_tester]);
+  const academyViewer = /** @type {string | null} */ (userId) ?? session?.user.id;
+  const [legacyAcademyEnabled] = useState(() => Boolean(readCachedAcademyNav()));
+  const [legacyAcademyViewer, setLegacyAcademyViewer] = useState(/** @type {string | null} */ (null));
   const [academyMenu, setAcademyMenu] = useState(/** @type {{ viewer: string, visible: boolean } | null} */ (null));
-  const academyEnabled = academyMenu?.viewer === academyViewer && academyMenu?.visible === true;
+  const academyEnabled = academyMenu && academyMenu.viewer === academyViewer
+    ? academyMenu.visible
+    : academyViewer
+      ? readCachedAcademyNav(academyViewer) ?? (academyViewer === legacyAcademyViewer && legacyAcademyEnabled)
+      : legacyAcademyEnabled;
   // #1441 A3: Klub-nav gater på API'ets `enabled` (403 facilities_disabled →
   // false), samme flag-kilde som selve /klub-siden. Skjult i prod indtil ejer-flip.
   const { enabled: facilitiesEnabled } = useFacilities();
@@ -679,6 +684,7 @@ export default function Layout() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return;
+      setLegacyAcademyViewer(session.user.id);
       setSession(session);
 
       const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).maybeSingle();
@@ -772,7 +778,10 @@ export default function Layout() {
     void authHeaders({ json: false }).then(async (headers) => {
       if (!headers || !active) return;
       const visible = await readAcademyMenuVisibility(headers);
-      if (active && visible !== null) setAcademyMenu({ viewer: academyViewer, visible });
+      if (active && visible !== null) {
+        writeCachedAcademyNav(visible, academyViewer);
+        setAcademyMenu({ viewer: academyViewer, visible });
+      }
     }).catch((error) => console.error("academy visibility read failed:", error));
     return () => { active = false; };
   }, [academyViewer]);

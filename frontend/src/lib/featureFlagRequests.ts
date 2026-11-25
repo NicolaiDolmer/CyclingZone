@@ -76,12 +76,5 @@ export const readPlayerFeatureFlags = sessionRead(requestFlags);
 export const readAcademyMenuVisibility = sessionRead(async (headers) => {
   const response = await apiFetch("/api/academy/visibility", { headers }, { source: "academy-visibility" });
   const body = response.data as { visible?: boolean } | null;
-  if (response.ok && typeof body?.visible === "boolean") return body.visible;
-  if (response.status !== 404) return null;
-
-  // A Vercel preview can reach the previous Railway release during rollout.
-  const legacy = await apiFetch("/api/academy/me", { headers }, { source: "academy-me" });
-  if (legacy.status === 409) return false;
-  const legacyBody = legacy.data as { enabled?: boolean } | null;
-  return legacy.ok && typeof legacyBody?.enabled === "boolean" ? legacyBody.enabled : null;
+  return response.status === 200 && typeof body?.visible === "boolean" ? body.visible : null;
 });

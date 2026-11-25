@@ -23,7 +23,7 @@ test("simultaneous anonymous flag consumers share one network request", async (t
   ]);
   assert.equal(requests, 1);
 });
-import { invalidatePlayerReads, readPlayerFeatureFlags } from "./featureFlagRequests.ts";
+import { invalidatePlayerReads, readAcademyMenuVisibility, readPlayerFeatureFlags } from "./featureFlagRequests.ts";
 
 test("viewer tokens, refreshes and anonymous calls stay isolated", async (t) => {
   const requests: string[] = [];
@@ -94,4 +94,43 @@ test("access-token refresh keeps a successful read in the same auth session", as
   assert.equal(requests, 1);
   await readPlayerFeatureFlags(auth("session-b", 300));
   assert.equal(requests, 2);
+});
+
+test("academy visibility accepts true and false from an exact HTTP 200", async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async () => Response.json({ visible: ++calls === 1 }));
+  assert.equal(await readAcademyMenuVisibility({ Authorization: "Bearer academy-yes" }), true);
+  assert.equal(await readAcademyMenuVisibility({ Authorization: "Bearer academy-no" }), false);
+  assert.equal(calls, 2);
+});
+
+for (const status of [401, 404, 409, 500, 503, 202]) {
+  test(`academy visibility treats HTTP ${status} as unknown and retries`, async (t) => {
+    let calls = 0;
+    const paths: string[] = [];
+    t.mock.method(globalThis, "fetch", async (url: string) => {
+      calls += 1;
+      paths.push(url);
+      return Response.json({ visible: calls !== 1, enabled: true }, { status: calls === 1 ? status : 200 });
+    });
+    const headers = { Authorization: "Bearer academy" };
+    assert.equal(await readAcademyMenuVisibility(headers), null);
+    assert.equal(await readAcademyMenuVisibility(headers), true);
+    assert.equal(calls, 2);
+    assert.ok(paths.every(url => url.endsWith("/api/academy/visibility")));
+  });
+}
+
+test("academy visibility preserves unknown network and malformed-200 results and retries", async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    calls += 1;
+    if (calls === 1) throw new TypeError("network disconnected");
+    return Response.json(calls === 2 ? { visible: "false" } : { visible: false });
+  });
+  const headers = { Authorization: "Bearer academy" };
+  assert.equal(await readAcademyMenuVisibility(headers), null);
+  assert.equal(await readAcademyMenuVisibility(headers), null);
+  assert.equal(await readAcademyMenuVisibility(headers), false);
+  assert.equal(calls, 3);
 });
