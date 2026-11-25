@@ -25,7 +25,7 @@ function definition(source, name) {
 
 // Run the real finalizer and payment RPCs, translating the fixture's PostgREST
 // operations to the isolated PostgreSQL database.
-function pgAuctionClient(query) {
+function pgAuctionClient(query, beforeRpc = () => {}) {
   function literal(value) {
     if (value == null) return "NULL";
     if (typeof value === "number" || typeof value === "boolean") return String(value);
@@ -34,6 +34,7 @@ function pgAuctionClient(query) {
   }
   return {
     async rpc(name, args) {
+      beforeRpc(name);
       const parameters = Object.entries(args).map(([key, value]) => key + " => " + literal(value)).join(", ");
       return { data: JSON.parse(query(`SELECT to_jsonb(public.${name}(${parameters}));`)) };
     },
@@ -72,6 +73,7 @@ function pgAuctionClient(query) {
         update(values) { update = values; return this; },
         delete() { remove = true; return this; },
         upsert() { return this; },
+        insert() { return this; },
         eq(key, value) { filters.push(`row.${key} = ${literal(value)}`); return this; },
         neq(key, value) { filters.push(`row.${key} <> ${literal(value)}`); return this; },
         is(key, value) { filters.push(`row.${key} IS ${literal(value)}`); return this; },
@@ -252,18 +254,28 @@ test("PG17: independent market transactions cannot claim the same reserved place
       ? `SELECT place_auction_bid_6181('${auction}','${team}',${amount},'${time}');`
       : `INSERT INTO auction_bids(auction_id,team_id,amount,bid_time) VALUES ('${auction}','${team}',${amount},'${time}');`;
     const acquire = `UPDATE riders SET team_id='${buyer}' WHERE id='${id(12)}';`;
+    const finalize = (beforeRpc) => finalizeAuctionById({
+      supabase: pgAuctionClient(psql, beforeRpc), auctionId: id(20), notifyTeamOwner: async () => {},
+      now: new Date("2026-11-28T15:10:00Z"),
+    });
+    function openYouthAuction() {
+      psql(`
+        UPDATE riders SET team_id=NULL,birthdate='2012-04-20',firstname='Fixture',lastname='Winner' WHERE id='${id(10)}';
+        UPDATE auctions SET is_youth=true,seller_team_id=NULL WHERE id='${id(20)}';
+      `);
+    }
     for (const mode of ["legacy","atomic"]) {
-      for (const boundary of ["season gap", "aging after the bid", "old lead without a reservation"]) {
+      for (const boundary of ["season gap", "aging after the bid", "turning 23", "old lead without a reservation"]) {
         await t.test(`${mode}: youth settlement protects the final U23 place at ${boundary}`, async () => {
           reset(mode, "senior");
+          openYouthAuction();
           psql(`
-            UPDATE riders SET team_id=NULL,birthdate='2012-04-20',firstname='Fixture',lastname='Winner' WHERE id='${id(10)}';
-            UPDATE auctions SET is_youth=true,seller_team_id=NULL WHERE id='${id(20)}';
             UPDATE riders SET squad='senior',is_academy=false WHERE team_id='${buyer}' AND squad='u23';
             INSERT INTO riders(id,team_id,squad,is_academy)
               SELECT gen_random_uuid(),'${buyer}','u23',true FROM generate_series(1,29);
             ${boundary === "season gap" ? `UPDATE seasons SET status='upcoming'; INSERT INTO seasons VALUES ('${id(401)}','completed',5);` : ""}
-            ${boundary === "aging after the bid" ? "UPDATE seasons SET number=5;" : ""}
+            ${["aging after the bid", "turning 23"].includes(boundary) ? "UPDATE seasons SET number=5;" : ""}
+            ${boundary === "turning 23" ? `UPDATE riders SET birthdate='2008-04-20' WHERE id='${id(10)}';` : ""}
           `);
           const releaseSenior = `UPDATE riders SET team_id='${seller}' WHERE id=(
             SELECT id FROM riders WHERE team_id='${buyer}' AND squad='senior' ORDER BY id LIMIT 1);`;
@@ -279,8 +291,12 @@ test("PG17: independent market transactions cannot claim the same reserved place
           } else {
             psql(bid(mode, id(20)));
           }
-          if (boundary === "aging after the bid") psql("UPDATE seasons SET number=6;");
+          if (["aging after the bid", "turning 23"].includes(boundary)) psql("UPDATE seasons SET number=6;");
           const count = psql(`SELECT auction_reserved_places_8034('${buyer}','u23');`);
+          const routeFunction = psql("SELECT to_regprocedure('public.market_leading_auctions_8034(uuid)') IS NOT NULL;");
+          const bidRouteSquad = routeFunction === "t"
+            ? psql(`SELECT reservation_squad FROM market_leading_auctions_8034('${buyer}') WHERE id='${id(20)}';`)
+            : null;
           if (boundary !== "old lead without a reservation") psql(releaseSenior);
           const before = snapshot();
           let denied = false;
@@ -291,15 +307,12 @@ test("PG17: independent market transactions cannot claim the same reserved place
             assert.deepEqual(snapshot(), before);
             denied = true;
           }
-          const finalize = () => finalizeAuctionById({
-            supabase: pgAuctionClient(psql), auctionId: id(20), notifyTeamOwner: async () => {},
-            now: new Date("2026-11-28T15:10:00Z"),
-          });
           const result = await finalize();
           assert.deepEqual(
             { reserved: count, denied, code: result.code },
             { reserved: "1", denied: true, code: "youth_completed" },
           );
+          assert.equal(bidRouteSquad, "u23");
           const settled = snapshot();
           assert.deepEqual(settled.riders.find(r => r[0] === id(10)).slice(1), [buyer, null, "u23"]);
           assert.equal(settled.payments, 1);
@@ -308,6 +321,41 @@ test("PG17: independent market transactions cannot claim the same reserved place
           assert.deepEqual(snapshot(), settled);
         });
       }
+      await t.test(`${mode}: youth senior settlement charges a rider already delivered before an interrupted debit`, async () => {
+        reset(mode, "club");
+        openYouthAuction();
+        psql(bid(mode, id(20)));
+        await assert.rejects(finalize(name => {
+          if (name === "increment_balance_with_audit") throw new Error("fixture: interrupted before debit");
+        }), /interrupted before debit/);
+        const interrupted = snapshot();
+        assert.equal(interrupted.payments, 0);
+        assert.deepEqual(interrupted.riders.find(r => r[0] === id(10)).slice(1), [buyer, null, "senior"]);
+        assert.equal((await finalize()).code, "youth_completed_senior");
+        const settled = snapshot();
+        assert.equal(settled.payments, 1);
+        assert.equal(settled.balances.find(team => team.id === buyer).balance, 99800);
+        assert.equal((await finalize()).code, "already_completed");
+        assert.deepEqual(snapshot(), settled);
+      });
+      await t.test(`${mode}: youth senior settlement consumes a reserved place after a deferred balanced swap`, async () => {
+        reset(mode, "club");
+        openYouthAuction();
+        psql(bid(mode, id(20)));
+        const outgoing = psql(`SELECT id FROM riders WHERE team_id='${buyer}' AND squad='senior' ORDER BY id LIMIT 1;`);
+        const args = `'${outgoing}','${id(12)}','${buyer}','${seller}',true,'${time}','{}','{}'`;
+        const swap = mode === "atomic"
+          ? `auto_accept_claim_swap_paid(${args},'${id(48)}',0,'{}')`
+          : `auto_accept_claim_swap(${args})`;
+        assert.equal(JSON.parse(psql(`SELECT ${swap};`)).status, "claimed");
+        assert.equal(psql(`SELECT pending_team_id FROM riders WHERE id='${outgoing}';`), seller);
+        assert.equal(psql(`SELECT pending_team_id FROM riders WHERE id='${id(12)}';`), buyer);
+        assert.equal((await finalize()).code, "youth_completed_senior");
+        const settled = snapshot();
+        assert.deepEqual(settled.riders.find(r => r[0] === id(10)).slice(1), [buyer, null, "senior"]);
+        assert.equal(settled.payments, 1);
+        assert.equal(settled.balances.find(team => team.id === buyer).balance, 99800);
+      });
       for (const cap of ["club","senior"]) {
         await t.test(`${mode}/${cap}: bidder and acquisition compete in both orders`,async () => {
           for (const bidFirst of [true,false]) {

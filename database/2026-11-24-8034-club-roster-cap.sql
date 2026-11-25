@@ -58,6 +58,19 @@ REVOKE ALL ON FUNCTION public.auction_effective_reservation_squad_8034(uuid) FRO
 GRANT EXECUTE ON FUNCTION public.auction_youth_squad_8034(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.auction_effective_reservation_squad_8034(uuid) TO service_role;
 
+CREATE OR REPLACE FUNCTION public.market_leading_auctions_8034(p_team uuid)
+RETURNS TABLE(id uuid, current_price bigint, reservation_squad text)
+LANGUAGE sql STABLE
+SET search_path = ''
+AS $$
+  SELECT a.id, a.current_price::bigint, public.auction_effective_reservation_squad_8034(a.id)
+  FROM public.auctions a
+  WHERE a.current_bidder_id = p_team AND a.status IN ('active', 'extended');
+$$;
+
+REVOKE ALL ON FUNCTION public.market_leading_auctions_8034(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.market_leading_auctions_8034(uuid) TO service_role;
+
 CREATE OR REPLACE FUNCTION public.auction_reserved_places_8034(
   p_team uuid, p_squad text DEFAULT NULL, p_exclude_auction uuid DEFAULT NULL
 ) RETURNS integer
@@ -77,6 +90,23 @@ AS $$
 $$;
 REVOKE ALL ON FUNCTION public.auction_reserved_places_8034(uuid, text, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.auction_reserved_places_8034(uuid, text, uuid) TO service_role;
+
+-- An accepted bid can settle against the registered result of an already
+-- claimed transfer. New acquisitions still count both live and pending rows.
+CREATE OR REPLACE FUNCTION public.auction_settlement_club_count_8034(p_team uuid)
+RETURNS integer
+LANGUAGE sql STABLE
+SET search_path = ''
+AS $$
+  SELECT count(*)::integer
+  FROM public.riders r
+  WHERE (r.team_id = p_team OR r.pending_team_id = p_team)
+    AND coalesce(r.pending_team_id, r.team_id) = p_team
+    AND r.is_retired IS NOT TRUE;
+$$;
+
+REVOKE ALL ON FUNCTION public.auction_settlement_club_count_8034(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.auction_settlement_club_count_8034(uuid) TO service_role;
 
 -- Existing financial admission calls the same senior reservation count.
 CREATE OR REPLACE FUNCTION public.team_seat_commitment(p_team_id uuid, p_exclude_auction_id uuid DEFAULT NULL)
@@ -219,6 +249,7 @@ BEGIN
       ORDER BY a.id LIMIT 1;
     END IF;
     reserved := public.auction_reserved_places_8034(incoming_team, NULL, own_auction);
+    IF own_auction IS NOT NULL THEN occupied_count := after_registration_count; END IF;
     IF occupied_count + reserved >= 60 THEN
       IF departing_rider IS NOT NULL AND after_registration_count + reserved < 60 THEN
         RAISE EXCEPTION USING MESSAGE = 'swap_pending_registration', ERRCODE = '23514', DETAIL = incoming_team::text;
@@ -230,6 +261,7 @@ BEGIN
     IF (
       SELECT count(*) FROM public.riders r
       WHERE (r.team_id = incoming_team OR r.pending_team_id = incoming_team)
+        AND (own_auction IS NULL OR coalesce(r.pending_team_id, r.team_id) = incoming_team)
         AND coalesce(r.squad, 'senior') = incoming_squad
         AND r.is_retired IS NOT TRUE
         AND (r.id IS DISTINCT FROM departing_rider OR r.team_id IS DISTINCT FROM incoming_team)

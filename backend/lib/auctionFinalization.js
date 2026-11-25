@@ -491,7 +491,15 @@ async function getAuctionPromotionAllowance(supabase, auction, bidderId, squad) 
  * @param {Parameters<typeof getIncomingSquadViolation>[0]} buyer
  */
 async function getAuctionIncomingSquadViolation(supabase, auction, bidderId, buyer) {
-  const violation = getIncomingSquadViolation(buyer, { softCapBuffer: 0 });
+  let violation = getIncomingSquadViolation(buyer, { softCapBuffer: 0 });
+  if (violation?.scope === "club" && auction.current_bidder_id === bidderId && Object.hasOwn(auction, "reservation_squad")) {
+    const { data: registeredCount, error } = await supabase.rpc("auction_settlement_club_count_8034", { p_team: bidderId });
+    if (error || !Number.isInteger(registeredCount)) {
+      throw new Error(`Could not check the winning bid club capacity: ${error?.message ?? "invalid count"}`);
+    }
+    buyer = { ...buyer, club_count: registeredCount };
+    violation = getIncomingSquadViolation(buyer, { softCapBuffer: 0 });
+  }
   if (!violation || violation.scope === "club") return violation;
   const allowance = await getAuctionPromotionAllowance(supabase, auction, bidderId, "senior");
   return getIncomingSquadViolation(buyer, { softCapBuffer: allowance }) ? violation : null;
@@ -511,51 +519,41 @@ async function tryPlaceYouthWinnerOnSenior({
   awardXP,
   squadLimits = AUCTION_SQUAD_LIMITS,
 }) {
-  const baseBuyerState = await getTeamMarketState(supabase, bidderId);
-  const buyer = {
-    ...baseBuyerState,
-    squad_limits: squadLimits[baseBuyerState.division || 3] || baseBuyerState.squad_limits,
-  };
-
-  if (!buyer || buyer.balance < price) {
-    return { placed: false, reason: "insufficient_balance" };
-  }
-  // #16 altid-åben handel: intet transfervindue → hard cap ved handlen (buffer 0).
-  const squadViolation = await getAuctionIncomingSquadViolation(supabase, auction, bidderId, buyer);
-  if (squadViolation) {
-    return { placed: false, reason: squadViolation.scope === "club" ? "club_full" : "squad_full" };
-  }
-
-  // Placér på senior: team_id + trup-patchen (så han tæller mod 30-cap og
-  // behandles som senior), senior-kontrakt (kontraktløs free agent → standard-
-  // kontrakt via contractOnAcquirePatch). Ingen defer-logik: en fri ungdomsrytter
-  // kan ikke være i et aktivt løb for en sælger (der er ingen sælger).
-  // #4619: squad OG is_academy skrives sammen (seniorSquadPatch) — efter
-  // backfill'en ville et bart is_academy=false efterlade squad='u23'/'junior',
-  // og rytteren ville optage en ungdomsplads på vinderens loft.
   const winnerContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
-  // #3580: verificér at ejerskabsskiftet FAKTISK ramte en række, FØR debiten
-  // nedenfor kører — se expectMutationAffectingRows' doc-comment i marketUtils.js.
-  try {
-    await expectMutationAffectingRows(
-      supabase
-        .from("riders")
-        .update({
-          team_id: bidderId,
-          pending_team_id: null,
-          acquired_at: actualEnd,
-          ...seniorSquadPatch(),
-          ...winnerContractPatch,
-        })
-        .eq("id", rider.id),
-      { context: `youth_senior_placement auction=${auction.id} rider=${rider.id}` }
-    );
-  } catch (error) {
-    if (error?.message === "club_roster_full") return { placed: false, reason: "club_full" };
-    // An older youth lead can still try senior when another auction holds
-    // the last place. The locked database gate decides before any payment.
-    if (error?.message === "squad_full") return { placed: false, reason: "squad_full" };
-    throw error;
+  // On retry the delivered rider already occupies the place. Continue into
+  // the idempotent debit without treating the delivery as another acquisition.
+  if (!riderAlreadyWithAuctionWinner(auction) || rider.is_academy) {
+    const baseBuyerState = await getTeamMarketState(supabase, bidderId);
+    const buyer = {
+      ...baseBuyerState,
+      squad_limits: squadLimits[baseBuyerState.division || 3] || baseBuyerState.squad_limits,
+    };
+    if (buyer.balance < price) return { placed: false, reason: "insufficient_balance" };
+    const squadViolation = await getAuctionIncomingSquadViolation(supabase, auction, bidderId, buyer);
+    if (squadViolation) {
+      return { placed: false, reason: squadViolation.scope === "club" ? "club_full" : "squad_full" };
+    }
+
+    try {
+      await expectMutationAffectingRows(
+        supabase
+          .from("riders")
+          .update({
+            team_id: bidderId,
+            pending_team_id: null,
+            acquired_at: actualEnd,
+            ...seniorSquadPatch(),
+            ...winnerContractPatch,
+          })
+          .eq("id", rider.id),
+        { context: `youth_senior_placement auction=${auction.id} rider=${rider.id}` }
+      );
+    } catch (error) {
+      if (error?.message === "club_roster_full") return { placed: false, reason: "club_full" };
+      // The locked database gate also sees places reserved by other auctions.
+      if (error?.message === "squad_full") return { placed: false, reason: "squad_full" };
+      throw error;
+    }
   }
 
   await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "youth_auction_senior_win" });

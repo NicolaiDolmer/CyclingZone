@@ -41,7 +41,8 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
         rider_id uuid, team_id uuid, season_id uuid, status text, from_squad text, to_squad text,
         deadline timestamptz, resolved_at timestamptz, PRIMARY KEY (rider_id, season_id)
       );
-      CREATE TABLE auctions (id uuid PRIMARY KEY, rider_id uuid, status text, current_price integer, current_bidder_id uuid, is_youth boolean DEFAULT false);
+      CREATE TABLE auctions (id uuid PRIMARY KEY, rider_id uuid, status text, current_price integer,
+        current_bidder_id uuid, is_youth boolean DEFAULT false, created_at timestamptz DEFAULT '2026-11-28T14:00:00Z');
       CREATE TABLE auction_bids (auction_id uuid, team_id uuid, bid_time timestamptz, amount integer, is_proxy boolean DEFAULT false);
       CREATE TABLE transfer_listings (rider_id uuid, asking_price integer);
       CREATE FUNCTION auto_accept_lock_teams(uuid, uuid) RETURNS void LANGUAGE plpgsql AS $fixture$

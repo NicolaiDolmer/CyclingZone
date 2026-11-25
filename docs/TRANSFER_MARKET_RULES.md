@@ -674,6 +674,7 @@ ekstra plads, så et forsvar blokeres aldrig.
 **Ungdomsauktioner har en løsere gate.** `getAuctionBidRoomBlock`
 (`auctionRules.js:387-415`, #2701) blokerer kun når **både** senior og akademi er fulde.
 En ungdomsreservation følger afviklerens aktuelle sæsonalder, også når den kommende sæson bruges i sæsongabet. En ældre føring uden lagret reservation får seniorplads, hvis den stadig er ledig efter eksisterende reservationer. Ellers tæller føringen i den alderssvarende ungdomstrup.
+Ved afvikling af et allerede accepteret bud tæller et udskudt bytte efter den aftalte registrering, så en dobbelt registrering undervejs ikke bruger buddets plads. Genkørsel efter leveret ungdomsrytter fortsætter den idempotente debitering.
 
 **Tællegrundlaget er `future_count`** = ejede nu − på-vej-væk + på-vej-ind
 (`getTeamMarketState`, `marketUtils.js:200-267`). Akademi- og pensionerede ryttere tæller

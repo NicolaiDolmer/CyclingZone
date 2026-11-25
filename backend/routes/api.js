@@ -909,13 +909,11 @@ async function fetchTeamCommitment(supabaseClient, teamId) {
 }
 
 async function fetchLeadingMarketAuctions(supabaseClient, teamId) {
-  const read = (columns) => supabaseClient.from("auctions").select(columns)
+  const result = await supabaseClient.rpc("market_leading_auctions_8034", { p_team: teamId });
+  if (!["42883", "PGRST202"].includes(result.error?.code)) return result;
+  // During rollout the backend can be deployed before the new migration.
+  return supabaseClient.from("auctions").select("id, current_price")
     .in("status", ["active", "extended"]).eq("current_bidder_id", teamId);
-  const result = await read("id, current_price, reservation_squad");
-  if (["42703", "PGRST204"].includes(result.error?.code) && result.error.message.includes("reservation_squad")) {
-    return read("id, current_price");
-  }
-  return result;
 }
 
 
@@ -1938,6 +1936,20 @@ async function getActiveSeasonNumber() {
 // Før sammenlignede gaten alle akademiryttere med det gamle flade akademi-loft,
 // så et hold med 8 akademiryttere blev afvist, selv om truppen havde plads.
 async function youthAuctionAcademyRoom(teamId, riderId) {
+  const destination = await supabase.rpc("auction_youth_squad_8034", { p_rider: riderId });
+  if (!destination.error) {
+    const squad = destination.data ?? "junior";
+    const { data: used, error } = await supabase.rpc("count_team_squad_members", {
+      p_team_id: teamId, p_squad: squad, p_exclude_rider_id: riderId,
+    });
+    if (error || !Number.isInteger(used)) {
+      throw new Error(`youthAuctionAcademyRoom: ${error?.message ?? "invalid count"}`);
+    }
+    return { squad, used, max: SQUAD_CAPS[squad] };
+  }
+  if (!["42883", "PGRST202"].includes(destination.error.code)) {
+    throw new Error(`youthAuctionAcademyRoom: ${destination.error.message}`);
+  }
   const [{ data: rider, error }, seasonNumber] = await Promise.all([
     supabase.from("riders").select("birthdate").eq("id", riderId).maybeSingle(),
     getActiveSeasonNumber(),
@@ -8135,7 +8147,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   const squadBlock = getAuctionBidRoomBlock({
     isYouth: auction.is_youth,
     teamState,
-    academyCount: (academyRoom?.used ?? 0) + activeLeadingExceptCurrent.filter(row => row.reservation_squad && row.reservation_squad === academyRoom?.squad).length,
+    academyCount: academyRoom?.used ?? 0,
     academySlots: academyRoom?.max,
     activeLeadingCount: activeLeadingExceptCurrent.length,
     activeLeadingSeniorCount: activeLeadingExceptCurrent.filter(row => (row.reservation_squad ?? "senior") === "senior").length,
@@ -8463,7 +8475,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     const squadBlock = getAuctionBidRoomBlock({
       isYouth: auction.is_youth,
       teamState,
-      academyCount: (proxyAcademyRoom?.used ?? 0) + otherLeads.filter(row => row.reservation_squad && row.reservation_squad === proxyAcademyRoom?.squad).length,
+      academyCount: proxyAcademyRoom?.used ?? 0,
       academySlots: proxyAcademyRoom?.max,
       activeLeadingCount: otherLeads.length,
       activeLeadingSeniorCount: otherLeads.filter(row => (row.reservation_squad ?? "senior") === "senior").length,
