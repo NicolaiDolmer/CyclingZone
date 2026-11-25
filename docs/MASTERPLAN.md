@@ -10,7 +10,7 @@
 
 - **Mål:** bæredygtig forretning: stabil database, lavere udgifter, mere indtjening, flere og mere loyale brugere (mål 31/12 i [GROWTH_STACK](GROWTH_STACK.md)). **Til dørs først:** det halvbyggede går før nyt. **Fejl** (live og forkert) rettes uden go; alt nyt kræver ejerens go.
 - **Udgivelse januar 2027** når: ingen alvorlige fejl (ejer vurderer), et sæsonskifte uden nedbrud, Pro 2.0 live; dato meldes da.
-- **Færdig** = bygget, merget, tændt, synligt, gammelt væk, Hjælp + patch note (8 Til dørs-krav). **Loftet** (motor og løbsfilm, taktik, Udvikling 2.0) plus brand og forkert info bygges uden liste; alt andet kræver ejerens go. Nyt prøves bag slukket kontakt før tænding.
+- **Færdig** = bygget, merget, tændt, synligt, gammelt væk, Hjælp + patch note (8 Til dørs-krav). Byggestoppet er slukket (ejer 25/11, #8729): ingen godkendelsesliste; ejeren beslutter retning og nye spor. Nyt prøves bag slukket kontakt før tænding.
 - **Merge og tænding:** én session ad gangen; klare PR'er merges samme dag, Til dørs-bevis inden 24 t. Tænding = bevis i prod + patch note + Hjælp + roadmap + issue lukket; tænde-blok kl. 07. **Dommer (ejer 10/11):** før tænd-kort for motor, træning og penge dømmer en uafhængig Fable-dommer.
 - **Roller:** Claude (PC1) merger og koordinerer, 1-3 laner · Codex (Dolmer PC) bygger, maks 3 samtidig, højst 2 der bygger · ejeren beslutter, tester, tænder og betaler.
 - **Doktrin:** spilleren ser det, spillet regner på. Styrke straffes aldrig. Én rytter, ét løb pr. løbsdag. Simulér før ship. Gulv ≠ godkendt mål. Synlige ratings falder ikke uden ejeren. Én motor; revision/flag er ejer-gated.
