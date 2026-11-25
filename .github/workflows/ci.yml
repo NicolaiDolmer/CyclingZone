@@ -1280,6 +1280,14 @@ jobs:
       - name: Run idempotency guard
         run: node scripts/lint-migration-idempotency.mjs
 
+      # #8668: CI replays as superuser; prod's migration role cannot attach
+      # a custom setting to a function, so auto-migrate rolled back.
+      - name: Test function-setting guard
+        run: node --test scripts/lint-migration-function-settings.test.mjs
+
+      - name: Run function-setting guard
+        run: node scripts/lint-migration-function-settings.mjs
+
       # #6342: lock-safety (lock_timeout, CONCURRENTLY, atomic grants).
       - name: Test migration lock guard
         run: node --test scripts/lint-migration-locks.test.mjs
