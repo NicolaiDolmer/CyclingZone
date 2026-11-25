@@ -8,6 +8,18 @@
 > Den korte regel (tjek ved session-start, ingen WARN over 7 dage) står i
 > [`AI_OPS_REFERENCE.md`](AI_OPS_REFERENCE.md#supabase-security-advisors--7-dages-regel).
 
+## Dokumenteret undtagelse 26/11, #8741
+
+- **`training_history_runs(uuid,date)` — authenticated EXECUTE er påkrævet.**
+  `frontend/src/lib/useTrainingHistory.js` kalder RPC'en direkte med
+  spillerens session, når træningshistorikkens kontakt er tændt. Kontakten
+  stod på `on` i prod ved det read-only tjek 26/11. Backend kalder også RPC'en
+  med service-rollen. Funktionen er SECURITY DEFINER, fordi træningskvitteringerne
+  og datoregistret ligger bag RLS. Den kontrollerer `teams.user_id = auth.uid()`
+  for spillerkald, returnerer kun eget holds historik og skriver ingen data.
+  Prod har EXECUTE for `authenticated` og `service_role`; `anon` har ingen.
+
+
 ## Status 17/10 2026 (kl. 09:45 UTC), #6752
 
 **Målt med `get_advisors(type: "security")`: 4 WARN + 160 INFO**,
