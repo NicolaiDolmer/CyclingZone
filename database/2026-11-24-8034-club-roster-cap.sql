@@ -442,8 +442,10 @@ $$;
 REVOKE ALL ON FUNCTION public.match_legacy_auction_proxy_tie_8034(uuid,uuid,bigint,uuid,timestamptz) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.match_legacy_auction_proxy_tie_8034(uuid,uuid,bigint,uuid,timestamptz) TO service_role;
 
--- The paid swap calls this same ownership claim. A function-local setting
--- restores the caller context on exit, including after a failed leg.
+-- The paid swap calls this same ownership claim. The body clears the setting
+-- on entry and restores the caller's value on every return. A failed leg
+-- raises, which rolls the local setting back with the work. Prod's migration
+-- role may not attach a custom setting to a function (permission denied, 25/11).
 CREATE OR REPLACE FUNCTION public.auto_accept_claim_swap(
   p_offered_rider_id uuid,
   p_requested_rider_id uuid,
@@ -456,9 +458,9 @@ CREATE OR REPLACE FUNCTION public.auto_accept_claim_swap(
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SET search_path = public, pg_catalog
-SET cyclingzone.swap_departure = ''
 AS $$
 DECLARE
+  v_prev_departure text := current_setting('cyclingzone.swap_departure', true);
   o public.riders;
   q public.riders;
   v_leg record;
@@ -482,6 +484,7 @@ BEGIN
     RAISE EXCEPTION 'auto_accept_claim_swap: invalid patch' USING ERRCODE = '22023';
   END IF;
 
+  PERFORM set_config('cyclingzone.swap_departure', '', true);
   PERFORM public.auto_accept_lock_teams(p_proposing_team_id, p_receiving_team_id);
   PERFORM 1 FROM public.riders WHERE id IN (p_offered_rider_id, p_requested_rider_id) ORDER BY id FOR UPDATE;
   SELECT * INTO o FROM public.riders WHERE id = p_offered_rider_id;
@@ -491,10 +494,12 @@ BEGIN
      OR o.team_id IS DISTINCT FROM p_proposing_team_id
      OR q.team_id IS DISTINCT FROM p_receiving_team_id
      OR o.pending_team_id IS NOT NULL OR q.pending_team_id IS NOT NULL THEN
+    PERFORM set_config('cyclingzone.swap_departure', coalesce(v_prev_departure, ''), true);
     RETURN jsonb_build_object('status','rider_state_changed');
   END IF;
   IF EXISTS (SELECT 1 FROM public.auctions a
               WHERE a.rider_id IN (o.id, q.id) AND a.status IN ('active','extended')) THEN
+    PERFORM set_config('cyclingzone.swap_departure', coalesce(v_prev_departure, ''), true);
     RETURN jsonb_build_object('status','rider_on_auction');
   END IF;
 
@@ -556,6 +561,7 @@ BEGIN
     END IF;
   END LOOP;
 
+  PERFORM set_config('cyclingzone.swap_departure', coalesce(v_prev_departure, ''), true);
   RETURN jsonb_build_object('status','claimed','offered_rider_id',o.id,'requested_rider_id',q.id,
                             'senior_growth_team_ids',to_jsonb(v_senior_growth));
 END;

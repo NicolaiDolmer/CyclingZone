@@ -15,15 +15,19 @@ CREATE OR REPLACE FUNCTION public.promote_season_squads_7323(
 RETURNS TABLE (rider_id uuid, team_id uuid, to_squad text, firstname text, lastname text)
 LANGUAGE plpgsql
 SET search_path = ''
-SET cyclingzone.season_squad_promotion = 'on'
 AS $$
 #variable_conflict use_column
 DECLARE
   locked_team_id uuid;
+  -- Prod's migration role may not attach a custom setting to a function
+  -- (permission denied, 25/11). Set it in the body and restore the caller's
+  -- value on exit. An exception rolls the local setting back with the work.
+  prev_promotion text := pg_catalog.current_setting('cyclingzone.season_squad_promotion', true);
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.seasons s WHERE s.id = p_season_id AND s.status = 'active') THEN
     RAISE EXCEPTION 'Youth squad promotion requires the active target season';
   END IF;
+  PERFORM pg_catalog.set_config('cyclingzone.season_squad_promotion', 'on', true);
 
   PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('squad-promotion:' || p_season_id, 0));
   -- Use the same lock as voluntary squad moves and youth acquisitions.
@@ -78,6 +82,7 @@ BEGIN
   JOIN public.riders r ON r.id = g.rider_id
   WHERE g.season_id = p_season_id AND g.status = 'promoted' AND g.automatic
   ORDER BY g.team_id, r.lastname, r.firstname, r.id;
+  PERFORM pg_catalog.set_config('cyclingzone.season_squad_promotion', coalesce(prev_promotion, ''), true);
 END;
 $$;
 
