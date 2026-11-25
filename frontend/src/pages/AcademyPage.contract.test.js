@@ -109,7 +109,7 @@ test("AcademyPage skelner backend-fejl fra slukket flag (#2796)", () => {
 });
 
 test("#6155: fuld juniortrup spærrer ikke, når U23 har plads; kortet siger hvor han kommer hen", () => {
-  assert.match(pageSource, /const landing = academyLandingSquad\(targetSquad, ageForSeason\(rider\.birthdate, seasonYear\), squadCounts\);/);
+  assert.match(pageSource, /const landing = academyLandingSquad\(targetSquad, ageForSeason\(rider\.birthdate, seasonYear\), squadCounts, \{\s*used: seniorCount, max: seniorMax,/);
   assert.match(pageSource, /const isFull = landing\.full \|\| clubFull;/, "spærringen afgøres af ALLE mulige trupper, ikke kun aldersplaceringen");
   assert.match(pageSource, /landing\.movedToU23 && \(\s*<p[^>]*data-testid="intake-lands-u23">\{t\("landsOnU23"\)\}/);
   assert.match(pageSource, /blockedBoth \? t\("fullNoteBoth"\)/);
@@ -276,10 +276,10 @@ test("#8081: udgave A vises kun bag kontakten; den normale gren og kortet er uæ
   assert.match(pageSource, /const pageV2 = useAcademyPageV2Flag\(\);/);
   // Udgave A står bag en ready-gate for det lazy navnerum academyV2 (perf-gaten).
   assert.match(pageSource, /if \(pageV2\) \{\s*return \([\s\S]{0,300}?<I18nReadyGate ns="academyV2">\s*<AcademyV2\b/);
-  // Den normale side kalder stadig kortet via .map, og "Lander på" kræver showLanding.
+  // Den normale side kalder stadig kortet via .map, og seniorplacering vises i begge udgaver.
   assert.match(pageSource, /regularIntake\.map\(renderIntakeCard\)/);
-  assert.match(pageSource, /\{!showLanding && landing\.movedToU23 && \(/);
-  assert.match(pageSource, /showLanding && landing\.squad && \(/);
+  assert.match(pageSource, /\{!showLanding && !clubFull && landing\.movedToU23 && \(/);
+  assert.match(pageSource, /!clubFull && landing\.squad && \(showLanding \|\| landing\.squad === "senior"\) && \(/);
   // #8060 (ejervalg 16/11, godkendt 17/11): regnskabet er en fane i udgave A; det gamle AcademyPnl
   // vises ikke under fanerne der (det ville modsige fanen). Den gamle side har det stadig.
   assert.match(pageSource, /footer=\{null\}/);
