@@ -6,6 +6,7 @@
 // modellen finder aldrig paa sine egne tal. Rute-match, form og traethed kommer
 // fra serveren, og rollereglerne genbruger raceSelectionLogic.js.
 import { pickFallbackCaptain, resolveBoardRoles } from "./raceSelectionLogic.js";
+import { timeoutSignal } from "./timeoutSignal.ts";
 
 // ── Typer (spejler wire-formen fra de eksisterende endpoints) ───────────────
 
@@ -378,7 +379,7 @@ type SelectionReadResult = { ok: boolean; data?: { selection?: StoredSelection |
 export async function saveSelectionWithReadback<T extends SelectionSaveResult>(
   submitted: StoredSelection,
   write: () => Promise<T>,
-  read: () => Promise<SelectionReadResult>,
+  read: (signal: AbortSignal) => Promise<SelectionReadResult>,
 ): Promise<T | { ok: boolean; data?: undefined }> {
   let result: T | undefined;
   try {
@@ -388,8 +389,9 @@ export async function saveSelectionWithReadback<T extends SelectionSaveResult>(
     // A network exception can occur after the server commits.
   }
 
+  const deadline = timeoutSignal(4000);
   try {
-    const current = await read();
+    const current = await read(deadline.signal);
     const stored = current.data?.selection;
     if (current.ok && stored !== undefined && !stored?.is_auto_filled && !current.data?.withdrawn &&
         !selectionDirty(selectionFromServer(submitted), selectionFromServer(stored))) {
@@ -397,6 +399,8 @@ export async function saveSelectionWithReadback<T extends SelectionSaveResult>(
     }
   } catch {
     // The read could also fail offline. Keep the original write error.
+  } finally {
+    deadline.dispose();
   }
   return result ?? { ok: false };
 }

@@ -469,9 +469,9 @@ export default function RaceSelectionPanel({
       const res = await saveSelectionWithReadback(
         submitted,
         () => apiFetch(url, { method: "PUT", headers, body: JSON.stringify(submitted) }),
-        async () => {
+        async (signal) => {
           if (isStale(gen)) return { ok: false };
-          const response = await apiFetch(url, { headers, cache: "no-store", signal: AbortSignal.timeout(4000) });
+          const response = await apiFetch(url, { headers, cache: "no-store", signal });
           return /** @type {import("../../lib/planningWorkbenchData.ts").ApiResult} */ (response);
         },
       );

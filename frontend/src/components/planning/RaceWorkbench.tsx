@@ -380,8 +380,8 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         const res = await saveSelectionWithReadback(
           submitted,
           () => saveRaceSelection(race.id, submitted),
-          () => gen === generation.current
-            ? loadRaceSelection(race.id, { cache: "no-store", signal: AbortSignal.timeout(4000) })
+          (signal) => gen === generation.current
+            ? loadRaceSelection(race.id, { cache: "no-store", signal })
             : Promise.resolve({ ok: false }),
         );
         if (gen !== generation.current) return false;

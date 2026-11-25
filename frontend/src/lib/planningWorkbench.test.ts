@@ -72,7 +72,8 @@ test("a lost lineup response recovers only when the server has the full submitte
     calls.push("PUT");
     throw new Error("response lost");
   };
-  assert.deepEqual(await saveSelectionWithReadback(submitted, send, async () => {
+  assert.deepEqual(await saveSelectionWithReadback(submitted, send, async (signal) => {
+    assert.equal(signal.aborted, false);
     calls.push("GET");
     return { ok: true, data: { selection: stored } };
   }), { ok: true });
