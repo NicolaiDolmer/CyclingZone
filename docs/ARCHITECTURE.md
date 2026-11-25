@@ -35,6 +35,10 @@ registreret i prod. En konkret kompensationskørsel kræver separat ejer-go.
 
 The offline retry button follows PAGE_TEMPLATES/TASTE P16's mobile/coarse-pointer target floor. Installation remains a progressive enhancement through the existing stable manifest, icons and browser-controlled consent. No offline game data or write queue is provided.
 
+The offline document probes its original same-origin route with an uncached HEAD request. A visible tab resumes probing after `visibilitychange`, `pageshow` or `online`, subject to the retry backoff. One request can be in flight. A successful response stops the listeners and timer before reloading. A tab-local timestamp spaces out further automatic reloads when the following navigation still fails. The manual retry button remains available.
+
+For an emergency rollback, deploy a no-op worker at the existing `/sw.js` URL so installed clients can update to it. Its install handler calls `skipWaiting()`. Its activate handler removes only `cz-sw-` caches and unregisters that registration. The no-op worker has no fetch handler and leaves open tabs to reload normally. Keep serving the replacement while existing clients can still check for it.
+
 ## Frontend server data
 
 The incremental TanStack Query migration is specified in [FRONTEND_DATA_RULES.md](FRONTEND_DATA_RULES.md). Market hooks own migrated server data; other routes retain their existing owners until migrated.
