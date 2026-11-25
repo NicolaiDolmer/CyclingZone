@@ -653,8 +653,8 @@
   },
   "src/components/Layout.jsx": {
     "TS18046": 3,
-    "TS2339": 11,
-    "TS2345": 5,
+    "TS2339": 6,
+    "TS2345": 4,
     "TS2741": 2
   },
   "src/components/MyLatestResultCard.jsx": {
