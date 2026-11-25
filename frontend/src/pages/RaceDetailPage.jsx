@@ -38,7 +38,7 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 import { tooltipClass } from "../components/ui/tooltipStyles.js";
 import { formatNumber } from "../lib/intl";
 import { showsDnfStagePrefix, showsStageCount } from "../lib/raceTypeLabels.ts";
-import { resultEntity } from "../lib/raceResultEntity.js";
+import { resultEntity, resultTeamName } from "../lib/raceResultEntity.js";
 import { buildRaceRecap, incidentReasonKey, withdrawalGroupMoment, dnfRowsForStage, ownStageAbandons, teamIdByRiderFromRows } from "../lib/raceRecap.js";
 import { buildRaceReport } from "../lib/raceReport.js";
 import { fetchAllRows } from "../lib/supabasePagination";
@@ -167,7 +167,7 @@ const JERSEYS = [
 // mountain/young/team) på samme stage_number, hvilket kan nærme sig/overstige
 // PostgREST's 1.000-rækkers-loft — fetchAllRows bruges derfor ubetinget (pagination-
 // safe via delegering, ikke en antaget grænse).
-const RACE_RESULT_SELECT = "id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, sprint_points, kom_points, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name)), team:team_id(id, name)";
+const RACE_RESULT_SELECT = "id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, sprint_points, kom_points, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code), team:team_id(id, name)";
 
 function fetchStageResultRows(raceId, stageNumber) {
   return fetchAllRows(() =>
@@ -909,8 +909,8 @@ export default function RaceDetailPage() {
   const teamOptions = useMemo(() => {
     const byId = new Map();
     for (const r of results) {
-      const id = r.rider?.team?.id ?? r.team_id;
-      const name = r.rider?.team?.name ?? r.team_name;
+      const id = r.team_id;
+      const name = resultTeamName(r);
       if (id != null && name && !byId.has(String(id))) byId.set(String(id), { id, name });
     }
     return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
@@ -935,8 +935,8 @@ export default function RaceDetailPage() {
   const teamNameById = useMemo(() => {
     const out = new Map();
     for (const r of results) {
-      const id = r.rider?.team?.id ?? r.team_id;
-      const name = r.rider?.team?.name ?? r.team_name;
+      const id = r.team_id;
+      const name = resultTeamName(r);
       if (id != null && name && !out.has(String(id))) out.set(String(id), name);
     }
     return out;
@@ -944,7 +944,7 @@ export default function RaceDetailPage() {
 
   function filterRowsByTeam(rows) {
     if (resolvedTeamFilter == null) return rows;
-    return (rows || []).filter(r => String(r.team_id ?? r.rider?.team?.id) === String(resolvedTeamFilter));
+    return (rows || []).filter(r => String(r.team_id) === String(resolvedTeamFilter));
   }
 
   // #2081 code-review: samme TeamFilterSelect-wiring optrådte identisk i både
@@ -1086,14 +1086,14 @@ export default function RaceDetailPage() {
   const gcRows = finalByType.gc?.length ? finalByType.gc : (liveStandings?.byType?.gc ?? []);
   const gcRankByRider = new Map(gcRows.filter((r) => r.rider_id).map((r) => [r.rider_id, r.rank]));
   const myGcRows = myTeamId != null
-    ? gcRows.filter((r) => String(r.team_id ?? r.rider?.team?.id) === String(myTeamId))
+    ? gcRows.filter((r) => String(r.team_id) === String(myTeamId))
     : [];
   const bestGc = myGcRows.length
     ? myGcRows.reduce((a, b) => ((a.rank ?? 9999) <= (b.rank ?? 9999) ? a : b))
     : null;
   const myStageWins = myTeamId != null
     ? results.filter((r) => r.result_type === "stage" && r.rank === 1
-        && String(r.team_id ?? r.rider?.team?.id) === String(myTeamId))
+        && String(r.team_id) === String(myTeamId))
     : [];
   const abandonedCount = squadRiders.filter((r) => r.abandoned).length;
   // #7778 udgave E: kun under v6 og kun før løbet er slut (bagefter står "Your best").
@@ -1687,7 +1687,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
     if (myTeamId == null || !report) return null;
     const stageRows = (results || []).filter((r) =>
       r.result_type === "stage" && (r.stage_number ?? 1) === stageNumber
-      && String(r.team_id ?? r.rider?.team?.id) === String(myTeamId)
+      && String(r.team_id) === String(myTeamId)
     );
     // #7411: et hold hvis ryttere alle udgik, stillede stadig til start.
     if (!stageRows.length) return { none: !blockAbandons };
@@ -2309,9 +2309,9 @@ function V6JerseysCard({ jerseys, teamLeader, t }) {
                 </RiderLink>
               </td>
               <td className="py-2 text-right align-middle text-xs text-cz-3">
-                {(j.holder.rider?.team?.name || j.holder.team_name) && (
-                  <TeamLink id={j.holder.rider?.team?.id ?? j.holder.team_id} className="hover:text-cz-accent-t transition-colors" tab={undefined}>
-                    {j.holder.rider?.team?.name || j.holder.team_name}
+                {(resultTeamName(j.holder)) && (
+                  <TeamLink id={j.holder.team_id} className="hover:text-cz-accent-t transition-colors" tab={undefined}>
+                    {resultTeamName(j.holder)}
                   </TeamLink>
                 )}
               </td>
@@ -2568,7 +2568,8 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
               <tbody className="divide-y divide-cz-border">
                 {visibleRows.map(r => {
                   const isWinner = highlightWinner && r.rank === 1;
-                  const rowTeamId = r.team_id ?? r.rider?.team?.id;
+                  const rowTeamId = r.team_id;
+                  const rowTeamName = resultTeamName(r);
                   const isMyTeam = highlightTeamId != null && String(rowTeamId) === String(highlightTeamId);
                   // #3914 (kontrakt-punkt 4): egen-hold-fremhævning, UAFHÆNGIG af
                   // filteret ovenfor (highlightTeamId) — den kan være null (intet
@@ -2587,9 +2588,9 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
                       {showTeamCol && resultEntity(r).kind === "rider" && (
                         // #6684 (D-047, ejer-go 15/10): på mobil står holdet under rytteren i
                         // stedet for i egen kolonne, så tid og point kan stå uden vandret scroll.
-                        <span className="mt-0.5 block max-w-[11rem] truncate text-xs text-cz-3 sm:hidden" title={r.rider?.team?.name || r.team_name || undefined}>
-                          <TeamLink id={r.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
-                            {r.rider?.team?.name || r.team_name || t("common.free")}
+                        <span className="mt-0.5 block max-w-[11rem] truncate text-xs text-cz-3 sm:hidden" title={rowTeamName ?? undefined}>
+                          <TeamLink id={rowTeamId} className="hover:text-cz-accent-t transition-colors">
+                            {rowTeamName ?? "—"}
                           </TeamLink>
                         </span>
                       )}
@@ -2599,9 +2600,9 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
                         {resultEntity(r).kind === "rider" && (
                           // #6384: loft over holdnavnet på mobil, så tid-kolonnen kan stå uden at
                           // tabellen scroller; fuldt navn i title.
-                          <span className="block max-w-[6.5rem] truncate sm:max-w-none" title={r.rider?.team?.name || r.team_name || undefined}>
-                            <TeamLink id={r.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
-                              {r.rider?.team?.name || r.team_name || t("common.free")}
+                          <span className="block max-w-[6.5rem] truncate sm:max-w-none" title={rowTeamName ?? undefined}>
+                            <TeamLink id={rowTeamId} className="hover:text-cz-accent-t transition-colors">
+                              {rowTeamName ?? "—"}
                             </TeamLink>
                           </span>
                         )}
