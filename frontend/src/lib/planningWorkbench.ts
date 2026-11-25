@@ -370,6 +370,37 @@ export function selectionDirty(draft: Selection, saved: Selection): boolean {
   );
 }
 
+type SelectionSaveResult = { ok: boolean; data?: unknown };
+type StoredSelection = NonNullable<Parameters<typeof selectionFromServer>[0]> & { is_auto_filled?: boolean };
+type SelectionReadResult = { ok: boolean; data?: { selection?: StoredSelection | null; withdrawn?: boolean } | null };
+
+/** A failed response can hide a committed write. Read once without sending the write again. */
+export async function saveSelectionWithReadback<T extends SelectionSaveResult>(
+  submitted: StoredSelection,
+  write: () => Promise<T>,
+  read: () => Promise<SelectionReadResult>,
+): Promise<T | { ok: boolean; data?: undefined }> {
+  let result: T | undefined;
+  try {
+    result = await write();
+    if (result.ok) return result;
+  } catch {
+    // A network exception can occur after the server commits.
+  }
+
+  try {
+    const current = await read();
+    const stored = current.data?.selection;
+    if (current.ok && stored !== undefined && !stored?.is_auto_filled && !current.data?.withdrawn &&
+        !selectionDirty(selectionFromServer(submitted), selectionFromServer(stored))) {
+      return { ok: true };
+    }
+  } catch {
+    // The read could also fail offline. Keep the original write error.
+  }
+  return result ?? { ok: false };
+}
+
 /**
  * #8306 · Har arbejdsfladen noget ugemt? En ugemt trup ELLER en ugemt taktik-kladde. Siden bruger svaret
  * til browserens luk-advarsel, saa en taktik-kladde ikke forsvinder tavst ved genindlaes eller luk af fanen.
@@ -402,7 +433,7 @@ export function guardUnload(target: UnloadTarget, active: boolean): (() => void)
 }
 
 /** Body til PUT /api/races/:id/selection (samme form som udtagelsespanelet sender). */
-export function toPutBody(sel: Selection, sprintLeaderAllowed: boolean): Record<string, unknown> {
+export function toPutBody(sel: Selection, sprintLeaderAllowed: boolean) {
   const inSquad = (id: string | null) => (id != null && sel.riderIds.includes(id) ? id : null);
   return {
     rider_ids: sel.riderIds,

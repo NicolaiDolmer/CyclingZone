@@ -44,6 +44,7 @@ import {
   MOBILE_COLUMNS,
   selectionDirty,
   selectionFromServer,
+  saveSelectionWithReadback,
   setRiderRole,
   sortSquadRows,
   suggestSquad,
@@ -372,9 +373,18 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       return false;
     }
     const result = await gate.run("save", async () => {
+      const gen = generation.current;
+      const submitted = toPutBody(current.sel, current.sprintLeaderAllowed);
       setSaveError(null);
       try {
-        const res = await saveRaceSelection(race.id, toPutBody(current.sel, current.sprintLeaderAllowed));
+        const res = await saveSelectionWithReadback(
+          submitted,
+          () => saveRaceSelection(race.id, submitted),
+          () => gen === generation.current
+            ? loadRaceSelection(race.id, { cache: "no-store", signal: AbortSignal.timeout(4000) })
+            : Promise.resolve({ ok: false }),
+        );
+        if (gen !== generation.current) return false;
         if (!res.ok) {
           const body = res.data ?? {};
           const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
@@ -393,6 +403,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         onSaved?.(race.id, entriesFromSelection(race.id, current.sel)); // siden tager loebet ud af sin kladde
         return true;
       } catch {
+        if (gen !== generation.current) return false;
         setSaveState("error");
         setSaveError({ code: "generic", params: {} });
         return false;

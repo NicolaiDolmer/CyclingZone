@@ -35,8 +35,8 @@ export async function loadSeasonOverview() {
   return authed("/api/races/selection/season");
 }
 
-export async function loadRaceSelection(raceId: string) {
-  return authed(`/api/races/${encodeURIComponent(raceId)}/selection`);
+export async function loadRaceSelection(raceId: string, options?: RequestInit) {
+  return authed(`/api/races/${encodeURIComponent(raceId)}/selection`, options);
 }
 
 export async function saveRaceSelection(raceId: string, body: unknown) {

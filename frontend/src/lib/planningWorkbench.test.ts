@@ -18,6 +18,7 @@ import {
   clearSquad,
   selectionFromServer,
   selectionDirty,
+  saveSelectionWithReadback,
   toPutBody,
   entriesFromSelection,
   replaceRaceEntries,
@@ -62,6 +63,50 @@ import {
   type SquadRow,
   type Selection,
 } from "./planningWorkbench.ts";
+
+test("a lost lineup response recovers only when the server has the full submitted selection", async () => {
+  const submitted = { rider_ids: ["a", "b", "c"], captain_id: "a", free_role_ids: ["b", "c"] };
+  const stored = { ...submitted, rider_ids: ["c", "a", "b"], free_role_ids: ["c", "b"], is_auto_filled: false };
+  const calls: string[] = [];
+  const send = async () => {
+    calls.push("PUT");
+    throw new Error("response lost");
+  };
+  assert.deepEqual(await saveSelectionWithReadback(submitted, send, async () => {
+    calls.push("GET");
+    return { ok: true, data: { selection: stored } };
+  }), { ok: true });
+  assert.deepEqual(calls, ["PUT", "GET"]);
+
+  const rejected = { ok: false, data: { error: "selection_race_started" } };
+  for (const data of [
+    { selection: { ...stored, captain_id: "b" } },
+    { selection: { ...stored, free_role_ids: ["b"] } },
+    { selection: { ...stored, luxury_helper_id: "c" } },
+    { selection: { ...stored, is_auto_filled: true } },
+    { selection: stored, withdrawn: true },
+    { selection: null },
+  ]) {
+    assert.equal(await saveSelectionWithReadback(submitted, async () => rejected, async () => ({ ok: true, data })), rejected);
+  }
+  assert.equal(await saveSelectionWithReadback(submitted, async () => rejected, async () => { throw new Error("offline"); }), rejected);
+  assert.equal(await saveSelectionWithReadback(submitted, async () => rejected, async () => ({ ok: false })), rejected);
+  assert.deepEqual(await saveSelectionWithReadback(
+    { rider_ids: [] },
+    send,
+    async () => ({ ok: true, data: { selection: null, withdrawn: false } }),
+  ), { ok: true });
+});
+
+test("a successful lineup save does not make a readback request", async () => {
+  const result = { ok: true };
+  let reads = 0;
+  assert.equal(await saveSelectionWithReadback({ rider_ids: ["a"] }, async () => result, async () => {
+    reads++;
+    return { ok: false };
+  }), result);
+  assert.equal(reads, 0);
+});
 
 function race(id: string, start: number, end: number, extra: Partial<SeasonRace> = {}): SeasonRace {
   return {
