@@ -13,9 +13,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-engine
 
-**live:** Day form in words after the stage (`race-day-words-7725`) 2026-11-08 · Jersey hunt in the stage plan (`race-jersey-hunt-7855`) 2026-11-20
+**live:** Jersey hunt in the stage plan (`race-jersey-hunt-7855`) 2026-11-20
 
-**arkiv:** `form-and-fatigue` · `luxury-helper-role` · `race-all-out-7280` · `race-day-form-6649` · `race-descent-task-7380` · `race-engine-profile-hills` · `race-engine-s5-profiles` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-final-km-boundary-7383` · `race-finalize-resumable` · `race-form-peaks` · `race-intention-choice` · `race-itt-no-day-roll-7726` · `race-itt-save-7332` · `race-itt-terrain-6595` · `race-notify-outbox` · `race-team-chase-7730` · `team-selection-and-roles`
+**arkiv:** `form-and-fatigue` · `luxury-helper-role` · `race-all-out-7280` · `race-day-form-6649` · `race-day-words-7725` · `race-descent-task-7380` · `race-engine-profile-hills` · `race-engine-s5-profiles` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-final-km-boundary-7383` · `race-finalize-resumable` · `race-form-peaks` · `race-intention-choice` · `race-itt-no-day-roll-7726` · `race-itt-save-7332` · `race-itt-terrain-6595` · `race-notify-outbox` · `race-team-chase-7730` · `team-selection-and-roles`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -54,7 +54,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`)|building|-|[holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md)|#1177|2026-11-04|Kun data bygget (#5268); motor (#5348), mentorpar (#5349) mangler.|
-|New riders' primary type (`rider-primary-type-from-distribution`)|building|-|[RIDER_GENERATION](RIDER_GENERATION.md)|#5327|2026-09-23|Kontakt (off); flip er ejer-gated.|
+|New riders' primary type (`rider-primary-type-from-distribution`)|building|-|[RIDER_GENERATION](RIDER_GENERATION.md)|#8696|2026-11-25|Ejer 25/11: #5327 indgår i #8696 om rytterfødsel fra spillets egne priors. Eksisterende ryttere ændres ikke.|
 
 ## training
 
@@ -67,7 +67,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Development Score B in the engine (`development-score-b-engine`)|dormant|`development_score_v2`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-13|Parkeret (ejer 31/10) til Udvikling 2.0. Aldrig samtidig med XP. Før tænding: #7584.|
 |Catch-up via racing (`race-day-catchup`)|dormant|`race_day_catchup_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6950|2026-10-25|Ejer, med Udvikling 2.0.|
 |Race day role base day (`race-day-role-base-day`)|dormant|`race_day_role_base_day_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-03|#5950 løsning A (ejer 3/11), underkontakt til race-day-role-yield. Off.|
-|Injuries heal over the off-season (`season-injury-reset`)|building|`season_injury_reset_mode`|[TRAINING_RULES](TRAINING_RULES.md)|#5865|2026-11-16|Bag season_injury_reset_mode = off; ejer vælger clear/cap/light før S6.|
+|Injuries heal over the off-season (`season-injury-reset`)|building|`season_injury_reset_mode`|[TRAINING_RULES](TRAINING_RULES.md)|#5865|2026-11-25|Prod 25/11: season_injury_reset_mode = clear. Selve nulstillingen efterprøves ved S5→S6.|
 |Rotation plans that wait on rest and races (`training-rotation-8548`)|building|`training_rotation`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-22|Data, API, afregning og prognose bag training_rotation. Pladsen fortsætter over sæsonskift. Beta i to dage med aftenverifikation før ejerens go til on.|
 |Week blocks with priority and one locked session per day (`training-week-priority-8549`)|building|`training_week_priority`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-22|Motor, prognose og Program R5 bag training_week_priority. Feltprioritet og lås gemmes med weekBlock på celle-API'et for ryttere og grupper.|
 
@@ -90,7 +90,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
-|Auto-generated season calendar (`auto-calendar`)|building|-|[CALENDAR_RULES](CALENDAR_RULES.md)|-|2026-11-13|Ingen række i prod (= off). Ejer 13/11: spørg igen mandag 16/11.|
+|Auto-generated season calendar (`auto-calendar`)|building|-|[CALENDAR_RULES](CALENDAR_RULES.md)|#5841|2026-11-25|Ejer 25/11: S6 materialiseres manuelt. Automatisk kalender fra S7. Kontakten har ingen række i prod 25/11 (= off).|
 |Season documentary (LLM) (`season-documentary-llm`)|building|`season_documentary_llm_enabled`|-|-|2026-09-06|-|
 |Automatic season transition cron (`season-auto-transition`)|retired|-|[SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md)|#1155|2026-10-17|Fjernet 17/10 (#6796); sæsonskiftet er manuelt.|
 

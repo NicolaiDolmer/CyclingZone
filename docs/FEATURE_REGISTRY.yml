@@ -794,9 +794,9 @@ features:
     title_da: Nye rytteres primære type fra mål-fordelingen
     state: building
     ssot: docs/RIDER_GENERATION.md
-    epic: 5327
-    verified: 2026-09-23
-    note: Kontakt (off); flip er ejer-gated.
+    epic: 8696
+    verified: 2026-11-25
+    note: "Ejer 25/11: #5327 indgår i #8696 om rytterfødsel fra spillets egne priors. Eksisterende ryttere ændres ikke."
 
   # --- training ------------------------------------------------------------
   - id: daily-training
@@ -902,9 +902,9 @@ features:
     flag: season_injury_reset_mode
     ssot: docs/TRAINING_RULES.md
     epic: 5865
-    verified: 2026-11-16
-    note: 'Bag season_injury_reset_mode = off; ejer vælger clear/cap/light før S6.'
-    decision: ejer-beslutning
+    verified: 2026-11-25
+    note: "Prod 25/11: season_injury_reset_mode = clear. Selve nulstillingen efterprøves ved S5→S6."
+    decision: goer-faerdigt
     decide_by: 2026-11-28
 
   - id: training-programs
@@ -1157,10 +1157,11 @@ features:
     title_da: Auto-genereret sæsonkalender ved forever-skifter
     state: building
     ssot: docs/CALENDAR_RULES.md
-    verified: 2026-11-13
-    note: "Ingen række i prod (= off). Ejer 13/11: spørg igen mandag 16/11."
-    decision: ejer-beslutning
-    decide_by: 2026-11-16
+    epic: 5841
+    verified: 2026-11-25
+    note: "Ejer 25/11: S6 materialiseres manuelt. Automatisk kalender fra S7. Kontakten har ingen række i prod 25/11 (= off)."
+    decision: goer-faerdigt
+    decide_by: 2026-11-28
 
   - id: season-transition
     area: season
