@@ -291,7 +291,7 @@ export default function App({ initialSession = undefined }) {
           <Route path="/terms" element={<TermsPageEn />} />
           <Route path="/founder-supporter" element={<I18nReadyGate ns="founder"><FounderSupporterPage /></I18nReadyGate>} />
           <Route path="/ui" element={<KitchenSinkPage />} />
-          <Route path="/ui/season-experience" element={<I18nReadyGate ns="seasonEnd"><SeasonExperiencePreviewPage /></I18nReadyGate>} />
+          <Route path="/ui/season-experience" element={<I18nReadyGate ns={["seasonEnd", "dashboard", "training"]}><SeasonExperiencePreviewPage /></I18nReadyGate>} />
           {/* #4557 — draft-only mockup-preview, DEV-only (se App.jsx's import
               ovenfor + BoardroomPreviewPage.jsx). Fjernes ved flip. Registreret
               her, langt før "/" og catch-all'en nedenfor, saa den aldrig
@@ -307,7 +307,7 @@ export default function App({ initialSession = undefined }) {
           {/* App-flader: pathless protected layout-route — URL'erne (/dashboard, /riders ...)
               er uændrede, men "/" er ikke længere forælder, så landing kan eje roden. */}
           <Route element={
-            <ProtectedRoute session={session}><Layout /></ProtectedRoute>
+            <ProtectedRoute session={session}><I18nReadyGate ns={["dashboard", "training"]}><Layout /></I18nReadyGate></ProtectedRoute>
           }>
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="riders" element={<RidersPage />} />

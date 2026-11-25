@@ -177,3 +177,21 @@ test('expired email callback still reaches login rather than marketing', async (
   await expect(page).toHaveURL(/\/login(?:\?.*)?$/);
   await expect(page.getByPlaceholder('din@email.dk')).toBeVisible();
 });
+
+test("login defers training and dashboard translations until game routes need them", async ({ page }) => {
+  await page.goto("/login");
+  await expect(page.getByPlaceholder("din@email.dk")).toBeVisible();
+  const dashboardBundleLoaded = () => page.evaluate(() => {
+    const i18n = (window as Window & {
+      __i18n: { hasResourceBundle: (language: string, namespace: string) => boolean };
+    }).__i18n;
+    return {
+      dashboard: i18n.hasResourceBundle("da", "dashboard"),
+      training: i18n.hasResourceBundle("da", "training"),
+    };
+  });
+  expect(await dashboardBundleLoaded()).toEqual({ dashboard: false, training: false });
+  await login(page);
+  await expect(page.getByRole("heading", { name: "E2E Racing", exact: true })).toBeVisible();
+  expect(await dashboardBundleLoaded()).toEqual({ dashboard: true, training: true });
+});
