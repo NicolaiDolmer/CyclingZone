@@ -26,7 +26,7 @@ import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
 import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
 import Skeleton from "./ui/Skeleton";
-import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
+import { readAcademyMenuVisibility } from "../lib/featureFlagRequests.ts";
 import { facilitiesNavItem } from "../lib/facilitiesNavVisibility";
 import { useFacilities } from "../lib/useFacilities";
 import { scoutingNavItem } from "../lib/scoutingNavVisibility";
@@ -561,7 +561,7 @@ export default function Layout() {
   const [forumUnread, setForumUnread]                   = useState(false);
   // #3034: role kommer fra den delte UserProfileProvider (ét Supabase-kald pr.
   // session) i stedet for Layouts eget `.from("users").select("role, username")`.
-  const { profile } = useUserProfile();
+  const { profile, userId } = useUserProfile();
   const isAdmin = profile?.role === "admin";
   const [isOwner, setIsOwner]               = useState(false); // #3750 ejer-only-menupunkter
   const [mobileOpen, setMobileOpen]         = useState(false);
@@ -575,7 +575,11 @@ export default function Layout() {
   const [setupPrefill, setSetupPrefill]     = useState({ teamName: "", managerName: "" });
   // Init fra cache (#1792-klasse): vis akademiet med det samme hvis brugeren har
   // set det før, så et forbigående fetch-hikke ikke skjuler et fungerende akademi.
-  const [academyEnabled, setAcademyEnabled] = useState(readCachedAcademyNav);
+  const academyTeam = /** @type {{ id: string } | null} */ (team);
+  const academyProfile = /** @type {{ role?: string, is_beta_tester?: boolean } | null} */ (profile);
+  const academyViewer = userId && academyTeam?.id && JSON.stringify([userId, academyTeam.id, academyProfile?.role, academyProfile?.is_beta_tester]);
+  const [academyMenu, setAcademyMenu] = useState(/** @type {{ viewer: string, visible: boolean } | null} */ (null));
+  const academyEnabled = academyMenu?.viewer === academyViewer && academyMenu?.visible === true;
   // #1441 A3: Klub-nav gater på API'ets `enabled` (403 facilities_disabled →
   // false), samme flag-kilde som selve /klub-siden. Skjult i prod indtil ejer-flip.
   const { enabled: facilitiesEnabled } = useFacilities();
@@ -749,21 +753,6 @@ export default function Layout() {
       // fire returnere 401.
       if (!h) return;
       fetchForumUnread(h).then((hasUnread) => { if (hasUnread != null) setForumUnread(hasUnread); });
-      // Akademi-nav-synlighed (#1308): bestem via /api/academy/me, men fejl LUKKER
-      // ikke punktet. Kun 200/409 er autoritative (opdater state + cache); 401
-      // (udløbet/fornyende session, #1792), 5xx og netværksfejl bevarer sidst kendte.
-      apiFetch(`${API}/api/academy/me`, { headers: h }, { source: "academy-me" })
-        .then(res => {
-          const data = res.status === 200 ? res.data : null;
-          const visible = resolveAcademyNavVisible({
-            status: res.status,
-            enabled: data?.enabled,
-            lastKnown: readCachedAcademyNav(),
-          });
-          setAcademyEnabled(visible);
-          if (res.status === 200 || res.status === 409) writeCachedAcademyNav(visible);
-        })
-        .catch(() => { /* netværksfejl: behold sidst kendte (state uændret) */ });
       // #5242: 401 håndteres nu centralt af apiFetch->networkErrorGuards
       // (afløser den lokale expireSessionIfRejected, #5233 fund 2).
       sendPresence(h, "presence");
@@ -776,6 +765,17 @@ export default function Layout() {
       }).catch(() => {});
     });
   }, []);
+
+  useEffect(() => {
+    if (!academyViewer) return;
+    let active = true;
+    void authHeaders({ json: false }).then(async (headers) => {
+      if (!headers || !active) return;
+      const visible = await readAcademyMenuVisibility(headers);
+      if (active && visible !== null) setAcademyMenu({ viewer: academyViewer, visible });
+    }).catch((error) => console.error("academy visibility read failed:", error));
+    return () => { active = false; };
+  }, [academyViewer]);
 
   useEffect(() => {
     if (!session) return;

@@ -1157,13 +1157,14 @@ async function isViewerAdmin(req) {
 // Beta-status for den aktuelle viewer (admin ELLER users.is_beta_tester). Bruges
 // til at gate beta-funktioner per-bruger uden at eksponere dem for alle. Spejler
 // isViewerAdmin. Ét opslag pr. request — beregn én gang og send til flag-kald.
-async function isViewerBetaTester(req) {
+async function isViewerBetaTester(req, { requireRead = false } = {}) {
   if (!req.user?.id) return false;
-  const { data: u } = await supabase
+  const { data: u, error } = await supabase
     .from("users")
     .select("role, is_beta_tester")
     .eq("id", req.user.id)
     .single();
+  if (error && requireRead) throw error;
   return u?.role === "admin" || u?.is_beta_tester === true;
 }
 
@@ -19182,6 +19183,20 @@ router.post("/admin/beta/full-reset", requireAdmin, adminWriteLimiter, async (re
 });
 
 // ═══ #1308: AKADEMI ══════════════════════════════════════════════════════════
+
+router.get("/academy/visibility", requireAuth, presencePulseLimiter, async (req, res) => {
+  if (!req.team) return res.json({ visible: false });
+  try {
+    const { data, error } = await supabase.from("app_config").select("value").eq("key", ACADEMY.FLAG_KEY).maybeSingle();
+    if (error) throw error;
+    const stage = data?.value;
+    const isBetaTester = stage === "beta" && await isViewerBetaTester(req, { requireRead: true });
+    return res.json({ visible: evaluateFlagStage(stage, { isBetaTester }) });
+  } catch (error) {
+    captureException(error, { tags: { route: "/academy/visibility" } });
+    return res.status(500).json({ error: error.message });
+  }
+});
 
 // GET /api/academy/me — holdets akademi-state: pladser, aktive akademiryttere,
 // og tilbudte intake-kandidater med potentiale-estimat (aldrig raw potentiale, #1162).

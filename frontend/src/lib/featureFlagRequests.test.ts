@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { loadAnonymousFlags } from "./featureStage.ts";
 
+test.beforeEach(() => invalidatePlayerReads());
+
 test("simultaneous anonymous flag consumers share one network request", async (t) => {
   let requests = 0;
   const { promise: waitForResponse, resolve: respond } = Promise.withResolvers<void>();
@@ -21,7 +23,7 @@ test("simultaneous anonymous flag consumers share one network request", async (t
   ]);
   assert.equal(requests, 1);
 });
-import { readPlayerFeatureFlags } from "./featureFlagRequests.ts";
+import { invalidatePlayerReads, readPlayerFeatureFlags } from "./featureFlagRequests.ts";
 
 test("viewer tokens, refreshes and anonymous calls stay isolated", async (t) => {
   const requests: string[] = [];
@@ -57,5 +59,39 @@ test("later calls are fresh and degraded server responses stay unknown", async (
 
   assert.equal(await loadAnonymousFlags(), null);
   assert.deepEqual(await loadAnonymousFlags(), { enabled: true });
+  assert.equal(requests, 2);
+});
+
+test("role invalidation prevents an old in-flight flag response from filling the cache", async (t) => {
+  const old = Promise.withResolvers<Response>();
+  let requests = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    requests += 1;
+    return requests === 1 ? old.promise : Response.json({ flags: { enabled: false } });
+  });
+  const headers = { Authorization: "Bearer viewer-a" };
+  const beforeRoleChange = readPlayerFeatureFlags(headers);
+  invalidatePlayerReads();
+  assert.deepEqual(await readPlayerFeatureFlags(headers), { enabled: false });
+  old.resolve(Response.json({ flags: { enabled: true } }));
+  await beforeRoleChange;
+  assert.deepEqual(await readPlayerFeatureFlags(headers), { enabled: false });
+  assert.equal(requests, 2);
+});
+
+test("access-token refresh keeps a successful read in the same auth session", async (t) => {
+  let requests = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    requests += 1;
+    return Response.json({ flags: { enabled: true } });
+  });
+  const auth = (sessionId: string, expiry: number) => {
+    const claims = Buffer.from(JSON.stringify({ iss: "fixture", sub: "viewer-a", session_id: sessionId, exp: expiry })).toString("base64url");
+    return { Authorization: `Bearer fixture.${claims}.signature` };
+  };
+  await readPlayerFeatureFlags(auth("session-a", 100));
+  await readPlayerFeatureFlags(auth("session-a", 200));
+  assert.equal(requests, 1);
+  await readPlayerFeatureFlags(auth("session-b", 300));
   assert.equal(requests, 2);
 });

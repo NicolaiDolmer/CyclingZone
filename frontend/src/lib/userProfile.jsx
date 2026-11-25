@@ -29,7 +29,8 @@
 // via auth-events (fx TOKEN_REFRESHED efter en admin-handling), ikke via en
 // dedikeret "rolle ændret"-skrivesti i denne klient.
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { invalidatePlayerReads } from "./featureFlagRequests.ts";
 import { supabase } from "./supabase";
 import { PROFILE_COLUMNS, shouldClearProfileOnAuthChange, mergeProfilePatch } from "./userProfileCache.js";
 
@@ -45,7 +46,15 @@ export function UserProfileProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const viewer = useRef(/** @type {{ id: string, role?: string | null, beta?: boolean | null } | null} */ (null));
+  const requestNumber = useRef(0);
   const fetchProfile = useCallback(async (uid) => {
+    const request = ++requestNumber.current;
+    if ((viewer.current?.id ?? null) !== uid) {
+      invalidatePlayerReads();
+      viewer.current = uid ? { id: uid } : null;
+      setProfile(null);
+    }
     if (!uid) {
       setProfile(null);
       setLoading(false);
@@ -60,8 +69,17 @@ export function UserProfileProvider({ children }) {
       .select(PROFILE_COLUMNS)
       .eq("id", uid)
       .maybeSingle();
+    if (request !== requestNumber.current) return;
     setLoading(false);
-    if (!error) setProfile(data || null);
+    if (!error) {
+      const before = viewer.current;
+      if (before?.role !== undefined
+          && (before.role !== data?.role || before.beta !== data?.is_beta_tester)) {
+        invalidatePlayerReads();
+      }
+      viewer.current = { id: uid, role: data?.role, beta: data?.is_beta_tester };
+      setProfile(data || null);
+    }
   }, []);
 
   useEffect(() => {
