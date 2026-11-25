@@ -7,21 +7,14 @@
 //
 // Aldrig blokerende og aldrig kastende: ethvert fejlsvar giver {} = alt off,
 // samme fail-safe som serverens evaluateFlagStage.
-import { apiFetch } from "./apiFetch.ts";
+import { readPlayerFeatureFlags } from "./featureFlagRequests.ts";
 import { authHeaders } from "./supabase";
 
 /** @returns {Promise<Record<string, boolean>>} */
 export async function fetchPlayerFeatureFlags() {
   try {
     const headers = (await authHeaders({ json: false })) ?? {};
-    const res = await apiFetch("/api/feature-flags", { headers });
-    // #5319: `degraded` = serverens DB-laesning fejlede. Alt-off som foer, men
-    // som {} (ukendt), saa en enkelt noegle ikke laeses som et bevidst off.
-    /** @type {{ flags?: Record<string, boolean>, degraded?: boolean } | null | undefined} */
-    const body = /** @type {any} */ (res.data);
-    if (res.ok && body?.degraded === true) return {};
-    const flags = res.ok ? body?.flags : null;
-    return flags && typeof flags === "object" ? flags : {};
+    return (await readPlayerFeatureFlags(headers)) ?? {};
   } catch {
     return {};
   }
