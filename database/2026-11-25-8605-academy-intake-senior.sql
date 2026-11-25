@@ -2,6 +2,7 @@
 -- The #8034 rider trigger remains the authority for club and reserved places.
 
 BEGIN;
+SET LOCAL lock_timeout = '3s';
 
 CREATE OR REPLACE FUNCTION public.finalize_academy_acquisition(
   p_team_id UUID,
