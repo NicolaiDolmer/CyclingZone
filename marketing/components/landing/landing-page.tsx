@@ -41,14 +41,14 @@ const PATHS = {
 // Hvert sprog har sine egne billeder, så /da viser spillet på dansk.
 const SHOTS = {
   en: {
-    team: { d: ["/landing/team-desktop.webp", 1735, 1222], m: ["/landing/team-mobile.webp", 1040, 1240] },
-    plan: { d: ["/landing/plan-desktop.webp", 1965, 905], m: ["/landing/plan-mobile.webp", 1022, 1000] },
-    result: { d: ["/landing/result-desktop.webp", 1400, 1071], m: ["/landing/result-mobile.webp", 976, 1445] },
+    team: { d: ["/landing/team-desktop-v2.webp", 1120, 510], m: ["/landing/team-mobile-v2.webp", 780, 781] },
+    plan: { d: ["/landing/plan-desktop-v2.webp", 1120, 665], m: ["/landing/plan-mobile-v2.webp", 780, 784] },
+    result: { d: ["/landing/result-desktop-v2.webp", 1120, 344], m: ["/landing/result-mobile-v2.webp", 780, 550] },
   },
   da: {
-    team: { d: ["/landing/team-desktop-da.webp", 1735, 1222], m: ["/landing/team-mobile-da.webp", 1040, 1240] },
-    plan: { d: ["/landing/plan-desktop-da.webp", 1965, 905], m: ["/landing/plan-mobile-da.webp", 1022, 1000] },
-    result: { d: ["/landing/result-desktop-da.webp", 1400, 1071], m: ["/landing/result-mobile-da.webp", 976, 1445] },
+    team: { d: ["/landing/team-desktop-da-v2.webp", 1120, 510], m: ["/landing/team-mobile-da-v2.webp", 780, 807] },
+    plan: { d: ["/landing/plan-desktop-da-v2.webp", 1120, 665], m: ["/landing/plan-mobile-da-v2.webp", 780, 784] },
+    result: { d: ["/landing/result-desktop-da-v2.webp", 1120, 304], m: ["/landing/result-mobile-da-v2.webp", 780, 550] },
   },
 } as const;
 
