@@ -63,6 +63,13 @@
 - Udgiftsliste med pris/brug/nedgrader/sluk · Claude · uge 48; ejeren opsiger selv.
 - Bestyrelsen tændes ved rigtige skyggetal + ejer-go.
 
+## Beslutninger 25/11 eftermiddag (dagbog #8719)
+- Før lør 28/11: #8668 (Fable NOTES) + #8605 + akademisiden #8081 · mistet træning tilbage senest fre (#8606/#8679/#8421) · mail 1 tor kl. 17-18 · mail-alias #7041 tor.
+- Postgres #6528 flyttet til man 30/11 (2 replikerings-slots). Fair-play, Manus, disk, nøgle + Infisical man 30/11.
+- Platform v2 #8709 (SEO på søgeord, fælles designsystem, fart 95 % forside / 75→90 % spil, spil før konto, alle sprog, én tragt) · SEO.md · checklist.design #8725.
+- Triage-byg: #8661 #8399 #7925 #8501 #8398 #8610 #8395 #7928 · regler: #8718 regel-oprydning, #8696 50-85-tal væk, #8698 skrift/kontrast.
+- Auto-toget flyttes til PC1 (#8711). Udgifter #8712 fre. Instant feel #8714. Discord #8715. Oprydning #8716.
+
 ## Næste uge: uge 49 (30/11-6/12)
 
 - Annoncens første måling: tilmelding, første løb, 7-dages retention · Claude · efter launch.
