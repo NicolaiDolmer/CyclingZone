@@ -491,12 +491,17 @@ async function getAuctionPromotionAllowance(supabase, auction, bidderId, squad) 
  * @param {Parameters<typeof getIncomingSquadViolation>[0]} buyer
  */
 async function getAuctionIncomingSquadViolation(supabase, auction, bidderId, buyer) {
-  if (buyer.club_count >= CLUB_RIDER_CAP && auction.current_bidder_id === bidderId && Object.hasOwn(auction, "reservation_squad")) {
-    const { data: registeredCount, error } = await supabase.rpc("auction_settlement_club_count_8034", { p_team: bidderId });
-    if (error || !Number.isInteger(registeredCount)) {
-      throw new Error(`Could not check the winning bid club capacity: ${error?.message ?? "invalid count"}`);
+  if (auction.current_bidder_id === bidderId && Object.hasOwn(auction, "reservation_squad")) {
+    // Use projected registrations only to consume a place already reserved.
+    // The incoming half of a swap can register before the outgoing half.
+    buyer = { ...buyer, rider_count: buyer.future_count ?? buyer.rider_count };
+    if ((buyer.club_count ?? 0) >= CLUB_RIDER_CAP) {
+      const { data: registeredCount, error } = await supabase.rpc("auction_settlement_club_count_8034", { p_team: bidderId });
+      if (error || !Number.isInteger(registeredCount)) {
+        throw new Error(`Could not check the winning bid club capacity: ${error?.message ?? "invalid count"}`);
+      }
+      buyer.club_count = registeredCount;
     }
-    buyer = { ...buyer, club_count: registeredCount };
   }
   const violation = getIncomingSquadViolation(buyer, { softCapBuffer: 0 });
   if (!violation || violation.scope === "club") return violation;

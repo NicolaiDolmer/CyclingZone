@@ -338,24 +338,34 @@ test("PG17: independent market transactions cannot claim the same reserved place
         assert.equal((await finalize()).code, "already_completed");
         assert.deepEqual(snapshot(), settled);
       });
-      await t.test(`${mode}: youth senior settlement consumes a reserved place after a deferred balanced swap`, async () => {
-        reset(mode, "club");
-        openYouthAuction();
-        psql(bid(mode, id(20)));
-        const outgoing = psql(`SELECT id FROM riders WHERE team_id='${buyer}' AND squad='senior' ORDER BY id LIMIT 1;`);
-        const args = `'${outgoing}','${id(12)}','${buyer}','${seller}',true,'${time}','{}','{}'`;
-        const swap = mode === "atomic"
-          ? `auto_accept_claim_swap_paid(${args},'${id(48)}',0,'{}')`
-          : `auto_accept_claim_swap(${args})`;
-        assert.equal(JSON.parse(psql(`SELECT ${swap};`)).status, "claimed");
-        assert.equal(psql(`SELECT pending_team_id FROM riders WHERE id='${outgoing}';`), seller);
-        assert.equal(psql(`SELECT pending_team_id FROM riders WHERE id='${id(12)}';`), buyer);
-        assert.equal((await finalize()).code, "youth_completed_senior");
-        const settled = snapshot();
-        assert.deepEqual(settled.riders.find(r => r[0] === id(10)).slice(1), [buyer, null, "senior"]);
-        assert.equal(settled.payments, 1);
-        assert.equal(settled.balances.find(team => team.id === buyer).balance, 99800);
-      });
+      for (const registration of ["deferred", "partially registered"]) {
+        await t.test(`${mode}: youth senior settlement consumes a reserved place after a ${registration} balanced swap`, async () => {
+          const partiallyRegistered = registration === "partially registered";
+          reset(mode, partiallyRegistered ? "senior" : "club");
+          openYouthAuction();
+          psql(bid(mode, id(20)));
+          const outgoing = psql(`SELECT id FROM riders WHERE team_id='${buyer}' AND squad='senior' ORDER BY id LIMIT 1;`);
+          const args = `'${outgoing}','${id(12)}','${buyer}','${seller}',true,'${time}','{}','{}'`;
+          const swap = mode === "atomic"
+            ? `auto_accept_claim_swap_paid(${args},'${id(48)}',0,'{}')`
+            : `auto_accept_claim_swap(${args})`;
+          assert.equal(JSON.parse(psql(`SELECT ${swap};`)).status, "claimed");
+          assert.equal(psql(`SELECT pending_team_id FROM riders WHERE id='${outgoing}';`), seller);
+          assert.equal(psql(`SELECT pending_team_id FROM riders WHERE id='${id(12)}';`), buyer);
+          if (partiallyRegistered) {
+            psql(`UPDATE riders SET team_id=pending_team_id,pending_team_id=NULL WHERE id='${id(12)}';`);
+            assert.equal(psql(`SELECT count(*) FROM riders WHERE team_id='${buyer}' AND squad='senior';`), "30");
+            const before = snapshot();
+            assert.throws(() => psql(`UPDATE riders SET team_id='${buyer}' WHERE id='${id(11)}';`), /squad_full/);
+            assert.deepEqual(snapshot(), before);
+          }
+          assert.equal((await finalize()).code, "youth_completed_senior");
+          const settled = snapshot();
+          assert.deepEqual(settled.riders.find(r => r[0] === id(10)).slice(1), [buyer, null, "senior"]);
+          assert.equal(settled.payments, 1);
+          assert.equal(settled.balances.find(team => team.id === buyer).balance, 99800);
+        });
+      }
       for (const cap of ["club","senior"]) {
         await t.test(`${mode}/${cap}: bidder and acquisition compete in both orders`,async () => {
           for (const bidFirst of [true,false]) {
