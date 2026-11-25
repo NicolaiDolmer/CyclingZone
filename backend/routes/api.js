@@ -19237,7 +19237,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     const { data: seniorLandingUsed, error: seniorLandingErr } = await supabase.rpc("count_team_squad_members", {
       p_team_id: teamId, p_squad: "senior", p_exclude_rider_id: null,
     });
-    if (seniorLandingErr) console.warn("[academy] senior landing count:", seniorLandingErr.message);
+    if (seniorLandingErr) console.warn("academy senior landing count failed:", seniorLandingErr.message);
 
     // Hent potentiale-værdier separat til estimat-beregning (#1162 whitelist: id, potentiale, birthdate, team_id).
     // #2454: `primary_type` og evne-rækken kommer med, så kandidatens potentiale
