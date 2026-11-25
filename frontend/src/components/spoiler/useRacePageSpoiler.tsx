@@ -9,7 +9,7 @@
 //     resultat-tal (mærket `spoiler` af siden) står ikke i hovedet,
 //   - åbnes med ét tryk eller når filmen er i mål, overalt og på alle enheder (billede 4).
 import { useCallback, useId, useMemo, type ReactNode } from "react";
-import { SpoilerHeroNote, SpoilerHeroSwitch, SpoilerResultsHidden, SpoilerResultsPending } from "./SpoilerShield.tsx";
+import { SpoilerHeroNote, SpoilerHeroSwitch, SpoilerHeroSwitchSkeleton, SpoilerResultsHidden, SpoilerResultsPending } from "./SpoilerShield.tsx";
 import { finishedStageTab, raceShielded, stageHidden, withoutHiddenStages, withoutSpoilerStats } from "./spoilerShieldModel.ts";
 import type { SpoilerStory } from "./spoilerStoryContext.ts";
 import { useRaceSpoilerShield } from "./useSpoilerShield.ts";
@@ -48,7 +48,7 @@ export interface RacePageSpoiler {
 export function useRacePageSpoiler({ raceId, selectedStage, stagesCompleted, onShowResults }: {
   raceId: string | null; selectedStage: number; stagesCompleted: number; onShowResults: () => void;
 }): RacePageSpoiler {
-  const { view, openStage, setRaceShield, saveFailed } = useRaceSpoilerShield(raceId);
+  const { view, loading, openStage, setRaceShield, saveFailed } = useRaceSpoilerShield(raceId);
   const switchId = useId();
   const hidden = useCallback((n: number) => stageHidden(view, n, stagesCompleted), [view, stagesCompleted]);
   const selectedHidden = hidden(selectedStage);
@@ -89,8 +89,10 @@ export function useRacePageSpoiler({ raceId, selectedStage, stagesCompleted, onS
   return {
     shownTab, tabFor, visible, hero, story, hiddenSlotFor,
     resultsHidden: anyHidden,
-    heroAside: view.enabled ? <SpoilerHeroSwitch id={switchId} on={shielded} onChange={setRaceShield} failed={saveFailed} /> : null,
+    heroAside: loading && !view.enabled ? <SpoilerHeroSwitchSkeleton /> : view.enabled ? <SpoilerHeroSwitch id={switchId} on={shielded} onChange={setRaceShield} failed={saveFailed} /> : null,
     heroNote: view.enabled && selectedHidden ? <SpoilerHeroNote /> : null,
-    resultsBody: selectedHidden ? (view.pending ? <SpoilerResultsPending /> : <SpoilerResultsHidden onShow={show} />) : null,
+    resultsBody: (loading && selectedStage <= stagesCompleted) || (selectedHidden && view.pending)
+      ? <SpoilerResultsPending />
+      : selectedHidden ? <SpoilerResultsHidden onShow={show} /> : null,
   };
 }
