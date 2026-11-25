@@ -24,6 +24,23 @@ const ALLOWED_EQ_COLUMNS = {
 // #230: proxyDeleteError lader en test simulere at DELETE på auction_proxy_bids
 // fejler. supabase-js kaster ikke — den returnerer { error } — så det er den
 // eneste måde at dække "sletningen mislykkedes"-grenen på.
+function mockAuctionUpdate(state, payload, log) {
+  const filters = [];
+  const request = {
+    eq(key, value) { filters.push(() => key === "id" || state[key] === value); return request; },
+    lt(key, value) { filters.push(() => state[key] < value); return request; },
+    in(key, values) { filters.push(() => values.includes(state[key] ?? "active")); return request; },
+    then(resolve) {
+      if (filters.every(matches => matches())) {
+        Object.assign(state, payload);
+        log.push({ ...payload });
+      }
+      return Promise.resolve({ data: null, error: null }).then(resolve);
+    },
+  };
+  return request;
+}
+
 function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null, proxyDeleteError = null, databaseLeaderSync = false, afterBidInsert = null, beforeBidInsert = null }) {
   const auctionState = { ...auction };
   // #183: muterbar kopi så delete på auction_proxy_bids reflekteres i efterfølgende selects.
@@ -44,6 +61,7 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
   return {
     state: { auction: auctionState, bids: bidLog, updates: updateLog, teamLookups, proxies: proxiesState, proxyDeletes: proxyDeleteLog, rpcCalls },
     async rpc(name,args) {
+      if (name === "match_legacy_auction_proxy_tie_8034") return { data: null, error: { code: "PGRST202" } };
       assert.equal(name,'match_auction_proxy_tie_6181');
       rpcCalls.push({...args});
       const candidate=proxiesState.find(row=>row.team_id===args.p_team_id);
@@ -74,14 +92,7 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
             };
           },
           update(payload) {
-            return {
-              eq(col) {
-                assertColumn("auctions", col);
-                Object.assign(auctionState, payload);
-                updateLog.push({ ...payload });
-                return Promise.resolve({ data: null, error: null });
-              },
-            };
+            return mockAuctionUpdate(auctionState, payload, updateLog);
           },
         };
       }
@@ -1315,13 +1326,7 @@ test("resolver: cascade breaker når INSERT afvises af late-bid trigger (#269)",
             }),
           }),
           update(payload) {
-            return {
-              eq: () => {
-                Object.assign(auctionState, payload);
-                auctionUpdates.push({ ...payload });
-                return Promise.resolve({ data: null, error: null });
-              },
-            };
+            return mockAuctionUpdate(auctionState, payload, auctionUpdates);
           },
         };
       }

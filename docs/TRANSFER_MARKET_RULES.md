@@ -104,7 +104,7 @@ og finalize-gaten håndhæver trup-loftet **hårdt** (§7).
 Målt 30/8: `transfer_windows` har 2 rækker, begge `status='closed'` med `closes_at=NULL` -
 død data. Ingen kode må ankre noget i den tabel (kostede en fejlklasse, se §12).
 Deadline Day-cron'en og Final Whistle-kravet i sæsonskifte-readiness er fjernet (#6120).
-**Sæsonskifte-readiness (#5855, 17/10)** læser ikke `transfer_windows`. Den kræver `no_deferred_transfers` (ingen gennemførte handler der venter på flytning, `riders.pending_team_id`) og at trupperne holder divisionens grænser talt som `future_count` (udskudte indgående tæller på køberen). Åbne forhandlinger blokerer ikke; finalize-gaten (§7) håndhæver trup-loftet efter skiftet. Vindue-markører må aldrig sættes manuelt for at få gaten grøn.
+**Sæsonskifte-readiness (#5855, 17/10)** læser ikke `transfer_windows`. Den kræver `no_deferred_transfers` (ingen gennemførte handler der venter på flytning, `riders.pending_team_id`) og måler divisionens trupgrænser med `future_count` (udskudte indgående tæller på køberen). Seniorryttere, som sæsonskiftet har rykket op og som fortsat tilhører samme klub, giver plads i denne kontrol og i den gamle tvangshåndhævelse (#7323, YOUTH_RULES §2.2). Markedet bruger det faktiske antal ved nye bud og køb. Et vindende bud, der allerede var afgivet ved skiftet, kan afregnes med plads til de senere automatiske oprykninger i køberens måltrup. Åbne forhandlinger blokerer ikke. Vindue-markører må aldrig sættes manuelt for at få gaten grøn.
 
 ---
 
@@ -656,6 +656,8 @@ Tændt:
 
 ## 9. Trup-lofter
 
+Fra udrulningen har hver trup 30 pladser og klubben højst 60 ryttere på tværs (#8034). Nye bud og køb kræver plads under begge grænser. En ført auktion reserverer plads under begge lofter for alle erhvervelsesveje under holdlåsen. Et førerskift frigiver den gamle reservation. Ved overdragelse bruges auktionens egen reservation, også ved afventende registrering. Et bytte én for én er tilladt ved og over lofterne, når ingen trup vokser, også mens et tidligere bytte afventer registrering. Vokser en trup, gælder loftet fortsat. Hvis en afventende rytterregistrering er årsag til afvisningen ved klubloftet, angiver beskeden, at registreringen først skal gennemføres. Begge ben ligger under samme transaktionslås. Intern flytning ændrer ikke klubtallet, men kræver plads i måltruppen. Automatisk oprykning kan overskride trupgrænsen uden at udløse sanktioner. Den gamle trupbøde og tvangssalgskørsel stopper fra sæson 6.
+
 | Regel | Værdi | Hvor låst | Fil |
 |---|---|---|---|
 | `MAX_SQUAD_SIZE` (senior, alle divisioner) | **30** | #838 | `marketUtils.js:9-15` |
@@ -671,6 +673,8 @@ ekstra plads, så et forsvar blokeres aldrig.
 
 **Ungdomsauktioner har en løsere gate.** `getAuctionBidRoomBlock`
 (`auctionRules.js:387-415`, #2701) blokerer kun når **både** senior og akademi er fulde.
+En ungdomsreservation følger afviklerens aktuelle sæsonalder, også når den kommende sæson bruges i sæsongabet. En ældre føring uden lagret reservation får seniorplads, hvis den stadig er ledig efter eksisterende reservationer. Ellers tæller føringen i den alderssvarende ungdomstrup.
+Ved afvikling af et allerede accepteret bud tæller et udskudt bytte efter den aftalte registrering for både klub- og trupgrænsen. Det gælder også, når det indgående ben registreres først. Genkørsel efter leveret ungdomsrytter fortsætter den idempotente debitering.
 
 **Tællegrundlaget er `future_count`** = ejede nu − på-vej-væk + på-vej-ind
 (`getTeamMarketState`, `marketUtils.js:200-267`). Akademi- og pensionerede ryttere tæller

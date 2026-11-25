@@ -70,6 +70,7 @@ function makeAcademyWorld({
 
   const supabase = {
     rpc(name, params) {
+      if (name === "auction_promotion_allowance_7323") return { data: 0, error: null };
       if (name === "finalize_academy_acquisition") {
         const next = chain.then(async () => {
           state.rpcCalls += 1;
@@ -176,7 +177,7 @@ test("RACE: N parallelle akademi-auktion-finalize, én ledig plads i mål-truppe
 
   // Rytterne har ingen fødselsdato → academyPlacementSquad placerer dem i junior
   // (samme regel som #4619-backfill'en). Én ledig junior-plads.
-  const { supabase, state } = makeAcademyWorld({ teamId, balance: 1_000_000, riders, squadStart: { junior: SQUAD_CAPS.junior - 1 } });
+  const { supabase, state, squadCount } = makeAcademyWorld({ teamId, balance: 1_000_000, riders, squadStart: { junior: SQUAD_CAPS.junior - 1 } });
 
   // Wire auctions + seasons + teams + transfer_listings + riders read ind i
   // verden-mocken (RPC'en deles, men finalize læser også auction/season/team).
@@ -223,6 +224,7 @@ test("RACE: N parallelle akademi-auktion-finalize, én ledig plads i mål-truppe
             assert.equal(cols, "id");
             assert.deepEqual(options, { count: "exact", head: true });
             return {
+              or() { return { eq: async () => ({ count: 30 + squadCount("junior") + squadCount("u23"), error: null }) }; },
               eq(column) {
                 if (column === "team_id") {
                   const b = {
@@ -326,7 +328,7 @@ test("KRYDS: finalize + signAcademyCandidate samtidig (samme team, samme rytter)
   const riderId = "rider-shared";
   const rider = { id: riderId, team_id: null, is_academy: false, firstname: "Sander", lastname: "Akademi", base_value: 100000, market_value: 100000, prize_earnings_bonus: 0 };
 
-  const { supabase, state } = makeAcademyWorld({ teamId, balance: 1_000_000, riders: { [riderId]: { ...rider } } });
+  const { supabase, state, squadCount } = makeAcademyWorld({ teamId, balance: 1_000_000, riders: { [riderId]: { ...rider } } });
   const baseRpc = supabase.rpc.bind(supabase);
 
   // finalize-stien (auctionFinalization): youth-auktion for samme rytter.
@@ -370,6 +372,7 @@ test("KRYDS: finalize + signAcademyCandidate samtidig (samme team, samme rytter)
             assert.equal(cols, "id");
             assert.deepEqual(options, { count: "exact", head: true });
             return {
+              or() { return { eq: async () => ({ count: 30 + squadCount("junior") + squadCount("u23"), error: null }) }; },
               eq(column) {
                 if (column === "team_id") {
                   const b = { eq() { return b; }, not() { return { neq: () => Promise.resolve({ count: 0, error: null }) }; }, then(res, rej) { return Promise.resolve({ count: 30, error: null }).then(res, rej); } };
@@ -421,7 +424,7 @@ test("KRYDS: finalize + signAcademyCandidate samtidig (samme team, samme rytter)
 
   const [finalizeRes, signRes] = await Promise.allSettled([
     finalizeAuctionById({ supabase: finalizeClient, auctionId: "auc-shared", notifyTeamOwner: async () => {}, now: new Date("2026-06-20T12:00:00Z") }),
-    signAcademyCandidate(signClient, { teamId, riderId, seasonNumber: 1 }),
+    signAcademyCandidate(signClient, { teamId, riderId, seasonNumber: 1, now: new Date("2026-06-20T12:00:00Z") }),
   ]);
 
   // Netop ÉN debit på tværs af de to forskellige stier (det var rod-årsagen:

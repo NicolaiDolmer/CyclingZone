@@ -23,7 +23,15 @@ import { YOUTH_SQUADS, type YouthSquad } from "./youthSquadPages.ts";
 import type { supabase as appSupabase } from "./supabase.ts";
 
 /** Loft pr. ungdomstrup. Spejl af backend/lib/squads.js SQUAD_CAPS. */
-export const SQUAD_CAPS: Readonly<Record<YouthSquad, number>> = Object.freeze({ u23: 12, junior: 10 });
+export const CLUB_RIDER_CAP = 60;
+
+export const SQUAD_CAPS: Readonly<Record<YouthSquad, number>> = Object.freeze({ u23: 30, junior: 30 });
+
+/** Truppens serverloft med det fælles frontendloft som fallback (#5631). */
+export function capForSquad(payload: unknown, squad: YouthSquad): number {
+  const cap = (payload as { caps?: Partial<Record<YouthSquad, unknown>> } | null)?.caps?.[squad];
+  return typeof cap === "number" && Number.isFinite(cap) ? cap : SQUAD_CAPS[squad];
+}
 
 /** Højeste sæsonalder i junior-truppen. Spejl af squads.js SQUAD_MAX_AGE.junior. */
 export const JUNIOR_MAX_SEASON_AGE = 18;

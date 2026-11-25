@@ -376,9 +376,9 @@ test("#5903 moveRider → senior: promote() rydder ikke selv (moveRider rydder �
   assert.ok(!tables.includes("race_entries"), "promote() må ikke scanne race_entries når moveRider ejer oprydningen");
 });
 
-test("promote: afviser ved fuld senior-trup (squad_cap_violation)", async () => {
+test("promote: pending departures never open a place in a full senior squad", async () => {
   const { supabase } = makeSupabase({ rider: ACADEMY_RIDER });
-  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30 });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, rider_count: 31, future_count: 29 });
   await assert.rejects(
     () => promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() }),
     /squad_cap_violation/,

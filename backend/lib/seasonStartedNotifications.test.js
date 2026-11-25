@@ -2,6 +2,33 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { emitSeasonStartedNotifications } from "./seasonTransition.js";
+import { SQUAD_CAPS } from "./squads.js";
+
+test("#7323 promotions and squad overflow are in the club's one season-start notice", async () => {
+  const calls = [];
+  const countQuery = {
+    eq: () => countQuery,
+    then: (resolve) => resolve({ count: SQUAD_CAPS.u23 + 1, error: null }),
+  };
+  const supabase = { from: () => ({ select: () => countQuery }) };
+  await emitSeasonStartedNotifications({
+    supabase,
+    toSeason: { id: "s6", number: 6 },
+    humanTeams: [{ id: "club", user_id: "manager" }],
+    squadPromotions: [
+      { team_id: "club", to_squad: "u23", firstname: "Ada", lastname: "Test" },
+      { team_id: "club", to_squad: "u23", firstname: "Kim", lastname: "Test" },
+      { team_id: "other", to_squad: "senior", firstname: "Other", lastname: "Rider" },
+    ],
+    loadSponsorPayouts: async () => new Map(),
+    notify: async (notice) => { calls.push(notice); return { delivered: true }; },
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].type, "season_started");
+  assert.deepEqual(calls[0].metadata.squadPromotions, [
+    { squad: "u23", names: ["Ada Test", "Kim Test"], overLimit: true },
+  ]);
+});
 import { notifyUser } from "./notificationService.js";
 
 // #1357 + #3101 · in-app season_started-notifikationer ved sæsonskifte, inkl.

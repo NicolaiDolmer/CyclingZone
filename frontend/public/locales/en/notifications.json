@@ -1,4 +1,10 @@
 {
+  "seasonPromotions": {
+    "u23Moved": "Moved up to U23: {names}",
+    "seniorMoved": "Moved up to senior: {names}",
+    "u23OverLimit": "Your U23 team is over its limit. View the squad.",
+    "seniorOverLimit": "Your senior team is over its limit. View the squad."
+  },
   "page": {
     "title": "Inbox",
     "subtitleMine": "{count, plural, =0 {All read} one {1 unread} other {# unread}}",

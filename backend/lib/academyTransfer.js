@@ -143,7 +143,7 @@ export async function promote(supabase, {
   // Cap-guard: en promotion må ikke bringe future_count over division-cap'en.
   const state = await getMarketState(supabase, teamId);
   const cap = state?.squad_limits?.max ?? 30;
-  const future = state?.future_count ?? state?.rider_count ?? 0;
+  const future = Math.max(state?.rider_count ?? 0, state?.future_count ?? 0);
   if (future + 1 > cap) throw new Error("squad_cap_violation");
 
   // #2881/#1309: kun kontraktløse ryttere (salary == null) får en ny kontrakt;
@@ -161,6 +161,7 @@ export async function promote(supabase, {
   if (error) {
     // #8153: vagten paa riders afviser trupskiftet for en rytter med en ventende frigivelse.
     if (isPendingReleaseGuardError(error)) throw new Error(PENDING_RELEASE_SQUAD_CODE);
+    if (error.code === "23514" && error.message === "squad_full") throw new Error("squad_full");
     throw new Error(`promote update: ${error.message}`);
   }
   await notifyIfContractExpiresThisSeason({

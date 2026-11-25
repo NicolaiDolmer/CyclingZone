@@ -49,7 +49,7 @@
   },
   "filter": {
     "age_all": "All ages",
-    "age_u23": "Under 23",
+    "age_u23": "U23",
     "age_u25": "Under 25",
     "age_25plus": "25 and over",
     "groupAll": "All groups",
@@ -98,7 +98,7 @@
   "row": {
     "status": {
       "injuryRisk": "High injury risk",
-      "u23": "Under 23",
+      "u23": "U23",
       "junior": "Junior",
       "academy": "Academy",
       "contractExpiring": "Contract ends",

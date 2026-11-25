@@ -1723,7 +1723,7 @@
       },
       "academySize": {
         "title": "Tamaño de la academia (por equipo)",
-        "text": "Tu Academia tiene dos equipos, cada uno con su propio tope: hasta {u23SquadCap} ciclistas en tu equipo sub-23 y hasta {juniorSquadCap} en tu equipo júnior. Un ciclista ocupa una plaza en el equipo en el que lo sitúa su edad. Estas plazas son completamente independientes de tu tope de plantilla sénior de {squadCap}. Los ciclistas de la academia nunca cuentan para tu límite de plantilla sénior y nunca corren en carreras sénior; desde la temporada 4 corren en sus propias carreras juveniles."
+        "text": "Cada equipo tiene un máximo de {squadCap} ciclistas y el club puede tener hasta {clubRiderCap} en total. Las pujas, compras e intercambios requieren una plaza en un equipo en el que el ciclista pueda competir. Si el club está al límite, vende o libera a un ciclista antes de incorporar a otro. Puedes intercambiar un ciclista por otro si se respetan los límites de cada equipo. Los traslados internos requieren una plaza en el equipo de destino. Los ascensos automáticos pueden superar el límite del equipo. Puedes seguir compitiendo, entrenando y vendiendo ciclistas."
       },
       "dailyTrainingBoost": {
         "title": "Entrenamiento diario en la academia",
@@ -1746,17 +1746,8 @@
         "text": "Desde la temporada 5 la academia no tiene coste de mantenimiento por plaza. Tus corredores de la academia solo cuestan su salario."
       },
       "graduation": {
-        "title": "Día de graduación",
-        "text": "Los ciclistas que han quedado pequeños para su plantilla pasan de nivel en el cambio de temporada. Un júnior que cumple 19 años pasa a tu equipo sub-23, y un ciclista sub-23 que cumple 23 pasa a tu equipo sénior. La lista se abre la semana antes del cambio de temporada, y el plazo es el propio cambio. Hasta que muevas a un ciclista, entrena y corre en su plantilla anterior. Para cada ciclista eliges Subir (necesita una plaza libre en la plantilla a la que pasa, y conserva su contrato exactamente como está), Vender en el mercado de fichajes o Liberar como agente libre. Si no haces nada, el club elige por ti en el cambio: sube cuando hay sitio y, si no, vende. Tu entrenador da una breve lectura sobre cada ciclista, y es solo una lectura, nunca una promesa."
-      },
-      "graduationDayPage": {
-        "title": "Dónde tomar la decisión",
-        "steps": [
-          "Aparece un banner en la página de la Academia, y recibes un mensaje en tu bandeja de entrada, cuando hay ciclistas esperando.",
-          "Abre el Día de graduación desde cualquiera de los dos.",
-          "Cada transición tiene su propia tarjeta, con una fila por ciclista: valoración, potencial, contrato y la lectura de tu entrenador.",
-          "Fija Subir, Vender o Liberar para cada ciclista y luego pulsa Confirmar todo."
-        ]
+        "title": "Ascenso automático de plantilla",
+        "text": "Al cambiar de temporada, subo a los juveniles al equipo sub-23 a los 19 años de edad de temporada y a los corredores sub-23 al equipo sénior a los 23. Los corredores que siguen en tu club conservan el contrato y el sueldo. Las subastas y los anuncios de traspaso siguen en curso. Los asciendo aunque la plantilla esté llena. Puedes seguir compitiendo, entrenando y vendiendo. Cuando haya una plaza libre, podrás incorporar corredores otra vez. Los ascensos aparecen en el mensaje de cambio de temporada."
       },
       "promoteDemote": {
         "title": "Mover ciclistas entre plantillas",
@@ -1778,8 +1769,8 @@
         "text": "Sí, subir siempre está permitido si hay una plaza libre: un chico de 17 años puede estar en el equipo sub-23, uno de 20 en el equipo sénior, cuando tú elijas. Bajar solo funciona dentro del límite de edad de la propia plantilla: uno de 19 años no puede volver al equipo júnior, y uno de 23 no puede volver al equipo sub-23."
       },
       "graduationDayAt23": {
-        "title": "¿Qué pasa cuando un ciclista supera la edad de su plantilla?",
-        "text": "En el cambio de temporada, los ciclistas que han quedado pequeños para su plantilla pasan de nivel: de júnior al equipo sub-23 con 19 años de edad de temporada, de sub-23 a sénior con 23. Tienes la primera elección en el Día de graduación; si no haces nada antes del plazo, el club lo sube cuando hay sitio y puedes permitírtelo, si no lo vende y, si no, lo libera como agente libre. En el cambio de temporada, los contratos que vencen terminan primero, así que solo pueden subir los ciclistas que siguen teniendo contrato. Renueva el contrato de un ciclista joven antes de que acabe la temporada si quieres que suba."
+        "title": "Ascenso automático de plantilla",
+        "text": "Al cambiar de temporada, subo a los juveniles al equipo sub-23 a los 19 años de edad de temporada y a los corredores sub-23 al equipo sénior a los 23. Los corredores que siguen en tu club conservan el contrato y el sueldo. Las subastas y los anuncios de traspaso siguen en curso. Los asciendo aunque la plantilla esté llena. Puedes seguir compitiendo, entrenando y vendiendo. Cuando haya una plaza libre, podrás incorporar corredores otra vez. Los ascensos aparecen en el mensaje de cambio de temporada."
       },
       "youthRacesFromS4": {
         "title": "¿Corren de verdad el equipo sub-23 y el equipo júnior?",

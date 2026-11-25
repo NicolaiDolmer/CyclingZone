@@ -1,0 +1,40 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "topic": "Academy",
+      "area": "academy",
+      "en": {
+        "title": "Youth riders move up at the season change",
+        "body": "I move juniors to the U23 team at season age 19 and U23 riders to the senior team at 23. They keep their contracts and pay, and their sales continue. If a squad goes over its limit, you can keep racing, training and selling. You can bring riders into that squad again once it has a free place. See who moved up in your season change message."
+      },
+      "da": {
+        "title": "Ungdomsryttere rykker op ved sæsonskiftet",
+        "body": "Jeg rykker juniorer op på U23-holdet ved sæsonalder 19 og U23-ryttere op på seniorholdet ved 23. De beholder kontrakt og løn, og deres salg fortsætter. Kommer en trup over loftet, kan du stadig køre løb, træne og sælge. Du kan få nye ryttere ind i truppen igen, når der er en ledig plads. Se, hvem der rykkede op, i din sæsonskiftebesked."
+      },
+      "refs": [
+        7323
+      ],
+      "rollout": "live"
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "topic": "Academy",
+      "area": "academy",
+      "en": {
+        "title": "More room in each squad",
+        "body": "Each squad can hold up to 30 riders and your club can have up to 60 in total. New bids and purchases require room in an eligible squad. At the club limit, sell or release a rider before adding another. You can swap one rider for one if no squad gets bigger, even when a squad is already over its limit. A swap that makes a squad bigger requires room in that squad. To move a rider already at your club, you need a free place in the destination squad. Automatic promotions can go over a squad limit. You can still race, train and sell riders."
+      },
+      "da": {
+        "title": "Plads til flere ryttere i hver trup",
+        "body": "Hver trup kan have op til 30 ryttere, og klubben kan have op til 60 i alt. Nye bud og køb kræver plads i en trup, rytteren kan køre for. Ved klubgrænsen skal du sælge eller frigive en rytter, før du tilføjer en ny. Du kan bytte én rytter for én, hvis ingen trup bliver større, også når en trup allerede er over grænsen. Et bytte, der gør en trup større, kræver plads i den trup. For at flytte en rytter, du allerede har, skal der være en ledig plads i den nye trup. Automatiske oprykninger må overskride trupgrænsen. Du kan stadig køre løb, træne og sælge ryttere."
+      },
+      "refs": [
+        8034
+      ],
+      "rollout": "live"
+    }
+  ]
+}

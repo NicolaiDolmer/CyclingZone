@@ -96,7 +96,7 @@ export default function AcademyPage() {
   // #5519: med U23/Junior-siderne tændt erstatter links Youth squads-kortet (3a).
   const youthSquadPagesOn = useYouthSquadPages();
   const {
-    enabled, squads, intake, graduations, balance,
+    enabled, squads, intake, balance, clubCapacity,
     intakePull, loading, error, signCandidate, rejectCandidate,
     pullIntake, academyProfile, saveProfile, roster, refresh,
   } = useAcademy();
@@ -124,6 +124,7 @@ export default function AcademyPage() {
 
   // #6155: kun signeringens fejl er tilbage; flyt/fyr sker på rytterprofilen.
   function mapActionError(err) {
+    if (err === "club_roster_full") return t("clubFull");
     if (err === "academy_full") return t("error.academyFull");
     if (err === "not_offered") return t("error.notOffered");
     // #2796: begge faldt før igennem til den generiske besked (+ Sentry-500).
@@ -241,9 +242,12 @@ export default function AcademyPage() {
     // er plads (academyLandingSquad, spejl af signeringens prøve-rækkefølge).
     const targetSquad = item.targetSquad ?? academyTargetSquad(rider.birthdate, seasonYear);
     const landing = academyLandingSquad(targetSquad, ageForSeason(rider.birthdate, seasonYear), squadCounts);
-    const isFull = landing.full;
+    const clubFull = clubCapacity != null && clubCapacity.used >= clubCapacity.max;
+    const isFull = landing.full || clubFull;
     const blockedBoth = isFull && landing.options.length > 1;
-    const fullTooltip = blockedBoth
+    const fullTooltip = clubFull
+      ? t("clubFull")
+      : blockedBoth
       ? t("fullTooltipBoth")
       : targetSquad === "junior"
         ? t("fullTooltipJunior", { max: SQUAD_CAPS.junior })
@@ -433,6 +437,7 @@ export default function AcademyPage() {
         roster={roster ?? []}
         seasonYear={seasonYear}
         squadCounts={squadCounts}
+        clubCapacity={clubCapacity}
         academyProfile={academyProfile}
         saveProfile={saveProfile}
         refreshAcademy={refresh}
@@ -462,6 +467,11 @@ export default function AcademyPage() {
                 {t("balance", { amount: formatMoney(balance) })}
               </span>
             )}
+            {clubCapacity != null && (
+              <span className="font-data text-sm tabular-nums text-cz-2">
+                {t("clubRoster")}: {t("squadLinks.count", clubCapacity)}
+              </span>
+            )}
             {/* #5568: "U23 5/12 · Junior 3/10" — loftet pr. trup, ikke ét akademital. */}
             <span className="font-data text-sm tabular-nums text-cz-2" data-testid="academy-squad-caps">
               {squadRows.map((row, i) => (
@@ -485,36 +495,6 @@ export default function AcademyPage() {
       />
 
       <div className="space-y-6">
-      {/* GRADUATION DAY-BANNER (#2491) — selve valget bor nu paa sin egen T1-side
-          (/academy/graduation, ejer-godkendt mockup 3g). Her staar kun banneret,
-          og KUN naar der er nogen at traeffe valg om.
-
-          Den gamle blok — ét kort pr. rytter med tre knapper — er slettet, ikke
-          gemt bag et flag: to flader med samme irreversible valg er praecis den
-          dobbelt-flade HANDOFF pkt. 8 forbyder ("banner on Academy only, plus
-          the Inbox notification"). Kortene kunne desuden hverken vise
-          rating-plade, potentiale-baand eller traenerens vurdering, og havde
-          ingen faelles bekraeftelse. */}
-      {graduations.length > 0 && (
-        <section>
-          <SectionHeader title={t("graduationHeading")} />
-          <Card className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-[13.5px] font-medium text-cz-1">
-                {t("graduationBanner.title", { count: graduations.length })}
-              </p>
-              <p className="mt-1 text-xs text-cz-2">{t("graduationBanner.body")}</p>
-            </div>
-            <Link
-              to="/academy/graduation"
-              className={`${buttonClass({ variant: "secondary", size: "sm" })} shrink-0`}
-            >
-              {t("graduationBanner.action")}
-            </Link>
-          </Card>
-        </section>
-      )}
-
       {/* #5844: "A thank-you from the board" — bestyrelsens engangs-kuld (10
           tilbud: 5 U23-alder + 5 junior-alder). Samme kort og samme sign/afvis
           som det normale optag; eneste forskel er gratis signing og 14 dages

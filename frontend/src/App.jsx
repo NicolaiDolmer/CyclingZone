@@ -117,7 +117,6 @@ const AcademyPage = lazy(() => import("./pages/AcademyPage"));
 // `.js`-endelsen er TypeScripts egen konvention for et .tsx-modul og det
 // moenster TransfersPage allerede bruger paa TradeListPage.tsx — naboerne
 // herover er .jsx-filer og staar derfor uden endelse.
-const GraduationDayPage = lazy(() => import("./pages/GraduationDayPage.js"));
 // #5519: U23 team- og Junior team-siden (én side, trup i URL'en).
 const SquadPage = lazy(() => import("./pages/SquadPage.js"));
 const YouthRacesPage = lazy(() => import("./pages/YouthRacesPage.js"));
@@ -429,7 +428,7 @@ export default function App({ initialSession = undefined }) {
             <Route path="training" element={<TrainingPage />} />
             <Route path="planner" element={<PlannerLegacyRedirect />} />
             <Route path="academy" element={<AcademyPage />} />
-            <Route path="academy/graduation" element={<GraduationDayPage />} />
+            <Route path="academy/graduation" element={<Navigate to="/academy" replace />} />
             {/* #5519: /squads/u23 og /squads/junior. Kontakten youth_squad_pages
                 gater siden server-side (409 → videre til /team). */}
             <Route path="squads/:squad" element={<I18nReadyGate ns="squad"><SquadPage /></I18nReadyGate>} />

@@ -1,13 +1,13 @@
 import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
-import { applySeniorSquadFilter } from "./squads.js";
+import { applySeniorSquadFilter, CLUB_RIDER_CAP, SQUAD_CAPS } from "./squads.js";
 
 // #838: ét fælles roster-loft for alle divisioner. Max er ensrettet til 30.
 // Roster-FLOOR fjernet 2026-06-05: ingen division kræver længere et minimum
 // antal ryttere — en manager kan sælge/afgive helt ned til 0. Hard-cap'en
 // (max) er uændret. min=0 gør getOutgoingSquadViolation til en no-op og
 // deaktiverer squadEnforcement-cron'ens under-min auto-køb + bøde.
-export const MAX_SQUAD_SIZE = 30;
+export const MAX_SQUAD_SIZE = SQUAD_CAPS.senior;
 
 export const MARKET_SQUAD_LIMITS = {
   1: { min: 0, max: MAX_SQUAD_SIZE },
@@ -220,7 +220,7 @@ export async function getTeamMarketState(supabase, teamId) {
       .eq("id", teamId)
   );
 
-  const [riderCount, pendingCount, outgoingCount] = await Promise.all([
+  const [riderCount, pendingCount, outgoingCount, clubCount] = await Promise.all([
     // #1308: akademiryttere tæller ikke mod senior-cap
     // #2748: pensionerede ryttere heller ikke — de frigives ved sæsonskiftet
     // (retirementRelease.js), og må ikke optage en cap-plads i vinduet imellem
@@ -257,6 +257,8 @@ export async function getTeamMarketState(supabase, teamId) {
         .not("pending_team_id", "is", null)
         .neq("pending_team_id", teamId)
     ),
+    expectCount(supabase.from("riders").select("id", { count: "exact", head: true })
+      .or(`team_id.eq.${teamId},pending_team_id.eq.${teamId}`).eq("is_retired", false)),
   ]);
 
   const squadLimits = getSquadLimits(team.division);
@@ -268,6 +270,7 @@ export async function getTeamMarketState(supabase, teamId) {
   return {
     ...team,
     rider_count: riderCount,
+    club_count: clubCount,
     pending_count: pendingCount,
     outgoing_count: outgoingCount,
     // total_count beholdes som legacy felt (current + pending, uden
@@ -292,7 +295,11 @@ export function getIncomingSquadViolation(
   // capacity, så pending-out (rytter solgt men ikke afregnet endnu) ikke
   // dobbelt-tæller mod cap. Falder tilbage til total_count for unit tests
   // og legacy-callsites der ikke har future_count.
-  const baseCount = teamState?.future_count ?? teamState?.total_count ?? 0;
+  const clubAfter = (teamState?.club_count ?? 0) + incomingCount;
+  if (clubAfter > CLUB_RIDER_CAP) {
+    return { totalAfter: clubAfter, maxRiders: CLUB_RIDER_CAP, effectiveCap: CLUB_RIDER_CAP, softCapBuffer: 0, scope: "club" };
+  }
+  const baseCount = Math.max(teamState?.rider_count ?? 0, teamState?.future_count ?? teamState?.total_count ?? 0);
   const totalAfter = baseCount + incomingCount;
   const maxRiders = teamState?.squad_limits?.max || getSquadLimits(teamState?.division).max;
   const buffer = Number(softCapBuffer) || 0;

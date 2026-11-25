@@ -5,7 +5,7 @@ import {
 import { isAuctionExpired, isLateBidTriggerError } from "./auctionEngine.js";
 import { captureException } from "./sentry.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
-import { marketGateCode } from "./marketCommitment6181.js";
+import { marketGateCode, syncBidLeader6181 } from "./marketCommitment6181.js";
 
 // #6801: "dit autobud er stoppet (for lidt balance)" bruges to steder i cascaden;
 // teksten ligger i backendMessages (notif.autoBidStopped), ikke som dansk streng.
@@ -180,12 +180,20 @@ export async function resolveProxyBids({
 
   const handleInsertError = async (error, teamId, auction) => {
     if (isLateBidTriggerError(error)) return 'stop';
-    const code = databaseOwnsLeaderSync ? marketGateCode(error) : null;
+    const code = marketGateCode(error);
     if (code === 'price_changed') return 'retry';
-    if (code === 'insufficient_available_balance' || code === 'squad_full') {
+    if (code === 'insufficient_available_balance' || code === 'squad_full' || code === 'club_roster_full') {
       balanceRejectedTeams.add(teamId);
       if (notifyTeamOwner) {
-        const notice = buildAutoBidStoppedNotice(`${auction.rider.firstname} ${auction.rider.lastname}`, auction.rider_id);
+        const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
+        const notice = code === 'club_roster_full'
+          ? buildKeyedNotification({
+              titleCode: "notif.autoBidStopped.title",
+              messageCode: "notif.transfer.issue.clubRosterFull",
+              messageParams: { riderName },
+              metadata: { riderId: auction.rider_id },
+            })
+          : buildAutoBidStoppedNotice(riderName, auction.rider_id);
         await trackedNotify(teamId, 'auction_proxy_outbid', notice.title, notice.message, auctionId, notice.metadata)
           .catch(onProxyNotifFailed(auctionId));
       }
@@ -290,29 +298,32 @@ export async function resolveProxyBids({
 
       // #269-paritet: late-bid-trigger kan afvise insert'en hvis auktionen
       // udløb/blev finaliseret mellem iterationerne.
-      const { error: tieInsertError } = databaseOwnsLeaderSync
-        ? await supabase.rpc('match_auction_proxy_tie_6181', {
-            p_auction_id: auctionId, p_team_id: tieLeader, p_expected_price: currentPrice,
-            p_expected_leader_id: currentWinner, p_bid_time: bidTime.toISOString(),
-          })
-        : await supabase.from("auction_bids").insert({
-        auction_id: auctionId,
-        team_id: tieLeader,
-        amount: currentPrice,
-        bid_time: bidTime.toISOString(),
-        triggered_extension: false,
-        is_proxy: true,
+      const rpc = databaseOwnsLeaderSync ? "match_auction_proxy_tie_6181" : "match_legacy_auction_proxy_tie_8034";
+      let { error: tieInsertError } = await supabase.rpc(rpc, {
+        p_auction_id: auctionId, p_team_id: tieLeader, p_expected_price: currentPrice,
+        p_expected_leader_id: currentWinner, p_bid_time: bidTime.toISOString(),
       });
+      const legacyFallback = !databaseOwnsLeaderSync && tieInsertError?.code === "PGRST202";
+      if (legacyFallback) {
+        ({ error: tieInsertError } = await supabase.from("auction_bids").insert({
+          auction_id: auctionId,
+          team_id: tieLeader,
+          amount: currentPrice,
+          bid_time: bidTime.toISOString(),
+          triggered_extension: false,
+          is_proxy: true,
+        }));
+      }
       if (tieInsertError) {
         if (await handleInsertError(tieInsertError, tieLeader, auction) === 'stop') break;
         continue;
       }
 
       // Kun føringen flyttes tilbage — current_price er allerede beløbet.
-      if (!databaseOwnsLeaderSync) {
+      if (legacyFallback) {
         await supabase.from("auctions").update({
           current_bidder_id: tieLeader,
-        }).eq("id", auctionId);
+        }).eq("id", auctionId).eq("current_bidder_id", currentWinner).eq("current_price", currentPrice);
       }
 
       await notifyMatch(tieLeader,currentWinner,auction);
@@ -482,10 +493,7 @@ export async function resolveProxyBids({
     }
 
     if (!databaseOwnsLeaderSync) {
-      await supabase.from("auctions").update({
-        current_price: autoBidAmount,
-        current_bidder_id: autoBidder,
-      }).eq("id", auctionId);
+      await syncBidLeader6181(supabase, { auctionId, amount: autoBidAmount, teamId: autoBidder });
     }
     if (databaseOwnsLeaderSync) {
       await cleanupDeadProxies();

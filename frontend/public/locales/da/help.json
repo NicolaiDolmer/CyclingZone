@@ -1723,7 +1723,7 @@
       },
       "academySize": {
         "title": "Akademistørrelse (pr. hold)",
-        "text": "Dit Akademi har to hold med hvert sit loft: op til {u23SquadCap} ryttere på dit U23-hold og op til {juniorSquadCap} på dit juniorhold. En rytter tager en plads på det hold, hans alder placerer ham på. Pladserne er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og kører aldrig seniorløb; fra sæson 4 kører de i deres egne ungdomsløb i stedet."
+        "text": "Hver trup kan have op til {squadCap} ryttere, og klubben kan have op til {clubRiderCap} i alt. Nye bud og køb kræver plads i en trup, rytteren kan køre for. Ved klubgrænsen skal du sælge eller frigive en rytter, før du tilføjer en ny. Du kan bytte én rytter for én, hvis ingen trup bliver større, også når en trup allerede er over grænsen. Et bytte, der gør en trup større, kræver plads i den trup. For at flytte en rytter, du allerede har, skal der være en ledig plads i den nye trup. Automatiske oprykninger må overskride trupgrænsen. Du kan stadig køre løb, træne og sælge ryttere."
       },
       "dailyTrainingBoost": {
         "title": "Daglig træning i akademiet",
@@ -1746,17 +1746,8 @@
         "text": "Fra sæson 5 koster akademiet ikke noget pr. plads. Dine akademiryttere koster kun deres løn."
       },
       "graduation": {
-        "title": "Graduation Day",
-        "text": "Ryttere der er vokset ud af deres trup, rykker videre ved sæsonskiftet. En junior der fylder 19, flytter til dit U23-hold, og en U23-rytter der fylder 23, flytter til dit seniorhold. Listen åbner ugen før sæsonen skifter, og fristen er selve skiftet. Indtil du flytter en rytter, træner han i sin gamle trup, men han er over dens aldersgrænse og kan ikke køre løb for den. For hver rytter vælger du Ryk op (kræver en ledig plads i den trup han flytter til, og han beholder sin kontrakt præcis som den er), Sælg på transfermarkedet, eller Fyr som free agent. Gør du ingenting, vælger klubben for dig ved skiftet: op når der er plads. Er truppen fuld, venter han under Afventer oprykning og træner videre i sin nuværende trup på samme kontrakt, men kan ikke køre løb, før du har gjort plads og trykker Ryk op. Din træner giver en kort vurdering af hver rytter, og det er altid kun en vurdering, aldrig et løfte."
-      },
-      "graduationDayPage": {
-        "title": "Hvor du træffer valget",
-        "steps": [
-          "Der dukker et banner op på Akademi-siden, og du får en besked i indbakken, når der venter ryttere.",
-          "Åbn Graduation Day fra en af delene.",
-          "Hver overgang får sit eget kort med én række pr. rytter: rating, potentiale, kontrakt og trænerens vurdering.",
-          "Sæt Ryk op, Sælg eller Fyr pr. rytter, og tryk Bekræft alle."
-        ]
+        "title": "Automatisk oprykning",
+        "text": "Ved sæsonskiftet rykker jeg juniorer op på U23-holdet ved sæsonalder 19 og U23-ryttere op på seniorholdet ved 23. Ryttere, der bliver i din klub, beholder deres kontrakt og løn. Deres auktioner og transferannoncer fortsætter. Jeg rykker dem op, selv om den nye trup er fuld. Du kan stadig køre løb, træne og sælge, og du kan få ryttere ind i truppen igen, når der er en ledig plads. Oprykningerne står i din sæsonskiftebesked."
       },
       "promoteDemote": {
         "title": "Flyt ryttere mellem trupper",
@@ -1778,8 +1769,8 @@
         "text": "Ja, opad er altid tilladt hvis der er en ledig plads: en 17-årig kan stå på U23-holdet, en 20-årig på seniorholdet, når du vil. Nedad virker kun inden for truppens egen aldersgrænse: en 19-årig kan ikke flyttes tilbage til Juniorholdet, og en 23-årig kan ikke flyttes tilbage til U23-holdet."
       },
       "graduationDayAt23": {
-        "title": "Hvad sker der, når en rytter vokser ud af sin trup?",
-        "text": "Ved sæsonskiftet rykker ryttere, der er vokset ud af deres trup, videre: junior til U23-holdet ved sæsonalder 19, U23 til seniorholdet ved sæsonalder 23. Du får første valg på Graduation Day; gør du ingenting inden fristen, flytter klubben ham op, hvis der er plads og råd. Er truppen fuld, venter han under Afventer oprykning, til du har gjort plads. Er der plads, men ikke råd, sælges han, og bliver han ikke solgt, slippes han som free agent. Ved sæsonskiftet udløber kontrakterne først, så kun ryttere med kontrakt kan rykke op. Forlæng en ungdomsrytters kontrakt, inden sæsonen slutter, hvis han skal rykke op."
+        "title": "Automatisk oprykning",
+        "text": "Ved sæsonskiftet rykker jeg juniorer op på U23-holdet ved sæsonalder 19 og U23-ryttere op på seniorholdet ved 23. Ryttere, der bliver i din klub, beholder deres kontrakt og løn. Deres auktioner og transferannoncer fortsætter. Jeg rykker dem op, selv om den nye trup er fuld. Du kan stadig køre løb, træne og sælge, og du kan få ryttere ind i truppen igen, når der er en ledig plads. Oprykningerne står i din sæsonskiftebesked."
       },
       "youthRacesFromS4": {
         "title": "Kører U23-holdet og Juniorholdet faktisk løb?",

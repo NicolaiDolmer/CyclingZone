@@ -1577,6 +1577,7 @@ export const SEED_ACADEMY = {
   // #932 S7: senior-cap-tæller til promote/demote-confirm-dialogerne.
   seniorCount: 18,
   seniorMax: 30,
+  clubCapacity: { used: 20, max: 60 },
   roster: [
     {
       id: "acad-r1",

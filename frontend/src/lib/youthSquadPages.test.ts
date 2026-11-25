@@ -12,12 +12,11 @@ import {
   youthSquadPath,
   youthSquadNavItems,
   riderIdsForSquad,
-  capForSquad,
-  YOUTH_SQUAD_CAP_FALLBACK,
   isYouthSquadPagesOn,
   setYouthSquadPages,
   subscribeYouthSquadPages,
 } from "./youthSquadPages.ts";
+import { capForSquad } from "./squadCaps.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(join(__dirname, rel), "utf8");
@@ -61,11 +60,10 @@ test("#5631: truppens loft læses af caps-feltet fra /api/youth-squads", () => {
   assert.equal(capForSquad(payload, "junior"), 10);
 });
 
-test("#5631: en ældre backend uden caps-feltet falder tilbage til SQUAD_CAPS 12/10", () => {
-  assert.deepEqual(YOUTH_SQUAD_CAP_FALLBACK, { u23: 12, junior: 10 });
-  assert.equal(capForSquad(null, "u23"), 12);
-  assert.equal(capForSquad({ squads: {} }, "junior"), 10);
-  assert.equal(capForSquad({ caps: { u23: "twelve" } }, "u23"), 12, "et ikke-tal cap skal falde tilbage");
+test("#5631 #8034: et manglende eller ugyldigt caps-felt bruger de fælles trup-lofter", () => {
+  assert.equal(capForSquad(null, "u23"), 30);
+  assert.equal(capForSquad({ squads: {} }, "junior"), 30);
+  assert.equal(capForSquad({ caps: { u23: "twelve" } }, "u23"), 30, "et ikke-tal cap skal falde tilbage");
 });
 
 test("#5519: kontakten er OFF som default og giver besked når den flipper", () => {

@@ -14,11 +14,12 @@
 // the database and can change per season. Those are presented as prose on the page
 // and the literal values here are documented as "display defaults" only.
 
-import { SQUAD_CAPS } from "./squadCaps.ts";
+import { CLUB_RIDER_CAP, SQUAD_CAPS } from "./squadCaps.ts";
 
 export const RULES_NUMBERS = {
   // --- Squad (backend/lib/marketUtils.js) ---
   squadCap: 30, // MAX_SQUAD_SIZE
+  clubRiderCap: CLUB_RIDER_CAP,
   initialSquadSize: 12, // STARTER_SQUAD.TOTAL_SIZE (= MIN_RIDERS_FOR_RACE + 4)
   windowBuffer: 2, // TRANSFER_WINDOW_SOFT_CAP_BUFFER
   // --- Squad enforcement (backend/lib/squadEnforcement.js) ---

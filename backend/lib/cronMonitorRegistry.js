@@ -197,7 +197,6 @@ export const ALL_CRON_MONITORS = [
   // doegnet"-moenster som sunday-value-refresh, saa 5MIN ikke false-positiver.
   ["training-day-close", CRON_MONITOR_5MIN],
   ["ai-recovery-sweep", CRON_MONITOR_5MIN],
-  ["graduation-sweep", CRON_MONITOR_5MIN],
   ["scout-sweep", CRON_MONITOR_5MIN],
   ["wage-deduction-sweep", CRON_MONITOR_5MIN],
   ["starter-squad-heal", CRON_MONITOR_5MIN],

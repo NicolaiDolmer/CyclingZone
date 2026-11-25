@@ -29,18 +29,11 @@ test("SQUADS + DEFAULT_SQUAD matcher migrationens CHECK-constraint", () => {
   assert.ok(Object.isFrozen(SQUADS));
 });
 
-test("SQUAD_CAPS: U23 = 12, junior = 10 (ejer 15/9 §10.6 + YOUTH_RULES §2.4)", () => {
-  assert.equal(SQUAD_CAPS.u23, 12);
-  assert.equal(SQUAD_CAPS.junior, 10);
-  assert.equal(capForSquad("u23"), 12);
-  assert.equal(capForSquad("junior"), 10);
-});
-
-test("senior har INTET eget loft her — divisionens squad_limits.max ejer den cap", () => {
-  assert.equal(capForSquad("senior"), null);
-  assert.equal("senior" in SQUAD_CAPS, false);
-  // Og dermed: senior er aldrig "fuld" efter denne fil.
-  assert.equal(wouldExceedSquadCap({ squad: "senior", currentCount: 999 }), false);
+test("each squad has the same 30-rider ceiling", () => {
+  for (const squad of SQUADS) {
+    assert.equal(SQUAD_CAPS[squad], 30);
+    assert.equal(capForSquad(squad), 30);
+  }
 });
 
 test("squadForSeasonAge: graenserne 18/19 og 22/23", () => {
@@ -115,14 +108,13 @@ test("squadForSeason/squadForReferenceYear: manglende input giver null", () => {
   assert.equal(squadForReferenceYear("2005-03-02", null), null);
 });
 
-test("wouldExceedSquadCap: loftet er inklusivt (12. rytter er tilladt, 13. ikke)", () => {
-  assert.equal(wouldExceedSquadCap({ squad: "u23", currentCount: 11 }), false);
-  assert.equal(wouldExceedSquadCap({ squad: "u23", currentCount: 12 }), true);
-  assert.equal(wouldExceedSquadCap({ squad: "junior", currentCount: 9 }), false);
-  assert.equal(wouldExceedSquadCap({ squad: "junior", currentCount: 10 }), true);
-  // adding > 1
-  assert.equal(wouldExceedSquadCap({ squad: "junior", currentCount: 8, adding: 2 }), false);
-  assert.equal(wouldExceedSquadCap({ squad: "junior", currentCount: 8, adding: 3 }), true);
+test("wouldExceedSquadCap allows the last place in every squad", () => {
+  for (const squad of SQUADS) {
+    assert.equal(wouldExceedSquadCap({ squad, currentCount: 29 }), false);
+    assert.equal(wouldExceedSquadCap({ squad, currentCount: 30 }), true);
+  }
+  assert.equal(wouldExceedSquadCap({ squad: "junior", currentCount: 28, adding: 2 }), false);
+  assert.equal(wouldExceedSquadCap({ squad: "junior", currentCount: 28, adding: 3 }), true);
 });
 
 test("wouldExceedSquadCap: ukendt trup blokerer ikke (cap haandhaeves et andet sted)", () => {

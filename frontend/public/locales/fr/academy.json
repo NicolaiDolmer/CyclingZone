@@ -1,4 +1,6 @@
 {
+  "clubRoster": "Coureurs du club",
+  "clubFull": "Votre club n’a plus de place libre.",
   "title": "Académie",
   "subtitle": "Signe de jeunes talents pour tes équipes U23 et juniors, et suis ce que te rapporte le travail avec les jeunes.",
   "slotsU23": "U23 {used}/{max}",

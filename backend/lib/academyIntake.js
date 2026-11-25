@@ -598,6 +598,10 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   for (const squad of placementSquads) {
     placedSquad = squad;
     ({ data: acq, error: acqErr } = await finalizeAcquisition(squad));
+    if (acqErr?.code === "23514" && acqErr.message === "academy_full") {
+      acq = { ok: false, code: "academy_full" };
+      acqErr = null;
+    }
     if (acqErr || acq?.code !== "academy_full") break;
   }
 
@@ -606,6 +610,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     if (issue) throw Object.assign(new Error(issue.error), issue);
     // 23505 = denne rytter er allerede optaget (cron-/dobbeltklik-retry). Behandl
     // som idempotent no-op snarere end hård fejl.
+    if (acqErr.message === "club_roster_full") throw new Error("club_roster_full");
     if (acqErr.code === DUPLICATE_VIOLATION_CODE) throw new Error("already_assigned");
     throw acqErr;
   }
