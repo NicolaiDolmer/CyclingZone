@@ -6,7 +6,7 @@
 
 Gælder også Claude Code (AGENTS.md auto-loades ikke her): verificér repo-root før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før TODO/bug · teknisk tvivl undersøges; beslutningsgrænser: §4 · patch notes ved brugerrettet ændring · auto-push efter commit · merge-kø én ad gangen: `scripts/merge-queue.ps1` (#4919) · **stående merge-regler** (rule 35): brand-fix uden ny tekst, motor bag slukket v4/revision, Dependabot/docs/ops uden spillertekst merges ved grøn CI + review-gate + diff-tjek; deploy/regnekraft ejer, ejer-go klæber · **commit kun bag `guard-commit-branch.sh`** (hard rule 18; ved `git -C <dir>` gives guarden samme `<dir>`) · migrationer: apply post-merge per #2642 (auto-migrate.yml), Claude post-verificerer; destruktivt ejer-gated · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`) · intet slettes uden arkiv (rule 38). Fuld tekst: [`AGENTS.md`](AGENTS.md); cross-PC + session-rytme: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md).
 
-**Loftet (#7336):** byg loft-områder, brand og `scripts/build-stop.json`; resten → ejer-go (CI advarer, blokerer ikke, ejer 25/11). AGENTS.md regel 37.
+**Byggestop slukket (ejer 25/11, #8729);** spillervendt vises ejeren før merge (AGENTS 37).
 
 ## Orkestrator-standard (ejer 11/9, #5142)
 
@@ -51,7 +51,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-hits:
 7. **Boelge-processer:** `pwsh -File scripts/close-out-cleanup.ps1` (dry-run, `-Execute` ved fund — dræber efterladte `gh --watch`/vite/playwright-processer, #4920).
 8. **STATUS_BOARD.md:** koer `node scripts/generate-status-board.mjs` ved close-out (#5674).
 
-Ingen lokal-only handoff: state og næste skridt i GitHub (`docs/NOW.md`, issues) eller OneDrive-context; transcripts, memories og `SESSION_CONTEXT.md` er caches.
+Ingen lokal-only handoff: state i GitHub (`docs/NOW.md`, issues) eller OneDrive-context.
 
 ## Session-rytme
 
