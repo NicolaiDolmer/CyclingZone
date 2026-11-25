@@ -142,7 +142,7 @@ Hver række får én formatter i koden, så ingen formaterer i hånden. **Spørg
 
 ### P14 · Bevægelse forklarer, den pynter ikke (ejer 7/11)
 
-Overlays åbner og lukker med en kort fade (ca. 150 ms). Tal der ændrer sig må tælle op, aldrig hoppe. Løbsfilmen har sit eget tempo og kan sættes på pause. Står enheden på "reducer bevægelse", animeres intet. **Ejer 7/11: flere animationer må gerne komme ind, hvor de hjælper spilleren med at forstå, hvad der skete** (fx at et tal ændrede sig, at en rytter rykkede op). Fjedre, glidende kort og forskudte lister uden mening er stadig forbudt (§3, AI-tell).
+Overlays åbner og lukker med en kort fade (ca. 150 ms). **Ejer 25/11 (lånt fra Googles gemini-frontend-design, Apache-2.0):** alle overgange tager 140-240 ms med ease-out; kun `transform`, `opacity` og `clip-path` animeres, aldrig `transition: all` eller layout-egenskaber. Tal der ændrer sig må tælle op, aldrig hoppe. Løbsfilmen har sit eget tempo og kan sættes på pause. Står enheden på "reducer bevægelse", animeres intet. **Ejer 7/11: flere animationer må gerne komme ind, hvor de hjælper spilleren med at forstå, hvad der skete** (fx at et tal ændrede sig, at en rytter rykkede op). Fjedre, glidende kort og forskudte lister uden mening er stadig forbudt (§3, AI-tell).
 
 ### P15 · Hjælp man kan klikke på (ejer 7/11)
 
@@ -225,6 +225,9 @@ Alt her er et fund uden diskussion. Kolonnen "sådan opdages det" er input til C
 | Data-slop: samme tal tre steder, tal uden enhed, procent uden nævner, tankestreg som værdi uden forklaring, tre decimaler hvor én rækker | P2/P11 | visuel dom i audit |
 | Introtekst mellem sidehoved og indhold, forklarings-kort før data | P1/P9 | visuel dom; "chrome før data"-måling i px |
 | Løsrevne knaprækker under sidehovedet | PAGE_TEMPLATES "no orphan action rows" | visuel dom |
+| Nummererede overskrifter ("01 / 02 / 03"), en række store nøgletal lige under en hero ("stat strip"), kort inde i kort, knapvægge med mange ligeværdige knapper | AI-tells (ejer 25/11, efter Googles gemini-frontend-design). Rytterprofilens stat-række vises før/efter, næste gang profilen ændres | visuel dom |
+| Fyldord: "seamless", "elevate", "unlock", "sømløs", "løft" | AI-tells i copy (ejer 25/11) | tone-review |
+| Små labels i VERSALER med spærring (status, kolonneoverskrifter, "ETAPE 3 AF 5") | Ejer 25/11: sentence case overalt (Googles anbefaling). Heroens skrift afgøres på billederne i #8698. Ændres område for område med før/efter-billeder | visuel dom |
 
 ---
 
@@ -257,6 +260,8 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 
 **Mobil og mørk**
 15. Viser 375 px-udgaven navnekolonnen + tre kolonner uden vandret scroll — heriblandt sidens handling, hvis rækken har en — med chip-rækken og "Fuld tabel" (neutral, aldrig gold) til resten, og 16 px sidepadding? (P10 / D-047)
+16a. Er der skærmbilleder på 1440 og 390×844 i både lys og mørk, er alle fund rettet i én omgang, og ligger før/efter-billedet på PR'en til ejerens godkendelse? (ejer 25/11)
+16b. Har dæmpet tekst mindst 4,5:1 kontrast mod baggrunden i både lys og mørk, og store tal og overskrifter mindst 3:1 (WCAG AA)? (ejer 25/11)
 16. Holder mørk tilstand samme hierarki (ingen flader der forsvinder, ingen guld-tekst der ikke er `--accent-t`-ækvivalent)? (GUIDELINES §2)
 
 **Tilføjet 7/11 (ejer)**
