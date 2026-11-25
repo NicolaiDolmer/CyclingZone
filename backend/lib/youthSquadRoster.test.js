@@ -87,6 +87,6 @@ test("#5631 payload: id'er + loft pr. trup + saesonnummer (SQUAD_CAPS, live side
   assert.equal(buildYouthSquadsPayload([], undefined).seasonNumber, null);
 });
 
-test("#5631: caps kommer fra squads.js' SQUAD_CAPS, ingen egen konstant", () => {
-  assert.deepEqual(buildYouthSquadsPayload([], SEASON).caps, { u23: 12, junior: 10 });
+test("#5631 #8034: caps viser de godkendte trup-lofter", () => {
+  assert.deepEqual(buildYouthSquadsPayload([], SEASON).caps, { u23: 30, junior: 30 });
 });

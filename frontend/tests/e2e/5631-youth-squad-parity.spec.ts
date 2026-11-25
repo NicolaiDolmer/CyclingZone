@@ -163,15 +163,15 @@ test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
     await login(page);
     await page.goto("/squads/u23");
     await expect(page.getByRole("heading", { name: "E2E Racing U23" })).toBeVisible();
-    await expect(page.getByText(`${U23.length}/12`)).toBeVisible();
+    await expect(page.getByText(`${U23.length}/30`)).toBeVisible();
     if (takeShots) await shots(page, "cap-u23");
 
     await page.route("**/api/youth-squads", (route) => {
       if (preflight(route)) return;
-      return json(route, { seasonNumber: 1, squads: { u23: { riderIds: [] }, junior: { riderIds: [] } }, caps: { u23: 12, junior: 10 } });
+      return json(route, { seasonNumber: 1, squads: { u23: { riderIds: [] }, junior: { riderIds: [] } }, caps: { u23: 30, junior: 30 } });
     });
     await page.reload();
-    await expect(page.getByText(/^0\/12$/) /* #8278: HeroStats viser loftet som tallet n/loft */).toBeVisible();
+    await expect(page.getByText(/^0\/30$/) /* #8278: HeroStats viser loftet som tallet n/loft */).toBeVisible();
     if (takeShots) await shots(page, "cap-u23-empty");
   });
 
