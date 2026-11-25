@@ -46,6 +46,7 @@
 //
 // Tests: node --test scripts/merge-autotrain.test.mjs
 
+import { readLatestPrChecks } from './lib/pr-checks.mjs';
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, closeSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -243,8 +244,28 @@ function ghText(args) {
 
 const PR_FIELDS = 'number,title,body,labels,author,comments,isDraft,mergeable,baseRefName,headRefOid,baseRefOid,changedFiles';
 
-// gh pr checks: exit 1 = noget fejler, exit 8 = afventer; JSON-outputtet er det samme.
-const CHECKS_EXIT = [0, 1, 8];
+const waitForMergeability = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+function refreshUnknownMergeability(pr, { repo, gh, log, pause }) {
+  // REST starts GitHub's background mergeability calculation. Null stays unknown.
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    let fresh;
+    try {
+      fresh = gh.json(['api', 'repos/' + repo + '/pulls/' + pr.number]);
+    } catch {
+      // A transient read failure consumes the same bounded retry budget as null.
+    }
+    if (fresh?.state === 'open' && fresh.head?.sha === pr.headRefOid && fresh.base?.ref === pr.baseRefName) {
+      if (fresh.draft) return { ...pr, isDraft: true };
+      if (typeof fresh.mergeable === 'boolean') {
+        return { ...pr, mergeable: fresh.mergeable ? 'MERGEABLE' : 'CONFLICTING', baseRefOid: fresh.base.sha ?? pr.baseRefOid };
+      }
+    }
+    if (attempt < 3) pause(15_000);
+  }
+  log('  #' + pr.number + ': mergeable=UNKNOWN efter fire REST-opslag.');
+  return pr;
+}
 
 /**
  * Den fulde filliste til klassifikationen (REST, pagineret): GraphQL-listen i
@@ -268,11 +289,13 @@ export function completeFileList(restFiles, changedFiles) {
 }
 
 /** Vurderer een PR (checks, review-gate, fuld filliste, klassifikation). */
-export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {} }) {
+export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {}, pause = waitForMergeability }) {
   // Billige afslag foerst: ingen check- eller klassifikationskald for drafts/konflikter.
+  if (precheck(pr) === 'mergeable=UNKNOWN') pr = refreshUnknownMergeability(pr, { repo, gh, log, pause });
   if (precheck(pr)) return evaluatePr(pr, { ownerLogin });
-  const requiredChecks = gh.json(['pr', 'checks', String(pr.number), '--repo', repo, '--required', '--json', 'name,bucket'], { allowExit: CHECKS_EXIT }) ?? [];
-  const allChecks = gh.json(['pr', 'checks', String(pr.number), '--repo', repo, '--json', 'name,bucket,startedAt,event'], { allowExit: CHECKS_EXIT }) ?? [];
+  const { required: requiredChecks, all: allChecks } = readLatestPrChecks({
+    repo, number: pr.number, headSha: pr.headRefOid, json: gh.json,
+  });
   let classification = null;
   let deploy = null;
   // Klassifikationen kraever kun groenne paakraevede checks (review-gate er ikke paakraevet):
@@ -298,12 +321,12 @@ export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {} }) {
 
 const DEFAULT_GH = { json: ghJson, text: ghText };
 
-export function collectEvaluations({ repo, ownerLogin, gh = DEFAULT_GH, log = () => {} }) {
+export function collectEvaluations({ repo, ownerLogin, gh = DEFAULT_GH, log = () => {}, pause = waitForMergeability }) {
   const prs = gh.json(['pr', 'list', '--repo', repo, '--state', 'open', '--limit', '100', '--json', PR_FIELDS]) ?? [];
   const evaluations = [];
   for (const pr of prs) {
     try {
-      evaluations.push(evaluateOne(pr, { repo, ownerLogin, gh, log }));
+      evaluations.push(evaluateOne(pr, { repo, ownerLogin, gh, log, pause }));
     } catch (err) {
       log(`  #${pr.number}: kunne ikke vurderes (${err?.message ?? err}); springes over.`);
     }
@@ -312,9 +335,9 @@ export function collectEvaluations({ repo, ownerLogin, gh = DEFAULT_GH, log = ()
 }
 
 /** Frisk vurdering af een PR lige foer koeen startes for den. */
-export function reevaluatePr(number, { repo, ownerLogin, gh = DEFAULT_GH, log = () => {} }) {
+export function reevaluatePr(number, { repo, ownerLogin, gh = DEFAULT_GH, log = () => {}, pause = waitForMergeability }) {
   const pr = gh.json(['pr', 'view', String(number), '--repo', repo, '--json', PR_FIELDS]);
-  return evaluateOne(pr, { repo, ownerLogin, gh, log });
+  return evaluateOne(pr, { repo, ownerLogin, gh, log, pause });
 }
 
 // ── Gen-bestilling af Codex-review (#7654) ─────────────────────────────────

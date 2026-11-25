@@ -372,10 +372,11 @@ const psQuote = (value) => "'" + value.replaceAll("'", "''") + "'";
 function runQueue(body) {
   const prelude = `$ErrorActionPreference='Stop'
 $ast=[Management.Automation.Language.Parser]::ParseInput(${psQuote(queue)},[ref]$null,[ref]$null)
-foreach($name in @('Close-OpenTrain','Invoke-TrainCloseOut','Get-DeployGateAction','Confirm-PatchNotesCommit')){
+foreach($name in @('Close-OpenTrain','Invoke-TrainCloseOut','Get-DeployGateAction','Confirm-PatchNotesCommit','Wait-ForWorkflowRun')){
  $fn=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true)
  if(-not $fn){throw "Missing queue function: $name"}
- Invoke-Expression $fn.Extent.Text
+ if ($name -eq 'Wait-ForWorkflowRun') { Invoke-Expression ($fn.Extent.Text -replace '^function Wait-ForWorkflowRun', 'function Wait-ForWorkflowRunFixture') }
+ else { Invoke-Expression $fn.Extent.Text }
 }
 $Repo='fixture/repo'; $script:CloseOutScript='fixture/merge-queue-closeout.mjs'; $DryRun=$false
 $CiTimeoutMinutes=1; $StallMinutes=0; $DeployVerifyTimeoutMinutes=1; $MinWaitMinutesNoBackend=0
@@ -386,9 +387,9 @@ $script:trainDeploys=1; $script:trainNeedsRailway=$false; $script:queueStall=$nu
 $script:trainEntries=@([pscustomobject]@{number=1;sha='${SHA_A}'},[pscustomobject]@{number=2;sha='${SHA_B}'})
 function Wait-BatchCi { return $script:ciOk }
 function Wait-BatchMigrations { return $true }
-$script:patchDeployState='released'; $script:patchCiOk=$true; $script:patchCiState='success'; $script:ciWaits=@(); $script:deployWaits=@()
+$script:patchDeployState='released'; $script:patchCiOk=$true; $script:patchCiState='success'; $script:ciWaits=@(); $script:ciJobs=@(); $script:deployWaits=@()
 function Wait-ForDeployVerification { param($Sha,$TimeoutMinutes,$StallMinutes); $script:deployWaits += [string]$Sha; if ($Sha -eq '${SHA_C}') { return $script:patchDeployState }; return 'released' }
-function Wait-ForWorkflowRun { param($WorkflowFile,$Sha,$TimeoutMinutes,$Label,$StallMinutes); $script:ciWaits += ([string]$WorkflowFile + '@' + [string]$Sha); $script:workflowRunState=$script:patchCiState; return $script:patchCiOk }
+function Wait-ForWorkflowRun { param($WorkflowFile,$Sha,$TimeoutMinutes,$Label,$StallMinutes,$SuccessJob); $script:ciJobs += [string]$SuccessJob; $script:ciWaits += ([string]$WorkflowFile + '@' + [string]$Sha); $script:workflowRunState=$script:patchCiState; return $script:patchCiOk }
 function Stop-QueueStall { exit 1 }
 function Write-TrainCulprit { param($Failure) }
 function Start-Sleep { param($Seconds) }
@@ -405,7 +406,7 @@ try { ${body}; $script:nextMerge++ }
 catch { $script:unexpected=$_.Exception.Message; exit 2 }
 finally {
  $calls=@($script:nodeCalls | ForEach-Object { ,@($_ | ForEach-Object { [string]$_ }) })
- Write-Output ('RESULT='+(@{calls=$calls;nextMerge=$script:nextMerge;unexpected=$script:unexpected;batch=$script:batchMerged.Count;ciWaits=@($script:ciWaits);deployWaits=@($script:deployWaits)}|ConvertTo-Json -Compress -Depth 5))
+ Write-Output ('RESULT='+(@{calls=$calls;nextMerge=$script:nextMerge;unexpected=$script:unexpected;batch=$script:batchMerged.Count;ciWaits=@($script:ciWaits);ciJobs=@($script:ciJobs);deployWaits=@($script:deployWaits)}|ConvertTo-Json -Compress -Depth 5))
 }
 `;
   const result = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', '& ([scriptblock]::Create([Console]::In.ReadToEnd()))'], { input, encoding: 'utf8', timeout: 60_000 });
@@ -460,20 +461,22 @@ test('close-out failure never turns a verified merge into a failure', () => {
   assert.equal(missing.data.nextMerge, 1);
 });
 
-test('#8346 Codex P1: a new patch notes commit gets main-CI + deploy verification before close-out ends', () => {
+test('a new patch notes commit waits for the targeted data job and deploy', () => {
   const res = runQueue("$script:nodeMode='patch'; Close-OpenTrain");
   assert.equal(res.status, 0, res.stdout);
   assert.equal(res.data.unexpected, null);
   assert.equal(res.data.nextMerge, 1);
   assert.deepEqual(res.data.ciWaits, [`ci.yml@${SHA_C}`]);
+  assert.deepEqual(res.data.ciJobs, ['patch-notes-numbering']);
   assert.deepEqual(res.data.deployWaits, [SHA_B, SHA_C], 'train deploy first, then the patch notes commit');
-  assert.match(res.stdout, /\[ok\] patch notes-commit cccccccc: main-CI \+ deploy-verifikation groenne/);
+  assert.match(res.stdout, /\[ok\] patch notes-commit cccccccc: patch notes-CI \+ deploy-verifikation groenne/);
 });
 
 test('#8346 Codex P1: a train without deploy still verifies the patch notes commit deploy', () => {
   const res = runQueue("$script:batchBackend=$false; $script:nodeMode='patch'; Close-OpenTrain");
   assert.equal(res.status, 0, res.stdout);
   assert.deepEqual(res.data.ciWaits, [`ci.yml@${SHA_C}`]);
+  assert.deepEqual(res.data.ciJobs, ['patch-notes-numbering']);
   assert.deepEqual(res.data.deployWaits, [SHA_C]);
 });
 
@@ -481,7 +484,7 @@ test('#8346 Codex P1: red CI or a failed/pending deploy on the patch notes commi
   const red = runQueue("$script:nodeMode='patch'; $script:patchCiOk=$false; $script:patchCiState='failure'; Close-OpenTrain");
   assert.equal(red.status, 1, red.stdout);
   assert.equal(red.data.nextMerge, 0);
-  assert.match(red.stdout, /STOP: main-CI er ROED for patch notes-commit cccccccc/);
+  assert.match(red.stdout, /STOP: patch notes-CI er ROED for patch notes-commit cccccccc/);
   assert.deepEqual(red.data.deployWaits, [SHA_B], 'no deploy wait after red CI');
   const unverified = runQueue("$script:nodeMode='patch'; $script:patchCiOk=$false; $script:patchCiState='pending'; Close-OpenTrain");
   assert.equal(unverified.status, 1, unverified.stdout);
@@ -598,4 +601,49 @@ test('recovery rerun refreshes the comment and flips once the other open PR is g
   assert.deepEqual(res.flips, [1]);
   assert.equal(second.state.comments[1].length, 1, 'same comment updated, no duplicate');
   assert.ok(!second.state.comments[1][0].includes('#200') && second.state.comments[1][0].includes('label flyttet til'));
+});
+
+test('numbering check releases the wait on its exact SHA; normal CI and skipped numbering wait for the run', () => {
+  const res = runQueue(`
+$script:head='${SHA_A}'; $script:reads=0
+function Invoke-GhWithRetry($a, [switch]$TolerateFailure) {
+  if ($a -contains 'list') { return ConvertTo-Json @{ headSha='${SHA_A}'; databaseId=1 } -Compress }
+  $script:reads++
+  $jobs=@(@{ name='patch-notes-numbering'; status='completed'; conclusion=$script:target; steps=@() })
+  if ($script:other) { $jobs += @{ name='other'; status='completed'; conclusion=$script:other; steps=@() } }
+  return ConvertTo-Json -Depth 4 -Compress @{
+    headSha=$script:head
+    status=$(if ($script:reads -eq 1) { 'in_progress' } else { 'completed' })
+    conclusion=$(if ($script:reads -eq 1) { '' } else { 'success' })
+    jobs=$jobs
+  }
+}
+function Measure-Wait([string]$target, [string]$job, [string]$head='${SHA_A}', [string]$other='') {
+  $script:target=$target; $script:head=$head; $script:other=$other; $script:reads=0
+  $script:t=[datetime]'2026-11-24T12:00:00Z'
+  $ok=Wait-ForWorkflowRunFixture -WorkflowFile ci.yml -Sha '${SHA_A}' -TimeoutMinutes 1 -Label CI -SuccessJob $job -Now {$script:t} -Pause {param($s) $script:t=$script:t.AddSeconds($s)}
+  return @{ ok=$ok; reads=$script:reads }
+}
+"MEASURE=" + (@{
+  targeted=(Measure-Wait 'success' 'patch-notes-numbering')
+  normal=(Measure-Wait 'success' '')
+  timedOut=(Measure-Wait 'success' 'patch-notes-numbering' -Other 'timed_out')
+  cancelled=(Measure-Wait 'success' 'patch-notes-numbering' -Other 'cancelled')
+  skipped=(Measure-Wait 'skipped' 'patch-notes-numbering')
+  failed=(Measure-Wait 'failure' 'patch-notes-numbering')
+  wrong=(Measure-Wait 'success' 'patch-notes-numbering' '${SHA_B}')
+}|ConvertTo-Json -Compress)
+`);
+  assert.equal(res.status, 0, res.stdout);
+  const line = res.stdout.split(/\r?\n/).find(l => l.startsWith('MEASURE='));
+  assert.ok(line, res.stdout);
+  assert.deepEqual(JSON.parse(line.slice(8)), {
+    targeted: { ok: true, reads: 1 },
+    normal: { ok: true, reads: 2 },
+    timedOut: { ok: false, reads: 1 },
+    cancelled: { ok: false, reads: 1 },
+    skipped: { ok: true, reads: 2 },
+    failed: { ok: false, reads: 1 },
+    wrong: { ok: false, reads: 1 },
+  });
 });

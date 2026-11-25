@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const workflow = readFileSync(new URL('../.github/workflows/lighthouse-ci.yml', import.meta.url), 'utf8');
-const stub = readFileSync(new URL('../.github/workflows/lighthouse-ci-skip-stub.yml', import.meta.url), 'utf8');
 const coreNames = ['Check out repository', 'Set up Node.js', 'Install frontend dependencies', 'Build frontend', 'Bundle-size budget (hard gate)', 'Run bundle gate regression tests'];
 
 function steps(source) {
@@ -11,9 +10,10 @@ function steps(source) {
     .map(([, name, body]) => ({ name, body, condition: body.match(/^        if: (.+)$/m)?.[1].trim() }));
 }
 
-function runs(condition, event, author) {
+function runs(condition, event, author, build = 'true') {
   if (!condition) return true;
   const expression = condition.replace(/\$\{\{|\}\}/g, '')
+    .replaceAll('steps.changes.outputs.build', JSON.stringify(build))
     .replaceAll('env.IS_DEPENDABOT_PR', JSON.stringify(String(event === 'pull_request' && author === 'dependabot[bot]')))
     .replaceAll('github.event_name', JSON.stringify(event));
   assert.match(expression, /^[\w\s'"=!&|()[\].-]+$/);
@@ -57,15 +57,15 @@ test('negative control catches Dependabot step and job skips', () => {
   assert.throws(() => assertCoreRuns(workflow.replace('    steps:', '    if: false\n    steps:'), 'push', ''), assert.AssertionError);
 });
 
-test('one perf-gate context with inverse PR path filters and no privileged trigger', () => {
-  assert.doesNotMatch(workflow + stub, /^  pull_request_target:/m);
+test('one perf-gate reports for PRs, merge groups and main', () => {
+  assert.doesNotMatch(workflow, /^  pull_request_target:/m);
   assert.equal((workflow.match(/^  perf-gate:/gm) || []).length, 1);
-  assert.equal((stub.match(/^  perf-gate:/gm) || []).length, 1);
-  const paths = source => [...source.matchAll(/^      - '([^']+)'/gm)].map(m => m[1]);
-  const pr = workflow.split('  push:')[0];
-  assert.match(pr, /^  pull_request:/m);
-  assert.match(stub, /^    paths-ignore:/m);
-  assert.deepEqual(paths(pr), paths(stub));
-  assert.deepEqual(paths(workflow.slice(workflow.indexOf('  push:'))), paths(pr));
+  assert.match(workflow, /pull_request:\s*\n +types: \[opened, synchronize, reopened, ready_for_review\]/);
+  assert.match(workflow, /^  merge_group:/m);
   assert.match(workflow, /branches:\s*\n\s*- main/);
+});
+
+test('a deferred Lighthouse run only executes the filter and green stub', () => {
+  const executed = steps(workflow).filter(step => runs(step.condition, 'pull_request', 'contributor', 'false'));
+  assert.deepEqual(executed.map(step => step.name), ['Decide whether to build', 'Bundle unaffected or audit deferred']);
 });
