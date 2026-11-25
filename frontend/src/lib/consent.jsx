@@ -42,7 +42,7 @@ function normalize(raw) {
   };
 }
 
-function readStored() {
+export function readStoredConsent() {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
     if (!v) return null;
@@ -59,8 +59,8 @@ function writeStored(value) {
 const ConsentContext = createContext(null);
 
 export function ConsentProvider({ children }) {
-  const [consent, setConsent] = useState(readStored);
-  const [bannerOpen, setBannerOpen] = useState(() => readStored() === null);
+  const [consent, setConsent] = useState(readStoredConsent);
+  const [bannerOpen, setBannerOpen] = useState(() => readStoredConsent() === null);
   // #3034: userId + consent_preferences kommer fra den delte
   // UserProfileProvider i stedet for providerens egen session-lytter og eget
   // users-opslag (se filens toppe-kommentar).
@@ -69,7 +69,7 @@ export function ConsentProvider({ children }) {
   useEffect(() => {
     if (!userId) return;
     const remote = normalize(profile?.consent_preferences);
-    const local = readStored();
+    const local = readStoredConsent();
     if (remote) {
       setConsent(remote);
       writeStored(remote);

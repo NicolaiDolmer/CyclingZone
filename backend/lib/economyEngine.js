@@ -76,6 +76,7 @@ import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
 import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
 import { runParkingSweep, isParkedTeam, hasParkingSweepRunForSeason } from "./managerParking.js";
+import { boardJudgmentHold, isComebackSeason } from "./boardComeback.js";
 import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
 import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -1951,10 +1952,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   // processSeasonEnd henter holdene FØR parkerings-sweepen, så et hold der
   // parkeres i dette skifte, får dommen for den sæson det kørte. Kun hold der
   // allerede var parkeret hele sæsonen, springes over.
-  if (isParkedTeam(team)) {
-    console.log(`  🅿️  ${team.name}: parkeret, ingen bestyrelsesdom denne sæson (#4592)`);
-    return;
-  }
+  const hold = boardJudgmentHold(team, seasonId, currentSeasonNumber);
+  if (hold === "parked_team" || (hold && !isComebackSeason(team, seasonId, currentSeasonNumber))) return;
 
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processReplacementTriggerFn = deps.processReplacementTrigger ?? processReplacementTrigger;
@@ -1966,11 +1965,48 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   // EFTER skyggemodellens sæson-slut-sync ovenfor. Samme fail-safe-disciplin
   // som applyMandateSeasonEndSyncFn: flag-gated indeni, no-op når 'off'.
   const advanceMandateAtSeasonEndFn = deps.advanceMandateAtSeasonEnd ?? advanceMandateAtSeasonEndShared;
+  const teamStanding = standings.find(s => s.team_id === team.id);
+  const advanceNextSeasonMandate = async () => {
+    if (teamStanding) {
+      try {
+        // best-effort: en fejlende opslag her degraderer bare til assignedMembers=null
+        // (proposeNextMandate genererer stadig mål, blot uden owner_archetype_key
+        // stemplet) — den ydre catch nedenfor fanger uanset, dette er ikke en ekstra
+        // fejlkilde, kun en tydeliggørelse af at fejlen er set og accepteret her.
+        const { data: assignedMembers, error: membersError } = await supabaseClient
+          .from("team_board_members")
+          .select("archetype_key, is_chairman")
+          .eq("team_id", team.id);
+        if (membersError) {
+          console.warn(`  ⚠️  team_board_members lookup failed for ${team.name} (mandate proposal continues without owner stamping):`, membersError.message);
+        }
+
+        await advanceMandateAtSeasonEndFn(supabaseClient, {
+          teamId: team.id,
+          seasonId,
+          currentSeasonNumber,
+          standing: teamStanding,
+          team,
+          riders: team.riders || [],
+          assignedMembers: assignedMembers?.length ? assignedMembers : null,
+          now: deps.now ?? new Date(),
+        });
+      } catch (error) {
+        console.error(`  ⚠️  mandate annual-meeting proposal failed for ${team.name}:`, error.message);
+        captureException(error, { tags: { flow: "season-transition", stage: "mandate-annual-meeting" }, teamId: team.id });
+      }
+    }
+  };
+
+  if (hold) {
+    await advanceNextSeasonMandate();
+    return;
+  }
+
   // #805 · forudhentet af processSeasonEnd (én query), fallback til egen lookup
   // hvis kaldt direkte (fx repair-stien).
   const boardTestMode = deps.boardTestMode ?? await isBoardTestModeActive(supabaseClient);
   const notificationDeps = { supabase: supabaseClient, now: deps.now };
-  const teamStanding = standings.find(s => s.team_id === team.id);
   const boards = team.board_profiles || [];
   // #3514 fase 1-rest: samlet undervejs i loopet nedenfor, brugt ÉN gang efter
   // loopet til skyggemodellens sæson-slut-sync (se applySeasonEndSync-kaldet).
@@ -2340,6 +2376,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         goalsTotal: goals.length,
         planIsComplete,
         seasonId,
+        seasonNumber: currentSeasonNumber,
         // #4482 · Regel A: sæson-slut-tilbud indløses i den FØLGENDE sæson.
         // Stemples NULL her og re-stemples af seasonStartHooks når den nye
         // sæson findes (FK forhindrer at stemple en endnu-ikke-oprettet sæson).
@@ -2396,42 +2433,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     }
   }
 
-  // #4557 S-M2c · Årsmødet: EFTER skyggemodellens sæson-slut-sync (spec §4.1
-  // punkt 1, rækkefølgen er bindende — confidence skal være sæsonens FÆRDIGE
-  // tal før tillids-trappen for næste mandat allokeres). No-op (fail-safe
-  // inde i kaldet) når kill-switchen er 'off' eller holdet ikke har en
-  // skyggerelation endnu; #4839: 'beta' skriver for alle hold (engineWrite).
-  // En fejl her må ALDRIG vælte en rigtig sæson-slut —
-  // samme isolerede try/catch-disciplin som skygge-syncet ovenfor.
-  if (teamStanding) {
-    try {
-      // best-effort: en fejlende opslag her degraderer bare til assignedMembers=null
-      // (proposeNextMandate genererer stadig mål, blot uden owner_archetype_key
-      // stemplet) — den ydre catch nedenfor fanger uanset, dette er ikke en ekstra
-      // fejlkilde, kun en tydeliggørelse af at fejlen er set og accepteret her.
-      const { data: assignedMembers, error: membersError } = await supabaseClient
-        .from("team_board_members")
-        .select("archetype_key, is_chairman")
-        .eq("team_id", team.id);
-      if (membersError) {
-        console.warn(`  ⚠️  team_board_members lookup failed for ${team.name} (mandate proposal continues without owner stamping):`, membersError.message);
-      }
-
-      await advanceMandateAtSeasonEndFn(supabaseClient, {
-        teamId: team.id,
-        seasonId,
-        currentSeasonNumber,
-        standing: teamStanding,
-        team,
-        riders: team.riders || [],
-        assignedMembers: assignedMembers?.length ? assignedMembers : null,
-        now: deps.now ?? new Date(),
-      });
-    } catch (error) {
-      console.error(`  ⚠️  mandate annual-meeting proposal failed for ${team.name}:`, error.message);
-      captureException(error, { tags: { flow: "season-transition", stage: "mandate-annual-meeting" }, teamId: team.id });
-    }
-  }
+  // Ordinary season-end judgment completes before the next mandate is proposed.
+  await advanceNextSeasonMandate();
 }
 
 // ─── Rider Value & Salary Recalculation ──────────────────────────────────────

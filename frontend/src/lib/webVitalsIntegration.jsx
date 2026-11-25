@@ -1,12 +1,17 @@
 import { useEffect } from "react";
 import { onCLS, onINP, onLCP, onFCP, onTTFB } from "web-vitals";
-import { useConsent } from "./consent.jsx";
+import { readStoredConsent, useConsent } from "./consent.jsx";
+import { capturePosthogWebVital, POSTHOG_ENABLED } from "./posthogClient.js";
+import { buildWebVitalProperties, WEB_VITALS_PRODUCTION_ORIGIN } from "./webVitalsPosthog.ts";
+import { useUserProfile } from "./userProfile.jsx";
 
 const ENABLED = import.meta.env.PROD;
 
 // Modul-scope guard: lytterne registreres kun én gang pr. page load, så et
 // consent-toggle der remounter komponenten ikke dobbelt-abonnerer.
 let registered = false;
+/** @type {{ userId: string } | null} */
+let activeAccount = null;
 
 // Sender hver Core Web Vital til GA4 som event via den delte gtag-pipeline
 // (samme stream som gaIntegration). GA4 forventer en heltals-`value`: CLS ganges
@@ -26,6 +31,15 @@ function sendToGa({ name, delta, value, id }) {
   });
 }
 
+function sendToPosthog(metric) {
+  const account = activeAccount;
+  if (!account) return;
+  const properties = buildWebVitalProperties(metric);
+  if (properties) capturePosthogWebVital(properties, account.userId, () =>
+    activeAccount === account && readStoredConsent()?.analytics === true,
+  );
+}
+
 function registerWebVitals() {
   if (registered || !ENABLED) return;
   registered = true;
@@ -34,6 +48,13 @@ function registerWebVitals() {
   onLCP(sendToGa);
   onFCP(sendToGa);
   onTTFB(sendToGa);
+
+  if (POSTHOG_ENABLED && window.location.origin === WEB_VITALS_PRODUCTION_ORIGIN) {
+    const options = { reportSoftNavs: true };
+    onCLS(sendToPosthog, options);
+    onINP(sendToPosthog, options);
+    onLCP(sendToPosthog, options);
+  }
 }
 
 // Mounted inside ConsentProvider. Sender anonyme field Core Web Vitals (LCP/INP/
@@ -44,12 +65,18 @@ function registerWebVitals() {
 // unsubscribe, og næste page load respekterer det nye valg.
 export default function WebVitalsIntegration() {
   const { hasConsent } = useConsent();
+  const { userId } = useUserProfile();
   const analyticsOn = hasConsent("analytics");
 
   useEffect(() => {
     if (!analyticsOn) return;
+    const account = userId ? { userId: String(userId) } : null;
+    activeAccount = account;
     registerWebVitals();
-  }, [analyticsOn]);
+    return () => {
+      if (activeAccount === account) activeAccount = null;
+    };
+  }, [analyticsOn, userId]);
 
   return null;
 }

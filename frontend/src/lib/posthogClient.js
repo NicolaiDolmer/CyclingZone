@@ -39,6 +39,7 @@
 //     felter som del af capture.
 
 import { isLikelyAutomation, isPrerendering } from "./clarityBotSignals.js";
+import { registerPosthogCapture } from "./posthogCapture.ts";
 import { CLICK_ID_KEYS, UTM_KEYS, getLegacyCampaignParams } from "./attribution.js";
 
 // import.meta.env optional-chained så modulet kan importeres i node --test,
@@ -57,6 +58,7 @@ const PROJECT_KEY = import.meta.env?.VITE_POSTHOG_KEY;
 // Relativ sti = samme origin = ingen adblocker-liste rammer den. Rewrites i
 // frontend/vercel.json sender /ingest videre til EU-cloud'en.
 const API_HOST = "/ingest";
+const WEB_VITAL_EVENT = "web_vital_measured";
 
 export const POSTHOG_ENABLED = Boolean(import.meta.env?.PROD) && Boolean(PROJECT_KEY);
 export const POSTHOG_CAPTURE_READY = "cz:posthog-capture-ready";
@@ -202,8 +204,9 @@ function frontendIdProperty() {
 }
 
 function capture(name, properties) {
-  const campaign = buildPosthogEventProperties(name, properties, identifiedAttribution, globalThis.window?.location?.search);
-  client.capture(name, { ...campaign, ...frontendIdProperty() });
+  const eventProperties = name === WEB_VITAL_EVENT ? properties
+    : buildPosthogEventProperties(name, properties, identifiedAttribution, globalThis.window?.location?.search);
+  client.capture(name, { ...eventProperties, ...frontendIdProperty() });
 }
 
 // optIn()/optOut() er async i core'en, men laver kun en synkron
@@ -234,6 +237,14 @@ function shouldSkipForAutomation() {
 // PostHog-konstruktøren); vagtet runtime i posthogIntegration.test.js.
 function memoryOnlyClass(PostHog) {
   return class MemoryOnlyPostHog extends PostHog {
+    fetch(url, options) {
+      // Core's uncompressed batch has no keepalive by default. Web Vitals
+      // emits final samples as the document is hidden or navigated away.
+      const body = options?.body;
+      const isVitalBatch = typeof body === "string" && body.length <= 16_000 && body.includes('"event":"' + WEB_VITAL_EVENT + '"');
+      return super.fetch(url, isVitalBatch ? { ...options, keepalive: true } : options);
+    }
+
     constructor(apiKey, options) {
       super(apiKey, options);
       this.czConstructed = true;
@@ -352,12 +363,27 @@ export function capturePosthogEvent(name, properties, { userId } = {}) {
   } catch { /* best-effort — spejlingen må aldrig påvirke spillet */ }
 }
 
+// LCP can become final before the SDK or account gate is ready.
+export function capturePosthogWebVital(properties, userId, canSend) {
+  if (!POSTHOG_ENABLED || !userId || posthogOptedOut || !canSend()) return;
+  const id = String(userId);
+  if (!isPosthogCapturing() || identifiedUserId !== id) {
+    if (pendingUserEvents.length < MAX_PENDING_USER_EVENTS) {
+      pendingUserEvents.push({ userId: id, name: WEB_VITAL_EVENT, properties, canSend });
+    }
+    return;
+  }
+  try {
+    capture(WEB_VITAL_EVENT, properties);
+  } catch { /* best-effort: telemetry must not interrupt the app */ }
+}
+
 function flushPendingUserEvents() {
   const queued = pendingUserEvents.splice(0, pendingUserEvents.length);
   for (const ev of queued) {
     // Events fra en anden bruger (logout/login på samme fane før identify)
     // smides væk frem for at blive bundet til den forkerte person.
-    if (ev.userId !== identifiedUserId) continue;
+    if (ev.userId !== identifiedUserId || (ev.canSend && !ev.canSend())) continue;
     try {
       capture(ev.name, ev.properties);
     } catch { /* best-effort */ }
@@ -404,3 +430,5 @@ export function optOutPosthog() {
     Promise.resolve(client.optOut()).catch(() => {});
   } catch { /* best-effort */ }
 }
+
+registerPosthogCapture({ isCapturing: isPosthogCapturing, capture: capturePosthogEvent });

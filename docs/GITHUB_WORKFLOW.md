@@ -242,7 +242,7 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 | `priority:high\|med\|low` | Bruger | Pick-rækkefølge |
 | `type:bug\|feature\|refactor\|docs\|investigation` | Auto via template | Filtrering |
 
-**Brugeren** lukker issuet med `completed` reason når PR er merged og verificeret. Issuet kan lukkes direkte fra `claude:todo`/`claude:in-progress`, eller via `claude:done` som mellem-state ("PR merged, afventer verifikation"). Begge mønstre er gyldige.
+**Claude/Codex lukker selv (ejer 25/11)** med `completed`, når PR er merget, tændt og set virke i prod, med beviset (skærmbillede eller SQL) skrevet på issuet. Mangler noget, forbliver issuet åbent med præcis hvad der mangler. Ejeren får mandagslisten over lukkede issues. Ejeren kan stadig selv lukke. Issuet kan lukkes direkte fra `claude:todo`/`claude:in-progress`, eller via `claude:done` som mellem-state ("PR merged, afventer verifikation"). Begge mønstre er gyldige.
 
 > **Note 2026-05-22 (revideret):** En audit 2026-05-18 markerede `claude:done` som deprecated (38/100 closed issues sprang step over), men faktisk opførsel post-audit viser fortsat ~60% brug af labelen. Den er derfor **valgfri, ikke deprecated** — AI sætter den efter PR-merge som signal til brugeren om at PR er klar til verifikation, men direct-close er også gyldigt. Claude lukker fortsat kun sine egne `not_planned`-issues (fx duplikater, scope-ændringer).
 
