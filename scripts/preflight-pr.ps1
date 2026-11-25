@@ -171,6 +171,12 @@ try {
   node scripts/check-required-ci-jobs.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "required-ci-jobs-guard" }
 
+  Write-Host "== retired-route-links-guard (#8398) ==" -ForegroundColor Cyan
+  node --test scripts/check-retired-route-links.test.mjs frontend/src/App.racesLegacyRedirect.test.js
+  if ($LASTEXITCODE -ne 0) { $failed += "retired-route-links-guard (selvtest)" }
+  node scripts/check-retired-route-links.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "retired-route-links-guard" }
+
   # #5369: guarden fandtes fra #5048, men blev ikke koert noget sted og stod roed
   # paa en ren main uden at nogen saa det. CI koerer den i frontend-build
   # (required); her fanges et nyt logEvent("...") uden raekke i

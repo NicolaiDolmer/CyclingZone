@@ -901,6 +901,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: node scripts/check-anti-slop.mjs
 
+      - name: Test retired route links
+        if: ${{ !cancelled() }}
+        run: node --test scripts/check-retired-route-links.test.mjs frontend/src/App.racesLegacyRedirect.test.js
+
+      - name: Check retired route links
+        if: ${{ !cancelled() }}
+        run: node scripts/check-retired-route-links.mjs
+
       # --- eslint-disable-guard ---
       # #4332 forward-guard: ratchet mod stille vaekst i antallet af
       # eslint-disable-direktiver. Fejler KUN paa flere direktiver end

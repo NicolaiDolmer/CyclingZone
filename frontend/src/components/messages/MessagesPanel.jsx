@@ -325,7 +325,7 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
         action={(
           // Link renderer et <a> og Button et <button>: ét interaktivt element,
           // ikke en knap inde i et link (tastatur/skaermlaeser bliver upaalidelig).
-          <Link to="/global-rank" className={buttonClass({ variant: "primary", size: "sm" })}>
+          <Link to="/standings?tab=global" className={buttonClass({ variant: "primary", size: "sm" })}>
             {t("list.emptyAction")}
           </Link>
         )}
