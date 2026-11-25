@@ -376,14 +376,30 @@ export default function RidersPage() {
     // potentiale), så ingen ny migration er nødvendig.
     const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, primary_type, secondary_type, popularity, reputation, team:team_id(id, name), pending_team:pending_team_id(id, name)";
     try {
-      const [{ rows, count }, { data: auctionData }] = await Promise.all([
-        fetchRidersPage(supabase, { filters: { ...filters, sort: displaySort }, page: filters.page, pageSize: 50, riderSelect, seasonYear }),
-        supabase.from("auctions").select("rider_id").in("status", ["active", "extended"]),
-      ]);
+      const { rows, count } = await fetchRidersPage(supabase, {
+        filters: { ...filters, sort: displaySort }, page: filters.page, pageSize: 50, riderSelect, seasonYear,
+      });
       if (request !== loadSequence.current) return;
       setRiders(rows);
       setTotal(count);
-      setActiveAuctionRiders(new Set((auctionData || []).map(a => a.rider_id)));
+      // Publish the search independently. Only query auction status for visible riders.
+      setActiveAuctionRiders(new Set());
+      if (rows.length === 0) return;
+      void Promise.resolve(supabase.from("auctions").select("rider_id")
+        .in("status", ["active", "extended"]).in("rider_id", rows.map(row => row.id)))
+        .then(({ data, error: auctionError }) => {
+          if (request !== loadSequence.current) return;
+          if (auctionError) {
+            console.error("load rider auction badges failed:", auctionError.message);
+            return;
+          }
+          setActiveAuctionRiders(new Set((data ?? []).map(auction => auction.rider_id)));
+        })
+        .catch((auctionError) => {
+          if (request === loadSequence.current) {
+            console.error("load rider auction badges failed:", auctionError);
+          }
+        });
     } catch (err) {
       if (request !== loadSequence.current) return;
       console.error("loadRiders failed:", err.message);
