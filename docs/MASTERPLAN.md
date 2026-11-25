@@ -73,7 +73,7 @@
 - Byttehandel begge veje #5918 · founder-stemme #1283 · Codex.
 - Fejlrettelse: sortér rytterlisten efter spejdet potentiale #7924 · "Stræk" bliver "Sværere" #5850 (ejer 23/11 aften).
 - **man 30/11 ejer:** fair-play #3153 #3818 #4497 #7927 · #3092 #720 #691 #1450.
-- Uge 49 (ejer 25/11): #8696 #5385 #6889 #7041 #2236.
+- Uge 49: #8696 #5385 #6889 #7041 #2236 #8698.
 - Roadmap Uge 49 (ejer 24/11): udvikling af det, rytteren gjorde i løbet #5950 · mellemtider i referatet #8343 · første dage #8084 · tog-vagt #8665 (Codex).
 
 ## S6 (starter 28/11)
