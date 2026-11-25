@@ -130,8 +130,10 @@ test('guard: every migration touching the gated functions, in filename order, ke
   // #8034 uses the promotion allowance from #7323, which does not itself
   // edit a gated market function and therefore is outside the discovery scan.
   await db.exec(`
-    ALTER TABLE riders ADD COLUMN promotion_pending_to text, ADD COLUMN promotion_pending_since timestamptz,
-      ADD COLUMN firstname text, ADD COLUMN lastname text;
+    ALTER TABLE seasons ADD COLUMN status text, ADD COLUMN number integer;
+    ALTER TABLE riders ADD COLUMN birthdate date, ADD COLUMN promotion_pending_to text,
+      ADD COLUMN promotion_pending_since timestamptz, ADD COLUMN firstname text, ADD COLUMN lastname text;
+    ALTER TABLE teams ADD COLUMN is_ai boolean DEFAULT false, ADD COLUMN is_bank boolean DEFAULT false;
     CREATE TABLE academy_graduation (
       rider_id uuid, team_id uuid, season_id uuid, from_squad text, to_squad text,
       status text, deadline timestamptz, resolved_at timestamptz, PRIMARY KEY(rider_id, season_id)

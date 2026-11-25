@@ -23,10 +23,7 @@ export async function prepareBetaDatabase2176(db) {
     GRANT SELECT ON users TO service_role;
     CREATE TABLE transfer_offers(id uuid PRIMARY KEY, rider_id uuid, seller_team_id uuid, buyer_team_id uuid,
       offer_amount bigint,counter_amount bigint,status text,buyer_confirmed boolean,seller_confirmed boolean);`);
-  await db.exec(`CREATE TABLE seasons(id uuid PRIMARY KEY, status text, number integer);
-    ALTER TABLE riders ADD COLUMN birthdate date;
-    ALTER TABLE teams ADD COLUMN is_ai boolean DEFAULT false, ADD COLUMN is_bank boolean DEFAULT false;
-    CREATE TABLE team_staff(id uuid PRIMARY KEY);`);
+  await db.exec('CREATE TABLE seasons(id uuid PRIMARY KEY); CREATE TABLE team_staff(id uuid PRIMARY KEY);');
   const scoutSchema = await file('2026-07-10-scout-assignments.sql');
   await db.exec(scoutSchema.slice(scoutSchema.indexOf('CREATE TABLE'), scoutSchema.indexOf('ALTER TABLE scout_assignments ENABLE')));
   await db.exec('GRANT SELECT,INSERT,UPDATE ON scout_assignments TO service_role;');
