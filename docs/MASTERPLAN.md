@@ -20,16 +20,16 @@
 
 **Faste datoer**
 - **man 23/11 · træning live (ejer):** programfælden #8608 · live (#8622) · saldoen #8357 · live (#8466) · ugeblokke #8549 · PR #8601 Fable godkendt m. bemærkninger, ejer "merge" bag slukket kontakt; før tænding: fund A (pas to gange) + regel B (lås i skadesfelt flyttes til første raske felt) · Claude · rotation #8548 · PR #8624 + #8625 stables på #8601 · Claude (Codex nede) · `training_week_priority` · ejer tænder.
-- **Træning først (ejer 23/11):** I dag, Rapport, Program og Udvikling færdige før nyt; siderne må kun blive samme eller bedre (paritet #8631). Én linje pr. rytter, egne kolonner, **ingen forkortelser** #7947 · Claude-spor. Ingen skjult holdplan (fast træning pr. rytter, overgang = dagens træning) #8026 · design + Fable før byg.
-- **tir 24/11 · sæsonskiftet forberedes teknisk** (ejer 23/11) · Claude: S6-kalender #5841, prøveskifte #7325, samlet besked #8397, Graduation Day-design #7323 · kontrakter til S7 #7138 undersøges · mail-billeder #8619 · patch notes-siden #8449.
-- **tor 26/11 · sæsonskifte-session** · ejer + Claude: prøveskifte på kopi #7325 · samlet besked #8397 (inkl. oprykninger) · AI-hold fryses #8614 · **mail 1** #8619 · patch notes-siden #8449 (dato pr. note + kategorier, efter gennemgang af de bedste spil, ejer 24/11) · selektion #7645 (hvor meget nås før skiftet).
-- **før 28/11 · skiftets rester** · Claude/Codex · byg + prøvekørsel: **automatisk oprykning i stedet for Graduation Day #7323** (junior→U23 ved 19, U23→senior ved 23; fuld trup = ryk op alligevel, ingen nye køb over loftet; salg fortsætter; ejer 24/11) · **lofter 30/30/30, maks 60 #8034** · **bestyrelsen efter pause #8100** (ejer 24/11) · skader nulstilles #5865 · aldring #8522 (tændt) · aftenafregningen #6490 + deploy-vindue #8422 · ungdom #6882 (tre trupper, intet akademi) · trupstørrelser #7490.
+- **Træning først (ejer 23/11):** I dag, Rapport, Program og Udvikling færdige før nyt; siderne må kun blive samme eller bedre (paritet #8631). Én linje pr. rytter, egne kolonner, **ingen forkortelser** #7947 · Claude-spor. Ingen skjult holdplan (fast træning pr. rytter, overgang = dagens træning) #8026 · design + Fable før byg. **Med #7947 (ejer 25/11):** #8688 #8684 #8607 #8685 #8686 (egen fane) #8690 · #8689 (kun forventet hårdhed, billede først). #8687 nu · Codex.
+- **tir 24/11:** S6-kalender #5841 · Claude.
+- **tor 26/11 · sæsonskifte-session** · ejer + Claude: prøveskifte på kopi #7325 · samlet besked #8397 (inkl. oprykninger) · AI-hold fryses #8614 · **mail 1** #8619 · patch notes-siden #8449 (dato pr. note + kategorier, efter gennemgang af de bedste spil, ejer 24/11) · selektion #7645 (hvor meget nås før skiftet) · motor/taktik #8189 #8609 #8663.
+- **før 28/11 · skiftets rester** · Claude/Codex · byg + prøvekørsel: **automatisk oprykning i stedet for Graduation Day #7323** (junior→U23 ved 19, U23→senior ved 23; fuld trup = ryk op alligevel, ingen nye køb over loftet; salg fortsætter; ejer 24/11) · **lofter 30/30/30, maks 60 #8034** · **bestyrelsen efter pause #8100** (ejer 24/11) · skader nulstilles #5865 · aldring #8522 (tændt) · aftenafregningen #6490 + deploy-vindue #8422 · ungdom #6882 (tre trupper, intet akademi) · trupstørrelser #7490 · seniortrup-optag #8605 (med #8668) · kontraktloft #7138/#8691: Codex undersøger, ejer torsdag.
 - **Efter skiftet, ejerens rækkefølge 24/11** (afslut startet → designet → nyt): 1 rotation #7456 (beta 24/11) · 2 solgte ryttere #7455 · 3 taktik på telefon #8386 · 4 bjergudbrud #6912 · 5 træthed og tidsgrænse #7715 · 6 aftenkørsel #6490 · 7 stabilitet #6917 · 8 Android #6584 · 9 kort pr. rytter #5101 · 10 selektion #7645 · 11 #7866 · 12 #8458 · 13 #8419 · 14 #8024 · 15 #8440 · 16 #8592 · 17 #8545 · 18 #7986. Brænder i dag: prognosefald #8604 + gammel score/løbsudvikling #8476 (Claude 24/11).
 - **lør 28/11 · S6 starter** · Claude · bevis på skiftedagen.
 - **søn 29/11 · mail 2** "S6 er i gang" #8619 · ejer godkender tekst + modtagerantal · kræver aktiv S6 og synlig kalender.
 
 **1. Til dørs og åbne PR'er** (Claude merger på ordret "merge")
-- **Prioriteringssession 23/11** (#8584 runde 1+3): denne uge #8024, #8100 (før 26/11), motorpakke #7645 + #7644 + #7715, #7137 rangliste, #7866 + #8458, #8419, akademi A (#8060, ejer tænder), #8034 (prøv til S6-start), #7455 + #7986, #6490, #6584, #8073 sidegennemgang (+ #8585, #8324), lofter + hybrid kortlægges · Claude/Codex. Nej/fjernet: #8576 karrierefase, startliste-rutematch (#8450: ratings bliver), Udviklingsscore B + catch-up (#8359).
+- **Prioriteringssession 23/11** (#8584 runde 1+3): denne uge #8024, #8100 (før 26/11), motorpakke #7645 + #7644 + #7715, #7137 rangliste, #7866 + #8458, #8419, akademi A (#8060, ejer tænder), #8034 (prøv til S6-start), #7455 + #7986, #6490, #6584, #8073 sidegennemgang (+ #8585, #8324), lofter + hybrid kortlægges · Claude/Codex. Nej/fjernet: #8576 karrierefase, startliste-rutematch (ratings bliver), Udviklingsscore B + catch-up (#8359).
 - Prod-bevis: #8611 kan lukkes; #7962, #7861, #7859, #7862, #8400, #7627, #8608 venter ejerens visuelle tjek; #8546 delvist.
 - Rapport A + B (#8584): 35 ejer-tjek, 11 med manglende arbejde · ejer + Claude · uge 48.
 - Discord-kanalen læst mod issues og merged PR'er + én spørgeliste · Claude · uge 48. Triage + GitHub-oprydning (#8600 punkt 61-62) · Claude · uge 48.
@@ -51,7 +51,7 @@
 
 **4. Kernefunktioner til dørs** (ejer 23/11, ordret; loftet rangeret 4/11; **Forstå løbet #7716 før #6110**)
 - **Motor og løbsfilm:** motor-dom #6649, #6940, #6299, #7290 · Claude (Fable) · overskredet (20/11). Selektion #7645 (A først) · ejer vælger mulighed 1/2. Nedkørsler #7644 · bjergudbrud #6912 · #7899 · #7902 · tidsgrænse ved træthed #7715 · slukket, frist overskredet. Tidsstempling #6350 · design. Realisme-gaten #7588 PR 4-6 · næste motorsession (ejer 23/11). Årsag til alt: #7714, #7725-#7730, #7754. Samleliste #7260; plan: [RACE_ENGINE_PLAN](RACE_ENGINE_PLAN.md).
-- **Løbsside v6:** live 21/11 · prod-bevis + luk · #8343, #8355, #8450, #8287.
+- **Løbsside v6:** live 21/11 · prod-bevis + luk · #8343, #8355, #8287.
 - **Taktik:** ændringerne gennemgås med ejeren. Træthed pr. indstilling #7638 · indsatskortet #5101 (mockup først) · delt kaptajn #7326 · #7266 · #7557 · trøjejagt #7855 (prod-bevis) · holdplaner #8013.
 - **Udvikling 2.0 #6110 og træning:** XP live; søndagsjob #7685 · XP fra P 1-99 #8545 (ejer 23/11: torsdag 26/11) · træthed nu #7801/#7982 (prod-bevis; #7536 forklaret) · træningssiden #7947 (skitse #8248) · Træn nu-øjeblikket #8363 · #3924 · bagefter #2798 og #3564; #3813 og #5238 med · Claude/Codex.
 - **Akademi** aldersgruppe #6944 · **planlægning** #8419, #8420, #8306 · **patch notes-siden** #8449 · Codex · byg. Spillernes rettelser og ønsker tages stilling til.
@@ -59,7 +59,7 @@
 
 **5. Drift**
 - Supabase målt read-only (Codex L) → første besparelser · ejer ser live før sletning, intet uden arkiv. Plan v3 #7659: #7663 · ranglisten #7664 → #8003 · overskredet (uge 47).
-- Sentry-rodårsager (Codex M): små PR'er; motor/træning = Fable · uge 48.
+- Sentry-rodårsager (Codex M): små PR'er; motor/træning = Fable · uge 48. Flag-løkke #8660 · Codex.
 - Udgiftsliste med pris/brug/nedgrader/sluk · Claude · uge 48; ejeren opsiger selv.
 - Bestyrelsen tændes ved rigtige skyggetal + ejer-go.
 
@@ -70,6 +70,7 @@
 - Autopris-incitament #8474 · første dage #8084 · farvepakke #8325 + #8326 + #8364 + #7988 · lofter besluttes · assistent-design #8394 (byg dec.) · trækbar roadmap-tavle (admin, efter #8616) · Claude/Codex.
 - E-mail, winback, notifikationer, PWA, SEO #8396 · Claude · plan først.
 - Nyt byg efter til dørs: top 3 fra roadmap-afstemningen tages med i ugeplanen · ejer.
+- Byttehandel begge veje #5918 · founder-stemme #1283 · Codex.
 - Fejlrettelse: sortér rytterlisten efter spejdet potentiale #7924 · "Stræk" bliver "Sværere" #5850 (ejer 23/11 aften).
 - Roadmap Uge 49 (ejer 24/11): udvikling af det, rytteren gjorde i løbet #5950 · mellemtider i referatet #8343 · første dage #8084 · tog-vagt #8665 (Codex).
 
