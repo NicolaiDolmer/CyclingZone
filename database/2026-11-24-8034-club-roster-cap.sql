@@ -4,6 +4,60 @@ SET LOCAL lock_timeout = '3s';
 -- An active lead reserves its seat until the rider joins or the lead ends.
 ALTER TABLE public.auctions ADD COLUMN IF NOT EXISTS reservation_squad text;
 
+-- Match the acquisition season used by auction finalization, including the
+-- gap between the completed and active seasons.
+CREATE OR REPLACE FUNCTION public.auction_youth_squad_8034(p_rider uuid)
+RETURNS text
+LANGUAGE sql STABLE
+SET search_path = ''
+AS $$
+  SELECT CASE WHEN 2025 + s.number - extract(year FROM r.birthdate) >= 19 THEN 'u23' ELSE 'junior' END
+  FROM public.riders r
+  LEFT JOIN LATERAL (
+    SELECT number + CASE WHEN status = 'completed' THEN 1 ELSE 0 END AS number
+    FROM public.seasons
+    WHERE status IN ('active', 'upcoming', 'completed') AND number > 0
+    ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'upcoming' THEN 1 ELSE 2 END,
+             CASE WHEN status = 'upcoming' THEN number END, number DESC
+    LIMIT 1
+  ) s ON true
+  WHERE r.id = p_rider;
+$$;
+
+CREATE OR REPLACE FUNCTION public.auction_effective_reservation_squad_8034(p_auction uuid)
+RETURNS text
+LANGUAGE sql STABLE
+SET search_path = ''
+AS $$
+  SELECT CASE
+    WHEN a.reservation_squad = 'senior' OR NOT coalesce(a.is_youth, false) THEN 'senior'
+    WHEN a.reservation_squad IS NULL AND
+      (SELECT count(*) FROM public.riders r
+       WHERE (r.team_id = a.current_bidder_id OR r.pending_team_id = a.current_bidder_id)
+         AND coalesce(r.squad, 'senior') = 'senior' AND r.is_retired IS NOT TRUE)
+      + (SELECT count(*) FROM public.auctions b
+         WHERE b.current_bidder_id = a.current_bidder_id
+           AND b.status IN ('active', 'extended') AND b.id <> a.id
+           AND (b.reservation_squad = 'senior'
+             OR (b.reservation_squad IS NULL AND (
+               NOT coalesce(b.is_youth, false) OR (b.created_at, b.id) < (a.created_at, a.id)
+             )))
+           AND NOT EXISTS (
+             SELECT 1 FROM public.riders r
+             WHERE r.id = b.rider_id AND (r.team_id = b.current_bidder_id OR r.pending_team_id = b.current_bidder_id)
+           )) < 30
+      THEN 'senior'
+    ELSE public.auction_youth_squad_8034(a.rider_id)
+  END
+  FROM public.auctions a
+  WHERE a.id = p_auction;
+$$;
+
+REVOKE ALL ON FUNCTION public.auction_youth_squad_8034(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.auction_effective_reservation_squad_8034(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.auction_youth_squad_8034(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.auction_effective_reservation_squad_8034(uuid) TO service_role;
+
 CREATE OR REPLACE FUNCTION public.auction_reserved_places_8034(
   p_team uuid, p_squad text DEFAULT NULL, p_exclude_auction uuid DEFAULT NULL
 ) RETURNS integer
@@ -15,7 +69,7 @@ AS $$
   WHERE a.current_bidder_id = p_team
     AND a.status IN ('active', 'extended')
     AND a.id IS DISTINCT FROM p_exclude_auction
-    AND (p_squad IS NULL OR coalesce(a.reservation_squad, 'senior') = p_squad)
+    AND (p_squad IS NULL OR public.auction_effective_reservation_squad_8034(a.id) = p_squad)
     AND NOT EXISTS (
       SELECT 1 FROM public.riders r
       WHERE r.id = a.rider_id AND (r.team_id = p_team OR r.pending_team_id = p_team)
@@ -240,13 +294,7 @@ BEGIN
     IF NOT coalesce(NEW.is_youth, false) THEN
       RAISE EXCEPTION 'market_gate_6181:squad_full' USING ERRCODE = 'P0001';
     END IF;
-    -- Mirror academyPlacementSquad: Season 1 is 2026, and an unknown age
-    -- follows the junior default. Youth auctions try senior first.
-    SELECT CASE WHEN 2025 + s.number - extract(year FROM r.birthdate) >= 19 THEN 'u23' ELSE 'junior' END
-      INTO destination FROM public.riders r
-      LEFT JOIN LATERAL (SELECT number FROM public.seasons WHERE status='active' ORDER BY number DESC LIMIT 1) s ON true
-      WHERE r.id = NEW.rider_id;
-    destination := coalesce(destination, 'junior');
+    destination := coalesce(public.auction_youth_squad_8034(NEW.rider_id), 'junior');
     SELECT count(*) INTO occupied FROM public.riders r
     WHERE (r.team_id = NEW.current_bidder_id OR r.pending_team_id = NEW.current_bidder_id)
       AND coalesce(r.squad, 'senior') = destination AND r.is_retired IS NOT TRUE;

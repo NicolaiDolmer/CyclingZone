@@ -536,24 +536,27 @@ async function tryPlaceYouthWinnerOnSenior({
   const winnerContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
   // #3580: verificér at ejerskabsskiftet FAKTISK ramte en række, FØR debiten
   // nedenfor kører — se expectMutationAffectingRows' doc-comment i marketUtils.js.
-  const placedRows = await expectMutationAffectingRows(
-    supabase
-      .from("riders")
-      .update({
-        team_id: bidderId,
-        pending_team_id: null,
-        acquired_at: actualEnd,
-        ...seniorSquadPatch(),
-        ...winnerContractPatch,
-      })
-      .eq("id", rider.id),
-    { context: `youth_senior_placement auction=${auction.id} rider=${rider.id}` }
-  ).catch((error) => {
-    if (error?.message !== "club_roster_full") throw error;
-    return null;
-  });
-
-  if (!placedRows) return { placed: false, reason: "club_full" };
+  try {
+    await expectMutationAffectingRows(
+      supabase
+        .from("riders")
+        .update({
+          team_id: bidderId,
+          pending_team_id: null,
+          acquired_at: actualEnd,
+          ...seniorSquadPatch(),
+          ...winnerContractPatch,
+        })
+        .eq("id", rider.id),
+      { context: `youth_senior_placement auction=${auction.id} rider=${rider.id}` }
+    );
+  } catch (error) {
+    if (error?.message === "club_roster_full") return { placed: false, reason: "club_full" };
+    // An older youth lead can still try senior when another auction holds
+    // the last place. The locked database gate decides before any payment.
+    if (error?.message === "squad_full") return { placed: false, reason: "squad_full" };
+    throw error;
+  }
 
   await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "youth_auction_senior_win" });
   await closeTransferListingsForRiders(supabase, [rider.id], "sold");

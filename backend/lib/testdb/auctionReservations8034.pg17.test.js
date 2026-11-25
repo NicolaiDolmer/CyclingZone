@@ -5,6 +5,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { finalizeAuctionById } from "../auctionFinalization.js";
 import { SCHEMA, ESCROW_SCHEMA } from "../__fixtures__/autoAccept2176Schema.js";
 
 const PG_BIN = process.env.AUTO_ACCEPT_PG_BIN;
@@ -20,6 +21,79 @@ function definition(source, name) {
   const end = /^END;\s*\$\$;/m.exec(source.slice(start));
   assert.ok(start >= 0 && end, name);
   return source.slice(start, start + end.index + end[0].length);
+}
+
+// Run the real finalizer and payment RPCs, translating the fixture's PostgREST
+// operations to the isolated PostgreSQL database.
+function pgAuctionClient(query) {
+  function literal(value) {
+    if (value == null) return "NULL";
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    const text = typeof value === "object" ? JSON.stringify(value) : value;
+    return "'" + text.replaceAll("'", "''") + "'";
+  }
+  return {
+    async rpc(name, args) {
+      const parameters = Object.entries(args).map(([key, value]) => key + " => " + literal(value)).join(", ");
+      return { data: JSON.parse(query(`SELECT to_jsonb(public.${name}(${parameters}));`)) };
+    },
+    from(table) {
+      const filters = [];
+      let count = false;
+      let update;
+      let remove = false;
+      let order = "";
+      let limit = "";
+      function execute() {
+        // Notifications and transfer-list bookkeeping are outside this fixture.
+        if (!["auctions", "auction_bids", "riders", "seasons", "teams"].includes(table)) return { data: [] };
+        const where = filters.length ? " WHERE " + filters.join(" AND ") : "";
+        if (update || remove) {
+          const assignment = update && Object.entries(update).map(([key, value]) => key + " = " + literal(value)).join(", ");
+          const statement = remove ? `DELETE FROM ${table} AS row` : `UPDATE ${table} AS row SET ${assignment}`;
+          try {
+            return { data: JSON.parse(query(`WITH changed AS (${statement}${where} RETURNING id)
+              SELECT coalesce(jsonb_agg(to_jsonb(changed)), '[]'::jsonb) FROM changed;`)) };
+          } catch (error) {
+            const match = /^ERROR:\s*(.+)$/m.exec(error.message);
+            if (!match) throw error;
+            return { error: { message: match[1] } };
+          }
+        }
+        if (count) return { count: Number(query(`SELECT count(*) FROM ${table} AS row${where};`)) };
+        const fields = table === "auctions"
+          ? "to_jsonb(row) || jsonb_build_object('rider', (SELECT to_jsonb(r) FROM riders r WHERE r.id = row.rider_id))"
+          : "to_jsonb(row)";
+        return { data: JSON.parse(query(`SELECT coalesce(jsonb_agg(result), '[]'::jsonb)
+          FROM (SELECT ${fields} AS result FROM ${table} AS row${where}${order}${limit}) selected;`)) };
+      }
+      return {
+        select(_fields, options) { count = Boolean(options?.count); return this; },
+        update(values) { update = values; return this; },
+        delete() { remove = true; return this; },
+        upsert() { return this; },
+        eq(key, value) { filters.push(`row.${key} = ${literal(value)}`); return this; },
+        neq(key, value) { filters.push(`row.${key} <> ${literal(value)}`); return this; },
+        is(key, value) { filters.push(`row.${key} IS ${literal(value)}`); return this; },
+        not(key, operator, value) { assert.equal(operator, "is"); filters.push(`row.${key} IS NOT ${literal(value)}`); return this; },
+        in(key, values) { filters.push(`row.${key} IN (${values.map(literal).join(", ")})`); return this; },
+        or(condition) {
+          const terms = condition.split(",").map(term => {
+            const [field, operator, value] = term.split(".");
+            assert.equal(operator, "eq");
+            return `row.${field} = ${literal(value)}`;
+          });
+          filters.push("(" + terms.join(" OR ") + ")");
+          return this;
+        },
+        order(key, { ascending = true } = {}) { order = ` ORDER BY row.${key} ${ascending ? "ASC" : "DESC"}`; return this; },
+        limit(size) { limit = ` LIMIT ${size}`; return this; },
+        async maybeSingle() { return { data: execute().data[0] ?? null }; },
+        async single() { return this.maybeSingle(); },
+        then(resolve, reject) { return Promise.resolve().then(execute).then(resolve, reject); },
+      };
+    },
+  };
 }
 
 test("PG17: independent market transactions cannot claim the same reserved place", {
@@ -105,8 +179,13 @@ test("PG17: independent market transactions cannot claim the same reserved place
       ALTER TABLE teams ADD COLUMN is_ai boolean DEFAULT false, ADD COLUMN is_bank boolean DEFAULT false;
       ALTER TABLE transfer_listings ADD COLUMN auto_accept_price bigint;
       ALTER TABLE auctions ADD COLUMN origin text, ADD COLUMN source_listing_id uuid, ADD COLUMN buyer_duration_minutes integer;
+      ALTER TABLE auctions ADD COLUMN rider_market_value_at_close bigint, ADD COLUMN rider_base_value_at_close bigint;
       ALTER TABLE riders ADD COLUMN birthdate date, ADD COLUMN firstname text, ADD COLUMN lastname text,
-        ADD COLUMN promotion_pending_to text, ADD COLUMN promotion_pending_since timestamptz;
+        ADD COLUMN promotion_pending_to text, ADD COLUMN promotion_pending_since timestamptz,
+        ADD COLUMN pending_academy_signing boolean;
+      ALTER TABLE finance_transactions DROP CONSTRAINT finance_transactions_type_check;
+      CREATE TABLE races(id uuid, race_type text, status text, stages_completed int);
+      CREATE TABLE race_entries(race_id uuid, rider_id uuid, team_id uuid);
       CREATE TABLE sale_escrows(deal_type text, deal_id uuid);
       CREATE TABLE fixture_race_gate(opened boolean NOT NULL);
       INSERT INTO fixture_race_gate VALUES (false);
@@ -147,6 +226,7 @@ test("PG17: independent market transactions cannot claim the same reserved place
     const payment = sql("2026-11-10-2176-transfer-payment-beta-scope.sql");
     psql(finance[0]+sql("2026-11-09-2176-m3-auto-accept-claim-swap.sql")+
       ["market_commitment_6181_bid_gate","place_auction_bid_6181","auto_accept_claim_swap_paid","start_auto_accept_auction_bid"].map(name => definition(payment,name)).join("\n"));
+    psql(definition(sql("2026-09-24-5432-squad-caps-rpc.sql"), "finalize_academy_acquisition"));
     psql(sql("2026-05-10-reject-late-auction-bid-trigger.sql"));
     psql(sql("2026-05-10-reject-late-auction-bid-trigger.sql"));
     psql("CREATE TRIGGER trg_market_commitment_6181_bid BEFORE INSERT ON auction_bids FOR EACH ROW EXECUTE FUNCTION market_commitment_6181_bid_gate();");
@@ -156,7 +236,8 @@ test("PG17: independent market transactions cannot claim the same reserved place
       const senior = cap === "club" ? 20 : 29;
       const youth = cap === "club" ? 39 : 1;
       psql(`
-        TRUNCATE finance_transactions,auction_bids,auction_proxy_bids,auctions,transfer_listings,riders,teams,app_config;
+        TRUNCATE finance_transactions,auction_bids,auction_proxy_bids,auctions,transfer_listings,riders,teams,app_config,seasons;
+        INSERT INTO seasons VALUES ('${id(400)}','active',6);
         INSERT INTO app_config VALUES ('fixture_atomic','${mode === "atomic"}'::jsonb,NULL);
         INSERT INTO teams(id,balance) VALUES ('${buyer}',100000),('${seller}',100000),('${rival}',100000);
         INSERT INTO riders(id,team_id,squad) SELECT gen_random_uuid(),'${buyer}','senior' FROM generate_series(1,${senior});
@@ -172,6 +253,61 @@ test("PG17: independent market transactions cannot claim the same reserved place
       : `INSERT INTO auction_bids(auction_id,team_id,amount,bid_time) VALUES ('${auction}','${team}',${amount},'${time}');`;
     const acquire = `UPDATE riders SET team_id='${buyer}' WHERE id='${id(12)}';`;
     for (const mode of ["legacy","atomic"]) {
+      for (const boundary of ["season gap", "aging after the bid", "old lead without a reservation"]) {
+        await t.test(`${mode}: youth settlement protects the final U23 place at ${boundary}`, async () => {
+          reset(mode, "senior");
+          psql(`
+            UPDATE riders SET team_id=NULL,birthdate='2012-04-20',firstname='Fixture',lastname='Winner' WHERE id='${id(10)}';
+            UPDATE auctions SET is_youth=true,seller_team_id=NULL WHERE id='${id(20)}';
+            UPDATE riders SET squad='senior',is_academy=false WHERE team_id='${buyer}' AND squad='u23';
+            INSERT INTO riders(id,team_id,squad,is_academy)
+              SELECT gen_random_uuid(),'${buyer}','u23',true FROM generate_series(1,29);
+            ${boundary === "season gap" ? `UPDATE seasons SET status='upcoming'; INSERT INTO seasons VALUES ('${id(401)}','completed',5);` : ""}
+            ${boundary === "aging after the bid" ? "UPDATE seasons SET number=5;" : ""}
+          `);
+          const releaseSenior = `UPDATE riders SET team_id='${seller}' WHERE id=(
+            SELECT id FROM riders WHERE team_id='${buyer}' AND squad='senior' ORDER BY id LIMIT 1);`;
+          if (boundary === "old lead without a reservation") {
+            // Legacy youth must fall back to U23 even when senior has a
+            // physically free place already committed to another auction.
+            psql(releaseSenior);
+            psql(bid(mode, id(21)));
+            psql(`ALTER TABLE auctions DISABLE TRIGGER enforce_club_opening_bid_cap_8034;`);
+            psql(bid(mode, id(20)));
+            psql(`ALTER TABLE auctions ENABLE TRIGGER enforce_club_opening_bid_cap_8034;`);
+            assert.equal(psql(`SELECT reservation_squad IS NULL FROM auctions WHERE id='${id(20)}';`), "t");
+          } else {
+            psql(bid(mode, id(20)));
+          }
+          if (boundary === "aging after the bid") psql("UPDATE seasons SET number=6;");
+          const count = psql(`SELECT auction_reserved_places_8034('${buyer}','u23');`);
+          if (boundary !== "old lead without a reservation") psql(releaseSenior);
+          const before = snapshot();
+          let denied = false;
+          try {
+            psql(`UPDATE riders SET team_id='${buyer}',squad='u23',is_academy=true WHERE id='${id(12)}';`);
+          } catch (error) {
+            assert.match(error.message, /academy_full|club_roster_full/);
+            assert.deepEqual(snapshot(), before);
+            denied = true;
+          }
+          const finalize = () => finalizeAuctionById({
+            supabase: pgAuctionClient(psql), auctionId: id(20), notifyTeamOwner: async () => {},
+            now: new Date("2026-11-28T15:10:00Z"),
+          });
+          const result = await finalize();
+          assert.deepEqual(
+            { reserved: count, denied, code: result.code },
+            { reserved: "1", denied: true, code: "youth_completed" },
+          );
+          const settled = snapshot();
+          assert.deepEqual(settled.riders.find(r => r[0] === id(10)).slice(1), [buyer, null, "u23"]);
+          assert.equal(settled.payments, 1);
+          assert.equal(settled.balances.find(team => team.id === buyer).balance, 99800);
+          assert.equal((await finalize()).code, "already_completed");
+          assert.deepEqual(snapshot(), settled);
+        });
+      }
       for (const cap of ["club","senior"]) {
         await t.test(`${mode}/${cap}: bidder and acquisition compete in both orders`,async () => {
           for (const bidFirst of [true,false]) {
