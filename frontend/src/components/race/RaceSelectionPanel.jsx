@@ -47,6 +47,7 @@ import { ArrowUpIcon, ArrowDownIcon, BlockedNote, LockIcon } from "../ui/index.j
 import { trainNowLockCopy } from "../training/trainNowClock.ts"; // #6139
 import RiderMiniProfileModal from "../rider/RiderMiniProfileModal.jsx";
 import { useBlockedAction } from "../../lib/useBlockedAction.js";
+import { saveSelectionWithReadback } from "../../lib/planningWorkbench.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -455,19 +456,25 @@ export default function RaceSelectionPanel({
     // #5982: luksushjaelperen sendes ogsaa altid med (kun i loeb der kender rollen).
     const luxuryHelperId = data?.sprint_leader_allowed === true && sel.luxuryHelperId != null && sel.riderIds.includes(sel.luxuryHelperId) ? sel.luxuryHelperId : null;
     try {
-      const res = await apiFetch(`${API}/api/races/${raceId}/selection`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({
-          rider_ids: sel.riderIds,
-          captain_id: sel.captainId,
-          sprint_captain_id: sel.sprintCaptainId,
-          hunter_id: sel.hunterId,
-          free_role_ids: freeRoleIds,
-          co_captain_id: coCaptainId,
-          ...(data?.sprint_leader_allowed === true ? { luxury_helper_id: luxuryHelperId } : {}),
-        }),
-      });
+      const url = `${API}/api/races/${raceId}/selection`;
+      const submitted = {
+        rider_ids: sel.riderIds,
+        captain_id: sel.captainId,
+        sprint_captain_id: sel.sprintCaptainId,
+        hunter_id: sel.hunterId,
+        free_role_ids: freeRoleIds,
+        co_captain_id: coCaptainId,
+        ...(data?.sprint_leader_allowed === true ? { luxury_helper_id: luxuryHelperId } : {}),
+      };
+      const res = await saveSelectionWithReadback(
+        submitted,
+        () => apiFetch(url, { method: "PUT", headers, body: JSON.stringify(submitted) }),
+        async (signal) => {
+          if (isStale(gen)) return { ok: false };
+          const response = await apiFetch(url, { headers, cache: "no-store", signal });
+          return /** @type {import("../../lib/planningWorkbenchData.ts").ApiResult} */ (response);
+        },
+      );
       const body = res.data || {};
       if (isStale(gen)) return;
       if (!res.ok) {

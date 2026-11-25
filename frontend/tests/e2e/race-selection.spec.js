@@ -42,7 +42,8 @@ const SELECTION_RIDERS = Array.from({ length: 9 }, (_, i) => ({
   injured: i === 8,
 }));
 
-test("manager kan udtage hold og gemme", async ({ page }) => {
+for (const loseResponse of [false, true]) {
+test(loseResponse ? "manager ser gemt efter mistet svar på udtagelsen" : "manager kan udtage hold og gemme", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
 
@@ -62,6 +63,8 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
 
   // Stash PUT-body så vi kan assertere payload efter klikket.
   let capturedBody = null;
+  let putCalls = 0;
+  let readsAfterWrite = 0;
 
   // Override GET + PUT på selection-endpointet.
   // Registreres EFTER installNetworkMocks → matcher FØR fixtures' generiske **/api/** handler.
@@ -73,11 +76,13 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
     }
 
     if (request.method() === "PUT") {
+      putCalls++;
       try {
         capturedBody = JSON.parse(request.postData() || "{}");
       } catch {
         capturedBody = {};
       }
+      if (loseResponse) return route.abort("failed");
       return route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -86,7 +91,8 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
       });
     }
 
-    // GET
+    if (capturedBody) readsAfterWrite++;
+    // The server saved the write even when the client missed its response.
     return route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -95,7 +101,7 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
         enabled: true,
         race: SCHEDULED_RACE,
         size: { min: 6, max: 8 },
-        selection: null,
+        selection: capturedBody ? { ...capturedBody, is_auto_filled: false } : null,
         riders: SELECTION_RIDERS,
         availableCount: 8,
       }),
@@ -161,7 +167,10 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
   expect(capturedBody.captain_id).not.toBe("");
   // Captain skal være én af de valgte ryttere.
   expect(capturedBody.rider_ids).toContain(capturedBody.captain_id);
+  expect(putCalls).toBe(1);
+  expect(readsAfterWrite).toBe(loseResponse ? 1 : 0);
 });
+}
 
 // #3520 (spillerforslag, carpediemjbp): klik på rytternavnet skal åbne en profil-popup
 // i stedet for at (dobbelt-)vælge rytteren. Checkboxen forbliver den ENESTE vælger.
