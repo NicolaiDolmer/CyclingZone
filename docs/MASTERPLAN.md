@@ -25,14 +25,14 @@
 - **tor 26/11 · sæsonskifte-session** · ejer + Claude: prøveskifte på kopi #7325 · samlet besked #8397 (inkl. oprykninger) · AI-hold fryses #8614 · **mail 1** #8619 · patch notes-siden #8449 (dato pr. note + kategorier, efter gennemgang af de bedste spil, ejer 24/11) · selektion #7645 (hvor meget nås før skiftet) · motor/taktik #8189 #8609 #8663.
 - **før 28/11 · skiftets rester** · Claude/Codex · byg + prøvekørsel: **automatisk oprykning i stedet for Graduation Day #7323** (junior→U23 ved 19, U23→senior ved 23; fuld trup = ryk op alligevel, ingen nye køb over loftet; salg fortsætter; ejer 24/11) · **lofter 30/30/30, maks 60 #8034** · **bestyrelsen efter pause #8100** (ejer 24/11) · skader nulstilles #5865 · aldring #8522 (tændt) · aftenafregningen #6490 + deploy-vindue #8422 · ungdom #6882 (tre trupper, intet akademi) · trupstørrelser #7490 · seniortrup-optag #8605 (med #8668) · kontraktloft #7138/#8691: Codex undersøger, ejer torsdag.
 - **Efter skiftet, ejerens rækkefølge 24/11** (afslut startet → designet → nyt): 1 rotation #7456 (beta 24/11) · 2 solgte ryttere #7455 · 3 taktik på telefon #8386 · 4 bjergudbrud #6912 · 5 træthed og tidsgrænse #7715 · 6 aftenkørsel #6490 · 7 stabilitet #6917 · 8 Android #6584 · 9 kort pr. rytter #5101 · 10 selektion #7645 · 11 #7866 · 12 #8458 · 13 #8419 · 14 #8024 · 15 #8440 · 16 #8592 · 17 #8545 · 18 #7986. Brænder i dag: prognosefald #8604 + gammel score/løbsudvikling #8476 (Claude 24/11).
+- #6528 før 28/11 · moms #4511 fre 27/11.
 - **lør 28/11 · S6 starter** · Claude · bevis på skiftedagen.
 - **søn 29/11 · mail 2** "S6 er i gang" #8619 · ejer godkender tekst + modtagerantal · kræver aktiv S6 og synlig kalender.
 
 **1. Til dørs og åbne PR'er** (Claude merger på ordret "merge")
 - **Prioriteringssession 23/11** (#8584 runde 1+3): denne uge #8024, #8100 (før 26/11), motorpakke #7645 + #7644 + #7715, #7137 rangliste, #7866 + #8458, #8419, akademi A (#8060, ejer tænder), #8034 (prøv til S6-start), #7455 + #7986, #6490, #6584, #8073 sidegennemgang (+ #8585, #8324), lofter + hybrid kortlægges · Claude/Codex. Nej/fjernet: #8576 karrierefase, startliste-rutematch (ratings bliver), Udviklingsscore B + catch-up (#8359).
-- Prod-bevis: #8611 kan lukkes; #7962, #7861, #7859, #7862, #8400, #7627, #8608 venter ejerens visuelle tjek; #8546 delvist.
-- Rapport A + B (#8584): 35 ejer-tjek, 11 med manglende arbejde · ejer + Claude · uge 48.
-- Discord-kanalen læst mod issues og merged PR'er + én spørgeliste · Claude · uge 48. Triage + GitHub-oprydning (#8600 punkt 61-62) · Claude · uge 48.
+- Prod-bevis + rapport A's ejer-tjek tages af Claude/Codex (ejer 25/11); ejeren ser kun afvigelser: #8611 #7962 #7861 #7859 #7862 #8400 #7627 #8608 #8546.
+- Discord-kanalen mod issues + spørgeliste · uge 48.
 
 **2. Roadmap og planer** ("ellers skubbes alt")
 - Roadmap-model, 15 kategorier, faste tidspunkter #8616 · Codex G → ejer kategori for kategori · PR, 38 ejer-spørgsmål. Fire nye spillerønsker som Idé i G's SQL; bygges ikke denne uge.
@@ -72,6 +72,8 @@
 - Nyt byg efter til dørs: top 3 fra roadmap-afstemningen tages med i ugeplanen · ejer.
 - Byttehandel begge veje #5918 · founder-stemme #1283 · Codex.
 - Fejlrettelse: sortér rytterlisten efter spejdet potentiale #7924 · "Stræk" bliver "Sværere" #5850 (ejer 23/11 aften).
+- **man 30/11 ejer:** fair-play #3153 #3818 #4497 #7927 · #3092 #720 #691 #1450.
+- Uge 49 (ejer 25/11): #8696 #5385 #6889 #7041 #2236.
 - Roadmap Uge 49 (ejer 24/11): udvikling af det, rytteren gjorde i løbet #5950 · mellemtider i referatet #8343 · første dage #8084 · tog-vagt #8665 (Codex).
 
 ## S6 (starter 28/11)
