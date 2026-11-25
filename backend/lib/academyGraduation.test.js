@@ -1,4 +1,5 @@
 import test from "node:test";
+import { SQUAD_CAPS } from "./squads.js";
 import assert from "node:assert/strict";
 
 import { DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
@@ -454,7 +455,7 @@ test("#4619 resolveGraduation promote: grad-raekke UDEN trup-felter falder tilba
   assert.deepEqual(rec.riderUpdates[0], { squad: "senior", is_academy: false });
 });
 
-test("#4619 resolveGraduation promote: fuld U23-trup (12) afviser junior->u23", async () => {
+test("#4619 resolveGraduation promote: fuld U23-trup afviser junior->u23", async () => {
   const { supabase } = makeSupabase({
     gradRow: { id: "g2", status: "pending", from_squad: "junior", to_squad: "u23" },
     rider: RIDER,
@@ -464,7 +465,7 @@ test("#4619 resolveGraduation promote: fuld U23-trup (12) afviser junior->u23", 
   await assert.rejects(
     () => resolveGraduation(supabase, { now: CONTRACT_NOTICE_NOW,
       teamId: "t1", riderId: "r1", action: "promote", seasonNumber: 1,
-      getMarketState, countSquad: async () => 12, notify: spyNotify(),
+      getMarketState, countSquad: async () => SQUAD_CAPS.u23, notify: spyNotify(),
     }),
     /squad_cap_violation/,
   );
@@ -1169,7 +1170,7 @@ test("#6710 defaultResolveGraduate flag ON + fuld U23-trup: afventer i stedet fo
   const res = await defaultResolveGraduate(supabase, {
     teamId: "t1", riderId: "r1", seasonNumber: 1, now,
     getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 }),
-    countSquad: async () => 12, notify, isPendingEnabled: FLAG_ON,
+    countSquad: async () => SQUAD_CAPS.u23, notify, isPendingEnabled: FLAG_ON,
   });
 
   assert.deepEqual(res, { riderId: "r1", action: "pending", to: "u23" });
@@ -1243,7 +1244,7 @@ test("#6710 defaultResolveGraduate flag OFF + fuld U23-trup: dagens adfaerd (sae
   const res = await defaultResolveGraduate(supabase, { now: CONTRACT_NOTICE_NOW,
     teamId: "t1", riderId: "r1", seasonNumber: 1,
     getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 }),
-    countSquad: async () => 12, notify: spyNotify(), isPendingEnabled: FLAG_OFF, auctionConfig: DEFAULT_AUCTION_CONFIG,
+    countSquad: async () => SQUAD_CAPS.u23, notify: spyNotify(), isPendingEnabled: FLAG_OFF, auctionConfig: DEFAULT_AUCTION_CONFIG,
   });
   assert.equal(res.action, "sold");
   assert.equal(rec.auctionInserts.length, 1);
@@ -1255,7 +1256,7 @@ test("#6710 defaultResolveGraduate flag ON: race mellem tjek og skriv (squad_cap
   const { supabase, rec } = makeSupabase({ gradRows: [JUNIOR_GRAD], rider: RIDER });
   let counts = 0;
   // 1. taelling (defaultResolve): plads. 2. taelling (resolveGraduation's promote): fuld.
-  const countSquad = async () => { counts += 1; return counts === 1 ? 11 : 12; };
+  const countSquad = async () => { counts += 1; return counts === 1 ? SQUAD_CAPS.u23 - 1 : SQUAD_CAPS.u23; };
   const res = await defaultResolveGraduate(supabase, { now: CONTRACT_NOTICE_NOW,
     teamId: "t1", riderId: "r1", seasonNumber: 1,
     getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 }),

@@ -88,9 +88,6 @@ export const TYPE_WRITE_FILES = Object.freeze({
     "Accept-gate før insert (tier-loft) — spejler deriveForRiderIds' kæde. Typen " +
     "skrives IKKE herfra (deriveForRiderIds gør det), men gaten skal følge samme " +
     "identitets-kilde, ellers genopstår #2065-klassen.",
-  "routes/api.js":
-    "Læser og videresender riders.primary_type i API-svar (fx transfer-listen). " +
-    "Ingen af rutens riders-writes rører type-kolonnerne.",
   "scripts/dev/repair3570Apply.mjs":
     "#3570-reparationen: engangs-frysningen af rytter-identiteten. Skriver " +
     "archetype_draw + primary_type + secondary_type i ÉN operation, hvor typen ER " +

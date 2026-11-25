@@ -2,12 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { emitSeasonStartedNotifications } from "./seasonTransition.js";
+import { SQUAD_CAPS } from "./squads.js";
 
 test("#7323 promotions and squad overflow are in the club's one season-start notice", async () => {
   const calls = [];
   const countQuery = {
     eq: () => countQuery,
-    then: (resolve) => resolve({ count: 13, error: null }),
+    then: (resolve) => resolve({ count: SQUAD_CAPS.u23 + 1, error: null }),
   };
   const supabase = { from: () => ({ select: () => countQuery }) };
   await emitSeasonStartedNotifications({

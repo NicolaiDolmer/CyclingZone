@@ -491,15 +491,14 @@ async function getAuctionPromotionAllowance(supabase, auction, bidderId, squad) 
  * @param {Parameters<typeof getIncomingSquadViolation>[0]} buyer
  */
 async function getAuctionIncomingSquadViolation(supabase, auction, bidderId, buyer) {
-  let violation = getIncomingSquadViolation(buyer, { softCapBuffer: 0 });
-  if (violation?.scope === "club" && auction.current_bidder_id === bidderId && Object.hasOwn(auction, "reservation_squad")) {
+  if (buyer.club_count >= CLUB_RIDER_CAP && auction.current_bidder_id === bidderId && Object.hasOwn(auction, "reservation_squad")) {
     const { data: registeredCount, error } = await supabase.rpc("auction_settlement_club_count_8034", { p_team: bidderId });
     if (error || !Number.isInteger(registeredCount)) {
       throw new Error(`Could not check the winning bid club capacity: ${error?.message ?? "invalid count"}`);
     }
     buyer = { ...buyer, club_count: registeredCount };
-    violation = getIncomingSquadViolation(buyer, { softCapBuffer: 0 });
   }
+  const violation = getIncomingSquadViolation(buyer, { softCapBuffer: 0 });
   if (!violation || violation.scope === "club") return violation;
   const allowance = await getAuctionPromotionAllowance(supabase, auction, bidderId, "senior");
   return getIncomingSquadViolation(buyer, { softCapBuffer: allowance }) ? violation : null;

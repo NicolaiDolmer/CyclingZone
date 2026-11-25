@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
+import { CLUB_RIDER_CAP } from "./squads.js";
 import { isPotentialEstimateDisplayEnabled } from "./potentialEstimateFlag.js";
 import {
   buildAcademyFromViews,
@@ -240,7 +241,8 @@ test("development-projection tændt: akademiets gamle tomme svar er væk for egn
 const academyContext = (buildIntake2View) => ({
   isAcademyEnabled: async () => true,
   youthSquadRooms: async () => ({ junior: { used: 0 }, u23: { used: 0 } }),
-  getTeamMarketState: async () => ({ future_count: 10, squad_limits: { max: 30 } }),
+  getTeamMarketState: async () => ({ future_count: 10, club_count: 10, squad_limits: { max: 30 } }),
+  CLUB_RIDER_CAP,
   isMissingIntakeSourceSchema: () => false,
   REGISTRY_ABILITY_KEYS: ["climbing"],
   SQUAD_CAPS: {},

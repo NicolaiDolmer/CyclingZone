@@ -43,7 +43,7 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
       let action = 'select'; let payload; const filters = [];
       const query = {
         select() { return query; }, eq(k,v) { filters.push([k,v]); return query; },
-        in(k,v) { filters.push(['in',k,v]);return query; }, is() { return query; }, neq() { return query; }, order() { return query; }, limit() { return query; },
+        in(k,v) { filters.push(['in',k,v]);return query; }, is(k,v) { filters.push(['is',k,v]); return query; }, neq() { return query; }, order() { return query; }, limit() { return query; },
         lt(k,v) { filters.push(['lt',k,v]); return query; },
         insert(v) { action='insert'; payload=v; return query; },
         upsert(v) { action='upsert'; payload=v; return query; },
@@ -55,7 +55,12 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
       function run(single) {
         if (action !== 'select') {
           writes.push({ table, action });
-          if(table==='auctions' && action==='update' && filters.some(f=>f[0]==='in' && !f[2].includes(auction[f[1]])))return {data:[],error:null};
+          if (table === 'auctions' && action === 'update' && filters.some(([kind, column, value]) => {
+            if (kind === 'in') return !value.includes(auction[column]);
+            if (kind === 'lt') return auction[column] >= value;
+            if (kind === 'is') return auction[column] !== value;
+            return auction[kind] !== column;
+          })) return { data: [], error: null };
           if (table==='auction_bids' && bidError) return { data:null, error:bidError };
           if (table==='auction_proxy_bids' && proxyError) return { data:null, error:proxyError };
           if (table==='auctions' && action==='insert') {
@@ -69,7 +74,7 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
           }
           if (table==='auction_proxy_bids') proxies.push(payload);
           if (table==='riders') {Object.assign(rider,payload);return {data:[{id:RIDER}],error:null};}
-          if (table==='auctions' && !filters.some(f=>f[0]==='lt' && auction[f[1]]>=f[2])) Object.assign(auction,payload);
+          if (table==='auctions') Object.assign(auction,payload);
           return { data:[], error:null };
         }
         if (table==='app_config') {
@@ -112,7 +117,7 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
         if(afterBidInsert)Object.assign(auction,afterBidInsert);
         return {data:{previousLeader,expectedPrice:args.p_amount,expectedLeader:args.p_team_id,placed:true,tieResolved:true,matchedTeam:null,matchRejected:null},error:null};
       }
-      if(name==='set_auction_proxy_6181' || name==='set_auction_proxy_context_6181') {
+      if(name==='set_auction_proxy_6181' || name==='set_auction_proxy_context_6181' || name==='set_legacy_proxy_opening_bid_8034') {
         if(proxyError || (args.p_opening_amount!==null && bidError))return {data:null,error:proxyError??bidError};
         const previousLeader=lockedPreviousLeader===undefined?auction.current_bidder_id:lockedPreviousLeader;
         const expectedPrice=args.p_opening_amount??auction.current_price;
@@ -140,6 +145,7 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
     assertMarketOpen:async()=>true,assertTeamNotTransferFrozen:()=>true,
     isAuctionExpired:end=>Date.parse(end)<=NOW,
     fetchTeamCommitment:async()=>({leadingAuctions:[],allMyProxies:[]}),
+    fetchLeadingMarketAuctions:async()=>({data:[],error:null}),
     getTeamMarketState:async()=>structuredClone(teamState),
     assertSigningAllowed:async()=>null, getAuctionConfig:async()=>({}),
     readTransferPriceBandConfig:async()=>({}),getPriceBandViolation:()=>null,
@@ -315,12 +321,13 @@ for (const flag of ['off','on']) {
     assert.equal(f.cascade[0].canAffordAutoBidFn===market.canAffordAutoBid6181,flag==='on');
     assert.equal(Boolean(f.cascade[0].databaseOwnsLeaderSync),flag==='on');
   });
-  test(`POST auctions ${flag}: the M3 seat gate is used only when enabled`,async()=>{
+  test(`POST auctions ${flag}: the roster gate protects both bid transports`,async()=>{
     const f=fixture({flag,futureCount:30});
     const out=await route('post','/auctions',f)({rider_id:RIDER,starting_price:150});
-    assert.equal(out.status,flag==='on'?400:201);
-    if(flag==='on') {assert.equal(out.body.errorCode,'squad_full_bid');assert.equal(f.createdAuctions.length,0);}
-    else {assert.equal(f.createdAuctions.length,1);assert.equal(f.bids.length,1);}
+    assert.equal(out.status,400);
+    assert.equal(out.body.errorCode,'squad_full_bid');
+    assert.equal(f.createdAuctions.length,0);
+    assert.equal(f.bids.length,0);
   });
   for (const [futureCount,outgoing] of [[1,0],[3,2]]) {
     test(`POST release ${flag}: final available rider can leave with ${outgoing} outgoing auctions (#8015)`,async()=>{
@@ -390,11 +397,11 @@ test('proxy opening rejection preserves the previous proxy state',async()=>{
 });
 
 for(const flag of ['off','on']){
-  test(`proxy status response ${flag} retains its mode contract`,async()=>{
+  test(`proxy opening ${flag} returns an expired-auction response for an inactive auction`,async()=>{
     const f=fixture({flag,proxyError:{code:'P0001',message:'auction_not_active'}});
     const out=await route('patch','/auctions/:id/proxy',f)({max_amount:200});
-    assert.equal(out.status,flag==='on'?400:500);
-    assert.equal(out.body.errorCode,flag==='on'?'auction_expired':'proxy_save_failed');
+    assert.equal(out.status,400);
+    assert.equal(out.body.errorCode,'auction_expired');
   });
 }
 

@@ -2,6 +2,7 @@
 // kuld-plan (5 U23 + 5 junior, talent-garanti), idempotens (claim-først) og
 // adskillelse fra den ugentlige hentning (academy_intake_ticks røres aldrig).
 import test from "node:test";
+import { SQUAD_CAPS } from "./squads.js";
 import assert from "node:assert/strict";
 
 import {
@@ -175,7 +176,7 @@ test("planBoardGift: claimet hold springes over (idempotens)", () => {
 });
 
 test("planBoardGift: ledige pladser rapporteres, men tilbud gives uanset (må overstige)", () => {
-  const run = planBoardGift(snapshotData([{ id: "full", u23: 12, junior: 10 }]));
+  const run = planBoardGift(snapshotData([{ id: "full", u23: SQUAD_CAPS.u23, junior: SQUAD_CAPS.junior }]));
   const t = run.teams[0];
   assert.deepEqual(t.freeSlots, { u23: 0, junior: 0 });
   assert.equal(t.offers.length, 10);
