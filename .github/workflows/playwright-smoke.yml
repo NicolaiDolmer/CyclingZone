@@ -96,6 +96,7 @@ jobs:
   # Letvægts-path-filter (~10s ubuntu-job) i stedet for workflow-niveau `paths:`
   # - se kommentaren øverst. Matcher det gamle filter: frontend/** + denne fil.
   changes:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read

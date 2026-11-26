@@ -2,6 +2,8 @@ name: Dependency review
 
 on:
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
   # Merge queue (4/8): dependency-review-action kræver PR-kontekst og kan ikke
   # evaluere en merge group. Valideringen skete på PR'en; i køen rapporterer
   # jobbet grønt via pass-through-steppet nedenfor (samme context-navn).
@@ -19,6 +21,7 @@ concurrency:
 
 jobs:
   dependency-review:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - name: Merge group pass-through

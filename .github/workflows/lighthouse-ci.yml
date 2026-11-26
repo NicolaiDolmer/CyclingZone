@@ -52,6 +52,7 @@ concurrency:
 
 jobs:
   perf-gate:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     env:
       # Kun advisory/kommentar-trin springes over for Dependabot.
