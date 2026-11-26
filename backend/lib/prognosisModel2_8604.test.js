@@ -292,9 +292,10 @@ test("fund 2: Supabase-opslaget kobler løbsfeltet til etapen på feltets løbsd
     races: [{ id: "tour", season_id: "s1", race_type: "stage_race" }, { id: "old", season_id: "s0", race_type: "stage_race" }],
     race_stage_schedule: [{ race_id: "tour", stage_number: 3, game_day: 12 }, { race_id: "tour", stage_number: 4, game_day: 13 }, { race_id: "old", stage_number: 3, game_day: 12 }],
     race_results: [
-      { rider_id: "r1", race_id: "tour", stage_number: 3, result_type: "stage" },
-      { rider_id: "r1", race_id: "tour", stage_number: 4, result_type: "stage" },
-      { rider_id: "r1", race_id: "old", stage_number: 3, result_type: "stage" },
+      { rider_id: "r1", race_id: "tour", stage_number: 3, result_type: "stage", imported_at: "2026-11-20T18:00:00Z" },
+      { rider_id: "r1", race_id: "tour", stage_number: 4, result_type: "stage", imported_at: "2026-11-21T18:00:00Z" },
+      { rider_id: "r1", race_id: "old", stage_number: 3, result_type: "stage", imported_at: "2026-11-19T18:00:00Z" },
+      { rider_id: "r1", race_id: "ancient", stage_number: 3, result_type: "stage", imported_at: "2026-09-01T18:00:00Z" },
     ],
     race_stage_profiles: [
       { race_id: "tour", stage_number: 3, profile_type: "mountain" },
@@ -302,9 +303,14 @@ test("fund 2: Supabase-opslaget kobler løbsfeltet til etapen på feltets løbsd
       { race_id: "old", stage_number: 3, profile_type: "flat" },
     ],
   });
-  const profiles = await supabaseModel2Io(sb).raceProfiles({ riderIds: ["r1"], slots: [{ rider_id: "r1", season_id: "s1", game_day: 12 }] });
+  const tables = [];
+  const from = sb.from;
+  sb.from = (table) => { tables.push(table); return from(table); };
+  const profiles = await supabaseModel2Io(sb).raceProfiles({ riderIds: ["r1"], slots: [{ rider_id: "r1", season_id: "s1", game_day: 12, tick_date: "2026-11-20" }] });
   assert.equal(profiles.get(raceSlotKey("r1", "s1", 12)), "mountain");
-  assert.equal(profiles.has(raceSlotKey("r1", "s0", 12)), false, "en anden sæsons løb læses ikke");
+  assert.equal(profiles.has(raceSlotKey("r1", "s0", 12)), false, "en anden sæsons løb tæller ikke");
+  assert.equal(profiles.size, 1);
+  assert.deepEqual([...new Set(tables)].sort(), ["race_results", "race_stage_profiles", "race_stage_schedule", "races"]);
 });
 
 // ── #8810 fund 3: et uafgjort felt er ikke afregnet ─────────────────────────

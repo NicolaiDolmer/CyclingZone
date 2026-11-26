@@ -426,6 +426,8 @@ function isoMinusDays(isoDate, days) {
 }
 
 export const raceSlotKey = (riderId, seasonId, gameDay) => `${riderId}:${seasonId}:${Number(gameDay)}`;
+// Sikkerhedsmargin i dage før vinduets første dato, når resultaterne slås op efter importtidspunkt.
+const RACE_IMPORT_MARGIN_DAYS = 2;
 
 /**
  * Ren sammenkobling: (rytter, sæson, løbsdag) → etapens profil. Pr. sæson og løbsdag samme regel
@@ -506,25 +508,29 @@ export function supabaseModel2Io(supabase) {
       return { byRider, receipts };
     },
     // Etapens profil for hvert løbsfelt: samme sammenkobling som motorens løbsdagsopslag
-    // (race_results ⋈ race_stage_schedule på løbsdagen, scopet til feltets sæson).
+    // (race_results ⋈ race_stage_schedule på løbsdagen, scopet til feltets sæson). Opslaget
+    // starter hos holdets egne løbsryttere, så det kun læser de løb, de faktisk kørte i vinduet.
     async raceProfiles({ riderIds, slots }) {
-      const seasonIds = [...new Set(slots.map((slot) => slot.season_id).filter(Boolean))];
+      const seasonIds = new Set(slots.map((slot) => slot.season_id).filter(Boolean));
       const gameDays = [...new Set(slots.map((slot) => Number(slot.game_day)).filter(Number.isFinite))];
-      if (!seasonIds.length || !gameDays.length || !riderIds.length) return new Map();
-      const races = await fetchAllRows(() => supabase.from("races")
-        .select("id, season_id, race_type").in("season_id", seasonIds).order("id"));
-      if (!races.length) return new Map();
-      const schedule = await fetchAllRowsChunkedIn(races.map((race) => race.id), (chunk) => supabase.from("race_stage_schedule")
-        .select("race_id, stage_number, game_day").in("race_id", chunk).in("game_day", gameDays).order("race_id").order("stage_number"));
-      const raceIdsOnDays = [...new Set(schedule.map((row) => row.race_id))];
-      if (!raceIdsOnDays.length) return new Map();
-      const results = await fetchAllRowsChunkedIn(raceIdsOnDays, (chunk) => supabase.from("race_results")
+      const firstDate = slots.map((slot) => slot.tick_date).filter(Boolean).sort()[0];
+      if (!seasonIds.size || !gameDays.length || !riderIds.length || !firstDate) return new Map();
+      // Et resultat importeres først, når etapen er kørt: alt i vinduet er importeret efter dets start.
+      const importedSince = `${isoMinusDays(firstDate, RACE_IMPORT_MARGIN_DAYS)}T00:00:00Z`;
+      const results = await fetchAllRowsChunkedIn(riderIds, (chunk) => supabase.from("race_results")
         .select("rider_id, race_id, stage_number, result_type").in("result_type", ["stage", "gc"])
-        .in("race_id", chunk).in("rider_id", riderIds).order("race_id").order("rider_id").order("stage_number"));
-      const ridden = [...new Set(results.map((row) => row.race_id))];
-      const profileRows = ridden.length ? await fetchAllRowsChunkedIn(ridden, (chunk) => supabase.from("race_stage_profiles")
-        .select("race_id, stage_number, profile_type").in("race_id", chunk).order("race_id").order("stage_number")) : [];
-      return raceProfilesBySlot({ races, schedule, results, profileRows });
+        .in("rider_id", chunk).gte("imported_at", importedSince).order("race_id").order("rider_id").order("stage_number"));
+      const raceIds = [...new Set(results.map((row) => row.race_id).filter(Boolean))];
+      if (!raceIds.length) return new Map();
+      const [races, schedule, profileRows] = await Promise.all([
+        fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("races")
+          .select("id, season_id, race_type").in("id", chunk).order("id")),
+        fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_schedule")
+          .select("race_id, stage_number, game_day").in("race_id", chunk).in("game_day", gameDays).order("race_id").order("stage_number")),
+        fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_profiles")
+          .select("race_id, stage_number, profile_type").in("race_id", chunk).order("race_id").order("stage_number")),
+      ]);
+      return raceProfilesBySlot({ races: races.filter((race) => seasonIds.has(race.season_id)), schedule, results, profileRows });
     },
     published: (teamId) => fetchAllRows(() => supabase.from(PROGNOSIS_MODEL2_TABLE)
       .select("rider_id, input_hash").eq("team_id", teamId).order("rider_id")),
