@@ -1095,7 +1095,9 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
     // #8797: præcis loftet = afkortet bid → hent den igen side for side (stabil orden).
     // Under loftet er kald og rækkefølge uændret, så motorens input er bit-identisk.
     if ((data || []).length >= 1000) {
-      try { data = await fetchAllRows(() => build().order(inColumn)); } catch (err) { return { data: null, error: err }; }
+      try { data = await fetchAllRows(() => build().order(inColumn)); } catch (err) {
+        return { data: null, error: err }; // catch-ok: fejlen returneres i {data, error}-kontrakten
+      }
     }
     out.push(...(data || []));
   }
