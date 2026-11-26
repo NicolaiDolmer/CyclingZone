@@ -342,7 +342,7 @@ export function createTrainingGroupsRouter({
     try {
       const ctx = await writeContext(req, res);
       if (!ctx) return;
-      const weekEnabled = req.body?.planKind === "week" || req.body?.weekBlock !== undefined
+      const weekEnabled = req.body?.weekBlock !== undefined
         ? await isWeekPriorityEditorEnabled(supabase, await isViewerBetaTester(req))
         : false;
       const blockWrite = await weekBlockDayWrite(supabase, req.body ?? {}, {
@@ -365,7 +365,9 @@ export function createTrainingGroupsRouter({
         ? setWeekBlockDay(view.days, weekday, blockWrite.block)
         : setProgramCell(view.days, { weekday, slotIndex, session, effort: effortWrite.effort });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
-      const markWeek = blockWrite.block || (req.body?.planKind === "week" && (weekEnabled || ctx.rotationOn));
+      // #8776 (ejer 26/11): kun en Week blocks-skrivning saetter markoeren (opt-in); et
+      // almindeligt felt lader gruppens plan_kind vaere, som det var.
+      const markWeek = Boolean(blockWrite.block);
       const { error } = await supabase.from(GROUPS_TABLE)
         .update({ days, updated_at: clock().toISOString(), ...(markWeek ? { plan_kind: "week" } : {}) }).eq("id", group.id).eq("team_id", req.team.id);
       if (error) throw new Error(error.message);
@@ -389,9 +391,10 @@ export function createTrainingGroupsRouter({
       const group = await findGroup(req, res, ctx);
       if (!group) return;
       const days = programWeekDaysFor(program.key);
-      const markWeek = req.body?.planKind === "week" && (ctx.weekPriority || ctx.rotationOn);
+      // #8776: at saette et program paa gruppen roerer aldrig plan_kind (opt-in); skiftet i
+      // Plantype gaar gennem PUT /:id/rotation { planKind }.
       const { error } = await supabase.from(GROUPS_TABLE)
-        .update({ days, program_key: program.key, updated_at: clock().toISOString(), ...(markWeek ? { plan_kind: "week" } : {}) })
+        .update({ days, program_key: program.key, updated_at: clock().toISOString() })
         .eq("id", group.id).eq("team_id", req.team.id);
       if (error) throw new Error(error.message);
       // "Put on" en gruppe er spillerens eksplicitte valg for HELE gruppen: alle
@@ -402,7 +405,7 @@ export function createTrainingGroupsRouter({
           .eq("group_id", group.id).in("rider_id", memberIds);
         if (followError) throw new Error(followError.message);
       }
-      await writeCopies(req.team.id, ctx.rows, memberIds, days, program.key, markWeek ? { ...group, plan_kind: "week" } : copyGroupPlan(ctx, group));
+      await writeCopies(req.team.id, ctx.rows, memberIds, days, program.key, copyGroupPlan(ctx, group));
       res.json({ ok: true, applied: memberIds.length, programKey: program.key });
     } catch (err) {
       captureExceptionFn(err);

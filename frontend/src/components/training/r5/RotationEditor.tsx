@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../../ui/Button.jsx";
 import Select from "../../ui/Select.jsx";
+import type { ForecastEntry } from "../FatigueForecastModel.ts";
 import { ChevronDownIcon, ChevronUpIcon, FlagIcon, PlusIcon, XIcon } from "../../ui/icons/index.jsx";
 import {
   moveRotationPass, ROTATION_MIN_PASSES, ROTATION_MAX_PASSES, type RotationPass, type RotationPreviewSlot,
@@ -14,6 +15,7 @@ export type RotationPreviewDay = {
   raceSlots?: number[];
   restSlots?: number[];
   recoverySlots?: number[];
+  pendingNonStarterSessions?: ForecastEntry["pendingNonStarterSessions"];
 };
 
 export default function RotationEditor({
@@ -34,6 +36,7 @@ export default function RotationEditor({
   onJump: (index: number | null) => void;
 }) {
   const { t } = useTranslation("trainingR5", { keyPrefix: "programR5.rotation" });
+  const { t: tRaces } = useTranslation("races");
   const dragIndex = useRef<number | null>(null);
   const move = (from: number, to: number) => {
     const next = moveRotationPass(passes, from, to);
@@ -142,6 +145,7 @@ export default function RotationEditor({
                   {Array.from({ length: 5 }, (_, i) => {
                     const slot = day.rotationSlots?.[i];
                     const raced = day.raceSlots?.includes(i);
+                    const nonStarterSession = day.pendingNonStarterSessions?.[i];
                     return (
                       <li key={i} className="flex min-h-9 min-w-0 flex-wrap items-center gap-x-1 border-t border-cz-border px-1.5 py-1 text-2xs text-cz-2">
                         {raced ? <FlagIcon size={10} aria-label={t("race")} /> : slot ? (
@@ -149,6 +153,8 @@ export default function RotationEditor({
                             <span className="font-data font-semibold tabular-nums" data-testid="program-r5-rotation-index">{slot.index + 1}/{slot.length}</span>
                             {slot.session && <span className="truncate">{sessionLabel(slot.session)}</span>}
                           </>
+                        ) : nonStarterSession ? (
+                          <span className="min-w-0 break-words">{tRaces("racehub.status.didNotStart")} · {sessionLabel(nonStarterSession)}</span>
                         ) : day.restSlots?.includes(i) ? sessionLabel("rest")
                           : day.recoverySlots?.includes(i) ? sessionLabel("recovery") : "–"}
                       </li>

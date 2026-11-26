@@ -57,13 +57,14 @@ import { isDayForm6649Enabled } from "./dayForm6649Flag.js"; // #6649
 import { isDayWords7725Enabled } from "./dayWords7725Flag.js"; // #7725
 import { isQueenStageGap7236Enabled } from "./queenStageGap7236Flag.js"; // #7236
 import { isStagePlanDroppedFront7635Enabled } from "./stagePlanDroppedFront7635Flag.js"; // #7635
-import { isDescentRegroupCap7644Enabled } from "./descentRegroupCap7644Flag.js"; // #7644
+import { bindDescentRegroupCap7644, isDescentRegroupCap7644Enabled } from "./descentRegroupCap7644Flag.js"; // #7644
 import { isSplitAttackCause7640Enabled } from "./splitAttackCause7640Flag.js"; // #7640
 import { bindLetGoOrder7557, isLetGoOrder7557Enabled } from "./letGoOrder7557Flag.js"; // #7557
 import { bindHillySelection8799, isHillySelection8799Enabled } from "./hillySelection8799Flag.js"; // #8799
 import { bindIttNoDayRoll7726, isIttNoDayRoll7726Enabled } from "./ittNoDayRoll7726Flag.js"; // #7726
 import { bindStartedFieldLock7733, isStartedFieldLock7733Enabled, raceHasStartedFieldLock7733 } from "./startedFieldLock7733Flag.js"; // #7733
 import { bindTeamChase7730, isTeamChase7730Enabled } from "./teamChase7730Flag.js"; // #7730
+import { resolvePeakLeadupAllRows8180 } from "./peakLeadupAllRows8180Flag.js"; // #8180
 import { bindJerseyHunt7855, isJerseyHunt7855Enabled } from "./jerseyHunt7855Flag.js"; // #7855
 import { bindRaceTimeLimitFatigue7715, isTimeLimitFatigue7715Enabled, raceBoundToTimeLimitFatigue7715 } from "./timeLimitFatigue7715.js"; // #7715
 // #5462: skadens varighed i LOEBSDAGE naar loebsdagen er tick-enheden.
@@ -1208,7 +1209,7 @@ async function attachStageGameDays({ supabase, race, stages, loadStageGameDaysFn
 // Loaderne + tq-resolveren er injectable (default = de ægte) så simulateRace/
 // simulateStageRace kan testes uden ægte peak-planer. Entrants uden vindue får
 // INGEN peak-felter (holder simEntrant-formen bit-identisk med v3-uden-plan).
-async function attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn }) {
+async function attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn, peakLeadupAllRows = false }) {
   const stageDayByNumber = await loadStageDayOrdinalsFn({ supabase, raceId: race.id });
   for (const s of stages) s.peakDay = stageDayByNumber.get(s.stage_number ?? 1) ?? null;
 
@@ -1218,7 +1219,8 @@ async function attachPeakContext({ supabase, race, stages, entrants, loadPeakPla
   // S5-kobling (addendum §2): beregn ÆGTE per-vindue traeningskvalitet fra optakts-
   // signaler (konsistens/fokus-match/sundhed/trætheds-styring) — muterer hvert vindue
   // i peakPlansByRider med .trainingQuality. Batch (ét kald pr. tabel for hele feltet).
-  await resolveTQsFn({ supabase, entrants, peakPlansByRider });
+  // #8180: kun et løb stemplet ved start læser hele optakten. Slukket = samme argumenter som før.
+  await resolveTQsFn({ supabase, entrants, peakPlansByRider, ...(peakLeadupAllRows === true ? { allRows: true } : {}) });
   for (const e of entrants) {
     const windows = peakPlansByRider.get(e.rider_id);
     if (windows?.length) e.peakWindows = windows; // vinduerne bærer nu per-vindue tq
@@ -2688,6 +2690,8 @@ export async function simulateRace({
   loadPeakPlans: loadPeakPlansFn = loadPeakPlans,
   loadStageDayOrdinals: loadStageDayOrdinalsFn = loadStageDayOrdinals,
   resolvePeakTrainingQualities: resolveTQsFn = resolvePeakTrainingQualities,
+  // #8180: injectable, default stempler/læser races.peak_leadup_all_rows_8180. Kun kaldt når v3=true.
+  resolvePeakLeadupAllRows8180: resolvePeakLeadupAllRowsFn = resolvePeakLeadupAllRows8180,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
@@ -2772,7 +2776,8 @@ export async function simulateRace({
   const ittEngine = await bindIttNoDayRoll7726({ supabase, race, v4Engine: resolvedV4Engine, rulesRevision, firstStageClaim: true, dryRun });
   const chaseEngine = await bindTeamChase7730({ supabase, race, v4Engine: ittEngine, rulesRevision, firstStageClaim: true, dryRun });
   const huntBoundEngine = await bindJerseyHunt7855({ supabase, race, v4Engine: chaseEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7855
-  const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: huntBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7557
+  const capBoundEngine = await bindDescentRegroupCap7644({ supabase, race, v4Engine: huntBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7644 startstempel
+  const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: capBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7557
   const selectionBoundEngine = await bindHillySelection8799({ supabase, race, v4Engine: letGoBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #8799
   const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: selectionBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7715
   if (v4Engine) await applyRouteProfileHills({ supabase, raceId: race.id, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
@@ -2781,7 +2786,9 @@ export async function simulateRace({
   const stageRoleOverrides = v3 ? await loadStageRoleOverridesFn({ supabase, raceId: race.id }) : undefined;
   // S5 (#2224): peak-kontekst hæftes på stages + entrants KUN når v3=true → flag-off
   // undgår begge DB-kald og buildRaceResults ser ingen peak-felter (bit-identisk).
-  if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn });
+  // #8180: helt-løb-stien ER første claim (stemplet afviser selv et startet løb).
+  const peakLeadupAllRows = v3 && await resolvePeakLeadupAllRowsFn({ supabase, race, firstStageClaim: true, dryRun }) === true;
+  if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn, peakLeadupAllRows });
 
   // #6984: incidents/timelines er `let`: medicin-skridtet efter frysningen (se nedenfor) erstatter dem.
   const engineInputRecorder = dryRun ? null : createEngineInputRecorder({ raceId: race.id }); // #1857
@@ -3499,6 +3506,8 @@ export async function simulateStageByIndex({
   loadPeakPlans: loadPeakPlansFn = loadPeakPlans,
   loadStageDayOrdinals: loadStageDayOrdinalsFn = loadStageDayOrdinals,
   resolvePeakTrainingQualities: resolveTQsFn = resolvePeakTrainingQualities,
+  // #8180: injectable, default stempler/læser races.peak_leadup_all_rows_8180. Kun kaldt når v3=true.
+  resolvePeakLeadupAllRows8180: resolvePeakLeadupAllRowsFn = resolvePeakLeadupAllRows8180,
   // #4147: injectable, default læser den ægte kill-switch
   // (app_config.race_finalize_resumable_enabled). OFF → ingen markering skrives,
   // ingen læses, og hele funktionen opfører sig bit-identisk med før #4147.
@@ -3740,7 +3749,8 @@ export async function simulateStageByIndex({
     const ittEngine = await bindIttNoDayRoll7726({ supabase, race, v4Engine: resolvedV4Engine, rulesRevision, firstStageClaim, dryRun });
     const chaseEngine = await bindTeamChase7730({ supabase, race, v4Engine: ittEngine, rulesRevision, firstStageClaim, dryRun });
     const huntBoundEngine = await bindJerseyHunt7855({ supabase, race, v4Engine: chaseEngine, rulesRevision, firstStageClaim, dryRun }); // #7855
-    const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: huntBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7557
+    const capBoundEngine = await bindDescentRegroupCap7644({ supabase, race, v4Engine: huntBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7644 startstempel
+    const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: capBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7557
     const selectionBoundEngine = await bindHillySelection8799({ supabase, race, v4Engine: letGoBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #8799
     const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: selectionBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7715
     // #7733: stemplet saettes samme sted; kontakten rammer kun loeb der ikke er startet.
@@ -3836,7 +3846,10 @@ export async function simulateStageByIndex({
     // S5 (#2224): peak-kontekst — KUN når v3=true. entrants er nu finaliseret
     // (#1844-frosset for stageIndex>0); stagesSorted deler objekt-refs med stages,
     // så peakDay-mutationen ses i begge grene nedenfor. Bit-identisk ved flag-off.
-    if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn });
+    // #8180: optakten over alle rækker bindes ved første claim; senere etaper læser stemplet, så et
+    // igangværende etapeløb aldrig skifter input midt i løbet.
+    const peakLeadupAllRows = v3 && await resolvePeakLeadupAllRowsFn({ supabase, race, firstStageClaim, dryRun }) === true;
+    if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn, peakLeadupAllRows });
 
     // #6984 B2 (ejer 20/10): dagens tidligere etaper trætter rytteren til den næste,
     // også inde i løbet. Ny balance = kun løb bundet til s5_profiles_v2 eller senere

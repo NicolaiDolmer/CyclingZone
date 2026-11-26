@@ -183,6 +183,7 @@ type Row = R5Row & {
   /** Traeningsvaelgerens vaerdi: "program" eller traeningen rytterens egen dag bygger paa. */
   choice: string;
   rotationSession: string | null;
+  pendingNonStarterSessions?: Partial<Record<number, string>>;
   yourDay: YourDay | null;
   /** Den indsats hvert felt koerer paa (sessionens eget niveau, eller det valgte med indsatsvaelgeren). */
   efforts: (Effort | null)[];
@@ -518,7 +519,7 @@ function RowError({ row, r5 }: { row: Row; r5: TodayR5Props }) {
 // De fem felter (ejer punkt 7): hvad dagen faktisk traener. Et tryk aabner spillets
 // sessionsvaelger, der viser hvad passet traener og om det passer til typen (afvigelse 5).
 function SessionsRow({ row, r5, mobile = false }: { row: Row; r5: TodayR5Props; mobile?: boolean }) {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation(["training", "races"]);
   const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const locked = r5.trainedToday;
   return (
@@ -529,9 +530,12 @@ function SessionsRow({ row, r5, mobile = false }: { row: Row; r5: TodayR5Props; 
           <div key={i} className={mobile ? "grid grid-cols-[76px_1fr] items-center gap-x-2" : ""}>{head}{body}</div>
         );
         if (f === PENDING) {
+          const session = row.pendingNonStarterSessions?.[i];
           return wrap(
             <span className="flex min-h-9 items-center gap-1.5 rounded-cz border border-cz-border bg-cz-subtle px-2 text-xs text-cz-2 max-sm:min-h-11" data-testid="r5-session-pending">
-              {t("dailyReceipt.status.pending")}
+              {session ? <span className="min-w-0 break-words">{t("races:racehub.status.didNotStart")} · {t([
+                sessionI18nKey("dayPanel.session", session), "dayPanel.dayType_" + session,
+              ], { defaultValue: session })}</span> : "–"}
             </span>,
           );
         }
@@ -686,11 +690,12 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     const plan = r5.planFor(id);
     const planDay = plan?.focus ? (dayTypeForProgram(plan) as string) : null;
     const planSession = planDay && (DAY_TYPES_WITHOUT_SESSION as readonly string[]).includes(planDay) ? planDay : (sessionForProgram(plan) as string | null);
-    const racing = r5.racingToday[id] != null;
-    const known = raceSlotsFor(r5.forecast, id);
-    const raceSlots = racing && known.size === 0 ? new Set([0]) : known;
-    const weekDays = r5.riderWeekPlans[id] ?? null;
     const riderForecast = r5.forecast?.riders?.[id];
+    const known = raceSlotsFor(r5.forecast, id);
+    const hasForecastFields = !r5.forecast?.settled && riderForecast?.raceSlots != null;
+    const racing = r5.racingToday[id] != null;
+    const raceSlots = !hasForecastFields && racing ? new Set([0]) : known;
+    const weekDays = r5.riderWeekPlans[id] ?? null;
     const onRotation = riderForecast?.rotationSlots != null;
     const planned = dayFields({
       programSlot: (slot) => rotationFieldSession(riderForecast, slot)
@@ -745,6 +750,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       program,
       groupId: groupIdByRider.get(id) ?? null,
       fields,
+      pendingNonStarterSessions: riderForecast?.pendingNonStarterSessions,
       ownDay: !!plan?.focus,
       hasOwn: own.any,
       plan,

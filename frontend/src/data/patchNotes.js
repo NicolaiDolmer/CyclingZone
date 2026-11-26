@@ -1,5 +1,131 @@
 export const PATCHES = [
 {
+  "version": "7.525",
+  "date": "2026-11-26",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "The training forecast follows your lineup.",
+        "body": "A rider you have picked for a race now counts as racing that day, also when the assistant picked him. A rider who does not start shows \"Did not start\" with his training, and the forecast no longer says \"pending\"."
+      },
+      "da": {
+        "title": "Træningsprognosen følger din udtagelse.",
+        "body": "En rytter, du har udtaget til et løb, tæller nu som løb den dag, også når assistenten har udtaget ham. En rytter, der ikke starter, viser \"Starter ikke\" med sin træning, og prognosen skriver ikke længere \"afventer\"."
+      },
+      "refs": [
+        8646,
+        8666
+      ]
+    }
+  ]
+},
+{
+  "version": "7.524",
+  "date": "2026-11-26",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Balance",
+      "area": "economy",
+      "en": {
+        "title": "Your balance without leading bids",
+        "body": "When you are not leading any bids, the game shows your actual balance."
+      },
+      "da": {
+        "title": "Din saldo uden førende bud",
+        "body": "Når du ikke fører nogen bud, viser spillet din faktiske saldo."
+      },
+      "refs": [
+        8661
+      ]
+    }
+  ]
+},
+{
+  "version": "7.523",
+  "date": "2026-11-26",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "training_week_priority",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Week blocks with priority, now in beta",
+        "body": "Beta teams can set Plan type to Week blocks, order each day's passes by priority and lock one pass per day. Races take the lowest priority, and Races took lists the passes that did not fit. It only applies to plans where you chose Week blocks yourself."
+      },
+      "da": {
+        "title": "Ugeblokke med prioritet, nu i beta",
+        "body": "Beta-hold kan sætte Plantype til Ugeblokke, sætte dagens pas i prioritetsrækkefølge og låse ét pas pr. dag. Løb tager laveste prioritet, og Løb tog viser de pas, der ikke blev plads til. Det gælder kun planer, hvor du selv har valgt Ugeblokke."
+      },
+      "refs": [
+        8549
+      ]
+    }
+  ]
+},
+{
+  "version": "7.522",
+  "date": "2026-11-26",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "training_rotation",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Training rotation is now live for everyone",
+        "body": "Set Plan type to Rotation in Program and put your passes in the order you want them to run. A race, an injury or rest from the fatigue limit pauses the sequence. A rider's own rotation wins over the group's week blocks."
+      },
+      "da": {
+        "title": "Træningsrotation er nu for alle",
+        "body": "Sæt Plantype til Rotation under Program, og stil passene i den rækkefølge, de skal køres. Et løb, en skade eller hvile fra træthedsgrænsen sætter rotationen på pause. En rytters egen rotation vinder over gruppens ugeblokke."
+      },
+      "refs": [
+        8548,
+        8549
+      ]
+    }
+  ]
+},
+{
+  "version": "7.521",
+  "date": "2026-11-26",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "academy_page_v2_8081",
+      "topic": "Academy",
+      "area": "academy",
+      "en": {
+        "title": "The new Academy page is switched on",
+        "body": "The Academy page opens with an overview of this week's intake, your junior and U23 squads, your talents and your age focus. Below it are four tabs, including the Academy ledger with costs and sales per season."
+      },
+      "da": {
+        "title": "Den nye akademiside er tændt",
+        "body": "Akademisiden åbner med et overblik over ugens optag, dine junior- og U23-trupper, dine talenter og dit aldersfokus. Under det ligger fire faner, blandt andet Akademi-regnskabet med udgifter og salg pr. sæson."
+      },
+      "refs": [
+        8081,
+        8549
+      ]
+    }
+  ]
+},
+{
   "version": "7.520",
   "date": "2026-11-26",
   "changes": [

@@ -43,9 +43,13 @@ const FIXED_NOW = () => 1_700_000_000_000;
 
 test("#6110 golden: slukket XP er identisk med merge-basen (funktioner og motor, alle slukkede former)", async () => {
   assert.match(GOLDEN.sourceCommit, /^[0-9a-f]{40}$/);
-  const now = await allOffDigests({ withRoleYield: (extra, ctx) => withRaceDayRoleYieldXp(null, extra, ctx) });
-  assert.equal(now.applyDailyTick, GOLDEN.applyDailyTick, "applyDailyTick");
-  assert.equal(now.dailyAbilityDelta, GOLDEN.dailyAbilityDelta, "dailyAbilityDelta");
+  // #5950 (tempo ud af hjaelperens evner) flytter bevidst raekkerne med underkontakten
+  // race_day_role_base_day_enabled taendt; resten af gitteret er frosset fra merge-basen
+  // foer rettelsen (GOLDEN.subswitchOff). Underkontaktens nye tal: raceDayRoleYield5950.test.js.
+  const now = await allOffDigests({ withRoleYield: (extra, ctx) => withRaceDayRoleYieldXp(null, extra, ctx), subswitch: "off" });
+  assert.match(GOLDEN.subswitchOff.sourceCommit, /^[0-9a-f]{40}$/);
+  assert.equal(now.applyDailyTick, GOLDEN.subswitchOff.applyDailyTick, "applyDailyTick");
+  assert.equal(now.dailyAbilityDelta, GOLDEN.subswitchOff.dailyAbilityDelta, "dailyAbilityDelta");
   assert.deepEqual(Object.keys(now.engine).sort(), Object.keys(GOLDEN.engine).sort());
   for (const [key, digest] of Object.entries(GOLDEN.engine)) assert.equal(now.engine[key], digest, key);
 });

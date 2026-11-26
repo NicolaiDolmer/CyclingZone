@@ -105,7 +105,9 @@ function programs(withRoleYield) {
     for (const params of roleParams) {
       for (const role of [VALID_RACE_ROLES[0], VALID_RACE_ROLES[VALID_RACE_ROLES.length - 1], null]) {
         const args = withRoleYield({}, { params, profileType: profile, role });
-        out.push({ ...args.program, __yield: args.abilityYieldMult ?? null });
+        // __subswitch (#5950): markerer underkontaktens raekker, saa digest-funktionerne kan
+        // springe dem over uden at flytte gitteret. Fjernes igen foer tick'et.
+        out.push({ ...args.program, __yield: args.abilityYieldMult ?? null, __subswitch: params.roleDrivesBaseDay === true });
       }
     }
   }
@@ -125,15 +127,22 @@ const OPTION_SETS = [
   { academyRateMult: 1.25, hardDailyCap: 1 },
 ];
 
+// subswitch (#5950, tempo ud af hjaelperens evner): "both" = den oprindelige fixture
+// (sourceCommit), "off" = samme gitter uden raekkerne med underkontakten
+// race_day_role_base_day_enabled. Rettelsen flytter bevidst hjaelperens og den fri rolles
+// tal med underkontakten taendt.
+const skipRow = (subswitch, flagged) => subswitch === "off" && flagged === true;
+
 /** Hele applyDailyTick-gitteret med `developmentXp: null`, som motoren sender med kontakten slukket. */
-export function applyDailyTickOffDigest(withRoleYield) {
+export function applyDailyTickOffDigest(withRoleYield, { subswitch = "both" } = {}) {
   const rows = [];
   const progs = programs(withRoleYield);
   for (let seed = 0; seed < 7; seed++) {
     const base = rider(seed);
     for (const [pi, prog] of progs.entries()) {
       if ((pi + seed) % 3 !== 0) continue; // tyndet gitter: alle programmer, ikke alle kombinationer
-      const { __yield: yieldMult, ...program } = prog;
+      const { __yield: yieldMult, __subswitch: flagged, ...program } = prog;
+      if (skipRow(subswitch, flagged)) continue;
       for (const opts of OPTION_SETS) {
         const args = { ...base, program, ...opts, developmentXp: null };
         if (yieldMult) args.abilityYieldMult = { ...(opts.abilityYieldMult ?? {}), ...yieldMult };
@@ -146,14 +155,15 @@ export function applyDailyTickOffDigest(withRoleYield) {
 }
 
 /** dailyAbilityDelta pr. evne, med og uden kurve B. */
-export function dailyAbilityDeltaOffDigest(withRoleYield) {
+export function dailyAbilityDeltaOffDigest(withRoleYield, { subswitch = "both" } = {}) {
   const rows = [];
   const progs = programs(withRoleYield);
   for (let seed = 0; seed < 5; seed++) {
     const base = rider(seed);
     for (const [pi, prog] of progs.entries()) {
       if ((pi + seed) % 4 !== 0) continue;
-      const { __yield: _y, ...program } = prog;
+      const { __yield: _y, __subswitch: flagged, ...program } = prog;
+      if (skipRow(subswitch, flagged)) continue;
       for (const opts of [OPTION_SETS[0], OPTION_SETS[1], OPTION_SETS[2], OPTION_SETS[3], { riderQualityMult: 0.8 }]) {
         for (const ability of VISIBLE_ABILITIES) {
           rows.push(dailyAbilityDelta({
@@ -366,8 +376,8 @@ export async function engineOffDigests() {
 
 export async function allOffDigests(hooks) {
   return {
-    applyDailyTick: applyDailyTickOffDigest(hooks.withRoleYield),
-    dailyAbilityDelta: dailyAbilityDeltaOffDigest(hooks.withRoleYield),
+    applyDailyTick: applyDailyTickOffDigest(hooks.withRoleYield, { subswitch: hooks.subswitch }),
+    dailyAbilityDelta: dailyAbilityDeltaOffDigest(hooks.withRoleYield, { subswitch: hooks.subswitch }),
     engine: await engineOffDigests(),
   };
 }
