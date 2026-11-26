@@ -125,9 +125,9 @@ test("every mini row generates stage profiles (S5 model) with the right stage co
   }
 });
 
-test("rider-type goals: GTs serve climbers and all-rounders, stage races add all-round", () => {
+test("rider-type goals: GTs serve climbers, all-rounders and time triallists (#8830), stage races add all-round", () => {
   const gt = fx.catalog.find((c) => c.race_class === "GiroVuelta");
-  assert.deepEqual([...riderTypeGoalsFor(gt)].sort(), ["allround", "klatrer"]);
+  assert.deepEqual([...riderTypeGoalsFor(gt)].sort(), ["allround", "enkeltstart", "klatrer"]);
   assert.deepEqual([...riderTypeGoalsFor({ race_type: "single", terrain_archetype: "itt_classic" })], ["enkeltstart"]);
   assert.deepEqual([...riderTypeGoalsFor({ race_type: "single", terrain_archetype: "cobbled_classic" })], ["brosten"]);
   assert.deepEqual([...riderTypeGoalsFor({ race_type: "stage_race", race_identity_type: "sprinters", terrain_archetype: "mountain_tour" })].sort(), ["allround", "sprinter"]);
