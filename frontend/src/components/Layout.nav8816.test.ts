@@ -10,9 +10,9 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(__dirname, "Layout.jsx"), "utf8");
-const read = (rel) => JSON.parse(readFileSync(join(__dirname, rel), "utf8"));
+const read = (rel: string): any => JSON.parse(readFileSync(join(__dirname, rel), "utf8"));
 
-function groupBlock(key, nextKey) {
+function groupBlock(key: string, nextKey?: string): string {
   const start = src.indexOf(`key: "${key}"`);
   const end = nextKey ? src.indexOf(`key: "${nextKey}"`, start) : src.indexOf("];", start);
   assert.ok(start !== -1 && end > start, `gruppen ${key} skal findes`);
@@ -39,13 +39,13 @@ test("hvert fast menupunkt har et stroke-ikon fra spillets sæt", () => {
 
 test("menuens nye stil (15 px, ikoner, luft) står kun bag sentence:-varianten", () => {
   assert.equal(
-    src.match(/const NAV_ITEM_TYPE_8816 = "([^"]+)"/)?.[1].split(" ").every((c) => c.startsWith("sentence:")),
+    src.match(/const NAV_ITEM_TYPE_8816 = "([^"]+)"/)?.[1].split(" ").every((c: string) => c.startsWith("sentence:")),
     true,
   );
   for (const name of ["NAV_GROUP_HEADER_8816", "NAV_GROUP_LABEL_8816"]) {
     const classes = src.match(new RegExp(`const ${name} = "([^"]+)"`))?.[1];
     assert.ok(classes, `${name} skal findes`);
-    assert.ok(classes.split(" ").every((c) => c.startsWith("sentence:")), `${name} må kun bruge sentence:-klasser`);
+    assert.ok(classes.split(" ").every((c: string) => c.startsWith("sentence:")), `${name} må kun bruge sentence:-klasser`);
   }
   // Ikonet er skjult indtil kontakten; prikken skjules kun bag kontakten.
   assert.match(src, /className="hidden sentence:block shrink-0"/);
