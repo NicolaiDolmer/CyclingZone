@@ -6,8 +6,8 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · slet `backup_7401_20261101_riders`, `backup_7488_20261102_riders`, `backup_7508_20261102_notif_ids` (forfaldne) · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (tor 26/11, #8584):** 1) Facebook-annonce (ejeren vælger 1 af 3 i Codex' varianter.png; Claude udfylder i Chrome, ejeren trykker Udgiv) → 2) sæsonskifte (#8668+#8605, S6-kalender, mail 1, akademisiden #8081) → 3) #8678 med ejeren → 4) motor (#6649 #7715 #8189 #8609 #8663 #4596 #7644) → 5) W1-W4 (#7947). Fre: moms #4511 + Founder + udgifter + Play Store. Man 30/11: ejer-liste.
-> **24/11:** #8606-migration verificeret. `academy_age_focus_params` = 0,4; akademisiden IKKE tændt (billeder + ejerens ja). Division 4 A/B/C 25 hold løst selv 17:26 (AI-trim efter løb). **Åbent:** `backup_7153_wander_*` må ikke slettes.
+> **🎯 Next action (tor 26/11, PC1 alene; Dolmer PC lukket):** 1) Kontraktloft #7138/#8691 (ejer beslutter først) → 2) sæsonskifte lør: prøveskifte på lokal PG17-kopi #7325 (aldrig dårligere end normalt), heal-sweep for 1 transfer/1 escrow/1 frigivelse, S6-kalender, **mail 1 kl. 17-18** på ejerens ja, AI-hold fryses #8614 (Codex) → 3) **træning live**: W1 + rotation til alle + #8549 + #8678 efter Fable (#7947) → 4) prognoser #8604/#8476 → 5) motor #8189+#4596+#7645 (Claude) → 6) akademisiden #8081 tændes efter billeder → 7) annonce med store UI-billeder → 8) design-løft #8737 (fundament først). Codex-bølgen på PC1: se #8719.
+> **25/11 aften:** 11 PR'er merget (bl.a. #8728 migrationsrettelse + #8727 seniorplads, begge verificeret i prod). Byggestop slukkes (#8729/#8735). Readiness uden force: ikke klar (S5 aktiv). Usynlige PR'er merger Claude selv; synlige vises ejeren (#8719). **Åbent:** `backup_7153_wander_*` må ikke slettes · #8734 blokeret (akademimenu mister cache).
 >
 > **🤖 Working agent:** Ingen aktiv session.
 
