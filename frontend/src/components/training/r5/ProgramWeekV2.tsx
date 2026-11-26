@@ -339,7 +339,7 @@ export default function ProgramWeekV2({
   ) : null;
   // #8813: rettede indsatser i kladden laegges ind i ugeblokken, saa de flyttes med passene og
   // bevares, naar et flyt/laas rydder dagens felt-kladde nedenfor.
-  const blockDays = days ? Object.fromEntries(Object.entries(days).map(([day, entry]) => [day, withDraftEfforts(entry, draft, day)])) as ProgramWeekDays : days;
+  const blockDays = days ? Object.fromEntries(Object.entries(days).map(([day, entry]) => [day, entry && withDraftEfforts(entry, draft, day)])) as ProgramWeekDays : days;
   const blockChanges = Object.fromEntries(Object.entries(weekDayDrafts).map(([day, block]) => [day, withDraftEfforts(block, draft, day)]));
   const weekBlockEditor = weekPriority && editable && blockDays ? (
     <WeekBlockEditor

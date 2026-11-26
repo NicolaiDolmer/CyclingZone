@@ -106,9 +106,10 @@ test("kopier en dag tager den viste indsats med, ogsaa en standardindsats", () =
 });
 
 test("null i kladden foelger dagens indsats, som API'et", () => {
-  const days = week("tempo", { effort: defaultEffort("tempo") === "hard" ? "easy" : "hard" });
+  const dayLevel = defaultEffort("tempo") === "hard" ? "easy" : "hard";
+  const days = week("tempo", { effort: dayLevel });
   const d: DraftV2 = { "mon:0": { session: "sprint", effort: null } };
-  assert.equal(shownEffort(days, d, "mon", 0), days.mon.effort);
+  assert.equal(shownEffort(days, d, "mon", 0), dayLevel);
 });
 
 // #8813 (Codex paa #8780): ugeprioritet rydder dagens felt-kladde; indsatserne skal med i blokken.
