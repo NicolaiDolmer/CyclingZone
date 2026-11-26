@@ -16,6 +16,7 @@ import {
   readStoredLens,
   storeLens,
   viewedSeason,
+  type RouteGridRace,
 } from "./seasonMatrixLenses.ts";
 import { riderSuitability } from "../../lib/suitability.js";
 
@@ -61,7 +62,7 @@ test("the lens choice is remembered and survives a blocked storage", () => {
 });
 
 test("route match grid: races in calendar order, riders by name, best per race marked (ties too)", () => {
-  const races = [
+  const races: RouteGridRace[] = [
     { id: "r2", name: "Later race", gameDayStart: 9, demandVector: { climbing: 1 } },
     { id: "r1", name: "Early race", gameDayStart: 2, demandVector: { sprint: 1 } },
   ];

@@ -47,6 +47,11 @@ const LOCK_HATCH_IMAGE = `url("data:image/svg+xml,${encodeURIComponent(
 //   embedded             skjuler matrixens egen linse-raekke og overskrift; overskrifter uden versaler
 //   onOpenRace(raceId)   loebsdag-knapperne aabner loebet i stedet for dags-boardet
 //   onData(snapshot)     loeb og ryttere til visningens Rutematch-linse (ingen ekstra hentning)
+/**
+ * @param {{ seasonNumber?: number, onOpenDay?: (date: string) => void, onDirtyChange?: (dirty: boolean) => void,
+ *   lens?: string, problemsOnly?: boolean, embedded?: boolean, onOpenRace?: (raceId: string) => void,
+ *   onData?: (snapshot: any) => void }} props
+ */
 export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, lens: lensProp, problemsOnly: problemsOnlyProp, embedded = false, onOpenRace, onData }) {
   const { t, i18n } = useTranslation("races");
   const [data, setData] = useState(null);
@@ -177,9 +182,10 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
   // #8781: samme loeb og ryttere til Rutematch-linsen, saa den ikke henter endpointet igen.
   useEffect(() => {
     if (!onData || loading) return;
+    const d = /** @type {any} */ (data);
     if (loadError) onData({ state: "error" });
-    else if (!data?.enabled || !data?.season) onData({ state: "off" });
-    else onData({ state: "ready", seasonNumber: data.season.number, readOnly: !!data.readOnly, races, riders, dayDates: data.dayDates ?? [] });
+    else if (!d?.enabled || !d?.season) onData({ state: "off" });
+    else onData({ state: "ready", seasonNumber: d.season.number, readOnly: !!d.readOnly, races, riders, dayDates: d.dayDates ?? [] });
   }, [onData, loading, loadError, data, races, riders]);
   useEffect(() => {
     if (!isDirty) return;
