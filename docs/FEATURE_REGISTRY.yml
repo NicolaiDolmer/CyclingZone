@@ -214,7 +214,7 @@ features:
     ssot: docs/superpowers/specs/2026-11-12-7884-langt-angreb-design.md
     epic: 7884
     verified: 2026-11-26
-    note: "Nøgle long_attack_7884 uden række (off). Kun kontrakten (backend/lib/tacticAttackTrigger7884.js); motor og flade mangler."
+    note: "Nøgle long_attack_7884 uden række (off). Kontrakt, gem med rutefingeraftryk og ren motormekanik (ikke tilsluttet, ENGINE_READY=false, #8828); tilslutning, jagt og 'Angrib på'-vælgeren mangler."
     decision: goer-faerdigt
     decide_by: 2026-11-30
 

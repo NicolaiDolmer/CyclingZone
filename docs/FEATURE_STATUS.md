@@ -20,7 +20,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Long descent chase cap (`race-descent-regroup-cap-7644`)|dormant|`descent_regroup_cap_7644`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7644|2026-11-04|Slukket; tændes af ejeren.|
-|Attack on a climb of your choice (`race-long-attack-7884`)|building|-|[7884-langt-angreb-design](superpowers/specs/2026-11-12-7884-langt-angreb-design.md)|#7884|2026-11-26|Nøgle long_attack_7884 uden række (off). Kun kontrakten (backend/lib/tacticAttackTrigger7884.js); motor og flade mangler.|
+|Attack on a climb of your choice (`race-long-attack-7884`)|building|-|[7884-langt-angreb-design](superpowers/specs/2026-11-12-7884-langt-angreb-design.md)|#7884|2026-11-26|Nøgle long_attack_7884 uden række (off). Kontrakt, gem med rutefingeraftryk og ren motormekanik (ikke tilsluttet, ENGINE_READY=false, #8828); tilslutning, jagt og 'Angrib på'-vælgeren mangler.|
 |Tired riders can miss the time limit, with a warning (`race-time-limit-fatigue-7715`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7715|2026-11-07|Nøgle time_limit_fatigue_7715 uden række (off).|
 |Official time persistence revision (`race-official-times-v1`)|retired|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6284|2026-10-16|Frosset prototype.|
 
