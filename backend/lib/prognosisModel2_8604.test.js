@@ -11,6 +11,9 @@ import {
   plannedDateEntries, prepareTeamModel2, runPrognosisModel2Batch, simulateMixCareer, slotShares,
 } from "./prognosisModel2_8604.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
+import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
+import { ageForSeason } from "./riderSeasonAge.js";
+import { buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView } from "./potentialEstimateRead.js";
 
 const XP = validateDevelopmentXpParams({
   price: { base: 10, exponent: 2 },
@@ -221,4 +224,54 @@ test("batch: før dagens time kun ryttere uden række, derefter den fulde kørse
   assert.equal(state.fullRunDate, "2026-11-26");
   const third = await runPrognosisModel2Batch({ supabase: sb, now: new Date("2026-11-26T08:00:00.000Z"), io, state });
   assert.equal(third.full, false);
+});
+
+// ── Læsesiden: samme tal på alle flader ─────────────────────────────────────
+
+
+const READ_TEAM = "team-own";
+const READ_SEASON = 3;
+const ageBirth = (age) => `${ageForSeason("2000-01-01", READ_SEASON) + 2000 - age}-06-01`;
+const flatAbilities = (rating) => Object.fromEntries(REGISTRY_ABILITY_KEYS.map((key) => [key, rating]));
+const readEstimate = (riderId, value) => ({ rider_id: riderId, team_id: READ_TEAM, value, certainty: "fair", previous_value: null, previous_certainty: null, changed_at: null });
+const readWorld = (flag) => createFakeSupabase({
+  app_config: [{ key: "prognosis_model2", value: flag }],
+  seasons: [{ id: "s3", number: READ_SEASON, status: "active" }],
+  teams: [{ id: READ_TEAM, is_ai: false }],
+  riders: [
+    { id: "m2", team_id: READ_TEAM, is_academy: false, birthdate: ageBirth(21), primary_type: "climber", best_role_rating: 50 },
+    { id: "plain", team_id: READ_TEAM, is_academy: false, birthdate: ageBirth(21), primary_type: "climber", best_role_rating: 50 },
+  ],
+  rider_potential_estimates: [readEstimate("m2", 70), readEstimate("plain", 70)],
+  rider_derived_abilities: [{ rider_id: "m2", ...flatAbilities(50) }, { rider_id: "plain", ...flatAbilities(50) }],
+  rider_derived_ability_history: [],
+  rider_ability_race_day_history: [],
+  training_rider_ticks: [],
+  [PROGNOSIS_MODEL2_TABLE]: [{ rider_id: "m2", team_id: READ_TEAM, value: 66, band_lo: 62, band_hi: 72 }, { rider_id: "m2", team_id: "other", value: 99, band_lo: 99, band_hi: 99 }],
+});
+const READ_NOW = new Date("2026-11-26T12:00:00.000Z");
+
+test("læsning: kontakten tændt giver Model 2-tallet, klemt under skønnet, og kun holdets egen række", async () => {
+  const estimates = await buildEstimatesFromViews(readWorld("on"), { teamId: READ_TEAM, riderIds: ["m2", "plain"], clock: READ_NOW });
+  assert.deepEqual(estimates.m2.prognosisView, { hidden: false, value: 66, model: 2, band: { lo: 62, hi: 70 } });
+  assert.deepEqual(estimates.plain.prognosisView, { hidden: false, value: 50 }, "uden række: den nuværende prognose, aldrig tomt");
+});
+
+test("læsning: kontakten slukket rører ikke tabellen og svarer som i dag", async () => {
+  const supabase = readWorld("off");
+  const tables = [];
+  const from = supabase.from;
+  supabase.from = (table) => { tables.push(table); return from(table); };
+  const estimates = await buildEstimatesFromViews(supabase, { teamId: READ_TEAM, riderIds: ["m2"], clock: READ_NOW });
+  assert.deepEqual(estimates.m2.prognosisView, { hidden: false, value: 50 });
+  assert.ok(!tables.includes(PROGNOSIS_MODEL2_TABLE));
+});
+
+test("læsning: kort, profil og akademi viser samme Model 2-tal", async () => {
+  const supabase = readWorld("on");
+  const estimates = await buildEstimatesFromViews(supabase, { teamId: READ_TEAM, riderIds: ["m2"], clock: READ_NOW });
+  const projection = await buildProjectionFromView(supabase, { teamId: READ_TEAM, rider: { id: "m2", primary_type: "climber" }, own: true, level: 3, maxLevel: 3, age: 21, clock: READ_NOW });
+  const academy = await buildAcademyFromViews(supabase, { teamId: READ_TEAM, roster: [{ id: "m2" }], intake: [], clock: READ_NOW });
+  assert.equal(projection.prognosisView.value, estimates.m2.prognosisView.value);
+  assert.equal(academy.roster[0].prognosisView.value, estimates.m2.prognosisView.value);
 });

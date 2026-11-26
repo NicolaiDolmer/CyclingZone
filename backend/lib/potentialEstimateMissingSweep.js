@@ -14,7 +14,7 @@
 // IDEMPOTENT og SELV-REPARERENDE: første kørsel efter deploy er datareparationen for
 // ryttere, der allerede står uden tal; derefter lukker den hullet inden for en time.
 
-import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
 import {
   ESTIMATE_RIDER_COLUMNS, POTENTIAL_ESTIMATES_TABLE, loadEstimateTeamIds, loadEstimateWriteConfig, writeTeamEstimates,
