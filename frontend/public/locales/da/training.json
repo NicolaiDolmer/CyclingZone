@@ -3,7 +3,7 @@
   "trainToday": "Træn i dag",
   "runDayNow": "Kør dagens træning nu",
   "dayClose": {
-    "waiting": "Dagens træning kører af sig selv, når det sidste løb er kørt, fra kl. {hour}.",
+    "waiting": "Dagens træning starter automatisk efter dagens sidste løb, tidligst klokken {hour}.",
     "ready": "Dagens træning er klar. Kør den nu, eller lad den køre af sig selv."
   },
   "trainNowMoment": {
@@ -59,8 +59,8 @@
   },
   "trainedToday_you": "Trænet i dag (af dig)",
   "trainedToday_assistant": "Trænet i dag (af assistenten)",
-  "trainedTodayAt_you": "Trænet i dag kl. {time} (af dig)",
-  "trainedTodayAt_assistant": "Trænet i dag kl. {time} (af assistenten)",
+  "trainedTodayAt_you": "Du trænede i dag klokken {time}",
+  "trainedTodayAt_assistant": "Assistenten trænede i dag klokken {time}",
   "notTrainedYetToday": "Ikke trænet endnu i dag",
   "tickModelDone": "Dagens træning er allerede kørt. Ændringer i fokus eller intensitet gælder først fra næste træning (i morgen). Form og træthed opdateres kun ved den daglige træning, ikke løbende.",
   "disabledNote": "Daglig træning er sat på pause lige nu. Træningsprogrammer kan stadig sættes op.",
@@ -119,7 +119,7 @@
     "status": "Dagens træning",
     "statusPaused": "Sat på pause",
     "statusNotYet": "Ikke kørt endnu",
-    "statusWaiting": "Kører af sig selv fra kl. {hour}:00",
+    "statusWaiting": "Starter automatisk fra klokken {hour}:00",
     "statusRunning": "Kører, opdaterer selv",
     "statusReady": "Klar til at køre",
     "runNow": "Kør nu",

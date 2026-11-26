@@ -276,7 +276,7 @@ test("A2: alle har en dag → knappen kører dagen; dagen kørt → ingen knap, 
   await page.reload();
   await overview(page).waitFor();
   await expect(primary(page)).toHaveCount(0);
-  await expect(overview(page)).toContainText(/Trained today|Trænet i dag/);
+  await expect(overview(page)).toContainText(/Trained today|Du trænede i dag klokken \d{2}:\d{2}/);
 });
 
 test("mobil 390 × 844: guld-knap + overblik uden scroll og mindst 8 ryttere på første skærm", async ({ page }) => {
