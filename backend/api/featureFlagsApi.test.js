@@ -175,6 +175,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     development_xp_model: false, // #6110 Hjaelp (binaert)
     training_page_r5: false, // #7947 I dag R5 (binaert)
     training_effort_levels: false, // #8570 Hjaelp (binaert)
+    training_w1_v2: false, // #7947 W1 v2 (binaert)
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -261,6 +262,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     development_xp_model: false, // #6110 Hjaelp (binaert)
     training_page_r5: false, // #7947 I dag R5 (binaert)
     training_effort_levels: false, // #8570 Hjaelp (binaert)
+    training_w1_v2: false, // #7947 W1 v2 (binaert)
   });
 });
 
@@ -355,6 +357,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     development_xp_model: false, // #6110 Hjaelp (binaert)
     training_page_r5: false, // #7947 I dag R5 (binaert)
     training_effort_levels: false, // #8570 Hjaelp (binaert)
+    training_w1_v2: false, // #7947 W1 v2 (binaert)
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     auto_accept_enabled: false,
@@ -410,6 +413,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     development_xp_model: false, // #6110 Hjaelp (binaert)
     training_page_r5: false, // #7947 I dag R5 (binaert)
     training_effort_levels: false, // #8570 Hjaelp (binaert)
+    training_w1_v2: false, // #7947 W1 v2 (binaert)
   });
 });
 

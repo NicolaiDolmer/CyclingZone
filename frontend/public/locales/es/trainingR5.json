@@ -264,5 +264,35 @@
     "autoNote": "El asistente elige tu equipo para {races} al inicio de la carrera. Quién corre se sabe entonces.",
     "aheadNote": "Los próximos días muestran el plan. Un cambio se aplica a cada {weekday}.",
     "editInProgram": "Editar el {weekday} en Programa"
+  },
+  "programW1": {
+    "allRiders": "Todos los ciclistas",
+    "weekFor": "Semana de {name}",
+    "raceDay": "Día de carrera {n}",
+    "noSession": "Sin sesión",
+    "effortFor": "Esfuerzo, {pass}",
+    "noEffort": "Sin esfuerzo",
+    "removeOwnPlan": "Quitar plan propio",
+    "copyNeedsProgram": "Pon un programa en este plan para copiarlo",
+    "changeTitle": "Cambiar programa de {name}",
+    "current": "Actual",
+    "openWeek": "Abrir la semana de {name}",
+    "noGroup": "Sin grupo",
+    "col": {
+      "rider": "Ciclista",
+      "group": "Grupo",
+      "program": "Programa",
+      "today": "Hoy",
+      "tomorrow": "Mañana",
+      "next": "Próximos días"
+    },
+    "groups": {
+      "follows": "Sigue al grupo",
+      "withoutGroup": "Sin grupo",
+      "emptyTitle": "Crea tu primer grupo",
+      "emptyBody": "Un grupo comparte un plan semanal. Cada ciclista puede tener el suyo.",
+      "offTitle": "Los grupos aún no están abiertos",
+      "offBody": "Planifica la semana de cada ciclista en Programa."
+    }
   }
 }

@@ -1006,6 +1006,19 @@ features:
     decision: goer-faerdigt
     decide_by: 2026-12-04
 
+  - id: training-w1-v2-7947
+    area: training
+    title_en: Program tab week plan and Groups tab (W1 v2)
+    title_da: Program-fanens ugeplan og Grupper-fanen (W1 v2)
+    state: building
+    flag: training_w1_v2
+    ssot: docs/TRAINING_RULES.md
+    epic: 7947
+    verified: 2026-11-26
+    note: "Ejerens W1-design 26/11. Seedet off; preview ?trainingR5=1&trainingW1=1. Kræver training_page_r5. Ejer ser preview før tænding."
+    decision: goer-faerdigt
+    decide_by: 2026-12-10
+
   - id: training-rotation-8548
     area: training
     title_en: Rotation plans that wait on rest and races

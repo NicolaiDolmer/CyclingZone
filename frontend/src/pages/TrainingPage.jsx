@@ -103,6 +103,7 @@ import { useDevelopmentXpEnabled } from "../lib/developmentXpFlag.ts"; // #8476
 import { earnedGainTotal } from "../lib/trainingEarnedGains.ts"; // #8476
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #7947: trainingR5 er lazy
 import { useTrainingPageR5 } from "../components/training/r5/trainingPageR5Flag.ts"; // #7947/#7456: training_page_r5
+import { useTrainingW1V2 } from "../components/training/r5/trainingW1V2Flag.ts"; // #7947 W1 v2: training_w1_v2
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -127,6 +128,9 @@ const TrainNowMoment = lazyWithRetry(() => import("../components/training/TrainN
 const TodayR5Lazy = lazyWithRetry(() => import("../components/training/r5/TodayR5.tsx"));
 // #7456: R5's Program tab behind training_page_r5 (own chunk, loaded only when the switch is on).
 const ProgramR5 = lazyWithRetry(() => import("../components/training/r5/ProgramR5.tsx"));
+// #7947 W1 v2 (ejer 26/11): Program-ugen og Grupper-fanen bag training_w1_v2 (egne chunks).
+const ProgramWeekV2 = lazyWithRetry(() => import("../components/training/r5/ProgramWeekV2.tsx"));
+const GroupsTabV2 = lazyWithRetry(() => import("../components/training/r5/GroupsTabV2.tsx"));
 
 // Skelet mens en lazy fane hentes (samme markup som Development-fanens egen
 // indlaesning: Card + SkeletonLines).
@@ -148,7 +152,7 @@ import { buildRaceDayColumns } from "../lib/trainingMobileModel.ts";
 // #5485 (ejer-go 23/9): fanerne hedder Today / Week plan / Development /
 // Report — History og dagens rapport er samlet i Report. Et gammelt
 // ?tab=history-link (bogmaerker, notifikationer) lander paa Report.
-const TRAINING_TABS = ["today", "weekplan", "development", "report"];
+const TRAINING_TABS = ["today", "weekplan", "groups", "development", "report"]; // "groups" kun med training_w1_v2 (#7947)
 const LEGACY_TAB_ALIASES = { history: "report" };
 
 // #5485 (23/9): hvor længe en rytter hvis dag lige er gemt, bliver stående i
@@ -450,6 +454,7 @@ export default function TrainingPage() {
 
   const tTypes = useTranslation("riderTypes").t;
   const trainingR5 = useTrainingPageR5(); // #7947
+  const trainingW1 = useTrainingW1V2() && trainingR5; // #7947 W1 v2: training_w1_v2 (kun sammen med R5)
 
   // #3721: tre faner, ?tab=-synkroniseret efter samme mønster som FinancePage/
   // RiderStatsPage (VALID_TABS-fallback). Kun læst ved mount for den initiale
@@ -457,7 +462,7 @@ export default function TrainingPage() {
   // spam pr. fane-klik).
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = LEGACY_TAB_ALIASES[searchParams.get("tab")] ?? searchParams.get("tab");
-  const activeTab = TRAINING_TABS.includes(requestedTab) ? requestedTab : "today";
+  const activeTab = TRAINING_TABS.includes(requestedTab) && (requestedTab !== "groups" || trainingW1) ? requestedTab : "today";
   const setTab = (tab) =>
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
@@ -783,7 +788,7 @@ export default function TrainingPage() {
   // eller een rytters egen plan (hans id).
   const [weekPlanFor, setWeekPlanFor] = useState("team");
   // #8533 Codex P2: R5-programfanen har sit eget valg; "Rediger plan" og "Rediger graense" skal naa ind i den.
-  const [r5ProgramRequest, setR5ProgramRequest] = useState(/** @type {{ kind: "rider" | "limit" | "weekday"; id?: string; weekday?: string; n: number } | null} */ (null));
+  const [r5ProgramRequest, setR5ProgramRequest] = useState(/** @type {{ kind: "rider" | "group" | "limit" | "weekday"; id?: string; weekday?: string; n: number } | null} */ (null));
   const clearR5ProgramRequest = useCallback(() => setR5ProgramRequest(null), []);
   // #5932: fejl fra en felt-rettelse i Plan-kortet (felter gemmes med det samme).
   const [planCellError, setPlanCellError] = useState(null);
@@ -2185,6 +2190,14 @@ export default function TrainingPage() {
   }
 
   function renderProgramTab() {
+    if (trainingW1) return ( // #7947 W1 v2: samme data og kladder som R5, ejerens ugeplan-design
+      <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><ProgramWeekV2 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
+        riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
+        catalogV3={catalogV3} effortLevels={training.effortLevels === true} mobile={isMobile} onClearRider={clearRiderWeekPlan}
+        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} onOpenGroups={() => setTab("groups")}
+        rotationDrafts={rotationDrafts} setRotationDrafts={setRotationDrafts} weekDrafts={weekBlockDrafts} setWeekDrafts={setWeekBlockDrafts}
+        request={r5ProgramRequest} onRequestHandled={clearR5ProgramRequest} /></I18nReadyGate>
+    );
     if (programR5) return ( // #7456: R5's Program tab behind training_page_r5
       <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
         riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
@@ -2606,6 +2619,7 @@ export default function TrainingPage() {
             )}
           </Tab>
           <Tab value="weekplan">{t("tabs.program")}</Tab>
+          {trainingW1 && <Tab value="groups">{t("groups.section_groups")}</Tab>}
           <Tab value="development">{t("tabs.development")}</Tab>
           <Tab value="report">{t("tabs.report")}</Tab>
         </TabList>
@@ -2666,6 +2680,12 @@ export default function TrainingPage() {
         {renderProgramTab()}
         </Suspense>
       </TabPanel>
+      {trainingW1 && <TabPanel value="groups">{/* #7947 W1 v2 (#8686): grupperne i deres egen fane */}
+        <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><Suspense fallback={<TabFallback />}><GroupsTabV2 riders={riders} riderWeekPlans={riderWeekPlans}
+          programs={programs} groups={trainingGroups} fatigueRules={fatigueRules} mobile={isMobile}
+          setDrafts={setProgramR5Drafts} setRotationDrafts={setRotationDrafts} setWeekDrafts={setWeekBlockDrafts}
+          onOpenWeek={(s) => { setR5ProgramRequest((prev) => ({ kind: s.kind, id: s.id, n: (prev?.n ?? 0) + 1 })); setTab("weekplan"); }} /></Suspense></I18nReadyGate>
+      </TabPanel>}
 
       {/* #3721: Development-fanen — én række pr. rytter i truppen: navn+alder,
           udviklings-glyffen (DevelopmentGlyph, FAST 0-99-skala), tallene
