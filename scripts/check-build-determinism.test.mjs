@@ -90,7 +90,7 @@ test("source maps foelger pluginet, saa de to builds ligner prod", () => {
 
 test("MARKERS matcher env'en paa ci.yml's markoer-build", () => {
   // Scriptets egen kommentar siger at de SKAL vaere identiske. Her haandhaeves det.
-  const block = jobBlock("frontend-build");
+  const block = jobBlock("frontend-build-variants");
   for (const [name, value] of Object.entries(MARKERS)) {
     assert.ok(
       new RegExp(`${name}:\\s*["']?${value}["']?`).test(block),
@@ -190,4 +190,24 @@ test("jobbet indeholder selvtesten der beviser at gaten kan blive roed", () => {
 
 test("ci.yml koerer paa pull_request, saa gaten kan blokere en PR", () => {
   assert.match(ciWorkflow, /\n {2}pull_request:/);
+});
+
+test("frontend-build aggregates three isolated variants under the existing required check name", () => {
+  const gate = jobBlock("frontend-build");
+  const variants = jobBlock("frontend-build-variants");
+  assert.match(gate, /name: frontend-build\s/);
+  assert.match(gate, /needs: \[patch-notes-mode, frontend-build-variants\]/);
+  assert.match(gate, /needs\.frontend-build-variants\.result/);
+  assert.match(gate, /test "\$FRONTEND_BUILD_RESULT" = success/);
+  assert.doesNotMatch(gate, /continue-on-error/);
+  assert.match(variants, /variant: \[standard, skew, preview\]/);
+  assert.match(variants, /fail-fast: false/);
+  assert.doesNotMatch(variants, /continue-on-error|concurrency:/);
+  for (const [variant, build] of [
+    ["standard", "Build frontend"],
+    ["skew", "Build frontend with Skew Protection enabled (#2423)"],
+    ["preview", "Build frontend as a preview deploy (#2423)"],
+  ]) {
+    assert.ok(variants.includes('- name: ' + build + '\n        if: matrix.variant == \'' + variant + '\''));
+  }
 });
