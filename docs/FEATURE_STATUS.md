@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-162 poster: live 134 · dormant 7 · building 10 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+163 poster: live 134 · dormant 8 · building 10 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -20,6 +20,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Long descent chase cap (`race-descent-regroup-cap-7644`)|dormant|`descent_regroup_cap_7644`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7644|2026-11-04|Slukket; tændes af ejeren.|
+|Hilly stages - selection and finishes decided by the day (`race-hilly-selection-8799`)|dormant|`hilly_selection_8799`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#8799|2026-11-26|Slukket; ejer 26/11: tændes før S6's første løb efter samlet måling og Fable-dom. Kun løb der starter efter tænding.|
 |Tired riders can miss the time limit, with a warning (`race-time-limit-fatigue-7715`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7715|2026-11-07|Nøgle time_limit_fatigue_7715 uden række (off).|
 |Official time persistence revision (`race-official-times-v1`)|retired|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6284|2026-10-16|Frosset prototype.|
 
@@ -47,9 +48,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## squad
 
-**live:** Rider card (`rider-hover-card`) 2026-11-11
-
-**arkiv:** `champion-jerseys` · `contracts` · `rider-compare-and-watchlist` · `rider-rating-best-role-display` · `squad-management` · `talent-marks` · `youth-squad-pages`
+**arkiv:** `champion-jerseys` · `contracts` · `rider-compare-and-watchlist` · `rider-hover-card` · `rider-rating-best-role-display` · `squad-management` · `talent-marks` · `youth-squad-pages`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|

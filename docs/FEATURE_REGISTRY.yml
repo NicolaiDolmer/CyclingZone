@@ -183,6 +183,19 @@ features:
     decision: ejer-beslutning
     decide_by: 2026-11-18
 
+  - id: race-hilly-selection-8799
+    area: race-engine
+    title_en: Hilly stages - selection and finishes decided by the day
+    title_da: Kuperet - selektion og afslutninger efter dagens hårdhed
+    state: dormant
+    flag: hilly_selection_8799
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 8799
+    verified: 2026-11-26
+    note: "Slukket; ejer 26/11: tændes før S6's første løb efter samlet måling og Fable-dom. Kun løb der starter efter tænding."
+    decision: ejer-beslutning
+    decide_by: 2026-11-28
+
   - id: race-team-chase-7730
     area: race-engine
     title_en: The chase is decided by the teams chasing
