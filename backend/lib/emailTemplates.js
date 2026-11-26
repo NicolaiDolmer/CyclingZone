@@ -232,6 +232,7 @@ function outlineButtonHtml(url, label) {
 // larger body and footer text, extra colour-lock CSS and a sender line.
 function wrapHtml({
   eyebrow,
+  eyebrowUppercase = true,
   bodyHtml,
   unsubscribeUrl,
   language,
@@ -270,7 +271,7 @@ function wrapHtml({
                 <table role="presentation" class="cz-band" bgcolor="${NAVY}" width="100%" cellpadding="0" cellspacing="0" style="background:${NAVY};background-color:${NAVY};">
                   <tr>
                     <td valign="middle" style="line-height:0;font-size:0;"><img src="${WORDMARK_URL}" alt="Cycling Zone" width="${WORDMARK_WIDTH}" height="${WORDMARK_HEIGHT}" style="display:block;border:0;outline:none;text-decoration:none;width:${WORDMARK_WIDTH}px;height:${WORDMARK_HEIGHT}px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;line-height:${WORDMARK_HEIGHT}px;color:#ffffff;text-transform:uppercase;"></td>
-                    <td align="right" valign="middle" class="cz-eyebrow" style="font-size:11px;font-weight:700;letter-spacing:1px;color:${GOLD};text-transform:uppercase;">${escapeHtml(eyebrow)}</td>
+                    <td align="right" valign="middle" class="cz-eyebrow" style="font-size:${eyebrowUppercase ? "11px" : "13px"};font-weight:700;letter-spacing:${eyebrowUppercase ? "1px" : "0"};color:${GOLD};${eyebrowUppercase ? "text-transform:uppercase;" : ""}">${escapeHtml(eyebrow)}</td>
                   </tr>
                 </table>
               </td>
@@ -827,10 +828,10 @@ export function s6AudienceForDaysAway(daysSinceLastSeen) {
 
 const S6_COPY = {
   en: {
-    eyebrow: "SEASON 6",
+    eyebrow: "Season 6",
     greeting: (team) => (team ? `Hi ${team},` : "Hi,"),
     heroAlt:
-      "Three screens from Cycling Zone: the new race page with the race film, the Training page with the day picker, and a rider profile showing potential on a scale from 1 to 99.",
+      "Three screens from Cycling Zone: the new race page with the race film, the Training page with the day picker, and the new planning page with the week overview.",
     roadmapIntro: "I'd like to know what you want me to build next.",
     roadmap: "Vote on the roadmap",
     awayNote: "You log in with the same account as before.",
@@ -839,18 +840,21 @@ const S6_COPY = {
     companyLine: "Cycling Zone is run by Dolmer Digital, CVR 46524861, Denmark.",
     beforeStart: {
       subjects: { a: "Season 6 starts Saturday", b: "Set your training before Season 6" },
-      preheader: "A new race page, a day picker in Training and potential from 1 to 99.",
+      preheader: "A new development system without caps, a new planning page, the race film and potential from 1 to 99.",
       heading: "Season 6 starts Saturday 28 November",
-      teamLine: (team, division) =>
-        division ? `${team || "Your team"} starts Season 6 in ${division}.` : `Here's what's new for ${team || "your team"}.`,
+      // #8396 ejer 26/11: the division for Season 6 is only known after the
+      // switch (promotion and relegation), so mail 1 names no division.
+      teamLine: null,
+      newsHeading: "The newest features in the game",
       openings: {
-        active: "Thanks for racing in Season 5. Before the new season starts, here are three things that are new since it began.",
-        dormant: "It's been a few weeks since you were last in. Here are three things you haven't seen yet, all ready before the new season starts.",
-        away: "It's been a while since you played, and the game has changed a lot. A new season is a good time to come back. Here are three things you haven't seen yet.",
+        active: "Thanks for racing in Season 5. Before the new season starts, here is what's new since it began.",
+        dormant: "It's been a few weeks since you were last in. Here is what's new, all ready before the new season starts.",
+        away: "It's been a while since you played, and the game has changed a lot. A new season is a good time to come back. Here is what's new.",
       },
       news: [
         ["The race page.", "Watch the race film and read the results for a ridden stage in one place."],
-        ["Training.", "A new page with programs and groups, and a day picker on the Today tab that shows the coming days with races and training."],
+        ["Training and development.", "A completely new development system, and the caps on abilities are gone. The Training page has programs, groups and a day picker on the Today tab that shows the coming days with races and training."],
+        ["Planning.", "Try the new planning page with the week overview, the race list and a month calendar in one place."],
         ["Potential.", "Every rider has one potential from 1 to 99, with how sure the scout is. It's the same number everywhere in the game."],
       ],
       cta: "Set your training for Season 6",
@@ -882,10 +886,10 @@ const S6_COPY = {
     },
   },
   da: {
-    eyebrow: "SÆSON 6",
+    eyebrow: "Sæson 6",
     greeting: (team) => (team ? `Hej ${team},` : "Hej,"),
     heroAlt:
-      "Tre skærmbilleder fra Cycling Zone: den nye løbsside med løbsfilmen, træningssiden med dagsvælgeren og en rytterprofil, der viser potentiale på en skala fra 1 til 99.",
+      "Tre skærmbilleder fra Cycling Zone: den nye løbsside med løbsfilmen, træningssiden med dagsvælgeren og den nye planlægningsside med ugeoversigten.",
     roadmapIntro: "Jeg vil gerne høre, hvad du synes, jeg skal bygge næste gang.",
     roadmap: "Stem på roadmappet",
     awayNote: "Du logger ind med den samme konto som før.",
@@ -894,18 +898,21 @@ const S6_COPY = {
     companyLine: "Cycling Zone drives af Dolmer Digital, CVR 46524861, Danmark.",
     beforeStart: {
       subjects: { a: "Sæson 6 starter lørdag", b: "Sæt træningen før sæson 6" },
-      preheader: "Ny løbsside, dagsvælger i Træning og potentiale fra 1 til 99.",
+      preheader: "Nyt udviklingssystem uden lofter, ny planlægningsside, løbsfilmen og potentiale fra 1 til 99.",
       heading: "Sæson 6 starter lørdag den 28. november",
-      teamLine: (team, division) =>
-        division ? `${team || "Dit hold"} starter sæson 6 i ${division}.` : `Her er det nye for ${team || "dit hold"}.`,
+      // #8396 ejer 26/11: divisionen i sæson 6 kendes først efter skiftet
+      // (op- og nedrykning), så mail 1 nævner ingen division.
+      teamLine: null,
+      newsHeading: "De nyeste funktioner i spillet",
       openings: {
-        active: "Tak fordi du kørte med i sæson 5. Inden den nye sæson starter, er her tre ting, der er nye, siden den begyndte.",
-        dormant: "Det er et par uger siden, du sidst var inde. Her er tre ting, du ikke har set endnu, og de er klar, før den nye sæson starter.",
-        away: "Det er længe siden, du har spillet, og spillet har ændret sig meget. En ny sæson er et godt tidspunkt at komme tilbage. Her er tre ting, du ikke har set endnu.",
+        active: "Tak fordi du kørte med i sæson 5. Inden den nye sæson starter, kan du se, hvad der er nyt, siden den begyndte.",
+        dormant: "Det er et par uger siden, du sidst var inde. Her er det nye, og det er klar, før den nye sæson starter.",
+        away: "Det er længe siden, du har spillet, og spillet har ændret sig meget. En ny sæson er et godt tidspunkt at komme tilbage. Her er det nye.",
       },
       news: [
         ["Løbssiden.", "Se løbsfilmen og resultaterne for en kørt etape samme sted."],
-        ["Træning.", "En ny side med programmer og grupper og en dagsvælger under I dag, der viser de kommende dage med løb og træning."],
+        ["Træning og udvikling.", "Et helt nyt udviklingssystem, og lofterne på evnerne er væk. Træningssiden har programmer, grupper og en dagsvælger under I dag, der viser de kommende dage med løb og træning."],
+        ["Planlægning.", "Prøv den nye planlægningsside med ugeoversigt, løbsliste og månedskalender samme sted."],
         ["Potentiale.", "Hver rytter har ét potentiale fra 1 til 99 og hvor sikker spejderen er. Det er det samme tal overalt i spillet."],
       ],
       cta: "Sæt træningen for sæson 6",
@@ -1014,7 +1021,7 @@ export function buildS6SeasonEmail({
   const ctaUrl = s6CampaignUrl(S6_CTA_PATH[edition], edition, audience, subjectVariant);
   const roadmapUrl = s6CampaignUrl("/roadmap?tab=vote", edition, audience, subjectVariant);
   const greeting = copy.greeting(team);
-  const teamLine = version.teamLine(team, division);
+  const teamLine = version.teamLine ? version.teamLine(team, division) : null;
   const opening = version.openings[audience];
 
   const listHtml = started
@@ -1032,8 +1039,9 @@ export function buildS6SeasonEmail({
     ${s6HeroHtml(lang, copy.heroAlt)}
     <h1 class="cz-text" style="margin:0 0 20px;font-size:24px;line-height:1.25;font-weight:700;color:${TEXT};">${escapeHtml(version.heading)}</h1>
     <p style="margin:0 0 16px;">${escapeHtml(greeting)}</p>
-    <p style="margin:0 0 16px;"><strong>${escapeHtml(teamLine)}</strong></p>
-    <p style="margin:0 0 16px;">${escapeHtml(opening)}</p>
+    ${teamLine ? `<p style="margin:0 0 16px;"><strong>${escapeHtml(teamLine)}</strong></p>` : ""}
+    <p style="margin:0 0 16px;">${escapeHtml(opening)}</p>${version.newsHeading ? `
+    <h2 class="cz-text" style="margin:0 0 12px;font-size:18px;line-height:1.3;font-weight:700;color:${TEXT};">${escapeHtml(version.newsHeading)}</h2>` : ""}
     ${listHtml}
     <p style="margin:0 0 24px;">${s6ButtonHtml(ctaUrl, version.cta)}</p>${audience === "away" ? `
     <p style="margin:0 0 16px;">${escapeHtml(copy.awayNote)}</p>` : ""}
@@ -1043,8 +1051,9 @@ export function buildS6SeasonEmail({
   const bodyText = [
     version.heading,
     greeting,
-    teamLine,
+    ...(teamLine ? [teamLine] : []),
     opening,
+    ...(version.newsHeading ? [version.newsHeading] : []),
     listText.join("\n"),
     `${version.cta}: ${ctaUrl}`,
     ...(audience === "away" ? [copy.awayNote] : []),
@@ -1068,6 +1077,7 @@ export function buildS6SeasonEmail({
     html: wrapHtml({
       ...footer,
       eyebrow: copy.eyebrow,
+      eyebrowUppercase: false, // #8725 ejer 26/11: ingen små versaler
       preheader: version.preheader,
       bodyHtml,
       title: subject,
