@@ -84,6 +84,7 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "training_effort_levels", // #7947: indsats pr. programfelt (motorens input)
   "training_week_priority",
   "training_rotation",
+  "training_day_override_8592", // #8592: "Kun denne dag" (motorens input)
   // Nødstop for live systemer
   "stage_scheduler_enabled",
   "auto_prize_enabled",

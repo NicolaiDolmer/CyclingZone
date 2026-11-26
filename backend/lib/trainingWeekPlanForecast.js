@@ -29,6 +29,7 @@ import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG, NEW_RIDER_START_COND
 import { raceConditionLoads } from "./raceFatigue.js";
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 import { loadRotationPlans, loadRotationReceipts, rotationProgram, rotationProgress, stampRotation } from "./trainingRotationProgress.js";
+import { overrideProgram } from "./trainingDayOverride8592.js"; // #8592
 import { resolveProgram } from "./dailyTraining.js";
 import { isInjuredOnRaceDay } from "./injuryRaceDays.js";
 import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js";
@@ -132,6 +133,7 @@ export function buildTeamFatigueForecast({
   // #8549: Week blocks som motoren (I5). Off = kildefeltet er feltet (dagens prognose).
   weekPriority = false, teamWeekRow = null, riderWeekRowByRider = new Map(), overdueByRider = new Map(),
   rotationByRider = new Map(), rotationReceiptsByRider = new Map(), teamId = null,
+  dateOverrideByRider = new Map(), // #8592: datoens valg, samme forrang som motoren (I5)
 }) {
   const days = [...new Set((dateGameDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   if (days.length !== FORECAST_SLOTS) return {};
@@ -146,14 +148,15 @@ export function buildTeamFatigueForecast({
     const program = resolveProgram(plan, rider.primary_type);
     const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
     const riderReceipts = receipts.filter((row) => row.rider_id === rider.id);
-    const rotation = rotationByRider.get(rider.id);
+    const dateOverride = dateOverrideByRider?.get(rider.id) ?? null; // #8592
+    const rotation = dateOverride ? undefined : rotationByRider.get(rider.id);
     const previousRotationReceipts = rotationReceiptsByRider.get(rider.id);
     const rotationReceipts = rotation ? riderReceipts.filter((row) => teamId == null || row.team_id === teamId) : [];
     const firstReport = days.map((day) => riderReceipts.find((row) => row.game_day === day)).find(Boolean)?.report;
     const recoveryAbility = firstReport?.recovery_before_date ?? recoveryByRider.get(rider.id) ?? 50;
     const hasStageOnDate = plannedStages.some((row) => row.rider_id === rider.id)
       || recordedLoads.some((row) => row.rider_id === rider.id);
-    const weekPlacementInput = weekPriority && !rotation ? {
+    const weekPlacementInput = weekPriority && !rotation && !dateOverride ? {
       winning: winningWeekEntry({ weekday, riderRow: riderWeekRowByRider.get(rider.id) ?? null, teamRow: teamWeekRow, hasExplicitPlan }),
       dateDays: days,
       raceGameDays: [
@@ -188,6 +191,8 @@ export function buildTeamFatigueForecast({
         previousFocus: planned.focus, catalogV3, effortLevels,
       });
       if (choice) Object.assign(planned, choice.program);
+      const overridden = dateOverride ? overrideProgram({ override: dateOverride, previousFocus: planned.focus, catalogV3, effortLevels }) : null;
+      if (overridden) Object.assign(planned, overridden); // #8592
       const ruled = fatigueRules ? applyFatigueRules({
         program: planned, rule: fatigueRules.forRider(rider.id),
         fatigueAtDateStart: fatigueNow
@@ -249,13 +254,14 @@ export function buildTeamFatigueForecast({
       return activity;
     });
     const fatigue = forecastRiderFatigue({ riderId: rider.id, dateStr: tickDate, opening, slots, recoveryAbility, recoveryConfig, conditionModelV2, medicalBonus, raceDateTrainingDay });
-    if (fatigue == null && !placement && !rotation) continue;
+    if (fatigue == null && !placement && !rotation && !dateOverride) continue;
     // raceSlots: dagens felter der er laast af et loeb (regel A). Gitteret viser
     // dem som etape; de oevrige felter er traening.
     const raceSlots = slots.flatMap((slot, index) => (
       slot.intensity === "race" || (placement?.fieldSource[index] === null && !slot.weekRest) ? [index] : []
     ));
     out[rider.id] = { fatigue, band: forecastBand(fatigue), raceSlots };
+    if (dateOverride) out[rider.id].dateOverride = { session: dateOverride.session }; // #8592
     if (placement || rotation) {
       const pendingSlots = slots.flatMap((slot, index) => slot.intensity === "unknown_pending" ? [index] : []);
       if (pendingSlots.length) out[rider.id].pendingSlots = pendingSlots;
@@ -322,7 +328,9 @@ const unwrap = (outcome) => {
 // Returnerer { available, reason?, tickDate, riders: { <id>: { fatigue, band } } }.
 // `settled: true` naar datoen allerede er gjort op; saa er tallet aftenens
 // faktiske traethed, ikke en prognose.
-export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = new Date() }) {
+// #8592: `dateOverrideByRider` (datoens valg) hentes af ruten bag kontakten; motoren bruger det kun
+// med programceller, saa prognosen goer det samme (I5). Uden = praecis som foer, intet ekstra opslag.
+export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = new Date(), dateOverrideByRider = null }) {
   const tickDate = copenhagenDateString(now);
   const base = { tickDate, riders: {} };
   if (!seasonId) return { ...base, available: false, reason: "no_active_season" };
@@ -470,6 +478,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     teamWeekRow: weekRows.find((row) => row.rider_id == null) ?? null,
     riderWeekRowByRider: new Map(weekRows.filter((row) => row.rider_id != null).map((row) => [row.rider_id, row])),
     rotationByRider, rotationReceiptsByRider, teamId: team.id,
+    ...(programCellsOn && dateOverrideByRider?.size ? { dateOverrideByRider } : {}),
   });
   if (settled) {
     for (const id of riderIds) {
