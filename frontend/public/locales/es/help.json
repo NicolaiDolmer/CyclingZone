@@ -1390,6 +1390,10 @@
         "title": "El potencial en todo el juego",
         "text": "En todo el juego, el potencial de un ciclista se llama Potencial, con el subtítulo estimación del ojeador. Se muestra como un número y una palabra, por ejemplo Potencial 74 · Razonable. El número es la estimación de tu equipo de hasta dónde puede llegar en su rol natural, en la misma escala que su valoración, y la palabra dice cuánto puedes fiarte de él: Incierto, Razonable o Seguro, donde Seguro es lo más alto. Cuando la palabra es Incierto, el número aparece como aprox. 74 en un color apagado. El número real nunca se muestra. En tus propios ciclistas la columna Pronóstico muestra una sola valoración: dónde terminará cerca de su mejor momento si mantiene el ritmo actual, basada en sus últimos 30 días. Más vistazos, un ojeador mejor y, en tus propios ciclistas, más entrenamiento en tu equipo hacen la estimación más segura. Solo se mueve cuando tu equipo aprende algo nuevo, en la actualización del domingo o cuando cambia de equipo. Ningún otro lugar del juego anuncia un cambio; aquí está la explicación."
       },
+      "potentialAndPrognosis": {
+        "title": "Potencial y pronóstico",
+        "text": "El potencial es la estimación del ojeador de hasta dónde puede llegar el ciclista, y la palabra junto al número indica lo segura que es la estimación. El pronóstico es dónde se espera que termine tu propio ciclista en su mejor momento si sigue como ahora, y nunca supera su potencial. Un ciclista nuevo en tu equipo recibe ambos números desde su primer día, y un talento de la academia muestra Aprendiendo hasta que tu equipo lo conozca."
+      },
       "potentialBestRole": {
         "title": "El potencial en todo el juego",
         "text": "Mi equipo, la academia, el perfil del ciclista y la pestaña de Ojeo muestran el potencial de la misma forma. Se muestra para el rol en el que puede llegar más alto, con una pequeña caja al lado que dice qué rol es. Sigue siendo una estimación: un mejor ojeador, o más días de entrenamiento en tu equipo para tus propios ciclistas, la afinan."

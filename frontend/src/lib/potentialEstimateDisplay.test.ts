@@ -82,3 +82,12 @@ test("trænerens ord bygger på tallet, og kun et sikkert skøn er endeligt", ()
   assert.deepEqual(coachInputFromView({ ...shown, certainty: "fair" } as never), { band: { lo: 74, hi: 74 }, knowledgeStage: "learning" });
   assert.deepEqual(coachInputFromView({ hidden: true, reason: "unscouted" }), { band: null, knowledgeStage: "learning" });
 });
+
+test("#8604: Model 2 bærer mærket og et gyldigt interval; et ugyldigt interval falder fra", () => {
+  assert.deepEqual(
+    prognosisViewOf({ prognosisView: { hidden: false, value: 66, model: 2, band: { lo: 62, hi: 70 } } }),
+    { hidden: false, value: 66, model: 2, band: { lo: 62, hi: 70 } },
+  );
+  assert.deepEqual(prognosisViewOf({ prognosisView: { hidden: false, value: 66, model: 2, band: { lo: 67, hi: 70 } } }), { hidden: false, value: 66, model: 2 });
+  assert.deepEqual(prognosisViewOf({ prognosisView: { hidden: false, value: 66, band: { lo: 62, hi: 70 } } }), { hidden: false, value: 66 });
+});

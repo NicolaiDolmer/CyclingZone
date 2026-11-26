@@ -93,7 +93,8 @@ export function PrognosisValue({ view, size = "cell" }: { view: PrognosisView; s
   return (
     <span
       className={`tabular-nums whitespace-nowrap text-cz-1 ${NUMBER_CLASS[size]}`}
-      title={t("riders:potentialNumber.prognosisTitle")}
+      /* #8604: Model 2 forklarer "hvis han træner som nu" og forholdet til potentialet. */
+      title={t(view.model === 2 ? "riders:potentialNumber.prognosisModel2Title" : "riders:potentialNumber.prognosisTitle")}
       data-testid="prognosis-value"
       data-prognosis-value={view.value}
     >

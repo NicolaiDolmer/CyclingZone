@@ -362,6 +362,7 @@ const SECTION_DEFS = [
       { id: "aiRidersV2", kind: "text" },
       { id: "potentialBestRole", kind: "text" },
       { id: "potentialBestRoleEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.riders)
+      { id: "potentialAndPrognosis", kind: "text" }, // #8604 potentiale vs. prognose (HELP_BLOCK_FLAGS.riders)
       { id: "trainingFocus", kind: "text" },
       { id: "trainingFocusXp", kind: "text" }, // #8476 XP (HELP_BLOCK_FLAGS.riders)
       { id: "scouting", kind: "text" },

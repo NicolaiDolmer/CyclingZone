@@ -90,6 +90,8 @@ import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCo
 import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runSundayPotentialEstimateTick } from "./lib/sundayPotentialEstimateSweep.js"; // #7685
 import { runPotentialEstimateTeamChangeTick } from "./lib/potentialEstimateTeamChangeSweep.js"; // #7685
+import { runPotentialEstimateMissingTick } from "./lib/potentialEstimateMissingSweep.js"; // #8604
+import { runPrognosisModel2Tick } from "./lib/prognosisModel2_8604.js"; // #8604 Model 2
 import { runTalentMarksDailyTick, TALENT_MARKS_TICK } from "./lib/talentMarks7879.js"; // #7879
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.ts";
@@ -2261,6 +2263,10 @@ export function startCron() {
     { label: "potential-estimate-sunday", shouldStop: isCronSchedulingStopped }
   );
   setInterval(trackedTick("potential-estimate-team-change", () => runPotentialEstimateTeamChangeTick({ supabase })), 60 * 60 * 1000);
+  // #8604: egne ryttere uden skøn får deres første inden for en time (flag-gated, idempotent).
+  setInterval(trackedTick("potential-estimate-missing", () => runPotentialEstimateMissingTick({ supabase })), 60 * 60 * 1000);
+  // #8604 Model 2: forbereder prognoserne uden for anmodningen (kontakt-gated, idempotent).
+  setInterval(trackedTick("prognosis-model2", () => runPrognosisModel2Tick({ supabase })), 60 * 60 * 1000);
   // #7879: talentmærkerne, i et fast natligt vindue (tikket afgør det uden databasekald). Ingen boot-run.
   startClockAlignedInterval(trackedTick("talent-marks-daily", () => runTalentMarksDailyTick({ supabase })), { ...TALENT_MARKS_TICK, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS });
 
@@ -2463,6 +2469,8 @@ export function startCron() {
   trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_SUNDAY_VALUE))(); // boot-run: claim-idempotent, søndags- + time-gated
   trackedTick("potential-estimate-sunday", () => runSundayPotentialEstimateTick({ supabase }))(); // #7685 boot-run: idempotent, søndags- + time-gated
   trackedTick("potential-estimate-team-change", () => runPotentialEstimateTeamChangeTick({ supabase }))(); // #7685 boot-run: setInterval nulstilles ved hvert deploy
+  trackedTick("potential-estimate-missing", () => runPotentialEstimateMissingTick({ supabase }))(); // #8604 boot-run: datareparationen efter deploy, idempotent
+  trackedTick("prognosis-model2", () => runPrognosisModel2Tick({ supabase }))(); // #8604 boot-run: kontakt-gated, idempotent
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

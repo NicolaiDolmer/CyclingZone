@@ -15,9 +15,13 @@
     "prognosisPastPeak": "Past his peak",
     "prognosisPastPeakTitle": "He is past the age where riders peak.",
     "prognosisNoEstimateTitle": "The prognosis comes once you have an estimate of his potential.",
+    "prognosisModel2Title": "The prognosis is where he is expected to end up at his peak if he keeps training as he does now, and it never goes above his potential, the scout's estimate of how high he can reach.",
+    "prognosisBand": "Expected range",
+    "prognosisBandTitle": "This is where he will most likely end up if he keeps training as he does now. The range gets narrower with every day he trains on your team.",
+    "prognosisBandValue": "{lo} to {hi}",
     "aiTeamTitle": "Riders on AI teams can't be scouted.",
     "potentialSubtitle": "the scout's estimate",
-    "potentialTitle": "Potential, the scout's estimate. An estimate, not a fact.",
+    "potentialTitle": "Potential is the scout's estimate of how high he can reach, and the prognosis is where he is expected to end up if he carries on as now.",
     "approx": "approx. {value}"
   },
   "table": {

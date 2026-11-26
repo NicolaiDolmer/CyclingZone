@@ -15,9 +15,13 @@
     "prognosisPastPeak": "Forbi toppen",
     "prognosisPastPeakTitle": "Han er forbi den alder, hvor ryttere topper.",
     "prognosisNoEstimateTitle": "Prognosen kommer, når du har et skøn over hans potentiale.",
+    "prognosisModel2Title": "Prognosen er, hvor han forventes at ende ved toppen, hvis han træner som nu, og den ligger aldrig over potentialet, spejderens skøn over, hvor højt han kan nå.",
+    "prognosisBand": "Forventet interval",
+    "prognosisBandTitle": "Her ender han sandsynligvis, hvis han træner som nu. Intervallet bliver smallere for hver dag, han træner på dit hold.",
+    "prognosisBandValue": "{lo} til {hi}",
     "aiTeamTitle": "AI-holdenes ryttere kan ikke scoutes.",
     "potentialSubtitle": "spejderens skøn",
-    "potentialTitle": "Potentiale, spejderens skøn. Et skøn, ikke et facit.",
+    "potentialTitle": "Potentiale er spejderens skøn over, hvor højt han kan nå, og prognosen er, hvor han forventes at ende, hvis han fortsætter som nu.",
     "approx": "ca. {value}"
   },
   "table": {
