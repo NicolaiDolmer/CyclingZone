@@ -912,7 +912,7 @@ for (const edition of ["before-start", "started"]) {
             // #8396 ejer 26/11: the S6 division is unknown before the switch, so mail 1 names none.
             assert.ok(!mail.html.includes("Division 2"), "before-start names no division");
             assert.ok(!mail.text.includes("Division 2"), "before-start text names no division");
-            assert.match(mail.html, /<h2[^>]*>(The newest features in the game|De nyeste funktioner i spillet)<\/h2>/);
+            assert.match(mail.html, /<h2[^>]*>(What&#39;s new in the game|De nyeste funktioner i spillet)<\/h2>/);
             assert.match(mail.text, /(udviklingssystem|development system)/);
             assert.match(mail.text, /(Planlægning|Planning)\./);
           } else {
