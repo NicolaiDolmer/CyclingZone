@@ -31,6 +31,8 @@
 // props:
 //   items — [{ label, value, sub? }]
 //   flush — uden mt-5/border-t/pt-4 (default false)
+import { SENTENCE_CASE } from "./sentenceCase.ts";
+
 export function HeroStats({ items, className = "", flush = false }) {
   const frame = flush ? "" : "mt-5 border-t border-cz-border pt-4 ";
   const gridBase = items.length >= 5
@@ -45,7 +47,7 @@ export function HeroStats({ items, className = "", flush = false }) {
           key={item.label}
           className="min-w-0 sm:me-6 sm:shrink-0 sm:border-e sm:border-cz-border sm:pe-6 sm:last:me-0 sm:last:border-e-0 sm:last:pe-0"
         >
-          <div className="mb-1 font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">
+          <div className={`mb-1 font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 ${SENTENCE_CASE}`}>
             {item.label}
           </div>
           <div className="font-data text-[20px] font-[650] leading-tight tabular-nums text-cz-1 sm:whitespace-nowrap">
