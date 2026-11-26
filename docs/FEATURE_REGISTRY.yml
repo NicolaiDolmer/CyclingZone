@@ -396,6 +396,8 @@ features:
     epic: 8419
     verified: 2026-11-26
     note: "Nøgle planning_v2_default_8419 uden række (off); tændes efter ejerens billede-go (390 + 1440)."
+    decision: taend
+    decide_by: 2026-11-28
 
   - id: luxury-helper-role
     area: race-engine
