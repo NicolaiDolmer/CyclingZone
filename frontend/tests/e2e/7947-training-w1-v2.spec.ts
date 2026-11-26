@@ -23,7 +23,7 @@ async function shot(page: import("@playwright/test").Page, testInfo: import("@pl
   await testInfo.attach(name, { path: file, contentType: "image/png" });
 }
 
-async function setup(page: import("@playwright/test").Page, flags: Record<string, boolean>) {
+async function setup(page: import("@playwright/test").Page, flags: Record<string, boolean>, programsExtra: Record<string, unknown> = {}) {
   const writes: { method: string; path: string; body: Record<string, unknown> }[] = [];
   await stabilizePage(page);
   await page.clock.setFixedTime(new Date("2026-11-23T12:00:00Z"));
@@ -48,7 +48,7 @@ async function setup(page: import("@playwright/test").Page, flags: Record<string
     if (req.method() === "GET" && path.endsWith("/forecast/week")) return json(route, { available: false, days: [] });
     if (req.method() === "GET") return json(route, path.endsWith("/groups")
       ? { enabled: true, groups }
-      : { enabled: true, cellsEnabled: true, catalog, assigned: { [squad[4].id]: "climber" }, seeds: {} });
+      : { enabled: true, cellsEnabled: true, catalog, assigned: { [squad[4].id]: "climber" }, seeds: {}, ...programsExtra });
     const body = (req.postDataJSON() ?? {}) as Record<string, unknown>;
     writes.push({ method: req.method(), path, body });
     if (req.method() === "PATCH") {
@@ -140,6 +140,54 @@ test("W1 v2: the Groups tab keeps every group action (move rider, members, new g
   // Et klik paa gruppens navn aabner dens uge i Program.
   await page.getByRole("button", { name: "Open the week for Group A" }).click();
   await expect(page.getByTestId("program-w1-plan-for")).toHaveValue("group:group-a");
+});
+
+// #8813 (Codex paa #8780): kopimenuen aabner mod kortets indre og klippes ikke af dagens kort.
+test("W1 v2: the copy-day menu opens inside the day card", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await setup(page, { training_w1_v2: true });
+  await page.goto("/training?tab=weekplan");
+  const monday = page.locator('[data-testid="program-w1-day"][data-weekday="mon"]');
+  await expect(monday.getByTestId("program-w1-pass").first()).toBeVisible();
+  await shot(page, testInfo, "after-copy-menu-closed");
+  await monday.getByTestId("program-w1-copy-day").click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  const card = (await monday.boundingBox())!;
+  const box = (await menu.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(card.x - 1);
+  expect(box.x + box.width).toBeLessThanOrEqual(card.x + card.width + 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(card.y + card.height + 1);
+  // Det oeverste og nederste punkt kan klikkes (intet ligger over menuen eller klipper den).
+  await expect(menu.getByRole("menuitem").first()).toBeInViewport();
+  await menu.getByRole("menuitem").last().scrollIntoViewIfNeeded();
+  await expect(menu.getByRole("menuitem").last()).toBeVisible();
+  await monday.getByTestId("program-w1-copy-day").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("after-copy-menu-open.png") });
+  await testInfo.attach("after-copy-menu-open", { path: testInfo.outputPath("after-copy-menu-open.png"), contentType: "image/png" });
+});
+
+// #8813 (Codex paa #8780): en rettet indsats flyttes med passet i Field priority og bevares ved laas.
+test("W1 v2: a changed effort moves with its pass and survives a lock", async ({ page }) => {
+  test.setTimeout(120_000);
+  const writes = await setup(page, { training_w1_v2: true }, { weekPriorityEnabled: true });
+  await page.goto("/training?tab=weekplan");
+  const monday = page.locator('[data-testid="program-w1-day"][data-weekday="mon"]');
+  const passes = monday.getByTestId("program-w1-pass");
+  await passes.first().getByTestId("program-w1-effort-hard").click();
+  await expect(passes.first().getByTestId("program-w1-effort-hard")).toHaveAttribute("aria-pressed", "true");
+
+  const priority = page.getByTestId("program-r5-week-priority");
+  await priority.getByRole("button", { name: "Lower priority of field 1" }).click();
+  await priority.getByRole("button", { name: "Lock field 2" }).click();
+  // Indsatsen fulgte passet til felt 2; felt 1 er tilbage paa sessionens standard.
+  await expect(passes.nth(1).getByTestId("program-w1-effort-hard")).toHaveAttribute("aria-pressed", "true");
+  await expect(passes.first().getByTestId("program-w1-effort-normal")).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByTestId("program-w1-save").click();
+  await expect.poll(() => writes.filter((w) => w.path.endsWith("/groups/group-a/cell")).length).toBeGreaterThan(0);
+  const block = writes.find((w) => w.path.endsWith("/groups/group-a/cell") && w.body.weekBlock)!;
+  expect(block.body).toMatchObject({ weekday: "mon", weekBlock: { lockSlot: 1, slotEfforts: [null, "hard", null, null, null] } });
 });
 
 test("W1 v2 off: Program is R5 as before and there is no Groups tab", async ({ page }, testInfo) => {
