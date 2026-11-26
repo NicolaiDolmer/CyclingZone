@@ -5,7 +5,7 @@ import { authStorageKey } from "./authLanding.ts";
 import { browserAuthStorage } from "./authCookieStorage.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../types/database.types";
-import { createRowCapAlarmFetch } from "./supabaseRowCapAlarm.js";
+import { createRowCapAlarmFetch } from "./supabaseRowCapAlarm.ts";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;

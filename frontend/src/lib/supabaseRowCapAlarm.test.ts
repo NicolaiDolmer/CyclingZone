@@ -2,14 +2,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createRowCapAlarmFetch } from "./supabaseRowCapAlarm.js";
+import { createRowCapAlarmFetch, type RowCapFinding } from "./supabaseRowCapAlarm.ts";
 
-function pgResponse(rows) {
+function pgResponse(rows: number): Response {
   return new Response("[]", { status: 200, headers: { "content-range": `0-${rows - 1}/*` } });
 }
 
 test("naiv læsning med præcis 1.000 rækker rapporteres, .range() gør ikke", async () => {
-  const reports = [];
+  const reports: RowCapFinding[] = [];
   const f = createRowCapAlarmFetch(async () => pgResponse(1000), (x) => reports.push(x));
   await f("https://x.supabase.co/rest/v1/riders?select=nationality_code", { method: "GET" });
   await f("https://x.supabase.co/rest/v1/riders?select=id&offset=0&limit=1000", { method: "GET" });

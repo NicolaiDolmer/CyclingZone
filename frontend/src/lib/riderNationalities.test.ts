@@ -1,27 +1,23 @@
 // #8797 — nationalitetsfiltret mangler ingen nationer, heller ikke over 1.000 ryttere.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadRiderNationalities } from "./riderNationalities.js";
+import { loadRiderNationalities } from "./riderNationalities.ts";
+
+type Row = Record<string, unknown>;
 
 // Minimal PostgREST-agtig fake: afkorter ved 1.000 uden .range(), som prod.
-/**
- * @param {Record<string, any[]>} tables
- * @param {{ viewError?: { message: string } | null }} [opts]
- */
-function fakeSupabase(tables, { viewError = null } = {}) {
+function fakeSupabase(tables: Record<string, Row[]>, { viewError = null }: { viewError?: { message: string } | null } = {}) {
   return {
-    from(table) {
-      /** @type {Array<(r: any) => boolean>} */
-      const filters = [];
-      /** @type {number[] | null} */
-      let range = null;
+    from(table: string) {
+      const filters: Array<(r: Row) => boolean> = [];
+      let range: [number, number] | null = null;
       const q = {
         select() { return q; },
-        eq(c, v) { filters.push((r) => r[c] === v); return q; },
-        neq(c, v) { filters.push((r) => r[c] !== v); return q; },
+        eq(c: string, v: unknown) { filters.push((r) => r[c] === v); return q; },
+        neq(c: string, v: unknown) { filters.push((r) => r[c] !== v); return q; },
         order() { return q; },
-        range(from, to) { range = [from, to]; return q; },
-        then(resolve) {
+        range(from: number, to: number) { range = [from, to]; return q; },
+        then(resolve: (v: { data: Row[] | null; error: unknown }) => unknown) {
           if (table === "rider_nationality_codes" && viewError) return resolve({ data: null, error: viewError });
           let rows = (tables[table] || []).filter((r) => filters.every((f) => f(r)));
           rows = range ? rows.slice(range[0], range[1] + 1) : rows.slice(0, 1000);
@@ -34,7 +30,7 @@ function fakeSupabase(tables, { viewError = null } = {}) {
 }
 
 // 2.500 ryttere, hvor de sidste nationer kun findes efter række 1.000.
-const riders = Array.from({ length: 2500 }, (_, i) => ({
+const riders: Row[] = Array.from({ length: 2500 }, (_, i) => ({
   id: i, is_retired: false, nationality_code: i < 2400 ? "DK" : (i % 2 ? "NO" : "SE"),
 }));
 

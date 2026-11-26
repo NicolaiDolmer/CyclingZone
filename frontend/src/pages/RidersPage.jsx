@@ -10,7 +10,7 @@ import {
   saveFiltersToSession,
 } from "../lib/ridersUrlState";
 import { supabase } from "../lib/supabase";
-import { loadRiderNationalities } from "../lib/riderNationalities.js";
+import { loadRiderNationalities } from "../lib/riderNationalities.ts";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
 import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";

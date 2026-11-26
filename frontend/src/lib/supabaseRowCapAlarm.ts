@@ -9,8 +9,10 @@ import {
   rowCapAlarmFingerprint,
 } from "../../../backend/lib/supabaseRowCapAlarm.js";
 
-/** @param {{table: string, shape: string, rows: number}} finding */
-export function reportRowCapToSentry(finding) {
+export type RowCapFinding = { table: string; shape: string; rows: number };
+type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+export function reportRowCapToSentry(finding: RowCapFinding): void {
   Sentry.captureMessage(rowCapAlarmMessage(finding), {
     level: "warning",
     fingerprint: rowCapAlarmFingerprint(finding),
@@ -20,6 +22,9 @@ export function reportRowCapToSentry(finding) {
 }
 
 /** fetch til createClient({ global: { fetch } }). */
-export function createRowCapAlarmFetch(baseFetch = (input, init) => globalThis.fetch(input, init), report = reportRowCapToSentry) {
-  return withRowCapAlarm(baseFetch, { report });
+export function createRowCapAlarmFetch(
+  baseFetch: FetchLike = (input, init) => globalThis.fetch(input, init),
+  report: (finding: RowCapFinding) => void = reportRowCapToSentry,
+): FetchLike {
+  return withRowCapAlarm(baseFetch, { report }) as FetchLike;
 }
