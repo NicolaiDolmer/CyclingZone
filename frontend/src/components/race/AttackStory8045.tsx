@@ -87,11 +87,15 @@ export function reportLinesWithAttackStory<T extends FilmLine>(story: readonly T
     .map(({ line }) => line);
 }
 
-/** "Lozano", "Lozano og Brivio", "Lozano, Brivio og Whitfield", "Lozano, Brivio, Whitfield og 4 andre". */
-export function riderNames(ids: readonly string[], cast: Pick<Cast, "nameOf" | "rankOf">, t: TFunction): string {
+/**
+ * "Lozano", "Lozano og Brivio", "Lozano, Brivio og Whitfield", "Lozano, Brivio, Whitfield og 4 andre".
+ * Egne ryttere står først (så de aldrig gemmer sig i "og 4 andre"), ellers bedst placerede først.
+ */
+export function riderNames(ids: readonly string[], cast: Pick<Cast, "nameOf" | "rankOf"> & { mine?: ReadonlySet<string> }, t: TFunction): string {
+  const mineFirst = (id: string) => (cast.mine?.has(id) ? 0 : 1);
   const known = [...new Set(ids)]
     .filter((id) => cast.nameOf(id))
-    .sort((a, b) => (cast.rankOf(a) ?? 9999) - (cast.rankOf(b) ?? 9999));
+    .sort((a, b) => mineFirst(a) - mineFirst(b) || (cast.rankOf(a) ?? 9999) - (cast.rankOf(b) ?? 9999));
   const unknown = ids.length - known.length;
   const names = known.map((id) => cast.nameOf(id) as string);
   if (!names.length) return t("raceFilm:attackStory.aRider");
@@ -125,7 +129,7 @@ export function attackStoryCopyKey(line: Pick<AttackStoryLine, "phase" | "cause"
   }
 }
 
-export function attackStoryText(line: AttackStoryLine, cast: Pick<Cast, "nameOf" | "rankOf">, t: TFunction): string {
+export function attackStoryText(line: AttackStoryLine, cast: Pick<Cast, "nameOf" | "rankOf" | "mine">, t: TFunction): string {
   const many = line.rider_ids.length > 1;
   const group = line.group ? t(`raceFilm:attackStory.group.${line.group}.${many ? "many" : "one"}`) : "";
   return t(attackStoryCopyKey(line), {
@@ -141,7 +145,7 @@ export function attackStoryText(line: AttackStoryLine, cast: Pick<Cast, "nameOf"
 export default function AttackStoryReportLine({ line, current, cast, kmLabel, onJump }: {
   line: AttackStoryLine;
   current: boolean;
-  cast: Pick<Cast, "nameOf" | "rankOf">;
+  cast: Pick<Cast, "nameOf" | "rankOf" | "mine">;
   kmLabel: string;
   onJump: () => void;
 }) {
