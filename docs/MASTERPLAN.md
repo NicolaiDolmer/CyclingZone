@@ -73,6 +73,7 @@
 - **Ugen efter (7-13/12):** design-løft v2 færdig #8737.
 - **December (S6):** potentiale 1-99 #8545 · roller pr. evne #3813 · præmiepenge i ungdomsløb · klub-udseende og portrætter #5113 · evner forklaret #1833 · ungdom i bestyrelseslokalet #7096 · etapeløbsguide #7708 · hjælp i kontekst #961 · guidet første session #1140 · enkeltstart-positionering #7565 · Pro 2.0 med tre pakker #8085.
 - **2027 Q1:** nationale mesterskaber #934 · mentorer #1177 · formtræning for færdigudviklede #5238 · træningslejr #5063 · U23- og junior-op/nedrykning #4620 #4621 · TTT #3463 · omdømme #4957 #5106 · værdi efter vist niveau #2798 · indstillingsside #3984.
+- **Fortsat fra 25/11 (uændret):** triage-byg #8661 #8399 #7925 #8501 #8398 #8610 #8395 #7928 · regler #8718 · mistet træning #8606/#8421 (fre) · auto-tog #8711 · udgifter #8712 (fre) · instant feel #8714 · Discord #8715 · oprydning #8716 · versaler #8725 (i lane).
 - **Nye issues 26/11 (ejerens kanal):** trænings-streak #8782 · achievements #8783 · notifikationer #8784 · spred etaperne #8785 · testhold ud af målinger #8786. Idé, ikke planlagt endnu.
 
 ## Næste uge: uge 49 (30/11-6/12)
