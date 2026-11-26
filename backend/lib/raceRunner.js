@@ -57,7 +57,7 @@ import { isDayForm6649Enabled } from "./dayForm6649Flag.js"; // #6649
 import { isDayWords7725Enabled } from "./dayWords7725Flag.js"; // #7725
 import { isQueenStageGap7236Enabled } from "./queenStageGap7236Flag.js"; // #7236
 import { isStagePlanDroppedFront7635Enabled } from "./stagePlanDroppedFront7635Flag.js"; // #7635
-import { isDescentRegroupCap7644Enabled } from "./descentRegroupCap7644Flag.js"; // #7644
+import { bindDescentRegroupCap7644, isDescentRegroupCap7644Enabled } from "./descentRegroupCap7644Flag.js"; // #7644
 import { isSplitAttackCause7640Enabled } from "./splitAttackCause7640Flag.js"; // #7640
 import { bindLetGoOrder7557, isLetGoOrder7557Enabled } from "./letGoOrder7557Flag.js"; // #7557
 import { bindIttNoDayRoll7726, isIttNoDayRoll7726Enabled } from "./ittNoDayRoll7726Flag.js"; // #7726
@@ -2761,7 +2761,8 @@ export async function simulateRace({
   const ittEngine = await bindIttNoDayRoll7726({ supabase, race, v4Engine: resolvedV4Engine, rulesRevision, firstStageClaim: true, dryRun });
   const chaseEngine = await bindTeamChase7730({ supabase, race, v4Engine: ittEngine, rulesRevision, firstStageClaim: true, dryRun });
   const huntBoundEngine = await bindJerseyHunt7855({ supabase, race, v4Engine: chaseEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7855
-  const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: huntBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7557
+  const capBoundEngine = await bindDescentRegroupCap7644({ supabase, race, v4Engine: huntBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7644 startstempel
+  const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: capBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7557
   const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: letGoBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7715
   if (v4Engine) await applyRouteProfileHills({ supabase, raceId: race.id, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
   // S3 (#2034): overrides hentes KUN når v3=true — v3=false undgår DB-kaldet helt
@@ -3727,7 +3728,8 @@ export async function simulateStageByIndex({
     const ittEngine = await bindIttNoDayRoll7726({ supabase, race, v4Engine: resolvedV4Engine, rulesRevision, firstStageClaim, dryRun });
     const chaseEngine = await bindTeamChase7730({ supabase, race, v4Engine: ittEngine, rulesRevision, firstStageClaim, dryRun });
     const huntBoundEngine = await bindJerseyHunt7855({ supabase, race, v4Engine: chaseEngine, rulesRevision, firstStageClaim, dryRun }); // #7855
-    const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: huntBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7557
+    const capBoundEngine = await bindDescentRegroupCap7644({ supabase, race, v4Engine: huntBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7644 startstempel
+    const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: capBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7557
     const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: letGoBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7715
     // #7733: stemplet saettes samme sted; kontakten rammer kun loeb der ikke er startet.
     await bindStartedFieldLock7733({ supabase, race, firstStageClaim, dryRun, checkEnabled: checkStartedFieldLock7733Enabled });
