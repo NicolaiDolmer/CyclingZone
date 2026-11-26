@@ -16,7 +16,8 @@ test("et løb vinder: alle felter taget = erstattet, nogle felter = løbet går 
   assert.equal(overrideReplaced({ raceSlots: [], restSlots: [] }), null);
   assert.equal(overrideReplaced({ raceSlots: [2], restSlots: [] }), "some");
   assert.equal(overrideReplaced({ raceSlots: [0, 1, 2, 3, 4], restSlots: [] }), "all");
-  assert.equal(overrideReplaced({ raceSlots: [], restSlots: [0, 1, 2, 3, 4] }), "all");
+  assert.equal(overrideReplaced({ raceSlots: [], restSlots: [0, 1, 2, 3, 4] }), "rest");
+  assert.equal(overrideReplaced({ raceSlots: [2], restSlots: [0, 1, 3, 4] }), "all");
 });
 
 test("valget vises i de frie felter, løbsfeltet bliver løb", () => {

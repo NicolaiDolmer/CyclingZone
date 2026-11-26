@@ -266,6 +266,7 @@
     "editInProgram": "Editar el {weekday} en Programa"
   },
   "dayOverride": {
+    "replacedRest": "Tu elección para el {weekday} no se aplica: el corredor descansa (lesión o día de descanso en una vuelta).",
     "action": "Solo {day}",
     "title": "Solo {day}",
     "description": "Elige otra sesión para esta fecha. El plan semanal no cambia y el plan vuelve a aplicarse al día siguiente.",

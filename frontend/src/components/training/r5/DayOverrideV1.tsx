@@ -60,7 +60,7 @@ export function DayOverrideRowNote({
   riderId, date, dayLabel, weekdayWord, replaced, onChanged,
 }: {
   riderId: string; date: string; dayLabel: string; weekdayWord: string;
-  replaced: "all" | "some" | null; onChanged?: () => void;
+  replaced: "all" | "some" | "rest" | null; onChanged?: () => void;
 }) {
   const { t } = useTranslation("trainingR5");
   const [busy, setBusy] = useState(false);
@@ -81,7 +81,8 @@ export function DayOverrideRowNote({
         <UndoIcon size={11} aria-hidden="true" />{t("dayOverride.back")}
       </button>
       {replaced === "all" && <span className="block text-cz-2" data-testid="r5-day-override-replaced">{t("dayOverride.replaced", { weekday: weekdayWord })}</span>}
-      {replaced === "some" && <span className="block text-cz-2" data-testid="r5-day-override-replaced">{t("dayOverride.replacedSome")}</span>}
+      {replaced === "rest" && <span className="block text-cz-2" data-testid="r5-day-override-replaced">{t("dayOverride.replacedRest", { weekday: weekdayWord })}</span>}
+      {replaced === "some" &&<span className="block text-cz-2" data-testid="r5-day-override-replaced">{t("dayOverride.replacedSome")}</span>}
       {failed && <span className="block text-cz-danger" role="alert">{t("dayOverride.error")}</span>}
     </span>
   );

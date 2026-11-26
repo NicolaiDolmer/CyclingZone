@@ -266,6 +266,7 @@
     "editInProgram": "Edit {weekday} in Program"
   },
   "dayOverride": {
+    "replacedRest": "Your choice for {weekday} does not apply: the rider rests (injury or a rest day in a stage race).",
     "action": "Only {day}",
     "title": "Only {day}",
     "description": "Pick another session for this date. The week plan does not change, and the plan runs again the day after.",

@@ -266,6 +266,7 @@
     "editInProgram": "Ret {weekday} i Program"
   },
   "dayOverride": {
+    "replacedRest": "Dit valg for {weekday} gælder ikke: rytteren hviler (skade eller hviledag i et etapeløb).",
     "action": "Kun {day}",
     "title": "Kun {day}",
     "description": "Vælg et andet pas for denne dato. Ugeplanen ændres ikke, og dagen efter kører planen igen.",

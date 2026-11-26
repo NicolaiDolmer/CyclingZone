@@ -19,10 +19,14 @@ export function hasDayOverrides(day: WeekDay | null | undefined): boolean {
  * Hvor meget af valget et løb (eller en binding eller skade) tager på datoen (ejer punkt 4):
  * "all" = alle fem felter, "some" = nogle felter, null = intet.
  */
-export function overrideReplaced(fields: WeekRiderFields | null | undefined): "all" | "some" | null {
-  const taken = new Set([...(fields?.raceSlots ?? []), ...(fields?.restSlots ?? [])]);
+// "rest" = ingen løb, men hvile i alle felter (skade eller hviledag i et etapeløb), så teksten
+// aldrig siger "løbet", når det ikke er et løb.
+export function overrideReplaced(fields: WeekRiderFields | null | undefined): "all" | "some" | "rest" | null {
+  const races = fields?.raceSlots ?? [];
+  const taken = new Set([...races, ...(fields?.restSlots ?? [])]);
   if (taken.size === 0) return null;
-  return taken.size >= OVERRIDE_FIELDS ? "all" : "some";
+  if (taken.size >= OVERRIDE_FIELDS) return races.length > 0 ? "all" : "rest";
+  return "some";
 }
 
 /** Rytterne i de valgte grupper plus de enkeltvalgte, uden dubletter og kun holdets egne. */

@@ -266,6 +266,7 @@
     "editInProgram": "Wijzig {weekday} in Programma"
   },
   "dayOverride": {
+    "replacedRest": "Je keuze voor {weekday} geldt niet: de renner rust (blessure of rustdag in een etappekoers).",
     "action": "Alleen {day}",
     "title": "Alleen {day}",
     "description": "Kies een andere sessie voor deze datum. Het weekplan verandert niet, en de dag erna loopt het plan weer.",
