@@ -21,8 +21,11 @@ function runs(condition, event, author, build = 'true') {
 }
 
 function assertCoreRuns(source, event, author) {
-  // Job-level gates must not bypass the hard gate either.
-  assert.doesNotMatch(source.split('    steps:')[0], /^    if:/m);
+  // Job-level gates must not bypass the hard gate either. The one allowed gate is
+  // the draft skip (#8802): a draft cannot merge, and ready_for_review reruns it.
+  for (const [, jobIf] of source.split('    steps:')[0].matchAll(/^    if: (.+)$/gm)) {
+    assert.equal(jobIf.trim(), '${{ !github.event.pull_request.draft }}', `job-level if bypasses the hard gate: ${jobIf}`);
+  }
   assert.doesNotMatch(source, /\$\{\{\s*secrets\./);
   const parsed = steps(source);
   for (const name of coreNames) {
