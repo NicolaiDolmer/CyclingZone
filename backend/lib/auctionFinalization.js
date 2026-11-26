@@ -16,7 +16,7 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { saleEscrowPayment, saleEscrowStatusForDeal, squadRestoreImage } from "./saleEscrowFlow6181.js";
 import { isSaleLockedForDeal } from "./saleEscrowView6181.js";
-import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
+import { contractOnAcquirePatch, computeFrozenSalary, cappedContractTerm } from "./contractSeed.js";
 import { notifyIfContractExpiresThisSeason, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
@@ -795,7 +795,9 @@ async function finalizeYouthAuctionRecord({
   const salary = computeFrozenSalary({
     current_production_value: rider.current_production_value,
   });
-  const contractEndSeason = activeSeasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
+  // #7138: ungdomsauktionens aftale følger det fælles loft (indeværende + 1).
+  const youthTerm = cappedContractTerm(activeSeasonNumber, ACADEMY.CONTRACT_LENGTH);
+  const contractEndSeason = youthTerm.contract_end_season;
   // #5432: rytteren lander i den ungdomstrup hans sæsonalder hører til, og det er
   // DEN trups loft (squads.js SQUAD_CAPS) der tælles mod — ikke et fladt akademital.
   const academySquad = academyPlacementSquad(rider.birthdate, activeSeasonNumber);
@@ -814,7 +816,7 @@ async function finalizeYouthAuctionRecord({
     p_rider_id: rider.id,
     p_price: price,
     p_salary: salary,
-    p_contract_length: ACADEMY.CONTRACT_LENGTH,
+    p_contract_length: youthTerm.contract_length,
     p_contract_end_season: contractEndSeason,
     p_acquired_at: actualEnd,
     p_finance_payload: {
