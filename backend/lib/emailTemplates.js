@@ -834,13 +834,21 @@ const S6_COPY = {
       "Three screens from Cycling Zone: the new race page with the race film, the Training page with the day picker, and the new planning page with the week overview.",
     roadmapIntro: "I'd like to know what you want me to build next.",
     roadmap: "Vote on the roadmap",
-    awayNote: "You log in with the same account as before.",
+    awayNote: "Your team and your riders are still there. You log in with the same account as before.",
     unsubLine: "You're receiving this because you opted in to emails about season updates.",
     unsubLinkText: "Unsubscribe",
     companyLine: "Cycling Zone is run by Dolmer Digital, CVR 46524861, Denmark.",
     beforeStart: {
-      subjects: { a: "Season 6 starts Saturday", b: "Set your training before Season 6" },
-      preheader: "A new development system without caps, a new planning page, the race film and potential from 1 to 99.",
+      // #8396 ejer 26/11: subject variant a differs per audience.
+      subjects: {
+        a: {
+          active: "Season 6 starts Saturday. Your team needs training",
+          dormant: "The caps are gone in Season 6",
+          away: "Cycling Zone has changed. Season 6 starts Saturday",
+        },
+        b: "Set your training before Season 6",
+      },
+      preheader: "A new development system without caps. Set your training before the first race on Monday.",
       heading: "Season 6 starts Saturday 28 November",
       // #8396 ejer 26/11: the division for Season 6 is only known after the
       // switch (promotion and relegation), so mail 1 names no division.
@@ -852,11 +860,11 @@ const S6_COPY = {
         away: "It's been a while since you played, and the game has changed a lot. A new season is a good time to come back. Here is what's new.",
       },
       news: [
-        ["The race page.", "Watch the race film and read the results for a ridden stage in one place."],
-        ["Training and development.", "A completely new development system, and the caps on abilities are gone. The Training page has programs, groups and a day picker on the Today tab that shows the coming days with races and training."],
+        ["Training and development.", "A completely new development system, and the caps on abilities are gone. Every rider has one potential from 1 to 99. The Training page has programs, groups and a day picker on the Today tab that shows the coming days with races and training."],
         ["Planning.", "Try the new planning page with the week overview, the race list and a month calendar in one place."],
-        ["Potential.", "Every rider has one potential from 1 to 99, with how sure the scout is. It's the same number everywhere in the game."],
+        ["The race page.", "Watch the race film and read the results for a ridden stage in one place."],
       ],
+      deadline: "The first race is on Monday 30 November. Set your training and your team before then.",
       cta: "Set your training for Season 6",
     },
     started: {
@@ -892,13 +900,21 @@ const S6_COPY = {
       "Tre skærmbilleder fra Cycling Zone: den nye løbsside med løbsfilmen, træningssiden med dagsvælgeren og den nye planlægningsside med ugeoversigten.",
     roadmapIntro: "Jeg vil gerne høre, hvad du synes, jeg skal bygge næste gang.",
     roadmap: "Stem på roadmappet",
-    awayNote: "Du logger ind med den samme konto som før.",
+    awayNote: "Dit hold og dine ryttere er der stadig. Du logger ind med den samme konto som før.",
     unsubLine: "Du får denne mail, fordi du har sagt ja til e-mails om sæsonopdateringer.",
     unsubLinkText: "Afmeld e-mails",
     companyLine: "Cycling Zone drives af Dolmer Digital, CVR 46524861, Danmark.",
     beforeStart: {
-      subjects: { a: "Sæson 6 starter lørdag", b: "Sæt træningen før sæson 6" },
-      preheader: "Nyt udviklingssystem uden lofter, ny planlægningsside, løbsfilmen og potentiale fra 1 til 99.",
+      // #8396 ejer 26/11: emnelinje a er forskellig pr. gruppe.
+      subjects: {
+        a: {
+          active: "Sæson 6 starter lørdag. Dit hold mangler træning",
+          dormant: "Lofterne er væk i sæson 6",
+          away: "Spillet har ændret sig. Sæson 6 starter lørdag",
+        },
+        b: "Sæt træningen før sæson 6",
+      },
+      preheader: "Nyt udviklingssystem uden lofter. Sæt træningen inden første løb mandag.",
       heading: "Sæson 6 starter lørdag den 28. november",
       // #8396 ejer 26/11: divisionen i sæson 6 kendes først efter skiftet
       // (op- og nedrykning), så mail 1 nævner ingen division.
@@ -910,11 +926,11 @@ const S6_COPY = {
         away: "Det er længe siden, du har spillet, og spillet har ændret sig meget. En ny sæson er et godt tidspunkt at komme tilbage. Her er det nye.",
       },
       news: [
-        ["Løbssiden.", "Se løbsfilmen og resultaterne for en kørt etape samme sted."],
-        ["Træning og udvikling.", "Et helt nyt udviklingssystem, og lofterne på evnerne er væk. Træningssiden har programmer, grupper og en dagsvælger under I dag, der viser de kommende dage med løb og træning."],
+        ["Træning og udvikling.", "Et helt nyt udviklingssystem, og lofterne på evnerne er væk. Hver rytter har ét potentiale fra 1 til 99. Træningssiden har programmer, grupper og en dagsvælger under I dag, der viser de kommende dage med løb og træning."],
         ["Planlægning.", "Prøv den nye planlægningsside med ugeoversigt, løbsliste og månedskalender samme sted."],
-        ["Potentiale.", "Hver rytter har ét potentiale fra 1 til 99 og hvor sikker spejderen er. Det er det samme tal overalt i spillet."],
+        ["Løbssiden.", "Se løbsfilmen og resultaterne for en kørt etape samme sted."],
       ],
+      deadline: "Første løb køres mandag den 30. november. Sæt træning og hold inden da.",
       cta: "Sæt træningen for sæson 6",
     },
     started: {
@@ -1043,7 +1059,8 @@ export function buildS6SeasonEmail({
     ${teamLine ? `<p style="margin:0 0 16px;"><strong>${escapeHtml(teamLine)}</strong></p>` : ""}
     <p style="margin:0 0 16px;">${escapeHtml(opening)}</p>${version.newsHeading ? `
     <h2 class="cz-text" style="margin:0 0 12px;font-size:18px;line-height:1.3;font-weight:700;color:${TEXT};">${escapeHtml(version.newsHeading)}</h2>` : ""}
-    ${listHtml}
+    ${listHtml}${version.deadline ? `
+    <p style="margin:0 0 16px;"><strong>${escapeHtml(version.deadline)}</strong></p>` : ""}
     <p style="margin:0 0 24px;">${s6ButtonHtml(ctaUrl, version.cta)}</p>${audience === "away" ? `
     <p style="margin:0 0 16px;">${escapeHtml(copy.awayNote)}</p>` : ""}
     <p style="margin:0 0 24px;">${escapeHtml(copy.roadmapIntro)} <a href="${escapeHtml(roadmapUrl)}" style="color:inherit;">${escapeHtml(copy.roadmap)}</a>.</p>
@@ -1056,12 +1073,14 @@ export function buildS6SeasonEmail({
     opening,
     ...(version.newsHeading ? [version.newsHeading] : []),
     listText.join("\n"),
+    ...(version.deadline ? [version.deadline] : []),
     `${version.cta}: ${ctaUrl}`,
     ...(audience === "away" ? [copy.awayNote] : []),
     `${copy.roadmapIntro} ${copy.roadmap}: ${roadmapUrl}`,
   ].join("\n\n");
 
-  const subject = version.subjects[subjectVariant];
+  const pickSubject = (entry) => (typeof entry === "string" ? entry : entry[audience]);
+  const subject = pickSubject(version.subjects[subjectVariant]);
   const footer = {
     language: lang,
     unsubscribeUrl: s6CampaignUrl(unsubscribeUrl, edition, audience, subjectVariant),
@@ -1073,7 +1092,7 @@ export function buildS6SeasonEmail({
 
   return {
     subject,
-    subjectVariants: { ...version.subjects },
+    subjectVariants: Object.fromEntries(Object.entries(version.subjects).map(([k, v]) => [k, pickSubject(v)])),
     preheader: version.preheader,
     html: wrapHtml({
       ...footer,

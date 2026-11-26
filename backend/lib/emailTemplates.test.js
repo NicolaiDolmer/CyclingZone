@@ -928,7 +928,7 @@ for (const edition of ["before-start", "started"]) {
           assert.match(mail.html, /class="cz-body"[^>]*font-size:16px;/);
 
           // List: four news items before the start (#8396 ejer 26/11), three steps once it is underway.
-          assert.equal((mail.html.match(/<li\b/g) ?? []).length, isStart ? 3 : 4);
+          assert.equal((mail.html.match(/<li\b/g) ?? []).length, 3);
           assert.match(mail.html, isStart ? /<ol\b/ : /<ul\b/);
 
           // Links: the deep-linked CTA, the roadmap vote and the unsubscribe, all with UTM.
