@@ -6824,7 +6824,7 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       // #7855: troejejagtens opgaver kan vaelges (kontakten + loebet koerer med dem). Kun en boolean.
       jersey_hunt_7855: stagePlanRevisionOk(race) && await jerseyHunt7855OpenForRace({ supabase, race }),
       // #8828: "Angrib paa"-stederne pr. etape med rutens fingeraftryk, kun naar loebet tager imod dem. Ellers false.
-      long_attack_7884: await longAttack7884OpenForRaceApi({ supabase, race }) ? await loadLongAttack7884Places({ supabase, raceId: race.id }) : false,
+      long_attack_7884: stagePlanRevisionOk(race) && await longAttack7884OpenForRaceApi({ supabase, race }) ? await loadLongAttack7884Places({ supabase, raceId: race.id }) : false,
     });
   } catch (err) {
     captureException(err);
