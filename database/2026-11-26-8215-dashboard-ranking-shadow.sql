@@ -1,9 +1,24 @@
 -- #8215: one snapshot and one round trip for the dashboard's shadow ranking.
+SET lock_timeout = '2s';
+
+-- A cancelled concurrent build can leave an invalid index under this name.
+DO $index$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_index
+    WHERE indexrelid = to_regclass('public.ranking_rider_season_dashboard_order') AND NOT indisvalid
+  ) THEN
+    EXECUTE 'DROP INDEX public.ranking_rider_season_dashboard_order';
+  END IF;
+END;
+$index$;
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ranking_rider_season_dashboard_order
+  ON public.ranking_rider_season (season_id, points DESC NULLS LAST, rider_id);
+RESET lock_timeout;
+
 BEGIN;
 SET LOCAL lock_timeout = '2s';
-
-CREATE INDEX IF NOT EXISTS ranking_rider_season_dashboard_order
-  ON public.ranking_rider_season (season_id, points DESC NULLS LAST, rider_id);
 
 CREATE OR REPLACE FUNCTION public.dashboard_rider_ranking_shadow(
   p_season_id uuid,

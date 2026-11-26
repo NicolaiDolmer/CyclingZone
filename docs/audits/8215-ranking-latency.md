@@ -186,8 +186,7 @@ PR #8736 adds the service-only PostgreSQL reader and ordered index. The existing
 shadow eligibility and fallback remain in place. During an additive migration's
 deployment window, a missing RPC or stale PostgREST schema cache uses the previous
 shadow reader within the existing budget. Other RPC errors use the existing legacy
-path. The function has no per-function settings. The transaction sets a short
-lock timeout before creating the index and requests a schema-cache reload.
+path. The function has no per-function settings. The index builds concurrently under a short session lock timeout. The function and grants share a bounded transaction and request a schema-cache reload.
 
 The same Express GET handler was mounted from the previous revision and from
 this candidate, with actual response caching, controlled authentication and
@@ -203,17 +202,16 @@ and shadow-writer overhead were outside this measurement.
 
 | Scope | Cold n/side | p50 before to after (ms) | p90 before to after (ms) | Backend calls |
 | --- | ---: | ---: | ---: | ---: |
-| Global | 10 | 9.19 to 1.86 | 11.27 to 2.26 | 5 to 4 |
-| Populated pool 1 | 10 | 24.29 to 2.52 | 26.94 to 3.68 | 25 to 4 |
-| Populated pool 2 | 10 | 34.04 to 2.39 | 36.78 to 3.04 | 25 to 4 |
-| Empty pool | 10 | 1.11 to 1.66 | 1.51 to 2.04 | 4 to 4 |
+| Global | 10 | 7.88 to 2.25 | 9.88 to 3.92 | 5 to 4 |
+| Populated pool 1 | 10 | 23.32 to 2.82 | 27.49 to 3.05 | 25 to 4 |
+| Populated pool 2 | 10 | 31.82 to 2.62 | 34.47 to 2.85 | 25 to 4 |
+| Empty pool | 10 | 0.92 to 1.44 | 1.12 to 1.81 | 4 to 4 |
 
-Cache hits made zero backend calls and measured 0.40–0.68 ms p50 across the
+Cache hits made zero backend calls and measured 0.34–0.66 ms p50 across the
 eight samples of ten. The fixture did not reproduce the production timeout.
 The endpoint's earlier regression boundary remains the same. There is no
 owner-approved production improvement target or rollout measurement yet.
 
-The database test runs the actual migration twice, checks role grants and
-function settings, and locks the complete prior payload against the RPC on
+The database test replays the actual migration after a simulated interrupted index build and again after a successful run. It checks index validity, role grants and function settings, and locks the complete prior payload against the RPC on
 global, populated and empty pool fixtures, including decimal points, ties,
 NULLs, missing teams, other seasons and retired riders.

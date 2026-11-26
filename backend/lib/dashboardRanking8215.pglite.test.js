@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
+import { splitStatements } from "../../scripts/lint-migration-idempotency.mjs";
 import { pickDashboardTopRiders, readDashboardTopRiders7664 } from "./rankingRead7664.js";
 
 const migration = new URL("../../database/2026-11-26-8215-dashboard-ranking-shadow.sql", import.meta.url);
@@ -43,9 +44,20 @@ test("#8215: the migration replays and the RPC matches every field of the curren
   }
   // Missing rider and other season rows cannot displace eligible results.
   await db.query("INSERT INTO ranking_rider_season VALUES ($1,$2,1000,1,2,3),($3,$4,900,1,2,3)", [seasonId, id(60), id(101), id(8)]);
-  const sql = await readFile(migration, "utf8");
-  await db.exec(sql);
-  await db.exec(sql);
+  // psql -f autocommits each top-level statement unless the file opens a transaction.
+  const statements = splitStatements(await readFile(migration, "utf8"));
+  const apply = async () => {
+    for (const { text } of statements) await db.exec(text);
+  };
+  await apply();
+  // An interrupted concurrent build leaves an index entry the retry must replace.
+  await db.exec(`UPDATE pg_catalog.pg_index SET indisvalid = false
+    WHERE indexrelid = 'public.ranking_rider_season_dashboard_order'::regclass`);
+  await apply();
+  await apply();
+  const index = await db.query(`SELECT indisvalid AS valid FROM pg_catalog.pg_index
+    WHERE indexrelid = 'public.ranking_rider_season_dashboard_order'::regclass`);
+  assert.deepEqual(index.rows, [{ valid: true }]);
   const grants = await db.query(`SELECT
     has_function_privilege('anon', '${signature}', 'EXECUTE') AS anon,
     has_function_privilege('authenticated', '${signature}', 'EXECUTE') AS authenticated,
