@@ -63,12 +63,17 @@
 - Udgiftsliste med pris/brug/nedgrader/sluk · Claude · uge 48; ejeren opsiger selv.
 - Bestyrelsen tændes ved rigtige skyggetal + ejer-go.
 
-## Beslutninger 25/11 eftermiddag (dagbog #8719)
-- Før lør 28/11: #8668 (Fable NOTES) + #8605 + akademisiden #8081 · mistet træning tilbage senest fre (#8606/#8679/#8421) · mail 1 tor kl. 17-18 · mail-alias #7041 tor.
-- Postgres #6528 flyttet til man 30/11 (2 replikerings-slots). Fair-play, Manus, disk, nøgle + Infisical man 30/11.
-- Platform v2 #8709 (SEO på søgeord, fælles designsystem, fart 95 % forside / 75→90 % spil, spil før konto, alle sprog, én tragt) · SEO.md · checklist.design #8725.
-- Triage-byg: #8661 #8399 #7925 #8501 #8398 #8610 #8395 #7928 · regler: #8718 regel-oprydning, #8696 50-85-tal væk, #8698 skrift/kontrast.
-- Auto-toget flyttes til PC1 (#8711). Udgifter #8712 fre. Instant feel #8714. Discord #8715. Oprydning #8716.
+## Tidsplan fra prioriteringstavlen 26/11 (ejer, #8719; roadmappet opdateret samme dag)
+- **I dag tor 26/11 (byg i laner, ejer designer med):** planlægningssiden samlet #8419 + sæson-linser #8781 (live før skiftet) · prognose Model 2 + ryttere uden tal #8604 · ungdomskalender som mini-udgaver #7471 · S6-kalender regler + regelmatrix #5841 · afslutninger opad, færre flade, ikoniske ruter #8259 · kun denne dag #8592 · rækkeloft i formtop-optakt #8180 (+ audit af 1000-rækkeloftet) · AI-hold #8614 · motor #8189 #7645 #7644 #6912 · træning #8549 #7456 W1 #7947 #8776 · akademi #8060 #6944 · kontraktloft #7138 · mail 1+2 #8396 (ejer tjekker mailen senere i dag) · Platform v2 #8709 · design-løft #8737 (start; færdig 7-13/12) · prøveskifte #7325 · hjælp om form og hvile #8789. Live: løbsfilm-angreb #8045, "Sværere" #5850.
+- **I morgen fre 27/11:** Pro 2.0 #8085 + moms/Stripe #4511 · patch notes-siden #8449 (med Claude) · aldring #8522 · bestyrelsen efter pause #8100 · spejder-skøn #7986 #7455 #8024 · Android #6584.
+- **Lør 28/11:** sæsonskiftet S5→S6 #7325 · advarsel før lås #7866 · taktik på telefon #8386.
+- **Søn 29/11:** mellemtider i referatet #8343 · kaptajn-advarsel #8458 · angreb efter valgt stigning #7884 · mail 2.
+- **Man 30/11:** kort pr. rytter #5101 · hvis-så-ordrer #5574 · stabilitet #6917 · opgaveskift på stigning #7417 · aftenkørsel #6490 · velkommen tilbage #8282 · Postgres #6528.
+- **Næste uge (2-6/12):** markedet samlet ét sted #8440 (design med ejer først) · tidsgrænse ved træthed #7715 · første dage #8084 · spejdet potentiale-sortering #7924 · farveblind #7988 · udvikling fra løb #5950.
+- **Ugen efter (7-13/12):** design-løft v2 færdig #8737.
+- **December (S6):** potentiale 1-99 #8545 · roller pr. evne #3813 · præmiepenge i ungdomsløb · klub-udseende og portrætter #5113 · evner forklaret #1833 · ungdom i bestyrelseslokalet #7096 · etapeløbsguide #7708 · hjælp i kontekst #961 · guidet første session #1140 · enkeltstart-positionering #7565 · Pro 2.0 med tre pakker #8085.
+- **2027 Q1:** nationale mesterskaber #934 · mentorer #1177 · formtræning for færdigudviklede #5238 · træningslejr #5063 · U23- og junior-op/nedrykning #4620 #4621 · TTT #3463 · omdømme #4957 #5106 · værdi efter vist niveau #2798 · indstillingsside #3984.
+- **Nye issues 26/11 (ejerens kanal):** trænings-streak #8782 · achievements #8783 · notifikationer #8784 · spred etaperne #8785 · testhold ud af målinger #8786. Idé, ikke planlagt endnu.
 
 ## Næste uge: uge 49 (30/11-6/12)
 
