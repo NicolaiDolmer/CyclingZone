@@ -29,9 +29,14 @@ export async function runWithRetry(run, retryOpts) {
 export const IN_CHUNK_SIZE = 200;
 // #8797: en bid kan stadig give flere end 1.000 rækker når inColumn ikke er unik
 // (fx team_rider_role_rules pr. hold). PostgREST afkorter så stille. Rammer en bid
-// præcis loftet, hentes netop den bid igen side for side med stabil orden (orderBy,
-// ellers inColumn). Under loftet er kaldet og rækkefølgen uændret fra før, så
-// eksisterende resultater er bit-identiske; kun de manglende rækker kommer nu med.
+// præcis loftet, hentes netop den bid igen side for side med stabil orden. Under
+// loftet er kaldet og rækkefølgen uændret fra før, så eksisterende resultater er
+// bit-identiske; kun de manglende rækker kommer nu med.
+// Ordenen SKAL være unik: fallbacken udløses kun når inColumn ikke er unik (en bid
+// er højst IN_CHUNK_SIZE id'er), så inColumn alene giver bånd, og range-sider over
+// bånd kan springe rækker over eller dublere dem. Default er derfor [inColumn, "id"];
+// en tabel uden id-kolonne skal give sin egen unikke orderBy (ellers fejler kaldet
+// højlydt i stedet for at miste rækker).
 export async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null, orderBy = null, retryOpts }) {
   const out = [];
   for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
@@ -47,7 +52,7 @@ export async function selectInChunks({ supabase, table, columns, inColumn, ids, 
     if ((data || []).length >= PAGE_SIZE) {
       ({ data, error } = await fetchAllPaged(() => {
         let q = build();
-        for (const col of orderBy || [inColumn]) q = q.order(col);
+        for (const col of orderBy || [inColumn, "id"]) q = q.order(col);
         return q;
       }, { retryOpts }));
       if (error) return { data: null, error };

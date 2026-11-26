@@ -78,6 +78,28 @@ test("#8797 selectInChunks: bid der rammer loftet pagineres, så ingen rækker m
   assert.equal(new Set(data.map((d) => `${d.team_id}/${d.rider_id}`)).size, 1500);
 });
 
+test("#8797 selectInChunks: uden orderBy pagineres fallbacken på [inColumn, id], aldrig inColumn alene", async () => {
+  // Minimal builder der registrerer .order()-kaldene; 1.500 rækker, afkortet ved 1.000 som prod.
+  const rows = Array.from({ length: 1500 }, (_, i) => ({ id: `r${i}`, team_id: `t${i % 3}` }));
+  const orderCalls = [];
+  const supabase = { from: () => {
+    let range = [0, 999];
+    const orders = [];
+    const q = {
+      select: () => q, in: () => q,
+      order: (col) => { orders.push(col); return q; },
+      range: (from, to) => { range = [from, to]; return q; },
+      then: (resolve) => { if (orders.length) orderCalls.push([...orders]); return resolve({ data: rows.slice(range[0], range[1] + 1), error: null }); },
+    };
+    return q;
+  } };
+  const { data, error } = await selectInChunks({ supabase, table: "riders", columns: "id, team_id", inColumn: "team_id", ids: ["t0", "t1", "t2"] });
+  assert.equal(error, null);
+  assert.equal(data.length, 1500);
+  assert.ok(orderCalls.length >= 2);
+  for (const call of orderCalls) assert.deepEqual(call, ["team_id", "id"]);
+});
+
 test("#8797 selectInChunks: under loftet er rækkefølgen uændret (ingen .order tilføjet)", async () => {
   const { createFakeSupabase } = await import("./testUtils/fakeSupabase.js");
   const rows = [{ id: "c" }, { id: "a" }, { id: "b" }];

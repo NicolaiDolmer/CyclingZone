@@ -14,9 +14,14 @@ FROM public.riders r
 WHERE r.is_retired = false
   AND r.nationality_code IS NOT NULL;
 
-GRANT SELECT ON public.rider_nationality_codes TO anon, authenticated, service_role;
+-- Adgang: kun indloggede. Rytterlisten ligger bag ProtectedRoute (App.jsx), så
+-- filtret kører altid som authenticated; anon har intet behov. Supabase's default
+-- privileges giver nye objekter i public til anon, så det trækkes eksplicit tilbage.
+REVOKE ALL ON public.rider_nationality_codes FROM anon, PUBLIC;
+GRANT SELECT ON public.rider_nationality_codes TO authenticated, service_role;
 
 -- Verifikation (post-merge):
 --   SELECT count(*) FROM public.rider_nationality_codes;  -- antal nationer, ikke ryttere
+--   SELECT has_table_privilege('anon', 'public.rider_nationality_codes', 'SELECT');  -- false
 --   SELECT count(DISTINCT nationality_code) FROM public.riders
 --    WHERE is_retired = false AND nationality_code IS NOT NULL;  -- samme tal

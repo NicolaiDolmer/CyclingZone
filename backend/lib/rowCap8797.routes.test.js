@@ -126,10 +126,15 @@ test("/races/selection/season: holdets entries i bidder får unik orderBy", () =
 test("raceRunner.selectInChunks: en bid der rammer loftet hentes igen pagineret (motorens kald under loftet uændret)", () => {
   const start = runnerSource.indexOf("async function selectInChunks(");
   assert.ok(start !== -1);
-  const fn = runnerSource.slice(start, start + 1200);
+  const fn = runnerSource.slice(start, start + 2000);
   // Første kald er det samme som før (ingen .order/.range) — under loftet er input bit-identisk.
   assert.match(fn, /const build = \(\) => \{ let q = supabase\.from\(table\)\.select\(columns\)\.in\(inColumn, ids\.slice\(i, i \+ IN_CHUNK_SIZE\)\); return extra \? extra\(q\) : q; \};/);
   assert.match(fn, /let \{ data, error \} = await build\(\);/);
   // Kun ved præcis loftet pagineres bidden.
-  assert.match(fn, /if \(\(data \|\| \[\]\)\.length >= 1000\) \{\s*try \{ data = await fetchAllRows\(\(\) => build\(\)\.order\(inColumn\)\); \}/);
+  // Siderne ordnes på en UNIK nøgle (default [inColumn, "id"]), aldrig inColumn alene.
+  assert.match(fn, /if \(\(data \|\| \[\]\)\.length >= 1000\) \{\s*const cols = orderBy \|\| \[inColumn, "id"\];\s*try \{ data = await fetchAllRows\(\(\) => cols\.reduce\(\(q, col\) => q\.order\(col\), build\(\)\)\); \}/);
+});
+
+test("raceRunner autofyld-pool: riders pr. team_id (ikke unik) får unik orderBy", () => {
+  assert.match(runnerSource, /inColumn: "team_id", ids: missingTeamIds,[\s\S]{0,200}?orderBy: \["team_id", "id"\], \/\/ #8797/);
 });

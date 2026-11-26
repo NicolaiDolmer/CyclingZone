@@ -140,6 +140,7 @@ async function main() {
     supabase, table: "race_stage_schedule",
     columns: "race_id, stage_number, game_day",
     inColumn: "race_id", ids: raceIds,
+    orderBy: ["race_id", "stage_number"], // #8797: PK; tabellen har ingen id-kolonne
   });
   if (schErr) throw new Error(`race_stage_schedule: ${schErr.message}`);
   const gameDaysByRace = new Map();
