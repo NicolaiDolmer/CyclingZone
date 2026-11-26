@@ -200,7 +200,9 @@ export default function SeasonMatrixView({ onOpenRace }: { onOpenRace?: (raceId:
 }
 
 const NAME_COL = 148;
-const RACE_COL = 64;
+// Bred nok til et loebsnavn paa to linjer; et tal pr. loeb (ikke pr. loebsdag), saa hele saesonen
+// staar side om side. Paa en telefon scroller gitteret vandret bag den faste navnekolonne (tidsakse).
+const RACE_COL = 88;
 
 export function RouteMatchLens({ snapshot, onOpenRace }: { snapshot: MatrixSnapshot | undefined; onOpenRace?: (raceId: string) => void }) {
   const { t, i18n } = useTranslation("races");
@@ -250,9 +252,9 @@ export function RouteMatchLens({ snapshot, onOpenRace }: { snapshot: MatrixSnaps
                     aria-label={t("matrix.routeGrid.openRace", { race: race.name })}
                     className="w-full px-1.5 py-1.5 text-left hover:bg-cz-card disabled:cursor-default disabled:hover:bg-transparent"
                   >
-                    <span className={`flex items-center gap-0.5 text-2xs font-medium ${inactive ? "text-cz-3" : "text-cz-1"}`}>
-                      {inactive && <LockIcon size={9} className="shrink-0" aria-hidden="true" />}
-                      <span className="truncate">{race.name}</span>
+                    <span className={`flex min-h-[2.5em] items-start gap-0.5 text-2xs font-medium leading-tight ${inactive ? "text-cz-3" : "text-cz-1"}`}>
+                      {inactive && <LockIcon size={9} className="mt-px shrink-0" aria-hidden="true" />}
+                      <span className="line-clamp-2 break-words">{race.name}</span>
                     </span>
                     <span className="block font-data text-3xs tabular-nums text-cz-3">{date ? formatShortDate(date, i18n.language, false) : ""}</span>
                   </button>
