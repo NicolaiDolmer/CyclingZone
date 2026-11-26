@@ -1,3 +1,4 @@
+import { resultTeamName } from "../lib/raceResultEntity.js";
 import { useState, useEffect, useCallback } from "react";
 import { getTopRiderRankings } from "../lib/rankingsApi.ts";
 import { useTranslation } from "react-i18next";
@@ -315,7 +316,7 @@ export default function ResultaterPage() {
         // pagination-safe: bundet af LATEST_LIMIT (9 løb × rank<=3), se noten ovenfor
         supabase
           .from("race_results")
-          .select("race_id, result_type, rank, stage_number, rider_id, rider_name, team_name, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
+          .select("race_id, result_type, rank, stage_number, rider_id, rider_name, team_id, team_name, points_earned, rider:rider_id(id, firstname, lastname, nationality_code), team:team_id(id, name)")
           .in("race_id", windowRaces.map(r => r.id))
           .in("result_type", ["gc", "stage", "leader"])
           .lte("rank", 3),
@@ -707,7 +708,7 @@ function RaceResultCard({ race, podium, playedAtMs, t }) {
                   {row.rider ? `${row.rider.firstname} ${row.rider.lastname}` : (row.rider_name || "–")}
                 </RiderLink>
                 <p className="truncate font-data text-2xs uppercase tracking-[.04em] text-cz-3">
-                  {row.rider?.team?.name || row.team_name || t("freeAgent")}
+                  {resultTeamName(row) ?? "–"}
                 </p>
               </div>
               {row.points_earned > 0 && (
