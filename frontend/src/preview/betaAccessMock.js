@@ -103,6 +103,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_rotation", // #8548 (patch note 7.506)
   "training_week_priority", // #8549 (patch note 7.506)
   "planning_workbench", // #7535
+  "planning_v2_default_8419", // #8419 (off paa preview: /planning er den gamle side)
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
   "training_catalog_v3", // #5319 vaelgere + Hjaelp

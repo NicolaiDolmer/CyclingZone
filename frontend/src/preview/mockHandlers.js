@@ -3,7 +3,7 @@
 // referencer (CORS/fulfill bliver i fixtures.js). Datakilden er seedData.js, så
 // begge konsumenter serverer præcis det samme.
 import { previewPlannerBoard } from "./plannerMock.js";
-import { isWorkbenchPreview, PLANNING_SEASON_SEED, PLANNING_STAGE_PROFILES, PLANNING_RIDER_ROWS, PLANNING_SEASON_LOAD, planningSelectionSeed } from "./planningWorkbenchMock.ts"; // #7535
+import { isWorkbenchPreview, PLANNING_SEASON_SEED, PLANNING_STAGE_PROFILES, PLANNING_RIDER_ROWS, PLANNING_SEASON_LOAD, planningSelectionSeed, planningBrowseSeed } from "./planningWorkbenchMock.ts"; // #7535, #8419
 import { previewAcademy, previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.ts";
 import { raceHasReportableResults } from "../lib/raceResultVisibility.js";
 import { FORUM_CATEGORY_ORDER } from "../components/forum/forumCategories.js";
@@ -1512,7 +1512,7 @@ export function apiResponse(pathname, search = "") {
     const seasonNumber = new URLSearchParams(search).get("season_number");
     return seasonNumber === String(SEED_CALENDAR_S2.season.number) ? SEED_CALENDAR_S2 : SEED_CALENDAR;
   }
-  if (pathname.endsWith("/api/races/distribution/browse")) return SEED_BROWSE;
+  if (pathname.endsWith("/api/races/distribution/browse")) return isWorkbenchPreview() ? planningBrowseSeed() : SEED_BROWSE; // #8419 Startlister
   if (pathname.endsWith("/api/races/distribution")) return isWorkbenchPreview() ? { ...SEED_DISTRIBUTION, seasonLoadByRider: PLANNING_SEASON_LOAD } : SEED_DISTRIBUTION; // #7535
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
   // S5: udtagelses-panel (RaceSelectionPanel + HunterExplainer). /api/races/:id/selection.

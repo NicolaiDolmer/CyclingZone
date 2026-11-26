@@ -543,6 +543,7 @@ const SECTION_DEFS = [
     blocks: [
       { id: "what", kind: "text" },
       { id: "seasonOverview", kind: "text" },
+      { id: "planningPage", kind: "text", flag: "planning_workbench" }, // #8419 den samlede planlaegningsside
       // #4162: a stage race finishing in fewer dates than it has stages reads
       // like a broken calendar unless the two axes are explained once.
       { id: "stagesPerDay", kind: "text" },

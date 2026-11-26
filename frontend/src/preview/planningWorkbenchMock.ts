@@ -335,3 +335,32 @@ for (const [raceId, ids] of Object.entries(PICKS)) {
     PLANNING_SEASON_LOAD[id] = { races: cur.races + 1, raceDays: cur.raceDays + days };
   }
 }
+
+// #8419: Startlister-fanen paa preview. Hvert loebs startliste med holdets egne seks foerste ryttere og tre
+// opdigtede hold (eksempeldata, ingen spillere). De tre sidste loeb er laengere ude end startlistens horisont.
+const FAKE_TEAMS: Array<[string, string[]]> = [
+  ["Equipo Ejemplo", ["Mateo Rivas", "Hugo Serrano", "Iker Lozano", "Pablo Varela", "Dario Nunez", "Ruben Ortega"]],
+  ["Velo Demo", ["Lars Holm", "Jonas Berg", "Emil Strand", "Oskar Lind", "Nils Dahl", "Erik Sand"]],
+  ["Preview Racing", ["Luc Martin", "Theo Girard", "Hugo Moreau", "Paul Fabre", "Leo Roux", "Jules Petit"]],
+];
+export function planningBrowseSeed() {
+  const own = RIDER_DEFS.slice(0, 6).map(([id, name], i) => {
+    const [firstname, ...rest] = name.split(" ");
+    return { id, firstname, lastname: rest.join(" "), nationality_code: NATIONS[i] ?? null };
+  });
+  const fake = FAKE_TEAMS.map(([team, names], t) => ({
+    team: { id: `wb-team-${t}`, name: team },
+    riders: names.map((n, i) => {
+      const [firstname, ...rest] = n.split(" ");
+      return { id: `wb-team-${t}-r${i}`, firstname, lastname: rest.join(" "), nationality_code: ["es", "no", "fr"][t] };
+    }),
+  }));
+  return {
+    enabled: true,
+    columns: RACES.map((r, i) => {
+      const visible = i < RACES.length - 3;
+      const teams = visible ? [{ team: { id: "wb-team-own", name: "Preview Team" }, riders: own }, ...fake] : [];
+      return { id: r.id, name: r.name, visible, opensInDays: visible ? null : 5, teamCount: teams.length, teams };
+    }),
+  };
+}
