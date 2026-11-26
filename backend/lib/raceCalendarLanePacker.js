@@ -403,8 +403,10 @@ function solveContiguousStarts({
   };
 
   const dfs = (g, iBaand, dato, brugtIDato, gtIDato, aktive, restStages, gtStartDato, sidsteGtSlut,
-    monFoerste, monSidste, monRest, multiN = 0, totalN = 0) => {
+    monFoerste, monSidste, monRest, multiN = 0, totalN = 0, hvilIDato = 0, fireTal = 0, mVedStart = 0) => {
     if (++steps > maxSteps) return false;
+    const T8 = baand ? globalThis.__t8837 : null;
+    const hvilNu = Boolean(T8) && aktive.some((a) => items[a.i].gt && items[a.i].fp[a.off] === 0);
 
     // R22: en laast GT-start eller et laast monument hvis dato er passeret, kan aldrig naas.
     const gtStartetFoer = pr ? gtIdx.reduce((n, k) => n + (brugt[k] ? 1 : 0), 0) : 0;
@@ -543,6 +545,13 @@ function solveContiguousStarts({
           for (const k of kombi) { brugt[k] = false; startAf[k] = -1; datoAf[k] = -1; }
           continue;
         }
+        const nyHvil = hvilIDato + (hvilNu ? 1 : 0);
+        const nyFire = (gtStarterNu ? 0 : fireTal) + (datoFaerdig && gtNu >= 4 ? 1 : 0);
+        if (T8 && ((T8.noRestHighG && datoFaerdig && nyHvil > 0 && gtNu >= T8.noRestHighG)
+            || (T8.max4 != null && nyFire > T8.max4))) {
+          for (const k of kombi) { brugt[k] = false; startAf[k] = -1; datoAf[k] = -1; }
+          continue;
+        }
 
         // R8 paa loebsdags-niveau: en GT slutter typisk INDE i en dato. Detekteres det
         // foerst naar datoen er faerdig, naas slutningen aldrig, og spaendet maales bagefter
@@ -607,7 +616,18 @@ function solveContiguousStarts({
           const fl = Math.floor(rest / 2);
           const hoejst = (nyMultiN + fl) / (nyTotalN + fl);
           const lavest = nyMultiN / (nyTotalN + rest);
-          if (hoejst < baand.min - 1e-9 || lavest > baand.max + 1e-9) {
+          // Per dato: hoejst to loebsdage med 2+ loeb (hver bruger mindst to af datoens etaper),
+          // mindst to loebsdage (cap'en), og hver GT-loebsdag er sin egen loebsdag.
+          const F = days - dato - 1;
+          const mDato = nyMultiN - mVedStart;
+          const restDato = D - nyBrugt;
+          const curM = datoFaerdig ? 0 : Math.max(0, Math.min(2 - mDato, Math.floor(restDato / 2)));
+          const curN = datoFaerdig ? 0 : Math.ceil(restDato / cap);
+          let fodGt = 0;
+          for (const a of efter) if (items[a.i].gt) fodGt += items[a.i].fp.length - a.off;
+          for (const k of gtIdx) if (!brugt[k]) fodGt += items[k].fp.length;
+          const hoejst2 = (nyMultiN + curM + 2 * F) / (nyTotalN + Math.max(curN + 2 * F, fodGt));
+          if (hoejst < baand.min - 1e-9 || hoejst2 < baand.min - 1e-9 || lavest > baand.max + 1e-9) {
             for (const k of kombi) { brugt[k] = false; startAf[k] = -1; datoAf[k] = -1; }
             continue;
           }
@@ -625,11 +645,11 @@ function solveContiguousStarts({
         if (datoFaerdig) {
           bandSizes.push(iBaand + 1);
           ok = dfs(g + 1, 0, dato + 1, 0, 0, efter, restStages - load, naesteGtStart, naesteGtSlut,
-            nyMonFoerste, nyMonSidste, nyMonRest, nyMultiN, nyTotalN);
+            nyMonFoerste, nyMonSidste, nyMonRest, nyMultiN, nyTotalN, 0, nyFire, nyMultiN);
           if (!ok) bandSizes.pop();
         } else {
           ok = dfs(g + 1, iBaand + 1, dato, nyBrugt, gtNu, efter, restStages - load, naesteGtStart, naesteGtSlut,
-            nyMonFoerste, nyMonSidste, nyMonRest, nyMultiN, nyTotalN);
+            nyMonFoerste, nyMonSidste, nyMonRest, nyMultiN, nyTotalN, nyHvil, nyFire, mVedStart);
         }
         if (ok) return true;
         for (const k of kombi) { brugt[k] = false; startAf[k] = -1; datoAf[k] = -1; }
