@@ -46,6 +46,8 @@ import { withSeniorSquadScope } from "./squads.js";
 import { SQUAD_CALENDAR, CALENDAR_SQUADS, calendarPlacementRulesForSeason } from "./calendarTierCaps.js";
 import { detectSeasonPlacementRuleViolations } from "./calendarPlacementGates.js";
 import { packSquadCalendar, squadSlotsForDate } from "./squadCalendarPacker.js";
+// #7471: ungdommens mini-udgaver af seniorloebene (samme dage som seniorens D1).
+import { isMiniEditionRow, withMiniEditionRoutes, packMiniEditionCalendar, loadSeniorMiniAnchors } from "./youthMiniEditions7471.js";
 // #6367: hvilken profil-model en saeson SKAL genereres med (v5 til og med S4, "s5" fra S5).
 // Afledt af saesonnummeret, aldrig af et flag - samme kilde som benchmark-gaten bruger.
 import {
@@ -438,12 +440,14 @@ export function detectPoolSignatureMismatch({ tier, pools = [] } = {}) {
 function buildSquadTierPlan({
   tier, tierPools, squad, squadCfg, catalog, catalogById, from, realDays, raceDayTarget, seed,
   usedRaceNamesBeforeTier, seasonFractionOf, seasonTransitionAt, previousSeasonLastStageAtByTier, lastRaceDay,
-  usedRaceIds, usedRaceNamesRunning,
+  usedRaceIds, usedRaceNamesRunning, miniEditionAnchors = null,
 }) {
-  const packed = packSquadCalendar({
-    squad, catalog, days: realDays, racesPerWeek: squadCfg.racesPerWeek, maxRacingDayShare: squadCfg.maxRacingDayShare,
-    raceDayTarget, seed, usedNames: usedRaceNamesBeforeTier, seasonFractionOf,
-  });
+  const packed = miniEditionAnchors
+    ? packMiniEditionCalendar({ squad, anchors: miniEditionAnchors, miniCatalog: catalog, from, days: realDays, seasonLastRaceDay: lastRaceDay })
+    : packSquadCalendar({
+      squad, catalog, days: realDays, racesPerWeek: squadCfg.racesPerWeek, maxRacingDayShare: squadCfg.maxRacingDayShare,
+      raceDayTarget, seed, usedNames: usedRaceNamesBeforeTier, seasonFractionOf,
+    });
   for (const id of packed.selectedIds) {
     usedRaceIds.add(id);
     const name = catalogById.get(id)?.name;
@@ -465,7 +469,7 @@ function buildSquadTierPlan({
     }
     return slotsByDate.get(localDate);
   };
-  const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: slotsForDate });
+  const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: "slotsForDate" in packed ? packed.slotsForDate : slotsForDate });
   const planningWindows = measurePlanningWindows(stageRows);
   const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
 
@@ -538,7 +542,7 @@ function buildSquadTierPlan({
 }
 
 /**
- * @param {{ pools, catalog, from?, realDays?, quotas?, density?, slots?, baseSeed?, seasonNumber? }} args
+ * @param {{ pools, catalog, from?, realDays?, quotas?, density?, slots?, baseSeed?, seasonNumber?, miniEditionAnchors? }} args
  * @returns {{ tierPlans: Array<object> }}
  */
 export function buildTierMaterializationPlan({
@@ -593,6 +597,8 @@ export function buildTierMaterializationPlan({
   // #5841: saesonens nummer - S6-placeringsreglerne gaelder kun fra S6. null = de gamle regler.
   seasonNumber = null,
   squad = "senior",
+  // #7471: seniorens D1-ankre; sat = truppens kalender er mini-udgaverne (youthMiniEditions7471.js).
+  miniEditionAnchors = null,
 } = {}) {
   assertCalendarSquad(squad);
   const squadCfg = squad === "senior" ? null : SQUAD_CALENDAR[squad];
@@ -712,7 +718,7 @@ export function buildTierMaterializationPlan({
         tier, tierPools, squad, squadCfg, catalog: availableCatalog, catalogById, from, realDays,
         raceDayTarget, seed: (baseSeed ^ tier) >>> 0, usedRaceNamesBeforeTier, seasonFractionOf,
         seasonTransitionAt, previousSeasonLastStageAtByTier, lastRaceDay,
-        usedRaceIds, usedRaceNamesRunning,
+        usedRaceIds, usedRaceNamesRunning, miniEditionAnchors,
       }));
       continue;
     }
@@ -942,6 +948,9 @@ export async function materializeTierCalendars({
   // foer. "u23"/"junior" laeser KUN truppens puljer (league_divisions.squad), truppens
   // katalog (race_pool.squad) og truppens eksisterende loeb, og skriver races.squad.
   squad = "senior",
+  // #7471: seniorens D1-ankre til mini-udgaverne (toerkoersel foer seniorkalenderen er skrevet);
+  // null = laes dem fra DB (races + race_stage_schedule for saesonens D1).
+  seniorMiniAnchors = null,
   // #5795: puljer der pensioneres VED SKIFTET (S4's målstruktur, calendarTargetStructure.js)
   // men endnu står aktive i databasen. De behandles i planen PRÆCIS som en pensioneret pulje
   // (retiredAt sat) og får ingen løb. Kun planen: retired_at i databasen røres ikke.
@@ -1024,7 +1033,11 @@ export async function materializeTierCalendars({
   // #5330: extraCatalogRows er hypotetiske senior-rækker (uden squad → senior), men
   // filteret køres på det samlede katalog så en fremtidig kalder ikke kan smugle en
   // u23-/junior-række ind ad den vej.
-  const catalog = extraCatalogRows.length ? filterSeniorSquadRows([...(dbCatalog || []), ...extraCatalogRows]) : dbCatalog;
+  const baseCatalog = extraCatalogRows.length ? filterSeniorSquadRows([...(dbCatalog || []), ...extraCatalogRows]) : dbCatalog;
+  // #7471: har truppen mini-udgaver, ER de dens katalog, og de koerer paa seniorens D1-dage.
+  const miniMode = !isSenior && (baseCatalog || []).some(isMiniEditionRow);
+  const catalog = miniMode ? withMiniEditionRoutes(baseCatalog.filter(isMiniEditionRow)) : baseCatalog;
+  const miniEditionAnchors = miniMode ? (seniorMiniAnchors ?? await loadSeniorMiniAnchors({ supabase, seasonId })) : null;
   // Seed-nøgle pr. katalog-løb: external_id binder parcours til løbets VIRKELIGE
   // identitet (identisk parcours i en divisions puljer); terrain_archetype driver
   // terrænfordelingen (jf. raceStageProfileGenerator.js).
@@ -1070,7 +1083,7 @@ export async function materializeTierCalendars({
   const { tierPlans } = buildTierMaterializationPlan({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
     oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations, raceDayTarget,
-    seasonTransitionAt, previousSeasonLastStageAtByTier, seasonLastRaceDay, squad,
+    seasonTransitionAt, previousSeasonLastStageAtByTier, seasonLastRaceDay, squad, miniEditionAnchors,
     seasonNumber: resolvedSeasonNumber, // #5841: S6-placeringsreglerne
   });
   const summary = {
