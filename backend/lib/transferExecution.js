@@ -19,7 +19,7 @@ import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValu
 import { isMarketAtomicPayments2176 } from "./marketBeta2176.ts";
 import { saleEscrowPayment, saleEscrowStatusForDeal, squadRestoreImage } from "./saleEscrowFlow6181.js";
 import { isSaleLockedForDeal, buildSaleLockedSellerNotification } from "./saleEscrowView6181.js";
-import { contractOnAcquirePatch } from "./contractSeed.js";
+import { contractOnAcquirePatch, resolveContractSeasonNumber } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { seniorSquadPatch } from "./squads.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
@@ -81,17 +81,11 @@ async function fetchActiveSeasonId(supabase) {
   return data?.id ?? null;
 }
 
-// #1309 kontrakt-on-acquire: aktiv sæson-number til contract_end_season-beregning.
-// Default 1 hvis ingen aktiv sæson er registreret (edge-case).
+// #1309 kontrakt-on-acquire: sæson-number til contract_end_season-beregning.
+// #7138 (ejer 26/11): i sæsonpausen er den kommende sæson ankeret. Før faldt en
+// handel i pausen tilbage til sæson 1 og fik en kontrakt, der allerede var udløbet.
 async function fetchActiveSeasonNumber(supabase) {
-  const { data } = await supabase
-    .from("seasons")
-    .select("number")
-    .eq("status", "active")
-    .order("number", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data?.number ?? 1;
+  return resolveContractSeasonNumber(supabase);
 }
 
 function success(payload) {
