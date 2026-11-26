@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Angrib på stigning</title>
+<!-- #7884 wireframe: "Angrib på" + sted fra ruten. Fiktive rytter- og holdnavne; stigningsnavne er opdigtede. -->
+<style>
+  :root {
+    --bg-body: #f4f2ec; --bg-card: #fcfbf7; --bg-elevated: #fff; --bg-subtle: #ece9e1;
+    --border: #e5e0d5; --border-strong: #827f96;
+    --text-1: #0e0f15; --text-2: #4c4a5e; --text-3: #67657e;
+    --accent: rgb(232 197 71); --accent-t: rgb(134 100 0); --danger: rgb(180 35 24);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-body); color: var(--text-1); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 1600px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--text-2); margin: 0 0 16px; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 5px; }
+  .profile { padding: 16px; margin-bottom: 16px; }
+  .profile svg { width: 100%; height: 150px; display: block; }
+  .legend { display: flex; gap: 16px; color: var(--text-2); font-size: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .grid { display: grid; grid-template-columns: 1fr 420px; gap: 16px; align-items: start; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { font-size: 12px; color: var(--text-3); font-weight: 500; }
+  tr.sel td { background: var(--bg-subtle); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 5px; padding: 3px 8px; font-size: 13px; background: var(--bg-elevated); }
+  .price { color: var(--danger); font-weight: 600; font-size: 12px; }
+  .muted { color: var(--text-3); }
+  .panel { padding: 16px; }
+  .panel h2 { font-size: 15px; margin: 0 0 2px; font-weight: 600; }
+  .place { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; padding: 11px 10px; border: 1px solid var(--border); border-radius: 5px; margin-top: 8px; background: var(--bg-elevated); min-height: 44px; }
+  .place.on { border-color: var(--accent-t); box-shadow: inset 3px 0 0 var(--accent); }
+  .place b { font-weight: 600; }
+  .place .facts { color: var(--text-2); font-size: 12px; }
+  .radio { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border-strong); margin-top: 2px; }
+  .place.on .radio { border: 5px solid var(--accent-t); }
+  .rule { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 5px; color: var(--text-2); font-size: 13px; display: flex; gap: 8px; }
+  .btn { display: block; width: 100%; margin-top: 14px; padding: 12px; border-radius: 5px; border: 0; background: var(--accent); color: var(--text-1); font-weight: 600; font-size: 14px; }
+  .mobile { display: none; }
+  @media (max-width: 767px) {
+    .wrap { padding: 16px; }
+    .desktop { display: none; }
+    .mobile { display: block; }
+    .profile svg { height: 110px; }
+    .row { display: flex; justify-content: space-between; align-items: center; padding: 12px; min-height: 44px; }
+    .sheet { margin-top: 16px; border-radius: 5px 5px 0 0; border: 1px solid var(--border); background: var(--bg-elevated); padding: 8px 16px 20px; }
+    .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--border-strong); opacity: .5; margin: 4px auto 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Etape 16 · Taktik</h1>
+  <p class="sub">Bjergetape · 175 km · topankomst</p>
+
+  <div class="card profile">
+    <svg viewBox="0 0 1000 150" preserveAspectRatio="none" aria-label="Etapeprofil">
+      <polyline fill="none" stroke="#4c4a5e" stroke-width="2" points="0,130 120,125 250,118 330,60 378,112 470,120 560,108 640,45 700,110 820,116 900,70 1000,20"/>
+      <!-- valgt stigning: foden markeret -->
+      <rect x="560" y="0" width="80" height="150" fill="rgb(232 197 71 / .18)"/>
+      <line x1="560" y1="0" x2="560" y2="150" stroke="rgb(134 100 0)" stroke-width="2" stroke-dasharray="4 3"/>
+      <g font-size="13" fill="#0e0f15">
+        <text x="300" y="50">Côte de Brévin</text>
+        <text x="600" y="36">Col du Larzac</text>
+        <text x="860" y="60">Mont Aigu</text>
+      </g>
+      <text x="566" y="146" font-size="12" fill="rgb(134 100 0)">Angreb fra foden, km 120</text>
+    </svg>
+    <div class="legend"><span>Kat. 2 · km 66</span><span>Kat. 1 · km 128</span><span>HC · mål km 175</span><span>Sidste 10 km fra km 165</span></div>
+  </div>
+
+  <!-- COMPUTER -->
+  <div class="desktop grid">
+    <div class="card">
+      <table>
+        <thead><tr><th>Rytter</th><th>Rolle</th><th>Start</th><th>Fra Côte de Brévin</th><th>Angreb</th></tr></thead>
+        <tbody>
+          <tr class="sel"><td>Rytter A</td><td>Kaptajn</td><td>Bliv i læ</td><td>Bliv i læ</td><td><span class="chip">Angrib på Col du Larzac</span> <span class="price">Meget hård</span></td></tr>
+          <tr><td>Rytter B</td><td>Hjælper</td><td>Beskyt kaptajnen</td><td>Kør tempo</td><td class="muted">Intet angreb</td></tr>
+          <tr><td>Rytter C</td><td>Fri rolle</td><td>Gå i udbrud</td><td>Kør for resultat</td><td><span class="chip">Angrib på Côte de Brévin</span> <span class="price">Meget hård</span></td></tr>
+          <tr><td>Rytter D</td><td>Hjælper</td><td>Beskyt kaptajnen</td><td>Kør tempo</td><td class="muted">Intet angreb</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card panel">
+      <h2>Angrib på</h2>
+      <div class="muted">Rytter A · Kaptajn</div>
+      <div class="place"><span class="radio"></span><div><b>Côte de Brévin</b><div class="facts">Kat. 2 · fod km 58 · 2 stigninger efter · lang dal bagefter</div></div><span class="price">Meget hård</span></div>
+      <div class="place on"><span class="radio"></span><div><b>Col du Larzac</b><div class="facts">Kat. 1 · fod km 120 · 1 stigning efter · dal bagefter</div></div><span class="price">Meget hård</span></div>
+      <div class="place"><span class="radio"></span><div><b>Mont Aigu (mål)</b><div class="facts">HC · fod km 160 · topankomst</div></div><span class="price">Meget hård</span></div>
+      <div class="place"><span class="radio"></span><div><b>Finalen</b><div class="facts">Sidste 10 km · fra km 165</div></div><span class="price">Meget hård</span></div>
+      <div class="rule"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg><span>Ét forsøg. Bliver han hentet, er kræfterne brugt, og resten af planen gælder.</span></div>
+      <button class="btn">Gem plan</button>
+    </div>
+  </div>
+
+  <!-- TELEFON -->
+  <div class="mobile">
+    <div class="card">
+      <div class="row"><div><b>Rytter A</b><div class="muted">Kaptajn</div></div><span class="chip">Angrib på Col du Larzac</span></div>
+    </div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <h2 style="font-size:16px;margin:0">Angrib på</h2>
+      <div class="muted">Rytter A · Kaptajn</div>
+      <div class="place"><span class="radio"></span><div><b>Côte de Brévin</b><div class="facts">Kat. 2 · fod km 58 · 2 stigninger efter · lang dal bagefter</div></div><span class="price">Meget hård</span></div>
+      <div class="place on"><span class="radio"></span><div><b>Col du Larzac</b><div class="facts">Kat. 1 · fod km 120 · 1 stigning efter</div></div><span class="price">Meget hård</span></div>
+      <div class="place"><span class="radio"></span><div><b>Mont Aigu (mål)</b><div class="facts">HC · fod km 160 · topankomst</div></div><span class="price">Meget hård</span></div>
+      <div class="place"><span class="radio"></span><div><b>Finalen</b><div class="facts">Sidste 10 km · fra km 165</div></div><span class="price">Meget hård</span></div>
+      <div class="rule"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg><span>Ét forsøg. Bliver han hentet, er kræfterne brugt.</span></div>
+      <button class="btn">Vælg Col du Larzac</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
