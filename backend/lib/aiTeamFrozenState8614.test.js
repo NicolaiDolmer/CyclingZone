@@ -13,6 +13,10 @@ import { runNormalizedTrainingDateSweep, __resetNormalizedTrainingDateCacheForTe
 import { FRESH_FLAG_KEYS } from "./featureStage.js";
 import { findStageFlag } from "./stageFlagCatalog.js";
 import { runSweepScenario, flagClient } from "./__fixtures__/aiTeamFrozenState8614Scenarios.js";
+import { loadEntrantsForRace, simulateStageByIndex } from "./raceRunner.js";
+import {
+  runLoadEntrantsScenario, runCrashStageScenario, normalizeUuids, readsWithoutFrozenFlag, AI_FROZEN_FLAG_READ,
+} from "./__fixtures__/aiTeamFrozenState8614RaceScenarios.js";
 import * as readiness from "./seasonTransitionReadiness.js";
 
 const ON = { [AI_TEAM_FROZEN_STATE_KEY]: "on" };
@@ -242,6 +246,52 @@ test("with the switch on an AI team without registered work is neither registere
   const human = (rows) => rows.filter((r) => r.teamId.startsWith("h"));
   assert.deepEqual(human(on.registers), human(off.registers));
   assert.deepEqual(human(on.ticks), human(off.ticks));
+});
+
+// ── Løbsmotoren: startfeltet og skaderne ─────────────────────────────────────
+// Golden fra en frossen kopi af merge-base (git archive, ingen 8614-kode), kun hashes (#7587).
+const raceGolden = JSON.parse(readFileSync(new URL("./__fixtures__/aiTeamFrozenState8614Race.golden.json", import.meta.url), "utf8"));
+const sha = (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+async function raceOutcome(flags) {
+  const entrants = await runLoadEntrantsScenario({ loadEntrantsForRace, flags });
+  const stage = await runCrashStageScenario({ simulateStageByIndex, flags });
+  const outcome = normalizeUuids({
+    load_entrants: { entrants: entrants.entrants, reads: readsWithoutFrozenFlag(entrants.reads), writes: entrants.writes, rpcCalls: entrants.rpcCalls },
+    crash_stage: { stageRows: stage.stageRows, reads: readsWithoutFrozenFlag(stage.reads), writes: stage.writes, rpcCalls: stage.rpcCalls },
+  });
+  const flagReads = {
+    load_entrants: entrants.reads.filter((r) => r === AI_FROZEN_FLAG_READ).length,
+    crash_stage: stage.reads.filter((r) => r === AI_FROZEN_FLAG_READ).length,
+  };
+  return { outcome, flagReads };
+}
+
+test("golden: with the switch off (or missing) the race engine is bit-identical to the merge base (#7587)", async () => {
+  for (const flags of [{ [AI_TEAM_FROZEN_STATE_KEY]: "off" }, {}]) {
+    const { outcome, flagReads } = await raceOutcome(flags);
+    assert.equal(sha(outcome.load_entrants), raceGolden.load_entrants_sha256, "start field: entrants, reads and writes");
+    assert.equal(sha(outcome.crash_stage), raceGolden.crash_stage_sha256, "crash stage: results, incidents, injury and every other write");
+    assert.equal(sha(outcome), raceGolden.sha256);
+    // The scenario reaches both new branches: an AI team in the field and an injury on an AI rider.
+    assert.deepEqual(outcome.load_entrants.entrants.map((e) => e.rider_id), raceGolden.qualitative.load_entrants_riders);
+    const injured = outcome.crash_stage.writes.filter((w) => w.table === "rider_condition" && w.op === "upsert").flatMap((w) => w.rows.map((r) => r.rider_id));
+    assert.deepEqual(injured, raceGolden.qualitative.crash_stage_injury_upserts);
+    // The only new database call under off is the switch itself: once for the field, once for the injury rows.
+    assert.deepEqual(flagReads, { load_entrants: 1, crash_stage: 2 });
+  }
+});
+
+test("with the switch on the engine sees the fixed AI state and the AI rider's crash gives no injury", async () => {
+  const { outcome } = await raceOutcome({ [AI_TEAM_FROZEN_STATE_KEY]: "on" });
+  const byId = new Map(outcome.load_entrants.entrants.map((e) => [e.rider_id, e]));
+  assert.deepEqual([byId.get("x1").form, byId.get("x1").fatigue], [AI_FROZEN_FORM, AI_FROZEN_FATIGUE]);
+  assert.deepEqual([byId.get("x2").form, byId.get("x2").fatigue], [AI_FROZEN_FORM, AI_FROZEN_FATIGUE]);
+  const off = (await raceOutcome({ [AI_TEAM_FROZEN_STATE_KEY]: "off" })).outcome;
+  const offById = new Map(off.load_entrants.entrants.map((e) => [e.rider_id, e]));
+  for (const id of ["h1", "h2"]) assert.deepEqual(byId.get(id), offById.get(id), `human rider ${id} is untouched`);
+  const crashWrites = outcome.crash_stage.writes.filter((w) => w.table === "race_incidents" && w.op === "insert").flatMap((w) => w.rows);
+  assert.ok(crashWrites.some((r) => r.rider_id === "b2" && r.kind === "crash"), "the incident itself is still recorded");
+  assert.ok(!outcome.crash_stage.writes.some((w) => w.table === "rider_condition" && w.op === "upsert"), "no injury for the AI rider");
 });
 
 // ── Sæsonens sidste træningsdato ─────────────────────────────────────────────
