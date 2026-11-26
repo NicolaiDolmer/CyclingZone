@@ -296,3 +296,22 @@ test("a real select failure captures and returns a zero-result instead of throwi
     assert.equal(deps._captures.length, 1);
     assert.match(deps._captures[0].err.message, /select fejlede/);
   }));
+
+// Codex P2 (#8767): campaign retries follow the campaign's own send gate.
+test("readRetryStage: s6_season follows winback_send_enabled, not the legacy loop flag", async () => {
+  const { readRetryStage } = await import("./emailRetrySweep.js");
+  const fake = (values) => ({
+    from() {
+      let key;
+      const api = {
+        select() { return api; },
+        eq(_c, v) { key = v; return api; },
+        maybeSingle() { return Promise.resolve({ data: key in values ? { value: values[key] } : null, error: null }); },
+      };
+      return api;
+    },
+  });
+  assert.equal(await readRetryStage(fake({ winback_send_enabled: true, email_loop_enabled: "off" }), "s6_season"), "on");
+  assert.equal(await readRetryStage(fake({ winback_send_enabled: false, email_loop_enabled: "on" }), "s6_season"), "off");
+  assert.equal(await readRetryStage(fake({}), "s6_season"), "off");
+});
