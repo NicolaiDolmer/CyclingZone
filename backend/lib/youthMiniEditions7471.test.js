@@ -12,7 +12,7 @@ import {
   miniEditionName, miniEditionExternalId, parseMiniEditionExternalId, miniEditionId, miniEditionStages,
   miniEditionDistanceScale, scaleDistanceBand, scaleAuthoredRoute, withMiniEditionRoutes, buildMiniEditionRow,
   riderTypeGoalsFor, miniStageIndexes, packMiniEditionCalendar, seniorAnchorsFromRows, seniorAnchorsFromPlan,
-  calendarDayZero, isMiniEditionRow,
+  calendarDayZero, isMiniEditionRow, loadSeniorMiniAnchors,
 } from "./youthMiniEditions7471.js";
 import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
 import { validateAuthoredRoute } from "./raceIdentityTypes.js";
@@ -206,4 +206,30 @@ test("anchors from a plan and from DB rows have the same shape", () => {
   const norm = (list) => list.map((a) => [a.pool_race_id, a.external_id, a.stages.length]).sort();
   assert.deepEqual(norm(fromPlan), norm(anchors));
   assert.equal(calendarDayZero(FROM_S5), "2026-10-28");
+});
+
+test("loadSeniorMiniAnchors reads only SELECTs and returns the same anchors as the row helper", async () => {
+  const tables = {
+    league_divisions: [{ id: 7, tier: 1, squad: "senior", retired_at: null }],
+    races: fx.s5Division1.races.map((r) => ({ ...r, league_division_id: 7, season_id: "s5", squad: "senior" })),
+    race_stage_schedule: fx.s5Division1.schedule,
+    race_pool: fx.catalog.map((c) => ({ id: c.id, external_id: c.external_id })),
+  };
+  const calls = [];
+  const builder = (table) => {
+    let rows = [...tables[table]];
+    const q = {
+      select: () => q, eq: (k, v) => { rows = rows.filter((r) => r[k] === v); return q; },
+      is: (k, v) => { rows = rows.filter((r) => (r[k] ?? null) === v); return q; },
+      or: () => q, order: () => q, in: (k, vs) => { rows = rows.filter((r) => vs.includes(r[k])); return q; },
+      range: (a, b) => { rows = rows.slice(a, b + 1); return q; },
+      then: (res, rej) => Promise.resolve({ data: rows, error: null }).then(res, rej),
+    };
+    return q;
+  };
+  const supabase = { from: (t) => { calls.push(t); return builder(t); } };
+  const anchors = await loadSeniorMiniAnchors({ supabase, seasonId: "s5" });
+  const norm = (list) => list.map((a) => [a.pool_race_id, a.external_id, a.stages.length]).sort();
+  assert.deepEqual(norm(anchors), norm(anchorsS5()));
+  assert.deepEqual([...new Set(calls)].sort(), ["league_divisions", "race_pool", "race_stage_schedule", "races"]);
 });

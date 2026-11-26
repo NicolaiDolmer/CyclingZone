@@ -489,13 +489,10 @@ export async function loadSeniorMiniAnchors({ supabase, seasonId }) {
   if (rErr) throw new Error(`#7471 senior D1 races: ${rErr.message}`);
   const raceIds = (races ?? []).map((r) => r.id);
   const poolRaceIds = [...new Set((races ?? []).map((r) => r.pool_race_id).filter(Boolean))];
-  const schedule = [];
-  for (let i = 0; i < raceIds.length; i += 100) {
-    const { data, error } = await supabase.from("race_stage_schedule")
-      .select("race_id, stage_number, game_day, scheduled_at").in("race_id", raceIds.slice(i, i + 100));
-    if (error) throw new Error(`#7471 senior D1 schedule: ${error.message}`);
-    schedule.push(...(data ?? []));
-  }
+  // Dynamisk import: modulet laeses ogsaa af rutegeneratoren, som ikke skal traekke DB-hjaelperne med.
+  const { fetchAllRowsChunkedIn } = await import("./supabasePagination.js");
+  const schedule = await fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_schedule")
+    .select("race_id, stage_number, game_day, scheduled_at").in("race_id", chunk).order("race_id").order("stage_number"));
   const { data: pool, error: cErr } = poolRaceIds.length
     ? await supabase.from("race_pool").select("id, external_id").in("id", poolRaceIds)
     : { data: [], error: null };
