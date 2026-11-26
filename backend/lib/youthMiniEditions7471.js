@@ -46,11 +46,11 @@ const PRESTIGE = Object.freeze({
 export const MINI_EDITION_RULES = Object.freeze({
   u23: Object.freeze({
     label: "U23", externalPrefix: "u23-mini-", gtStages: 7, monuments: 5, targetRaceDays: 40,
-    distanceScale: 0.75, stageRaceDivisor: 2, minStageRaceStages: 2, overlapShare: Object.freeze({ min: 0.25, max: 0.35 }),
+    distanceScale: 0.75, stageRaceDivisor: 2, minStageRaceStages: 3, overlapShare: Object.freeze({ min: 0.25, max: 0.35 }),
   }),
   junior: Object.freeze({
     label: "Junior", externalPrefix: "jun-mini-", gtStages: 4, monuments: 5, targetRaceDays: 28,
-    distanceScale: 0.6, stageRaceDivisor: 3, minStageRaceStages: 2, overlapShare: Object.freeze({ min: 0.15, max: 0.25 }),
+    distanceScale: 0.6, stageRaceDivisor: 3, minStageRaceStages: 3, overlapShare: Object.freeze({ min: 0.15, max: 0.25 }),
   }),
 });
 
@@ -305,7 +305,8 @@ export function selectMiniEditions({ squad, anchors = [], miniCatalog = [] }) {
   for (const a of anchors) {
     if (!a?.stages?.length) continue;
     const row = miniBySenior.get(a.external_id);
-    if (!row) { missingMini.push(a.name ?? a.external_id); continue; }
+    // Kun D1-klasserne har en mini-udgave; et lavere klasset loeb i D1 (fx ProSeries) springes over.
+    if (!row) { if (MINI_SOURCE_CLASSES.includes(a.race_class)) missingMini.push(a.name ?? a.external_id); continue; }
     candidates.push(candidateFor(a, row, squad));
   }
   const firstDay = (c) => Math.min(...c.gameDays);

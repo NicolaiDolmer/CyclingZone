@@ -1,0 +1,2980 @@
+{
+ "_note": "#7471: read-only snapshot 2026-11-26 of senior D1-class race_pool rows and the S5 Division 1 schedule (one pool). Test fixture for youthMiniEditions7471.test.js.",
+ "catalog": [
+  {
+   "id": "36468b7a-2dcc-41f8-aabe-c024a409ce0c",
+   "external_id": "097e2d7bc48095a3",
+   "name": "Chrono Champenois Majeur",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "13/9",
+   "country": "France",
+   "terrain_archetype": "itt_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "3e1df237-33b6-4f05-bcdd-8e0436d65840",
+   "external_id": "0ff35661f3b390f7",
+   "name": "Tour of South Australia",
+   "race_class": "OtherWorldTourA",
+   "race_type": "stage_race",
+   "stages": 6,
+   "date_text": "20/1 - 25/1",
+   "country": "Australia",
+   "terrain_archetype": "sprinters_week",
+   "race_identity_type": "climbers_gt_prelude",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Mount Kerrawong",
+      "category": "HC",
+      "length_km": 12.8,
+      "stage_hint": "queen",
+      "avg_gradient": 7.1,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "ebfac467-b2fe-4feb-a172-8fdc6fdaf0ab",
+   "external_id": "2492f98e221c8b6f",
+   "name": "L'Enfer du Nord",
+   "race_class": "Monuments",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "12/4",
+   "country": "France",
+   "terrain_archetype": "cobbled_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": {
+    "climbs": [],
+    "sectors": [
+     {
+      "kind": "cobbles",
+      "name": "Trois-Moulins",
+      "start_km": 96,
+      "length_km": 2.2
+     },
+     {
+      "kind": "cobbles",
+      "name": "Viesmont",
+      "start_km": 102.5,
+      "length_km": 1.8
+     },
+     {
+      "kind": "cobbles",
+      "name": "Quiévrette",
+      "start_km": 106,
+      "length_km": 3.7
+     },
+     {
+      "kind": "cobbles",
+      "name": "Saint-Aubry",
+      "start_km": 112.4,
+      "length_km": 1.5
+     },
+     {
+      "kind": "cobbles",
+      "name": "Vertaincourt",
+      "start_km": 117,
+      "length_km": 2.3
+     },
+     {
+      "kind": "cobbles",
+      "name": "Maingoval",
+      "start_km": 124.6,
+      "length_km": 1.6
+     },
+     {
+      "kind": "cobbles",
+      "name": "Quérenval",
+      "start_km": 129.4,
+      "length_km": 2.5
+     },
+     {
+      "kind": "cobbles",
+      "name": "Monchaux-le-Petit",
+      "start_km": 134.8,
+      "length_km": 1.6
+     },
+     {
+      "kind": "cobbles",
+      "name": "Haveloo",
+      "start_km": 146,
+      "length_km": 2.5
+     },
+     {
+      "kind": "cobbles",
+      "name": "Trouée d'Arembourg",
+      "start_km": 161.5,
+      "length_km": 2.3
+     },
+     {
+      "kind": "cobbles",
+      "name": "Wallerval",
+      "start_km": 168.4,
+      "length_km": 1.6
+     },
+     {
+      "kind": "cobbles",
+      "name": "Hornival",
+      "start_km": 176,
+      "length_km": 3.7
+     },
+     {
+      "kind": "cobbles",
+      "name": "Warlincourt",
+      "start_km": 183.2,
+      "length_km": 2.4
+     },
+     {
+      "kind": "cobbles",
+      "name": "Tilloy-Brûlé",
+      "start_km": 187,
+      "length_km": 2.4
+     },
+     {
+      "kind": "cobbles",
+      "name": "Sars-le-Moulin",
+      "start_km": 193,
+      "length_km": 2.4
+     },
+     {
+      "kind": "cobbles",
+      "name": "Beuvrelle",
+      "start_km": 199.6,
+      "length_km": 1.4
+     },
+     {
+      "kind": "cobbles",
+      "name": "Orchiette",
+      "start_km": 203.4,
+      "length_km": 1.7
+     },
+     {
+      "kind": "cobbles",
+      "name": "Auchy-la-Haie",
+      "start_km": 208.1,
+      "length_km": 2.7
+     },
+     {
+      "kind": "cobbles",
+      "name": "Mont-en-Pévelette",
+      "start_km": 214.6,
+      "length_km": 3
+     },
+     {
+      "kind": "cobbles",
+      "name": "Mérival",
+      "start_km": 222,
+      "length_km": 0.7
+     },
+     {
+      "kind": "cobbles",
+      "name": "Pont-Gibault",
+      "start_km": 225.3,
+      "length_km": 1.4
+     },
+     {
+      "kind": "cobbles",
+      "name": "Templemont",
+      "start_km": 230.8,
+      "length_km": 0.9
+     },
+     {
+      "kind": "cobbles",
+      "name": "Cysoval",
+      "start_km": 235.6,
+      "length_km": 1.3
+     },
+     {
+      "kind": "cobbles",
+      "name": "Bourghem",
+      "start_km": 238.2,
+      "length_km": 1.1
+     },
+     {
+      "kind": "cobbles",
+      "name": "Camphin-le-Bas",
+      "start_km": 240.6,
+      "length_km": 1.8
+     },
+     {
+      "kind": "cobbles",
+      "name": "Carrefour du Chêne",
+      "start_km": 243,
+      "length_km": 2.1
+     },
+     {
+      "kind": "cobbles",
+      "name": "Grusonnet",
+      "start_km": 246.4,
+      "length_km": 1.1
+     },
+     {
+      "kind": "cobbles",
+      "name": "Hemmeries",
+      "start_km": 251.6,
+      "length_km": 1.4
+     }
+    ],
+    "sprints": [
+     {
+      "km": 260,
+      "kind": "finish",
+      "name": "Finish"
+     }
+    ],
+    "distance_km": 260,
+    "finale_type": "flat_sprint",
+    "profile_type": "cobbles",
+    "elevation_gain_m": 800
+   },
+   "squad": "senior"
+  },
+  {
+   "id": "e6abceb7-4327-4f91-8230-417baba64882",
+   "external_id": "28d2e64796e82b54",
+   "name": "Tour de l'Hexagone",
+   "race_class": "TourFrance",
+   "race_type": "stage_race",
+   "stages": 18,
+   "date_text": "4/7 - 22/7",
+   "country": "France",
+   "terrain_archetype": "grand_tour",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "d3aa53d5-1a57-4e24-9759-e8dbfaeb7840",
+   "external_id": "376978090cd54610",
+   "name": "Københavns Klassiker",
+   "race_class": "OtherWorldTourC",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "14/6",
+   "country": "Denmark",
+   "terrain_archetype": "flat_sprint",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "aa468dc3-dd13-4b66-b8e6-1e8581377a3d",
+   "external_id": "406156a532092ff9",
+   "name": "Ronde van de Lage Landen",
+   "race_class": "OtherWorldTourB",
+   "race_type": "stage_race",
+   "stages": 5,
+   "date_text": "19/8 - 23/8",
+   "country": "Netherlands",
+   "terrain_archetype": "sprinters_week",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "47f83bb8-9383-4c2c-93dc-5c9a78b294d2",
+   "external_id": "56e8cc25a3a554e0",
+   "name": "Tour des Volcans d'Auvergne",
+   "race_class": "OtherWorldTourA",
+   "race_type": "stage_race",
+   "stages": 8,
+   "date_text": "7/6 - 14/6",
+   "country": "France",
+   "terrain_archetype": "mountain_tour",
+   "race_identity_type": "climbers_gt_prelude",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Puy de Chalardès",
+      "category": "HC",
+      "length_km": 13.4,
+      "stage_hint": "queen",
+      "avg_gradient": 7.6,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "62bf9857-a403-407f-af81-e856ff1b897c",
+   "external_id": "5ba80f6e6ceda7ac",
+   "name": "La Corsa dei Due Mari",
+   "race_class": "OtherWorldTourA",
+   "race_type": "stage_race",
+   "stages": 7,
+   "date_text": "9/3 - 15/3",
+   "country": "Italy",
+   "terrain_archetype": "balanced_week",
+   "race_identity_type": "allround",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Monte Sassotorto",
+      "category": "1",
+      "length_km": 11.5,
+      "stage_hint": "queen",
+      "avg_gradient": 6.9,
+      "summit_finish": true
+     },
+     {
+      "band": "hilly",
+      "kind": "itt",
+      "stage_hint": "any"
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "8aff214c-4800-4e6f-ba10-589d6f1d410a",
+   "external_id": "64a2a18688621713",
+   "name": "Grand Prix du Saint-Laurent",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "11/9",
+   "country": "Canada",
+   "terrain_archetype": "puncheur",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "a8af0d8c-7fdc-4bbd-9d11-60939a38edc2",
+   "external_id": "686f5c0c685b51fd",
+   "name": "Tour du Léman",
+   "race_class": "OtherWorldTourA",
+   "race_type": "stage_race",
+   "stages": 6,
+   "date_text": "28/4 - 3/5",
+   "country": "Switzerland",
+   "terrain_archetype": "mountain_tour",
+   "race_identity_type": "time_trial",
+   "signature": {
+    "features": [
+     {
+      "band": "flat",
+      "kind": "prologue",
+      "stage_hint": "first"
+     },
+     {
+      "band": "hilly",
+      "kind": "itt",
+      "stage_hint": "last"
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "0dc1b6b0-d97d-404e-86d7-59eb4f184252",
+   "external_id": "6ada4b5428dfd7b2",
+   "name": "Terre di Toscana",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "7/3",
+   "country": "Italy",
+   "terrain_archetype": "gravel_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "39799ba9-d521-4ccd-a9e9-5fb63f2f2f43",
+   "external_id": "6b92159c1f118b7d",
+   "name": "Milano–Riviera",
+   "race_class": "Monuments",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "21/3",
+   "country": "Italy",
+   "terrain_archetype": "long_sprint_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": {
+    "climbs": [
+     {
+      "name": "Passo del Turchetto",
+      "category": "4",
+      "crest_km": 142,
+      "length_km": 5.8,
+      "avg_gradient": 2.9,
+      "summit_finish": false
+     },
+     {
+      "name": "Capo Merlo",
+      "category": "4",
+      "crest_km": 240,
+      "length_km": 1.6,
+      "avg_gradient": 4.1,
+      "summit_finish": false
+     },
+     {
+      "name": "Capo Corvo",
+      "category": "4",
+      "crest_km": 247,
+      "length_km": 1.2,
+      "avg_gradient": 4.4,
+      "summit_finish": false
+     },
+     {
+      "name": "Capo Bertola",
+      "category": "4",
+      "crest_km": 255,
+      "length_km": 2.1,
+      "avg_gradient": 4.6,
+      "summit_finish": false
+     },
+     {
+      "name": "Cipressina",
+      "category": "4",
+      "crest_km": 268,
+      "length_km": 5.6,
+      "avg_gradient": 4.1,
+      "summit_finish": false
+     },
+     {
+      "name": "Poggio dei Fiori",
+      "category": "4",
+      "crest_km": 284,
+      "length_km": 3.7,
+      "avg_gradient": 3.7,
+      "summit_finish": false
+     }
+    ],
+    "sectors": [],
+    "sprints": [
+     {
+      "km": 290,
+      "kind": "finish",
+      "name": "Finish"
+     }
+    ],
+    "distance_km": 290,
+    "finale_type": "flat_sprint",
+    "profile_type": "rolling",
+    "elevation_gain_m": 2000
+   },
+   "squad": "senior"
+  },
+  {
+   "id": "4958ae51-a174-4ae0-8b1a-9fce171a37dc",
+   "external_id": "6f1c2acd3f2c4aff",
+   "name": "Volta Catalana",
+   "race_class": "OtherWorldTourB",
+   "race_type": "stage_race",
+   "stages": 7,
+   "date_text": "23/3 - 29/3",
+   "country": "Spain",
+   "terrain_archetype": "mountain_tour",
+   "race_identity_type": "hilly",
+   "signature": {
+    "features": [
+     {
+      "kind": "climb",
+      "name": "Coll de Montbrú",
+      "category": "2",
+      "length_km": 3.8,
+      "stage_hint": "any",
+      "avg_gradient": 7.9,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "af3735fe-68df-436c-ad31-8329289ffa18",
+   "external_id": "71f874621d924b5e",
+   "name": "Taunus-Klassiker",
+   "race_class": "OtherWorldTourC",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "1/5",
+   "country": "Germany",
+   "terrain_archetype": "hilly_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "7f2fe431-fc8c-4f49-a6ec-1f6801a095bd",
+   "external_id": "78e684cc50060148",
+   "name": "Tour des Grandes Alpes",
+   "race_class": "OtherWorldTourC",
+   "race_type": "stage_race",
+   "stages": 6,
+   "date_text": "12/8 - 17/8",
+   "country": "France",
+   "terrain_archetype": "summit_tour",
+   "race_identity_type": "climbers_gt_prelude",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Col de la Madelonne",
+      "category": "HC",
+      "length_km": 18.2,
+      "stage_hint": "queen",
+      "avg_gradient": 7.9,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "ddd4c82a-bb19-416d-9e0f-6e0881b3675d",
+   "external_id": "7afe652a93f56e13",
+   "name": "Le Mur de Huy",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "22/4",
+   "country": "Belgium",
+   "terrain_archetype": "puncheur",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "2b9f0051-646c-4465-885f-2d6dc7b2d9ce",
+   "external_id": "7d190d4b60dc0573",
+   "name": "La Classique Bretonne",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "30/8",
+   "country": "France",
+   "terrain_archetype": "hilly_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "e504b61a-c9b6-4369-a69c-4cd577510268",
+   "external_id": "7ebee31329278908",
+   "name": "Tour des Alpes Suisses",
+   "race_class": "OtherWorldTourA",
+   "race_type": "stage_race",
+   "stages": 5,
+   "date_text": "17/6 - 21/6",
+   "country": "Switzerland",
+   "terrain_archetype": "mountain_tour",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "f9d31e66-0be5-4d8c-822f-0c69cdb73a16",
+   "external_id": "870ce2ec9a0e7752",
+   "name": "Vlaamse Doortocht",
+   "race_class": "OtherWorldTourC",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "1/4",
+   "country": "Belgium",
+   "terrain_archetype": "cobbled_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "2db10942-f0de-46db-9799-4aaeb62be2ea",
+   "external_id": "8e03312380623984",
+   "name": "Clásica del Cantábrico",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "1/8",
+   "country": "Spain",
+   "terrain_archetype": "hilly_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "0e76b709-6641-4678-b510-cf35a6fc111f",
+   "external_id": "8e4697e7abdd241d",
+   "name": "Tour de la Vistule",
+   "race_class": "OtherWorldTourB",
+   "race_type": "stage_race",
+   "stages": 7,
+   "date_text": "3/8 - 9/8",
+   "country": "Poland",
+   "terrain_archetype": "balanced_week",
+   "race_identity_type": "climbers_gt_prelude",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Wierch Sokolnicki",
+      "category": "HC",
+      "length_km": 12.1,
+      "stage_hint": "queen",
+      "avg_gradient": 7.3,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "9cbd83ce-dd32-4919-be01-c80c877f2435",
+   "external_id": "9206e19f82e2393e",
+   "name": "Ocean Road Classic",
+   "race_class": "OtherWorldTourC",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "1/2",
+   "country": "Australia",
+   "terrain_archetype": "hilly_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "80544674-a1d3-48e2-9e2c-63d05fe2230a",
+   "external_id": "93008619a50faeeb",
+   "name": "Vuelta Ibérica",
+   "race_class": "GiroVuelta",
+   "race_type": "stage_race",
+   "stages": 17,
+   "date_text": "22/8 - 9/9",
+   "country": "Spain",
+   "terrain_archetype": "grand_tour",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "30ac9981-5dce-4d51-bb48-e4efea3320fc",
+   "external_id": "996943c650cdd061",
+   "name": "La Course au Soleil",
+   "race_class": "OtherWorldTourA",
+   "race_type": "stage_race",
+   "stages": 8,
+   "date_text": "8/3 - 15/3",
+   "country": "France",
+   "terrain_archetype": "balanced_week",
+   "race_identity_type": "allround",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Col de la Brasque",
+      "category": "1",
+      "length_km": 14.2,
+      "stage_hint": "queen",
+      "avg_gradient": 6.1,
+      "summit_finish": true
+     },
+     {
+      "band": "flat",
+      "kind": "itt",
+      "stage_hint": "any"
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "d771f029-a9a1-454e-8a09-30f6326bb0a5",
+   "external_id": "a67745cde67181de",
+   "name": "Vuelta Vasca",
+   "race_class": "OtherWorldTourB",
+   "race_type": "stage_race",
+   "stages": 6,
+   "date_text": "6/4 - 11/4",
+   "country": "Spain",
+   "terrain_archetype": "mountain_tour",
+   "race_identity_type": "hilly",
+   "signature": {
+    "features": [
+     {
+      "kind": "climb",
+      "name": "Alto de Mendibeltz",
+      "category": "2",
+      "length_km": 2.8,
+      "stage_hint": "last",
+      "avg_gradient": 9.1,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "ae5910ac-949e-44f5-ab4f-d58a12ffef83",
+   "external_id": "a6f5ad7c745f818e",
+   "name": "Klassieker van Brugge",
+   "race_class": "OtherWorldTourC",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "25/3",
+   "country": "Belgium",
+   "terrain_archetype": "flat_sprint",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "43226508-76b0-40cc-9e82-53c241a9254b",
+   "external_id": "a806091f46365091",
+   "name": "Tour of South China",
+   "race_class": "OtherWorldTourC",
+   "race_type": "stage_race",
+   "stages": 6,
+   "date_text": "13/10 - 18/10",
+   "country": "China",
+   "terrain_archetype": "sprinters_week",
+   "race_identity_type": "sprinters",
+   "signature": {
+    "features": [
+     {
+      "kind": "climb",
+      "name": "Qingluo Ridge",
+      "category": "4",
+      "length_km": 2.4,
+      "stage_hint": "any",
+      "avg_gradient": 5.1,
+      "summit_finish": false
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "5472f766-276d-460d-b651-9219686c5ed6",
+   "external_id": "a9a48734b7c0b879",
+   "name": "Vuelta a los Pirineos",
+   "race_class": "OtherWorldTourC",
+   "race_type": "stage_race",
+   "stages": 6,
+   "date_text": "2/6 - 7/6",
+   "country": "Spain",
+   "terrain_archetype": "summit_tour",
+   "race_identity_type": "climbers_gt_prelude",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Port de Peyrafita",
+      "category": "HC",
+      "length_km": 15.3,
+      "stage_hint": "queen",
+      "avg_gradient": 7.2,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "f2ace2bf-b158-41cf-9255-3565fbb3487f",
+   "external_id": "b9dcaf3b7502a487",
+   "name": "La Doyenne des Ardennes",
+   "race_class": "Monuments",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "26/4",
+   "country": "Belgium",
+   "terrain_archetype": "puncheur",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": {
+    "climbs": [
+     {
+      "name": "Côte de Vielsamont",
+      "category": "3",
+      "crest_km": 138,
+      "length_km": 2.2,
+      "avg_gradient": 6.2,
+      "summit_finish": false
+     },
+     {
+      "name": "Côte de Wanneval",
+      "category": "3",
+      "crest_km": 150,
+      "length_km": 2.7,
+      "avg_gradient": 7.1,
+      "summit_finish": false
+     },
+     {
+      "name": "Côte du Stockay",
+      "category": "2",
+      "crest_km": 158,
+      "length_km": 1,
+      "avg_gradient": 12,
+      "summit_finish": false
+     },
+     {
+      "name": "Côte de la Haute-Lanière",
+      "category": "3",
+      "crest_km": 168,
+      "length_km": 3.6,
+      "avg_gradient": 5.4,
+      "summit_finish": false
+     },
+     {
+      "name": "Col du Rosenbois",
+      "category": "3",
+      "crest_km": 178,
+      "length_km": 4.4,
+      "avg_gradient": 5.9,
+      "summit_finish": false
+     },
+     {
+      "name": "Côte de Desnoye",
+      "category": "3",
+      "crest_km": 189,
+      "length_km": 1.6,
+      "avg_gradient": 8.3,
+      "summit_finish": false
+     },
+     {
+      "name": "Côte de Mont-la-Brume",
+      "category": "3",
+      "crest_km": 197,
+      "length_km": 2.4,
+      "avg_gradient": 6.9,
+      "summit_finish": false
+     },
+     {
+      "name": "Côte de Chambrelle",
+      "category": "3",
+      "crest_km": 205,
+      "length_km": 2.1,
+      "avg_gradient": 6.4,
+      "summit_finish": false
+     },
+     {
+      "name": "Côte de la Redoutière",
+      "category": "2",
+      "crest_km": 220,
+      "length_km": 2,
+      "avg_gradient": 8.9,
+      "summit_finish": false
+     },
+     {
+      "name": "Côte de la Roche-aux-Corbeaux",
+      "category": "2",
+      "crest_km": 242,
+      "length_km": 1.5,
+      "avg_gradient": 9.4,
+      "summit_finish": false
+     },
+     {
+      "name": "Montée d'Ansaumont",
+      "category": "4",
+      "crest_km": 255,
+      "length_km": 1.5,
+      "avg_gradient": 5,
+      "summit_finish": true
+     }
+    ],
+    "sectors": [],
+    "sprints": [
+     {
+      "km": 255,
+      "kind": "finish",
+      "name": "Finish"
+     }
+    ],
+    "distance_km": 255,
+    "finale_type": "uphill_sprint",
+    "profile_type": "hilly",
+    "elevation_gain_m": 4000
+   },
+   "squad": "senior"
+  },
+  {
+   "id": "84816795-7007-4aab-8150-f526ed46afe9",
+   "external_id": "cz4218-cob-artois",
+   "name": "Tour de l'Artois",
+   "race_class": "OtherWorldTourB",
+   "race_type": "stage_race",
+   "stages": 4,
+   "date_text": "2/4 - 5/4",
+   "country": null,
+   "terrain_archetype": "cobbled_tour",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "d05ae649-c0f8-4b00-be43-73060f466b4b",
+   "external_id": "cz4218-cob-brabant",
+   "name": "Ronde van Noord-Brabant",
+   "race_class": "OtherWorldTourC",
+   "race_type": "stage_race",
+   "stages": 4,
+   "date_text": "26/3 - 29/3",
+   "country": null,
+   "terrain_archetype": "cobbled_tour",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "45b99e81-a6d7-4754-bd26-393f3080a275",
+   "external_id": "cz4218-cob-scheldt",
+   "name": "Ronde van de Schelde",
+   "race_class": "OtherWorldTourA",
+   "race_type": "stage_race",
+   "stages": 5,
+   "date_text": "14/4 - 18/4",
+   "country": null,
+   "terrain_archetype": "cobbled_tour",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "b6944e7c-b9fa-4ce6-9455-5c855f5b48ce",
+   "external_id": "cz4218-itt-algarve",
+   "name": "Contrarrelogio do Algarve",
+   "race_class": "OtherWorldTourC",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "22/2",
+   "country": null,
+   "terrain_archetype": "itt_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "00968d1b-ec97-43e0-99ca-14e66db9a9a9",
+   "external_id": "cz4218-itt-loire",
+   "name": "Chrono de la Loire",
+   "race_class": "OtherWorldTourA",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "19/9",
+   "country": null,
+   "terrain_archetype": "itt_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "470596a1-94eb-4c00-8621-1b9051a98a18",
+   "external_id": "cz4218-itt-veneto",
+   "name": "Cronometro del Veneto",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "5/10",
+   "country": null,
+   "terrain_archetype": "itt_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "38e11d6f-1969-4d4d-9c3d-e715cbc7292f",
+   "external_id": "cz4270-wta-alpi-orient",
+   "name": "Giro delle Alpi Orientali",
+   "race_class": "OtherWorldTourA",
+   "race_type": "stage_race",
+   "stages": 7,
+   "date_text": "4/5 - 10/5",
+   "country": "Italy",
+   "terrain_archetype": "sprinter_tour_summits",
+   "race_identity_type": "mountains_first",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Monte Zoncolaro",
+      "category": "HC",
+      "length_km": 10.1,
+      "stage_hint": "queen",
+      "avg_gradient": 11.2,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "2a72fb0e-096e-4e48-a2b5-396455a3ff20",
+   "external_id": "cz4270-wta-bordeaux",
+   "name": "Grand Prix de Bordeaux",
+   "race_class": "OtherWorldTourA",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "2/5",
+   "country": "France",
+   "terrain_archetype": "flat_sprint",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "6839e789-972f-452f-a03a-a12bd0f8b2a0",
+   "external_id": "cz4270-wta-grandes-alpes",
+   "name": "Tour de la Haute-Savoie",
+   "race_class": "OtherWorldTourA",
+   "race_type": "stage_race",
+   "stages": 7,
+   "date_text": "10/6 - 16/6",
+   "country": "France",
+   "terrain_archetype": "mountain_tour",
+   "race_identity_type": "gravel",
+   "signature": {
+    "features": [
+     {
+      "kind": "sector",
+      "name": "Piste des Aravis Blanches",
+      "surface": "gravel",
+      "length_km": 11.2,
+      "stage_hint": "any"
+     },
+     {
+      "kind": "sector",
+      "name": "Chemin du Plan-Bois",
+      "surface": "gravel",
+      "length_km": 8.4,
+      "stage_hint": "last"
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "2de605c5-796e-4808-85d1-ac096d023fe8",
+   "external_id": "cz4270-wta-lille",
+   "name": "Grand Prix de Lille",
+   "race_class": "OtherWorldTourA",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "18/4",
+   "country": "France",
+   "terrain_archetype": "flat_sprint",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "29bf1371-0909-4f71-b4af-70c00df1c065",
+   "external_id": "cz4270-wta-noord-fr",
+   "name": "Ronde van Noord-Frankrijk",
+   "race_class": "OtherWorldTourA",
+   "race_type": "stage_race",
+   "stages": 6,
+   "date_text": "31/3 - 5/4",
+   "country": "France",
+   "terrain_archetype": "cobbled_tour",
+   "race_identity_type": "cobbles_benelux",
+   "signature": {
+    "features": [
+     {
+      "kind": "sector",
+      "name": "Pavé du Moulin-Brûlé",
+      "surface": "cobbles",
+      "length_km": 2.6,
+      "stage_hint": "any"
+     },
+     {
+      "kind": "sector",
+      "name": "Chemin des Quatre-Vents",
+      "surface": "cobbles",
+      "length_km": 1.8,
+      "stage_hint": "last"
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "49bda79e-58de-40a5-9dc3-23e34bf9fe21",
+   "external_id": "cz4270-wta-oostende",
+   "name": "Grote Prijs van Oostende",
+   "race_class": "OtherWorldTourA",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "11/4",
+   "country": "Belgium",
+   "terrain_archetype": "flat_sprint",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "af923be7-fbf2-464e-9f1c-6b1eb5064100",
+   "external_id": "cz4270-wta-strade-nord",
+   "name": "Strade Bianche del Nord",
+   "race_class": "OtherWorldTourA",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "14/3",
+   "country": "Italy",
+   "terrain_archetype": "gravel_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "fd83cfdc-611a-4bd6-95eb-bf432f70905e",
+   "external_id": "cz4270-wta-valencia",
+   "name": "Gran Premio de Valencia",
+   "race_class": "OtherWorldTourA",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "23/5",
+   "country": "Spain",
+   "terrain_archetype": "flat_sprint",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "1fe29fc7-8754-4541-812a-46e82add0e59",
+   "external_id": "cz4270-wtb-appen-ligure",
+   "name": "Giro dell'Appennino Ligure",
+   "race_class": "OtherWorldTourB",
+   "race_type": "stage_race",
+   "stages": 6,
+   "date_text": "7/7 - 12/7",
+   "country": "Italy",
+   "terrain_archetype": "summit_tour",
+   "race_identity_type": "hilly",
+   "signature": {
+    "features": [
+     {
+      "kind": "climb",
+      "name": "Salita di Monte Ravàro",
+      "category": "3",
+      "length_km": 4.4,
+      "stage_hint": "any",
+      "avg_gradient": 6.1,
+      "summit_finish": false
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "352583e4-d1ea-464c-9d46-04b22e080123",
+   "external_id": "cz4270-wtb-geraardsberg",
+   "name": "Kasseienklassieker van Geraardsbergen",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "14/3",
+   "country": "Belgium",
+   "terrain_archetype": "cobbled_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "e47d7081-ebe6-406e-991e-059fd4da271a",
+   "external_id": "cz4270-wtb-pirineos",
+   "name": "Vuelta al Alto Aragón",
+   "race_class": "OtherWorldTourB",
+   "race_type": "stage_race",
+   "stages": 7,
+   "date_text": "23/6 - 29/6",
+   "country": "Spain",
+   "terrain_archetype": "mountain_tour",
+   "race_identity_type": "sprinters",
+   "signature": {
+    "features": [
+     {
+      "kind": "climb",
+      "name": "Alto de Monegrillo",
+      "category": "3",
+      "length_km": 3.1,
+      "stage_hint": "any",
+      "avg_gradient": 6.4,
+      "summit_finish": false
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "53eaad90-8db5-45c8-8489-20c044980633",
+   "external_id": "cz4270-wtc-sierra-nevada",
+   "name": "Vuelta a Sierra Nevada",
+   "race_class": "OtherWorldTourC",
+   "race_type": "stage_race",
+   "stages": 7,
+   "date_text": "17/8 - 23/8",
+   "country": "Spain",
+   "terrain_archetype": "summit_tour",
+   "race_identity_type": "climbers_gt_prelude",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Alto de la Veletilla",
+      "category": "HC",
+      "length_km": 19.5,
+      "stage_hint": "queen",
+      "avg_gradient": 6.4,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "1bcbe89b-a3ef-4a3e-822a-8f603b988593",
+   "external_id": "cz4270-wtc-vosges",
+   "name": "Tour du Massif des Vosges",
+   "race_class": "OtherWorldTourC",
+   "race_type": "stage_race",
+   "stages": 6,
+   "date_text": "20/7 - 25/7",
+   "country": "France",
+   "terrain_archetype": "mountain_tour",
+   "race_identity_type": "mountains_first",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Ballon des Belles-Fées",
+      "category": "HC",
+      "length_km": 7.8,
+      "stage_hint": "queen",
+      "avg_gradient": 9.1,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "afa3288a-e4d0-449e-b7af-5d3897722513",
+   "external_id": "d2045415269bc5a8",
+   "name": "Giro della Penisola",
+   "race_class": "GiroVuelta",
+   "race_type": "stage_race",
+   "stages": 17,
+   "date_text": "8/5 - 28/5",
+   "country": "Italy",
+   "terrain_archetype": "grand_tour",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "a9ca79b1-8c9a-468c-8b0f-4ee26c4ff1fc",
+   "external_id": "d2e66c0bcaff51c3",
+   "name": "Westkust Klassieker",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "29/3",
+   "country": "Belgium",
+   "terrain_archetype": "cobbled_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "bc92c334-4ff0-461b-b91e-47f06d16d6f2",
+   "external_id": "eb71c9752a295a2f",
+   "name": "Klassieker van Harelbeke",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "27/3",
+   "country": "Belgium",
+   "terrain_archetype": "cobbled_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "8456fccc-dd60-401e-9541-7243b59f1235",
+   "external_id": "ec2db56c9dacccd5",
+   "name": "De Openingsklassieker",
+   "race_class": "OtherWorldTourC",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "28/2",
+   "country": "Belgium",
+   "terrain_archetype": "cobbled_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "4bc8f11d-d6ba-4f0a-a391-2e0401636fa0",
+   "external_id": "efb4c1e793743dbf",
+   "name": "Hamburger Klassiker",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "16/8",
+   "country": "Germany",
+   "terrain_archetype": "flat_sprint",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "d17d0b5c-a680-44b6-b78c-efd6692b836c",
+   "external_id": "f162dd79bd523ec9",
+   "name": "La Classica d'Autunno",
+   "race_class": "Monuments",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "10/10",
+   "country": "Italy",
+   "terrain_archetype": "mountain_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": {
+    "climbs": [
+     {
+      "name": "Colle del Gallaccio",
+      "category": "3",
+      "crest_km": 70,
+      "length_km": 5.2,
+      "avg_gradient": 5.1,
+      "summit_finish": false
+     },
+     {
+      "name": "Passo di Zamblina",
+      "category": "2",
+      "crest_km": 125,
+      "length_km": 6,
+      "avg_gradient": 6.5,
+      "summit_finish": false
+     },
+     {
+      "name": "Madonna del Ghisello",
+      "category": "1",
+      "crest_km": 168,
+      "length_km": 8.6,
+      "avg_gradient": 6.2,
+      "summit_finish": false
+     },
+     {
+      "name": "Muro di Sormanello",
+      "category": "2",
+      "crest_km": 190,
+      "length_km": 1.9,
+      "avg_gradient": 15.8,
+      "summit_finish": false
+     },
+     {
+      "name": "Colle di San Fermino",
+      "category": "3",
+      "crest_km": 214,
+      "length_km": 3.5,
+      "avg_gradient": 6.8,
+      "summit_finish": false
+     },
+     {
+      "name": "Salita di Valtorta",
+      "category": "1",
+      "crest_km": 240,
+      "length_km": 9.2,
+      "avg_gradient": 7.3,
+      "summit_finish": false
+     }
+    ],
+    "sectors": [],
+    "sprints": [
+     {
+      "km": 250,
+      "kind": "finish",
+      "name": "Finish"
+     }
+    ],
+    "distance_km": 250,
+    "finale_type": "descent",
+    "profile_type": "mountain",
+    "elevation_gain_m": 4500
+   },
+   "squad": "senior"
+  },
+  {
+   "id": "926631a7-3bda-45da-b6f7-819f261c39c8",
+   "external_id": "f1c33846c869ff29",
+   "name": "Limburgse Klassieker",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "19/4",
+   "country": "Netherlands",
+   "terrain_archetype": "puncheur",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "ca6de363-e5a3-4829-98da-f947bd473ecd",
+   "external_id": "fa86d85ee0dd3268",
+   "name": "Grand Prix du Mont-Royal",
+   "race_class": "OtherWorldTourB",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "13/9",
+   "country": "Canada",
+   "terrain_archetype": "puncheur",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": null,
+   "squad": "senior"
+  },
+  {
+   "id": "901d1a00-49a5-418c-8c27-c99d4995b952",
+   "external_id": "fb8a6a4c9762e506",
+   "name": "De Vlaamse Ronde",
+   "race_class": "Monuments",
+   "race_type": "single",
+   "stages": 1,
+   "date_text": "5/4",
+   "country": "Belgium",
+   "terrain_archetype": "cobbled_classic",
+   "race_identity_type": null,
+   "signature": null,
+   "authored_route": {
+    "climbs": [
+     {
+      "name": "Ossenberg",
+      "category": "4",
+      "crest_km": 118,
+      "length_km": 1.1,
+      "avg_gradient": 6.8,
+      "summit_finish": false
+     },
+     {
+      "name": "Kortebult",
+      "category": "4",
+      "crest_km": 131,
+      "length_km": 0.9,
+      "avg_gradient": 7.4,
+      "summit_finish": false
+     },
+     {
+      "name": "Steenbergdries",
+      "category": "4",
+      "crest_km": 146,
+      "length_km": 0.7,
+      "avg_gradient": 7.9,
+      "summit_finish": false
+     },
+     {
+      "name": "Hoogmolen",
+      "category": "4",
+      "crest_km": 158,
+      "length_km": 1.3,
+      "avg_gradient": 6.1,
+      "summit_finish": false
+     },
+     {
+      "name": "Oude Kwaremberg",
+      "category": "3",
+      "crest_km": 170,
+      "length_km": 2.2,
+      "avg_gradient": 4.2,
+      "summit_finish": false
+     },
+     {
+      "name": "Kruisheuvel",
+      "category": "4",
+      "crest_km": 178,
+      "length_km": 1.8,
+      "avg_gradient": 5.1,
+      "summit_finish": false
+     },
+     {
+      "name": "Molenkouter",
+      "category": "4",
+      "crest_km": 187,
+      "length_km": 1.4,
+      "avg_gradient": 6.6,
+      "summit_finish": false
+     },
+     {
+      "name": "Eikenkam",
+      "category": "4",
+      "crest_km": 195,
+      "length_km": 1.2,
+      "avg_gradient": 6.3,
+      "summit_finish": false
+     },
+     {
+      "name": "Ravenshelling",
+      "category": "4",
+      "crest_km": 203,
+      "length_km": 0.9,
+      "avg_gradient": 7.6,
+      "summit_finish": false
+     },
+     {
+      "name": "Mosterdberg",
+      "category": "3",
+      "crest_km": 211,
+      "length_km": 1.1,
+      "avg_gradient": 8,
+      "summit_finish": false
+     },
+     {
+      "name": "Koppelberg",
+      "category": "3",
+      "crest_km": 218,
+      "length_km": 0.6,
+      "avg_gradient": 11.6,
+      "summit_finish": false
+     },
+     {
+      "name": "Taaienbult",
+      "category": "4",
+      "crest_km": 224,
+      "length_km": 0.8,
+      "avg_gradient": 7.1,
+      "summit_finish": false
+     },
+     {
+      "name": "Vossenkam",
+      "category": "4",
+      "crest_km": 232,
+      "length_km": 1.4,
+      "avg_gradient": 6,
+      "summit_finish": false
+     },
+     {
+      "name": "Zwartemolen",
+      "category": "4",
+      "crest_km": 240,
+      "length_km": 1,
+      "avg_gradient": 6.9,
+      "summit_finish": false
+     },
+     {
+      "name": "Oude Kwaremberg",
+      "category": "3",
+      "crest_km": 253,
+      "length_km": 2.2,
+      "avg_gradient": 4.2,
+      "summit_finish": false
+     },
+     {
+      "name": "Paterhelling",
+      "category": "3",
+      "crest_km": 257,
+      "length_km": 0.4,
+      "avg_gradient": 12.5,
+      "summit_finish": false
+     }
+    ],
+    "sectors": [
+     {
+      "kind": "cobbles",
+      "name": "Kerkhofwegel",
+      "start_km": 100,
+      "length_km": 1.6
+     },
+     {
+      "kind": "cobbles",
+      "name": "Paardenkouter",
+      "start_km": 107,
+      "length_km": 2.1
+     },
+     {
+      "kind": "cobbles",
+      "name": "Ruiterstraat",
+      "start_km": 122,
+      "length_km": 1.8
+     },
+     {
+      "kind": "cobbles",
+      "name": "Holle Kasseiweg",
+      "start_km": 136,
+      "length_km": 2.3
+     },
+     {
+      "kind": "cobbles",
+      "name": "Mollekouter",
+      "start_km": 149,
+      "length_km": 1.5
+     },
+     {
+      "kind": "cobbles",
+      "name": "Beukenstraat",
+      "start_km": 161,
+      "length_km": 2.4
+     }
+    ],
+    "sprints": [
+     {
+      "km": 270,
+      "kind": "finish",
+      "name": "Finish"
+     }
+    ],
+    "distance_km": 270,
+    "finale_type": "flat_sprint",
+    "profile_type": "cobbles",
+    "elevation_gain_m": 2100
+   },
+   "squad": "senior"
+  },
+  {
+   "id": "6eaa10d8-c402-4294-91ee-7ebec2c6835a",
+   "external_id": "fcc2ea9002ae4abd",
+   "name": "Tour des Émirats",
+   "race_class": "OtherWorldTourC",
+   "race_type": "stage_race",
+   "stages": 7,
+   "date_text": "16/2 - 22/2",
+   "country": "United Arab Emirates",
+   "terrain_archetype": "sprinter_tour_summits",
+   "race_identity_type": "allround",
+   "signature": {
+    "features": [
+     {
+      "kind": "summit_finish",
+      "name": "Jebel Hafira",
+      "category": "1",
+      "length_km": 10.8,
+      "stage_hint": "queen",
+      "avg_gradient": 6.6,
+      "summit_finish": true
+     }
+    ]
+   },
+   "authored_route": null,
+   "squad": "senior"
+  }
+ ],
+ "s5Division1": {
+  "firstDate": "2026-10-28",
+  "days": 32,
+  "races": [
+   {
+    "pool_race_id": "e6abceb7-4327-4f91-8230-417baba64882",
+    "name": "Tour de l'Hexagone",
+    "race_class": "TourFrance",
+    "race_type": "stage_race",
+    "stages": 18,
+    "id": "b6182178-c8ce-4c56-9e62-723f8e64347b"
+   },
+   {
+    "pool_race_id": "00968d1b-ec97-43e0-99ca-14e66db9a9a9",
+    "name": "Chrono de la Loire",
+    "race_class": "OtherWorldTourA",
+    "race_type": "single",
+    "stages": 1,
+    "id": "6b926b54-0200-4592-b106-656d5333df57"
+   },
+   {
+    "pool_race_id": "a8af0d8c-7fdc-4bbd-9d11-60939a38edc2",
+    "name": "Tour du Léman",
+    "race_class": "OtherWorldTourA",
+    "race_type": "stage_race",
+    "stages": 6,
+    "id": "207422a0-06bd-44f7-a2c3-3db3d03141cb"
+   },
+   {
+    "pool_race_id": "8aff214c-4800-4e6f-ba10-589d6f1d410a",
+    "name": "Grand Prix du Saint-Laurent",
+    "race_class": "OtherWorldTourB",
+    "race_type": "single",
+    "stages": 1,
+    "id": "46007f2d-82dd-4ead-bdb0-86b0335978c0"
+   },
+   {
+    "pool_race_id": "a9ca79b1-8c9a-468c-8b0f-4ee26c4ff1fc",
+    "name": "Westkust Klassieker",
+    "race_class": "OtherWorldTourB",
+    "race_type": "single",
+    "stages": 1,
+    "id": "8116f0b1-269e-41b1-a079-93b5a7dd1f35"
+   },
+   {
+    "pool_race_id": "d17d0b5c-a680-44b6-b78c-efd6692b836c",
+    "name": "La Classica d'Autunno",
+    "race_class": "Monuments",
+    "race_type": "single",
+    "stages": 1,
+    "id": "3a7fdbfe-9862-48e9-b5a0-0ccf7367ce80"
+   },
+   {
+    "pool_race_id": "901d1a00-49a5-418c-8c27-c99d4995b952",
+    "name": "De Vlaamse Ronde",
+    "race_class": "Monuments",
+    "race_type": "single",
+    "stages": 1,
+    "id": "cd8df6af-d6e8-4e37-ae66-3467e7f635df"
+   },
+   {
+    "pool_race_id": "ebfac467-b2fe-4feb-a172-8fdc6fdaf0ab",
+    "name": "L'Enfer du Nord",
+    "race_class": "Monuments",
+    "race_type": "single",
+    "stages": 1,
+    "id": "334ba628-1a1f-494c-879a-92df3fa7c260"
+   },
+   {
+    "pool_race_id": "49bda79e-58de-40a5-9dc3-23e34bf9fe21",
+    "name": "Grote Prijs van Oostende",
+    "race_class": "OtherWorldTourA",
+    "race_type": "single",
+    "stages": 1,
+    "id": "d14d2564-bce7-42fb-b473-6a2fd216bab4"
+   },
+   {
+    "pool_race_id": "bc92c334-4ff0-461b-b91e-47f06d16d6f2",
+    "name": "Klassieker van Harelbeke",
+    "race_class": "OtherWorldTourB",
+    "race_type": "single",
+    "stages": 1,
+    "id": "01e82e8a-386c-464c-97b0-1bb365d398b1"
+   },
+   {
+    "pool_race_id": "f7873498-9dd5-45de-81fc-5fdb937b9be0",
+    "name": "Tour du Hedjaz",
+    "race_class": "ProSeries",
+    "race_type": "stage_race",
+    "stages": 5,
+    "id": "db8bf7d0-d23c-43b4-a1ad-081adb84bbd5"
+   },
+   {
+    "pool_race_id": "fd83cfdc-611a-4bd6-95eb-bf432f70905e",
+    "name": "Gran Premio de Valencia",
+    "race_class": "OtherWorldTourA",
+    "race_type": "single",
+    "stages": 1,
+    "id": "f2d09778-c7ef-450e-8f85-b2ef30af751e"
+   },
+   {
+    "pool_race_id": "2db10942-f0de-46db-9799-4aaeb62be2ea",
+    "name": "Clásica del Cantábrico",
+    "race_class": "OtherWorldTourB",
+    "race_type": "single",
+    "stages": 1,
+    "id": "1f5354e7-c9ed-47d8-948e-d0a7d9bb4a03"
+   },
+   {
+    "pool_race_id": "39799ba9-d521-4ccd-a9e9-5fb63f2f2f43",
+    "name": "Milano–Riviera",
+    "race_class": "Monuments",
+    "race_type": "single",
+    "stages": 1,
+    "id": "e0970102-bb7a-480f-a9e9-286f43fa1502"
+   },
+   {
+    "pool_race_id": "d771f029-a9a1-454e-8a09-30f6326bb0a5",
+    "name": "Vuelta Vasca",
+    "race_class": "OtherWorldTourB",
+    "race_type": "stage_race",
+    "stages": 6,
+    "id": "6d718baa-aee8-4945-a1a4-3a65516fcb37"
+   },
+   {
+    "pool_race_id": "38e11d6f-1969-4d4d-9c3d-e715cbc7292f",
+    "name": "Giro delle Alpi Orientali",
+    "race_class": "OtherWorldTourA",
+    "race_type": "stage_race",
+    "stages": 7,
+    "id": "4aece8a8-f55b-4f1d-9be3-84725a744b79"
+   },
+   {
+    "pool_race_id": "ca6de363-e5a3-4829-98da-f947bd473ecd",
+    "name": "Grand Prix du Mont-Royal",
+    "race_class": "OtherWorldTourB",
+    "race_type": "single",
+    "stages": 1,
+    "id": "7ba78161-938f-42b5-a06b-30b7bd6c5003"
+   },
+   {
+    "pool_race_id": "4bc8f11d-d6ba-4f0a-a391-2e0401636fa0",
+    "name": "Hamburger Klassiker",
+    "race_class": "OtherWorldTourB",
+    "race_type": "single",
+    "stages": 1,
+    "id": "606bca29-5a25-40f1-97e5-dcf6d8861404"
+   },
+   {
+    "pool_race_id": "29bf1371-0909-4f71-b4af-70c00df1c065",
+    "name": "Ronde van Noord-Frankrijk",
+    "race_class": "OtherWorldTourA",
+    "race_type": "stage_race",
+    "stages": 6,
+    "id": "8587c515-3872-49b5-b0b4-3e2e0d809191"
+   },
+   {
+    "pool_race_id": "2de605c5-796e-4808-85d1-ac096d023fe8",
+    "name": "Grand Prix de Lille",
+    "race_class": "OtherWorldTourA",
+    "race_type": "single",
+    "stages": 1,
+    "id": "0d95b4c5-f6b4-402f-818b-a6dca7815f03"
+   },
+   {
+    "pool_race_id": "352583e4-d1ea-464c-9d46-04b22e080123",
+    "name": "Kasseienklassieker van Geraardsbergen",
+    "race_class": "OtherWorldTourB",
+    "race_type": "single",
+    "stages": 1,
+    "id": "bb5f641a-d12f-4695-8677-763b45dd2d3e"
+   },
+   {
+    "pool_race_id": "0dc1b6b0-d97d-404e-86d7-59eb4f184252",
+    "name": "Terre di Toscana",
+    "race_class": "OtherWorldTourB",
+    "race_type": "single",
+    "stages": 1,
+    "id": "83b1ef18-3a67-4c31-a0fa-bd9fbdf6641d"
+   },
+   {
+    "pool_race_id": "af923be7-fbf2-464e-9f1c-6b1eb5064100",
+    "name": "Strade Bianche del Nord",
+    "race_class": "OtherWorldTourA",
+    "race_type": "single",
+    "stages": 1,
+    "id": "15740198-8e85-41b3-b27f-f96b63056e08"
+   },
+   {
+    "pool_race_id": "47f83bb8-9383-4c2c-93dc-5c9a78b294d2",
+    "name": "Tour des Volcans d'Auvergne",
+    "race_class": "OtherWorldTourA",
+    "race_type": "stage_race",
+    "stages": 8,
+    "id": "c0358537-d931-4eea-831f-06bc27a0ff9d"
+   },
+   {
+    "pool_race_id": "8456fccc-dd60-401e-9541-7243b59f1235",
+    "name": "De Openingsklassieker",
+    "race_class": "OtherWorldTourC",
+    "race_type": "single",
+    "stages": 1,
+    "id": "3c9c45aa-11b7-4a46-8dee-c8ca55a1946a"
+   },
+   {
+    "pool_race_id": "afa3288a-e4d0-449e-b7af-5d3897722513",
+    "name": "Giro della Penisola",
+    "race_class": "GiroVuelta",
+    "race_type": "stage_race",
+    "stages": 17,
+    "id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d"
+   },
+   {
+    "pool_race_id": "ddd4c82a-bb19-416d-9e0f-6e0881b3675d",
+    "name": "Le Mur de Huy",
+    "race_class": "OtherWorldTourB",
+    "race_type": "single",
+    "stages": 1,
+    "id": "2cd7786c-f9f0-4126-90d3-05f56477ac74"
+   },
+   {
+    "pool_race_id": "2a72fb0e-096e-4e48-a2b5-396455a3ff20",
+    "name": "Grand Prix de Bordeaux",
+    "race_class": "OtherWorldTourA",
+    "race_type": "single",
+    "stages": 1,
+    "id": "347bfdf4-2bcc-4fb5-8449-7306fad7c7e5"
+   },
+   {
+    "pool_race_id": "3e1df237-33b6-4f05-bcdd-8e0436d65840",
+    "name": "Tour of South Australia",
+    "race_class": "OtherWorldTourA",
+    "race_type": "stage_race",
+    "stages": 6,
+    "id": "17f46a37-b463-42a1-9afd-5ba0cf2a2de8"
+   },
+   {
+    "pool_race_id": "30ac9981-5dce-4d51-bb48-e4efea3320fc",
+    "name": "La Course au Soleil",
+    "race_class": "OtherWorldTourA",
+    "race_type": "stage_race",
+    "stages": 8,
+    "id": "e80fa19d-621f-4b20-8d00-fd49799e51aa"
+   },
+   {
+    "pool_race_id": "f2ace2bf-b158-41cf-9255-3565fbb3487f",
+    "name": "La Doyenne des Ardennes",
+    "race_class": "Monuments",
+    "race_type": "single",
+    "stages": 1,
+    "id": "dde134f2-e24f-4dd8-8f4e-a326912c6092"
+   },
+   {
+    "pool_race_id": "0e76b709-6641-4678-b510-cf35a6fc111f",
+    "name": "Tour de la Vistule",
+    "race_class": "OtherWorldTourB",
+    "race_type": "stage_race",
+    "stages": 7,
+    "id": "142f8dcc-f646-492c-a4ac-cd02d9999f6d"
+   },
+   {
+    "pool_race_id": "80544674-a1d3-48e2-9e2c-63d05fe2230a",
+    "name": "Vuelta Ibérica",
+    "race_class": "GiroVuelta",
+    "race_type": "stage_race",
+    "stages": 17,
+    "id": "8189fdca-c1bb-41ea-af17-868f53e03f2a"
+   },
+   {
+    "pool_race_id": "4958ae51-a174-4ae0-8b1a-9fce171a37dc",
+    "name": "Volta Catalana",
+    "race_class": "OtherWorldTourB",
+    "race_type": "stage_race",
+    "stages": 7,
+    "id": "57f08edc-93f7-4d95-bcf7-8e4e0745b724"
+   },
+   {
+    "pool_race_id": "62bf9857-a403-407f-af81-e856ff1b897c",
+    "name": "La Corsa dei Due Mari",
+    "race_class": "OtherWorldTourA",
+    "race_type": "stage_race",
+    "stages": 7,
+    "id": "fce27aed-c4bc-4d95-bc41-36f07dc16695"
+   },
+   {
+    "pool_race_id": "e47d7081-ebe6-406e-991e-059fd4da271a",
+    "name": "Vuelta al Alto Aragón",
+    "race_class": "OtherWorldTourB",
+    "race_type": "stage_race",
+    "stages": 7,
+    "id": "c9beb8f6-8008-4195-bcab-0e65efec7bf6"
+   },
+   {
+    "pool_race_id": "6839e789-972f-452f-a03a-a12bd0f8b2a0",
+    "name": "Tour de la Haute-Savoie",
+    "race_class": "OtherWorldTourA",
+    "race_type": "stage_race",
+    "stages": 7,
+    "id": "8bbde2e3-f533-4b9a-a6b5-799fc457377e"
+   }
+  ],
+  "schedule": [
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 1,
+    "game_day": 59,
+    "scheduled_at": "2026-11-08T14:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 2,
+    "game_day": 62,
+    "scheduled_at": "2026-11-09T10:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 3,
+    "game_day": 64,
+    "scheduled_at": "2026-11-09T16:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 4,
+    "game_day": 66,
+    "scheduled_at": "2026-11-10T10:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 5,
+    "game_day": 67,
+    "scheduled_at": "2026-11-10T14:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 6,
+    "game_day": 68,
+    "scheduled_at": "2026-11-10T16:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 7,
+    "game_day": 69,
+    "scheduled_at": "2026-11-10T18:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 8,
+    "game_day": 71,
+    "scheduled_at": "2026-11-11T10:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 9,
+    "game_day": 72,
+    "scheduled_at": "2026-11-11T14:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 10,
+    "game_day": 74,
+    "scheduled_at": "2026-11-11T18:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 11,
+    "game_day": 76,
+    "scheduled_at": "2026-11-12T10:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 12,
+    "game_day": 77,
+    "scheduled_at": "2026-11-12T14:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 13,
+    "game_day": 78,
+    "scheduled_at": "2026-11-12T16:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 14,
+    "game_day": 79,
+    "scheduled_at": "2026-11-12T18:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 15,
+    "game_day": 80,
+    "scheduled_at": "2026-11-13T10:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 16,
+    "game_day": 82,
+    "scheduled_at": "2026-11-13T14:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 17,
+    "game_day": 83,
+    "scheduled_at": "2026-11-13T16:00:00+00:00"
+   },
+   {
+    "race_id": "b6182178-c8ce-4c56-9e62-723f8e64347b",
+    "stage_number": 18,
+    "game_day": 84,
+    "scheduled_at": "2026-11-13T18:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 1,
+    "game_day": 22,
+    "scheduled_at": "2026-11-01T10:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 2,
+    "game_day": 24,
+    "scheduled_at": "2026-11-01T16:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 3,
+    "game_day": 27,
+    "scheduled_at": "2026-11-02T10:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 4,
+    "game_day": 29,
+    "scheduled_at": "2026-11-02T16:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 5,
+    "game_day": 31,
+    "scheduled_at": "2026-11-03T10:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 6,
+    "game_day": 33,
+    "scheduled_at": "2026-11-03T14:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 7,
+    "game_day": 34,
+    "scheduled_at": "2026-11-03T18:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 8,
+    "game_day": 37,
+    "scheduled_at": "2026-11-04T10:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 9,
+    "game_day": 39,
+    "scheduled_at": "2026-11-04T16:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 10,
+    "game_day": 41,
+    "scheduled_at": "2026-11-05T12:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 11,
+    "game_day": 42,
+    "scheduled_at": "2026-11-05T14:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 12,
+    "game_day": 43,
+    "scheduled_at": "2026-11-05T16:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 13,
+    "game_day": 44,
+    "scheduled_at": "2026-11-05T18:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 14,
+    "game_day": 45,
+    "scheduled_at": "2026-11-06T10:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 15,
+    "game_day": 46,
+    "scheduled_at": "2026-11-06T12:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 16,
+    "game_day": 48,
+    "scheduled_at": "2026-11-06T16:00:00+00:00"
+   },
+   {
+    "race_id": "9d85337b-cb12-4ac1-a8af-e68fad259d7d",
+    "stage_number": 17,
+    "game_day": 49,
+    "scheduled_at": "2026-11-06T18:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 1,
+    "game_day": 127,
+    "scheduled_at": "2026-11-22T10:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 2,
+    "game_day": 129,
+    "scheduled_at": "2026-11-22T16:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 3,
+    "game_day": 131,
+    "scheduled_at": "2026-11-23T10:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 4,
+    "game_day": 132,
+    "scheduled_at": "2026-11-23T14:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 5,
+    "game_day": 133,
+    "scheduled_at": "2026-11-23T16:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 6,
+    "game_day": 134,
+    "scheduled_at": "2026-11-23T18:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 7,
+    "game_day": 136,
+    "scheduled_at": "2026-11-24T10:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 8,
+    "game_day": 138,
+    "scheduled_at": "2026-11-24T12:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 9,
+    "game_day": 139,
+    "scheduled_at": "2026-11-24T16:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 10,
+    "game_day": 143,
+    "scheduled_at": "2026-11-25T12:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 11,
+    "game_day": 144,
+    "scheduled_at": "2026-11-25T16:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 12,
+    "game_day": 146,
+    "scheduled_at": "2026-11-26T10:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 13,
+    "game_day": 147,
+    "scheduled_at": "2026-11-26T14:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 14,
+    "game_day": 148,
+    "scheduled_at": "2026-11-26T16:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 15,
+    "game_day": 149,
+    "scheduled_at": "2026-11-26T18:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 16,
+    "game_day": 153,
+    "scheduled_at": "2026-11-27T12:00:00+00:00"
+   },
+   {
+    "race_id": "8189fdca-c1bb-41ea-af17-868f53e03f2a",
+    "stage_number": 17,
+    "game_day": 154,
+    "scheduled_at": "2026-11-27T16:00:00+00:00"
+   },
+   {
+    "race_id": "e80fa19d-621f-4b20-8d00-fd49799e51aa",
+    "stage_number": 1,
+    "game_day": 2,
+    "scheduled_at": "2026-10-28T10:00:00+00:00"
+   },
+   {
+    "race_id": "e80fa19d-621f-4b20-8d00-fd49799e51aa",
+    "stage_number": 2,
+    "game_day": 4,
+    "scheduled_at": "2026-10-28T16:00:00+00:00"
+   },
+   {
+    "race_id": "e80fa19d-621f-4b20-8d00-fd49799e51aa",
+    "stage_number": 3,
+    "game_day": 7,
+    "scheduled_at": "2026-10-29T10:00:00+00:00"
+   },
+   {
+    "race_id": "e80fa19d-621f-4b20-8d00-fd49799e51aa",
+    "stage_number": 4,
+    "game_day": 9,
+    "scheduled_at": "2026-10-29T16:00:00+00:00"
+   },
+   {
+    "race_id": "e80fa19d-621f-4b20-8d00-fd49799e51aa",
+    "stage_number": 5,
+    "game_day": 12,
+    "scheduled_at": "2026-10-30T10:00:00+00:00"
+   },
+   {
+    "race_id": "e80fa19d-621f-4b20-8d00-fd49799e51aa",
+    "stage_number": 6,
+    "game_day": 14,
+    "scheduled_at": "2026-10-30T16:00:00+00:00"
+   },
+   {
+    "race_id": "e80fa19d-621f-4b20-8d00-fd49799e51aa",
+    "stage_number": 7,
+    "game_day": 17,
+    "scheduled_at": "2026-10-31T10:00:00+00:00"
+   },
+   {
+    "race_id": "e80fa19d-621f-4b20-8d00-fd49799e51aa",
+    "stage_number": 8,
+    "game_day": 19,
+    "scheduled_at": "2026-10-31T16:00:00+00:00"
+   },
+   {
+    "race_id": "c0358537-d931-4eea-831f-06bc27a0ff9d",
+    "stage_number": 1,
+    "game_day": 2,
+    "scheduled_at": "2026-10-28T12:00:00+00:00"
+   },
+   {
+    "race_id": "c0358537-d931-4eea-831f-06bc27a0ff9d",
+    "stage_number": 2,
+    "game_day": 4,
+    "scheduled_at": "2026-10-28T18:00:00+00:00"
+   },
+   {
+    "race_id": "c0358537-d931-4eea-831f-06bc27a0ff9d",
+    "stage_number": 3,
+    "game_day": 7,
+    "scheduled_at": "2026-10-29T12:00:00+00:00"
+   },
+   {
+    "race_id": "c0358537-d931-4eea-831f-06bc27a0ff9d",
+    "stage_number": 4,
+    "game_day": 9,
+    "scheduled_at": "2026-10-29T18:00:00+00:00"
+   },
+   {
+    "race_id": "c0358537-d931-4eea-831f-06bc27a0ff9d",
+    "stage_number": 5,
+    "game_day": 12,
+    "scheduled_at": "2026-10-30T12:00:00+00:00"
+   },
+   {
+    "race_id": "c0358537-d931-4eea-831f-06bc27a0ff9d",
+    "stage_number": 6,
+    "game_day": 14,
+    "scheduled_at": "2026-10-30T18:00:00+00:00"
+   },
+   {
+    "race_id": "c0358537-d931-4eea-831f-06bc27a0ff9d",
+    "stage_number": 7,
+    "game_day": 17,
+    "scheduled_at": "2026-10-31T12:00:00+00:00"
+   },
+   {
+    "race_id": "c0358537-d931-4eea-831f-06bc27a0ff9d",
+    "stage_number": 8,
+    "game_day": 19,
+    "scheduled_at": "2026-10-31T18:00:00+00:00"
+   },
+   {
+    "race_id": "4aece8a8-f55b-4f1d-9be3-84725a744b79",
+    "stage_number": 1,
+    "game_day": 52,
+    "scheduled_at": "2026-11-07T10:00:00+00:00"
+   },
+   {
+    "race_id": "4aece8a8-f55b-4f1d-9be3-84725a744b79",
+    "stage_number": 2,
+    "game_day": 54,
+    "scheduled_at": "2026-11-07T16:00:00+00:00"
+   },
+   {
+    "race_id": "4aece8a8-f55b-4f1d-9be3-84725a744b79",
+    "stage_number": 3,
+    "game_day": 57,
+    "scheduled_at": "2026-11-08T10:00:00+00:00"
+   },
+   {
+    "race_id": "4aece8a8-f55b-4f1d-9be3-84725a744b79",
+    "stage_number": 4,
+    "game_day": 59,
+    "scheduled_at": "2026-11-08T16:00:00+00:00"
+   },
+   {
+    "race_id": "4aece8a8-f55b-4f1d-9be3-84725a744b79",
+    "stage_number": 5,
+    "game_day": 62,
+    "scheduled_at": "2026-11-09T12:00:00+00:00"
+   },
+   {
+    "race_id": "4aece8a8-f55b-4f1d-9be3-84725a744b79",
+    "stage_number": 6,
+    "game_day": 64,
+    "scheduled_at": "2026-11-09T18:00:00+00:00"
+   },
+   {
+    "race_id": "4aece8a8-f55b-4f1d-9be3-84725a744b79",
+    "stage_number": 7,
+    "game_day": 66,
+    "scheduled_at": "2026-11-10T12:00:00+00:00"
+   },
+   {
+    "race_id": "8bbde2e3-f533-4b9a-a6b5-799fc457377e",
+    "stage_number": 1,
+    "game_day": 86,
+    "scheduled_at": "2026-11-14T10:00:00+00:00"
+   },
+   {
+    "race_id": "8bbde2e3-f533-4b9a-a6b5-799fc457377e",
+    "stage_number": 2,
+    "game_day": 87,
+    "scheduled_at": "2026-11-14T14:00:00+00:00"
+   },
+   {
+    "race_id": "8bbde2e3-f533-4b9a-a6b5-799fc457377e",
+    "stage_number": 3,
+    "game_day": 88,
+    "scheduled_at": "2026-11-14T16:00:00+00:00"
+   },
+   {
+    "race_id": "8bbde2e3-f533-4b9a-a6b5-799fc457377e",
+    "stage_number": 4,
+    "game_day": 89,
+    "scheduled_at": "2026-11-14T18:00:00+00:00"
+   },
+   {
+    "race_id": "8bbde2e3-f533-4b9a-a6b5-799fc457377e",
+    "stage_number": 5,
+    "game_day": 92,
+    "scheduled_at": "2026-11-15T10:00:00+00:00"
+   },
+   {
+    "race_id": "8bbde2e3-f533-4b9a-a6b5-799fc457377e",
+    "stage_number": 6,
+    "game_day": 94,
+    "scheduled_at": "2026-11-15T14:00:00+00:00"
+   },
+   {
+    "race_id": "8bbde2e3-f533-4b9a-a6b5-799fc457377e",
+    "stage_number": 7,
+    "game_day": 97,
+    "scheduled_at": "2026-11-16T10:00:00+00:00"
+   },
+   {
+    "race_id": "57f08edc-93f7-4d95-bcf7-8e4e0745b724",
+    "stage_number": 1,
+    "game_day": 92,
+    "scheduled_at": "2026-11-15T12:00:00+00:00"
+   },
+   {
+    "race_id": "57f08edc-93f7-4d95-bcf7-8e4e0745b724",
+    "stage_number": 2,
+    "game_day": 94,
+    "scheduled_at": "2026-11-15T16:00:00+00:00"
+   },
+   {
+    "race_id": "57f08edc-93f7-4d95-bcf7-8e4e0745b724",
+    "stage_number": 3,
+    "game_day": 97,
+    "scheduled_at": "2026-11-16T12:00:00+00:00"
+   },
+   {
+    "race_id": "57f08edc-93f7-4d95-bcf7-8e4e0745b724",
+    "stage_number": 4,
+    "game_day": 99,
+    "scheduled_at": "2026-11-16T16:00:00+00:00"
+   },
+   {
+    "race_id": "57f08edc-93f7-4d95-bcf7-8e4e0745b724",
+    "stage_number": 5,
+    "game_day": 102,
+    "scheduled_at": "2026-11-17T10:00:00+00:00"
+   },
+   {
+    "race_id": "57f08edc-93f7-4d95-bcf7-8e4e0745b724",
+    "stage_number": 6,
+    "game_day": 104,
+    "scheduled_at": "2026-11-17T14:00:00+00:00"
+   },
+   {
+    "race_id": "57f08edc-93f7-4d95-bcf7-8e4e0745b724",
+    "stage_number": 7,
+    "game_day": 107,
+    "scheduled_at": "2026-11-18T10:00:00+00:00"
+   },
+   {
+    "race_id": "c9beb8f6-8008-4195-bcab-0e65efec7bf6",
+    "stage_number": 1,
+    "game_day": 94,
+    "scheduled_at": "2026-11-15T18:00:00+00:00"
+   },
+   {
+    "race_id": "c9beb8f6-8008-4195-bcab-0e65efec7bf6",
+    "stage_number": 2,
+    "game_day": 97,
+    "scheduled_at": "2026-11-16T14:00:00+00:00"
+   },
+   {
+    "race_id": "c9beb8f6-8008-4195-bcab-0e65efec7bf6",
+    "stage_number": 3,
+    "game_day": 99,
+    "scheduled_at": "2026-11-16T18:00:00+00:00"
+   },
+   {
+    "race_id": "c9beb8f6-8008-4195-bcab-0e65efec7bf6",
+    "stage_number": 4,
+    "game_day": 102,
+    "scheduled_at": "2026-11-17T12:00:00+00:00"
+   },
+   {
+    "race_id": "c9beb8f6-8008-4195-bcab-0e65efec7bf6",
+    "stage_number": 5,
+    "game_day": 104,
+    "scheduled_at": "2026-11-17T16:00:00+00:00"
+   },
+   {
+    "race_id": "c9beb8f6-8008-4195-bcab-0e65efec7bf6",
+    "stage_number": 6,
+    "game_day": 107,
+    "scheduled_at": "2026-11-18T12:00:00+00:00"
+   },
+   {
+    "race_id": "c9beb8f6-8008-4195-bcab-0e65efec7bf6",
+    "stage_number": 7,
+    "game_day": 109,
+    "scheduled_at": "2026-11-18T16:00:00+00:00"
+   },
+   {
+    "race_id": "142f8dcc-f646-492c-a4ac-cd02d9999f6d",
+    "stage_number": 1,
+    "game_day": 104,
+    "scheduled_at": "2026-11-17T18:00:00+00:00"
+   },
+   {
+    "race_id": "142f8dcc-f646-492c-a4ac-cd02d9999f6d",
+    "stage_number": 2,
+    "game_day": 107,
+    "scheduled_at": "2026-11-18T14:00:00+00:00"
+   },
+   {
+    "race_id": "142f8dcc-f646-492c-a4ac-cd02d9999f6d",
+    "stage_number": 3,
+    "game_day": 109,
+    "scheduled_at": "2026-11-18T18:00:00+00:00"
+   },
+   {
+    "race_id": "142f8dcc-f646-492c-a4ac-cd02d9999f6d",
+    "stage_number": 4,
+    "game_day": 112,
+    "scheduled_at": "2026-11-19T10:00:00+00:00"
+   },
+   {
+    "race_id": "142f8dcc-f646-492c-a4ac-cd02d9999f6d",
+    "stage_number": 5,
+    "game_day": 114,
+    "scheduled_at": "2026-11-19T16:00:00+00:00"
+   },
+   {
+    "race_id": "142f8dcc-f646-492c-a4ac-cd02d9999f6d",
+    "stage_number": 6,
+    "game_day": 117,
+    "scheduled_at": "2026-11-20T10:00:00+00:00"
+   },
+   {
+    "race_id": "142f8dcc-f646-492c-a4ac-cd02d9999f6d",
+    "stage_number": 7,
+    "game_day": 119,
+    "scheduled_at": "2026-11-20T14:00:00+00:00"
+   },
+   {
+    "race_id": "fce27aed-c4bc-4d95-bc41-36f07dc16695",
+    "stage_number": 1,
+    "game_day": 112,
+    "scheduled_at": "2026-11-19T12:00:00+00:00"
+   },
+   {
+    "race_id": "fce27aed-c4bc-4d95-bc41-36f07dc16695",
+    "stage_number": 2,
+    "game_day": 114,
+    "scheduled_at": "2026-11-19T18:00:00+00:00"
+   },
+   {
+    "race_id": "fce27aed-c4bc-4d95-bc41-36f07dc16695",
+    "stage_number": 3,
+    "game_day": 117,
+    "scheduled_at": "2026-11-20T12:00:00+00:00"
+   },
+   {
+    "race_id": "fce27aed-c4bc-4d95-bc41-36f07dc16695",
+    "stage_number": 4,
+    "game_day": 119,
+    "scheduled_at": "2026-11-20T16:00:00+00:00"
+   },
+   {
+    "race_id": "fce27aed-c4bc-4d95-bc41-36f07dc16695",
+    "stage_number": 5,
+    "game_day": 122,
+    "scheduled_at": "2026-11-21T10:00:00+00:00"
+   },
+   {
+    "race_id": "fce27aed-c4bc-4d95-bc41-36f07dc16695",
+    "stage_number": 6,
+    "game_day": 124,
+    "scheduled_at": "2026-11-21T16:00:00+00:00"
+   },
+   {
+    "race_id": "fce27aed-c4bc-4d95-bc41-36f07dc16695",
+    "stage_number": 7,
+    "game_day": 127,
+    "scheduled_at": "2026-11-22T12:00:00+00:00"
+   },
+   {
+    "race_id": "17f46a37-b463-42a1-9afd-5ba0cf2a2de8",
+    "stage_number": 1,
+    "game_day": 22,
+    "scheduled_at": "2026-11-01T12:00:00+00:00"
+   },
+   {
+    "race_id": "17f46a37-b463-42a1-9afd-5ba0cf2a2de8",
+    "stage_number": 2,
+    "game_day": 24,
+    "scheduled_at": "2026-11-01T18:00:00+00:00"
+   },
+   {
+    "race_id": "17f46a37-b463-42a1-9afd-5ba0cf2a2de8",
+    "stage_number": 3,
+    "game_day": 27,
+    "scheduled_at": "2026-11-02T12:00:00+00:00"
+   },
+   {
+    "race_id": "17f46a37-b463-42a1-9afd-5ba0cf2a2de8",
+    "stage_number": 4,
+    "game_day": 29,
+    "scheduled_at": "2026-11-02T18:00:00+00:00"
+   },
+   {
+    "race_id": "17f46a37-b463-42a1-9afd-5ba0cf2a2de8",
+    "stage_number": 5,
+    "game_day": 31,
+    "scheduled_at": "2026-11-03T12:00:00+00:00"
+   },
+   {
+    "race_id": "17f46a37-b463-42a1-9afd-5ba0cf2a2de8",
+    "stage_number": 6,
+    "game_day": 33,
+    "scheduled_at": "2026-11-03T16:00:00+00:00"
+   },
+   {
+    "race_id": "6d718baa-aee8-4945-a1a4-3a65516fcb37",
+    "stage_number": 1,
+    "game_day": 119,
+    "scheduled_at": "2026-11-20T18:00:00+00:00"
+   },
+   {
+    "race_id": "6d718baa-aee8-4945-a1a4-3a65516fcb37",
+    "stage_number": 2,
+    "game_day": 122,
+    "scheduled_at": "2026-11-21T12:00:00+00:00"
+   },
+   {
+    "race_id": "6d718baa-aee8-4945-a1a4-3a65516fcb37",
+    "stage_number": 3,
+    "game_day": 124,
+    "scheduled_at": "2026-11-21T18:00:00+00:00"
+   },
+   {
+    "race_id": "6d718baa-aee8-4945-a1a4-3a65516fcb37",
+    "stage_number": 4,
+    "game_day": 127,
+    "scheduled_at": "2026-11-22T14:00:00+00:00"
+   },
+   {
+    "race_id": "6d718baa-aee8-4945-a1a4-3a65516fcb37",
+    "stage_number": 5,
+    "game_day": 129,
+    "scheduled_at": "2026-11-22T18:00:00+00:00"
+   },
+   {
+    "race_id": "6d718baa-aee8-4945-a1a4-3a65516fcb37",
+    "stage_number": 6,
+    "game_day": 131,
+    "scheduled_at": "2026-11-23T12:00:00+00:00"
+   },
+   {
+    "race_id": "8587c515-3872-49b5-b0b4-3e2e0d809191",
+    "stage_number": 1,
+    "game_day": 138,
+    "scheduled_at": "2026-11-24T14:00:00+00:00"
+   },
+   {
+    "race_id": "8587c515-3872-49b5-b0b4-3e2e0d809191",
+    "stage_number": 2,
+    "game_day": 139,
+    "scheduled_at": "2026-11-24T18:00:00+00:00"
+   },
+   {
+    "race_id": "8587c515-3872-49b5-b0b4-3e2e0d809191",
+    "stage_number": 3,
+    "game_day": 141,
+    "scheduled_at": "2026-11-25T10:00:00+00:00"
+   },
+   {
+    "race_id": "8587c515-3872-49b5-b0b4-3e2e0d809191",
+    "stage_number": 4,
+    "game_day": 143,
+    "scheduled_at": "2026-11-25T14:00:00+00:00"
+   },
+   {
+    "race_id": "8587c515-3872-49b5-b0b4-3e2e0d809191",
+    "stage_number": 5,
+    "game_day": 144,
+    "scheduled_at": "2026-11-25T18:00:00+00:00"
+   },
+   {
+    "race_id": "8587c515-3872-49b5-b0b4-3e2e0d809191",
+    "stage_number": 6,
+    "game_day": 146,
+    "scheduled_at": "2026-11-26T12:00:00+00:00"
+   },
+   {
+    "race_id": "207422a0-06bd-44f7-a2c3-3db3d03141cb",
+    "stage_number": 1,
+    "game_day": 153,
+    "scheduled_at": "2026-11-27T14:00:00+00:00"
+   },
+   {
+    "race_id": "207422a0-06bd-44f7-a2c3-3db3d03141cb",
+    "stage_number": 2,
+    "game_day": 154,
+    "scheduled_at": "2026-11-27T18:00:00+00:00"
+   },
+   {
+    "race_id": "207422a0-06bd-44f7-a2c3-3db3d03141cb",
+    "stage_number": 3,
+    "game_day": 155,
+    "scheduled_at": "2026-11-28T10:00:00+00:00"
+   },
+   {
+    "race_id": "207422a0-06bd-44f7-a2c3-3db3d03141cb",
+    "stage_number": 4,
+    "game_day": 156,
+    "scheduled_at": "2026-11-28T12:00:00+00:00"
+   },
+   {
+    "race_id": "207422a0-06bd-44f7-a2c3-3db3d03141cb",
+    "stage_number": 5,
+    "game_day": 157,
+    "scheduled_at": "2026-11-28T13:00:00+00:00"
+   },
+   {
+    "race_id": "207422a0-06bd-44f7-a2c3-3db3d03141cb",
+    "stage_number": 6,
+    "game_day": 158,
+    "scheduled_at": "2026-11-28T14:00:00+00:00"
+   },
+   {
+    "race_id": "db8bf7d0-d23c-43b4-a1ad-081adb84bbd5",
+    "stage_number": 1,
+    "game_day": 52,
+    "scheduled_at": "2026-11-07T12:00:00+00:00"
+   },
+   {
+    "race_id": "db8bf7d0-d23c-43b4-a1ad-081adb84bbd5",
+    "stage_number": 2,
+    "game_day": 54,
+    "scheduled_at": "2026-11-07T18:00:00+00:00"
+   },
+   {
+    "race_id": "db8bf7d0-d23c-43b4-a1ad-081adb84bbd5",
+    "stage_number": 3,
+    "game_day": 57,
+    "scheduled_at": "2026-11-08T12:00:00+00:00"
+   },
+   {
+    "race_id": "db8bf7d0-d23c-43b4-a1ad-081adb84bbd5",
+    "stage_number": 4,
+    "game_day": 59,
+    "scheduled_at": "2026-11-08T18:00:00+00:00"
+   },
+   {
+    "race_id": "db8bf7d0-d23c-43b4-a1ad-081adb84bbd5",
+    "stage_number": 5,
+    "game_day": 62,
+    "scheduled_at": "2026-11-09T14:00:00+00:00"
+   },
+   {
+    "race_id": "3c9c45aa-11b7-4a46-8dee-c8ca55a1946a",
+    "stage_number": 1,
+    "game_day": 2,
+    "scheduled_at": "2026-10-28T14:00:00+00:00"
+   },
+   {
+    "race_id": "bb5f641a-d12f-4695-8677-763b45dd2d3e",
+    "stage_number": 1,
+    "game_day": 7,
+    "scheduled_at": "2026-10-29T14:00:00+00:00"
+   },
+   {
+    "race_id": "83b1ef18-3a67-4c31-a0fa-bd9fbdf6641d",
+    "stage_number": 1,
+    "game_day": 12,
+    "scheduled_at": "2026-10-30T14:00:00+00:00"
+   },
+   {
+    "race_id": "15740198-8e85-41b3-b27f-f96b63056e08",
+    "stage_number": 1,
+    "game_day": 17,
+    "scheduled_at": "2026-10-31T14:00:00+00:00"
+   },
+   {
+    "race_id": "d14d2564-bce7-42fb-b473-6a2fd216bab4",
+    "stage_number": 1,
+    "game_day": 22,
+    "scheduled_at": "2026-11-01T14:00:00+00:00"
+   },
+   {
+    "race_id": "0d95b4c5-f6b4-402f-818b-a6dca7815f03",
+    "stage_number": 1,
+    "game_day": 27,
+    "scheduled_at": "2026-11-02T14:00:00+00:00"
+   },
+   {
+    "race_id": "2cd7786c-f9f0-4126-90d3-05f56477ac74",
+    "stage_number": 1,
+    "game_day": 37,
+    "scheduled_at": "2026-11-04T12:00:00+00:00"
+   },
+   {
+    "race_id": "347bfdf4-2bcc-4fb5-8449-7306fad7c7e5",
+    "stage_number": 1,
+    "game_day": 37,
+    "scheduled_at": "2026-11-04T14:00:00+00:00"
+   },
+   {
+    "race_id": "f2d09778-c7ef-450e-8f85-b2ef30af751e",
+    "stage_number": 1,
+    "game_day": 39,
+    "scheduled_at": "2026-11-04T18:00:00+00:00"
+   },
+   {
+    "race_id": "1f5354e7-c9ed-47d8-948e-d0a7d9bb4a03",
+    "stage_number": 1,
+    "game_day": 40,
+    "scheduled_at": "2026-11-05T10:00:00+00:00"
+   },
+   {
+    "race_id": "01e82e8a-386c-464c-97b0-1bb365d398b1",
+    "stage_number": 1,
+    "game_day": 47,
+    "scheduled_at": "2026-11-06T14:00:00+00:00"
+   },
+   {
+    "race_id": "606bca29-5a25-40f1-97e5-dcf6d8861404",
+    "stage_number": 1,
+    "game_day": 71,
+    "scheduled_at": "2026-11-11T12:00:00+00:00"
+   },
+   {
+    "race_id": "46007f2d-82dd-4ead-bdb0-86b0335978c0",
+    "stage_number": 1,
+    "game_day": 73,
+    "scheduled_at": "2026-11-11T16:00:00+00:00"
+   },
+   {
+    "race_id": "7ba78161-938f-42b5-a06b-30b7bd6c5003",
+    "stage_number": 1,
+    "game_day": 76,
+    "scheduled_at": "2026-11-12T12:00:00+00:00"
+   },
+   {
+    "race_id": "6b926b54-0200-4592-b106-656d5333df57",
+    "stage_number": 1,
+    "game_day": 81,
+    "scheduled_at": "2026-11-13T12:00:00+00:00"
+   },
+   {
+    "race_id": "8116f0b1-269e-41b1-a079-93b5a7dd1f35",
+    "stage_number": 1,
+    "game_day": 151,
+    "scheduled_at": "2026-11-27T10:00:00+00:00"
+   },
+   {
+    "race_id": "e0970102-bb7a-480f-a9e9-286f43fa1502",
+    "stage_number": 1,
+    "game_day": 52,
+    "scheduled_at": "2026-11-07T14:00:00+00:00"
+   },
+   {
+    "race_id": "cd8df6af-d6e8-4e37-ae66-3467e7f635df",
+    "stage_number": 1,
+    "game_day": 86,
+    "scheduled_at": "2026-11-14T12:00:00+00:00"
+   },
+   {
+    "race_id": "334ba628-1a1f-494c-879a-92df3fa7c260",
+    "stage_number": 1,
+    "game_day": 112,
+    "scheduled_at": "2026-11-19T14:00:00+00:00"
+   },
+   {
+    "race_id": "dde134f2-e24f-4dd8-8f4e-a326912c6092",
+    "stage_number": 1,
+    "game_day": 122,
+    "scheduled_at": "2026-11-21T14:00:00+00:00"
+   },
+   {
+    "race_id": "3a7fdbfe-9862-48e9-b5a0-0ccf7367ce80",
+    "stage_number": 1,
+    "game_day": 155,
+    "scheduled_at": "2026-11-28T11:00:00+00:00"
+   }
+  ]
+ }
+}

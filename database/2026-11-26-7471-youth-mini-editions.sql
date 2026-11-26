@@ -30,7 +30,7 @@ SELECT
     WHEN rp.race_type <> 'stage_race' THEN 1
     WHEN rp.race_class IN ('TourFrance', 'GiroVuelta') OR rp.terrain_archetype = 'grand_tour' THEN lvl.gt_stages
     ELSE LEAST(GREATEST(COALESCE(rp.stages, 2), 2),
-               GREATEST(2, CEIL(GREATEST(COALESCE(rp.stages, 2), 2)::numeric / lvl.divisor)::int))
+               GREATEST(3, CEIL(GREATEST(COALESCE(rp.stages, 2), 2)::numeric / lvl.divisor)::int))
   END,
   rp.date_text,
   rp.country,
