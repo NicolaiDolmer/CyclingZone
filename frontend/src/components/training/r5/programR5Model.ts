@@ -10,7 +10,8 @@
 //   - rytterens egen plan vinder over gruppens (#6000: follows_group=false);
 //   - felterne rettes pr. rytter eller pr. gruppe (PUT .../cell).
 
-import { PROGRAM_SLOTS, cellSession, isProgramPlan, type CatalogProgram, type ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
+import { PROGRAM_SLOTS, cellSession, isProgramPlan, isWholeDaySession, type CatalogProgram, type ProgramEffort, type ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
+import { effortOf, levelOfEffort } from "./todayR5Model.ts";
 import { assignDayFields } from "../../../../../backend/lib/trainingWeekBlocks.js";
 
 export type Kind = "week" | "rotation";
@@ -24,7 +25,7 @@ export function availableKinds(rotationEnabled: boolean): readonly Kind[] {
   return rotationEnabled ? ["week", "rotation"] : AVAILABLE_KINDS;
 }
 
-export type RotationPass = { session: string; effort?: "easy" | "normal" | "hard" };
+export type RotationPass = { session: string; effort?: ProgramEffort };
 export type RotationPreviewSlot = { index: number; length: number; session?: string; intensity?: string } | null;
 export type RotationPlan = {
   planKind: Kind | null;
@@ -36,7 +37,7 @@ export type WeekBlock = {
   lockSlot: number | null;
   slotEfforts?: Array<NonNullable<RotationPass["effort"]> | null>;
 };
-export type WeekCellWrite = { planKind: "week"; weekBlock?: WeekBlock };
+export type WeekCellWrite = { planKind?: "week"; weekBlock?: WeekBlock; effort?: ProgramEffort | null };
 export type RotationDrafts = Record<string, { passes?: RotationPass[]; startIndex?: number }>;
 export type WeekBlockDrafts = Record<string, Record<string, WeekBlock>>;
 
@@ -254,22 +255,44 @@ export function riderWeekDays(
 
 // --- Kladden (Save plan) -------------------------------------------------------------
 
-export type Draft = Readonly<Record<string, string>>;
+type PassEdit = { session: string; effort: ProgramEffort | null };
+export type Draft = Readonly<Record<string, string | PassEdit>>;
 
 export function draftKey(weekday: string, slot: number): string {
   return `${weekday}:${slot}`;
 }
 
 export function draftCellSession(days: ProgramWeekDays | null | undefined, draft: Draft, weekday: string, slot: number): string | null {
-  return draft[draftKey(weekday, slot)] ?? cellSession(days, weekday, slot);
+  const change = draft[draftKey(weekday, slot)];
+  return (typeof change === "string" ? change : change?.session) ?? cellSession(days, weekday, slot);
 }
 
-// Et felt i kladden. Er vaerdien den gemte igen, forsvinder rettelsen.
-export function setDraftCell(draft: Draft, days: ProgramWeekDays | null | undefined, weekday: string, slot: number, session: string): Draft {
-  const next: Record<string, string> = { ...draft };
+export function draftSlotEffort(
+  days: ProgramWeekDays | null | undefined, draft: Draft, weekday: string, slot: number,
+): ProgramEffort | null {
+  const change = draft[draftKey(weekday, slot)];
+  return typeof change === "object" ? change.effort : days?.[weekday]?.slotEfforts?.[slot] ?? null;
+}
+
+function passEffort(
+  days: ProgramWeekDays | null | undefined, draft: Draft, weekday: string, slot: number, session: string | null,
+): ProgramEffort | null {
+  if (!session || isWholeDaySession(session)) return null;
+  return draftSlotEffort(days, draft, weekday, slot) ?? days?.[weekday]?.effort ?? null;
+}
+
+// Reverting the session and slot effort removes the edit. Null inherits the day's effort.
+export function setDraftCell(
+  draft: Draft, days: ProgramWeekDays | null | undefined, weekday: string, slot: number,
+  session: string, effort?: ProgramEffort | null,
+): Draft {
+  const next = { ...draft };
   const key = draftKey(weekday, slot);
-  if (cellSession(days, weekday, slot) === session) delete next[key];
-  else next[key] = session;
+  const savedEffort = draftSlotEffort(days, {}, weekday, slot);
+  const dayEffort = days?.[weekday]?.effort ?? null;
+  const matchesEffort = effort === undefined || (effort ?? dayEffort) === (savedEffort ?? dayEffort);
+  if (cellSession(days, weekday, slot) === session && matchesEffort) delete next[key];
+  else next[key] = effort === undefined ? session : { session, effort };
   return next;
 }
 
@@ -290,26 +313,34 @@ export function copyDayIntoDraft(
   days: ProgramWeekDays | null | undefined,
   from: string,
   targets: readonly string[],
+  effortLevels = false,
 ): Draft {
   let next = draft;
   for (const target of targets) {
     for (let slot = 0; slot < PROGRAM_SLOTS; slot += 1) {
       const session = draftCellSession(days, draft, from, slot);
-      if (session) next = setDraftCell(next, days, target, slot, session);
+      if (!session) continue;
+      const effort = effortLevels && !isWholeDaySession(session)
+        ? passEffort(days, draft, from, slot, session)
+          ?? (days?.[target]?.effort ? levelOfEffort(effortOf(session)) : null)
+        : undefined;
+      next = setDraftCell(next, days, target, slot, session, effort);
     }
   }
   return next;
 }
 
-export type DraftStep = { weekday: string; slotIndex: number; session: string };
+export type DraftStep = { weekday: string; slotIndex: number; session: string; effort?: ProgramEffort | null };
 
 // Kladden som felt-skrivninger i ugens raekkefoelge (en PUT .../cell pr. felt).
 export function draftSteps(draft: Draft, weekdays: readonly string[]): DraftStep[] {
   const steps: DraftStep[] = [];
   for (const weekday of weekdays) {
     for (let slot = 0; slot < PROGRAM_SLOTS; slot += 1) {
-      const session = draft[draftKey(weekday, slot)];
-      if (session) steps.push({ weekday, slotIndex: slot, session });
+      const change = draft[draftKey(weekday, slot)];
+      if (!change) continue;
+      const pass = typeof change === "string" ? { session: change } : change;
+      steps.push({ weekday, slotIndex: slot, ...pass });
     }
   }
   return steps;
@@ -325,7 +356,7 @@ export type WeekCell =
   | { kind: "race"; pending?: true }
   | { kind: "rest" }
   | { kind: "ran"; session: string | null; sourceSlot?: number }
-  | { kind: "session"; session: string | null; changed: boolean; sourceSlot?: number };
+  | { kind: "session"; session: string | null; changed: boolean; sourceSlot?: number; effort?: ProgramEffort | null };
 
 export type WeekPlacement = { fieldSource: (number | null)[]; taken: number[]; lockMovedFrom: number | null; restSlots?: number[] };
 
@@ -342,7 +373,7 @@ export function weekPlacementFromForecast(forecast: Partial<WeekPlacement> | nul
 // 7 x 5 felter. Loebets felter i dag er graa + flag (regel A); felter med kvittering i
 // dag er koert. Serveren kender kun dagens loebsfelter, saa de andre dage viser planen.
 export function weekCells({
-  days, draft, weekdays, todayWeekday, raceToday, pendingToday, lockedToday, placements = {},
+  days, draft, weekdays, todayWeekday, raceToday, pendingToday, lockedToday, placements = {}, effortLevels = false,
 }: {
   days: ProgramWeekDays | null | undefined;
   draft: Draft;
@@ -352,6 +383,7 @@ export function weekCells({
   pendingToday?: ReadonlySet<number>;
   lockedToday: ReadonlySet<number>;
   placements?: Record<string, WeekPlacement>;
+  effortLevels?: boolean;
 }): WeekCell[][] {
   return weekdays.map((weekday) => Array.from({ length: PROGRAM_SLOTS }, (_, slot): WeekCell => {
     const placement = placements[weekday];
@@ -361,7 +393,9 @@ export function weekCells({
     const source = placement?.fieldSource[slot] ?? slot;
     const metadata = source === slot ? {} : { sourceSlot: source };
     if (weekday === todayWeekday && lockedToday.has(slot)) return { kind: "ran", session: cellSession(days, weekday, source), ...metadata };
-    return { kind: "session", session: draftCellSession(days, draft, weekday, source), changed: draftKey(weekday, source) in draft, ...metadata };
+    const session = draftCellSession(days, draft, weekday, source);
+    const effort = effortLevels ? { effort: passEffort(days, draft, weekday, source, session) } : {};
+    return { kind: "session", session, changed: draftKey(weekday, source) in draft, ...metadata, ...effort };
   }));
 }
 

@@ -2541,15 +2541,17 @@ export default function TrainingPage() {
   return (
     <div className="mx-auto max-w-[1600px]">
       <OnboardingTour pageKey="training" steps={trainingTourSteps} />
-      <PageHeader
-        title={t("title")}
-        subtitle={headerStatus}
-        // #5485 (A2): sidens ENE guld-knap. På en smal telefon står den i fuld
-        // bredde under sidehovedet (44 px tryk-mål), ellers her. "Get
-        // suggestions from the assistant" er flyttet til tabellens
-        // værktøjslinje, så sidehovedet kun bærer den ene handling.
-        actions={programR5 && activeTab === "weekplan" ? <span ref={setProgramR5Actions} /> : isMobile ? null : primaryButton}
-      />
+      <div className={programR5 && activeTab === "weekplan" && !isMobile ? "sticky top-0 z-sticky bg-cz-body" : undefined}>
+        <PageHeader
+          title={t("title")}
+          subtitle={headerStatus}
+          // #5485 (A2): sidens ENE guld-knap. På en smal telefon står den i fuld
+          // bredde under sidehovedet (44 px tryk-mål), ellers her. "Get
+          // suggestions from the assistant" er flyttet til tabellens
+          // værktøjslinje, så sidehovedet kun bærer den ene handling.
+          actions={programR5 && activeTab === "weekplan" ? <span ref={setProgramR5Actions} /> : isMobile ? null : primaryButton}
+        />
+      </div>
 
       {isMobile && !(programR5 && activeTab === "weekplan") && primaryButton}
       <TrainNowNote status={trainNow.status} result={trainNow.result} error={trainNow.error} className="mb-3" />

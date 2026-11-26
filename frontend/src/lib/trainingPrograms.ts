@@ -19,11 +19,14 @@
 export const PROGRAM_SLOTS = 5;
 export const WHOLE_DAY_SESSIONS = ["rest", "recovery"] as const;
 
+export type ProgramEffort = "easy" | "normal" | "hard";
+
 export type ProgramDayEntry = {
   session?: string;
   intensity?: string;
   slots?: ReadonlyArray<string | null> | null;
-  slotEfforts?: ReadonlyArray<"easy" | "normal" | "hard" | null>;
+  effort?: ProgramEffort;
+  slotEfforts?: ReadonlyArray<ProgramEffort | null>;
   lockSlot?: number | null;
 };
 export type ProgramWeekDays = Record<string, ProgramDayEntry | undefined>;

@@ -3,13 +3,15 @@ import { useTranslation } from "react-i18next";
 import Button from "../../ui/Button.jsx";
 import Select from "../../ui/Select.jsx";
 import { ChevronUpIcon, ChevronDownIcon, LockIcon } from "../../ui/icons/index.jsx";
+import { controlClass } from "../../ui/fieldStyles.js";
+import ProgramPassSelect from "./ProgramPassSelect.tsx";
 import type { ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
 import {
-  draftCellSession, moveWeekBlock, type Draft, type WeekBlock, type WeekPlacement,
+  draftCellSession, draftSlotEffort, moveWeekBlock, type Draft, type WeekBlock, type WeekPlacement,
 } from "./programR5Model.ts";
 
 export default function WeekBlockEditor({
-  dayKeys, today, closed, days, draft, changes, racesFor, placements, disabled, dayLabel, sessionLabel, onChange,
+  dayKeys, today, closed, days, draft, changes, racesFor, placements, disabled, dayLabel, sessionLabel, sessionOrder, effortLevels, onChange,
 }: {
   dayKeys: readonly string[];
   today: string;
@@ -22,6 +24,8 @@ export default function WeekBlockEditor({
   disabled: boolean;
   dayLabel: (weekday: string) => string;
   sessionLabel: (session: string) => string;
+  sessionOrder: readonly string[];
+  effortLevels: boolean;
   onChange: (weekday: string, block: WeekBlock) => void;
 }) {
   const { t } = useTranslation("trainingR5", { keyPrefix: "programR5.weekPriority" });
@@ -32,9 +36,12 @@ export default function WeekBlockEditor({
     lockSlot: current?.lockSlot ?? null,
     slotEfforts: current?.slotEfforts?.slice(),
   };
+  const blockDays = { ...days, [weekday]: { ...current, ...saved } };
+  const slotEfforts = saved.slots.map((_, index) => draftSlotEffort(blockDays, draft, weekday, index));
   const block = {
     ...saved,
-    slots: saved.slots.map((session, index) => draft[`${weekday}:${index}`] ?? session),
+    slots: saved.slots.map((session, index) => draftCellSession(blockDays, draft, weekday, index) ?? session),
+    ...(effortLevels && (saved.slotEfforts || slotEfforts.some((level) => level !== null)) ? { slotEfforts } : {}),
   };
   const editable = !disabled && !(weekday === today && closed);
   const placement = placements[weekday];
@@ -54,7 +61,18 @@ export default function WeekBlockEditor({
         {block.slots.map((session, index) => (
           <li key={index} className="flex min-w-0 flex-wrap items-center gap-2 border-t border-cz-border px-3 py-1">
             <span className="font-data text-xs tabular-nums text-cz-2">{index + 1}</span>
-            <span className="min-w-24 flex-1 text-xs text-cz-1">{sessionLabel(session)}</span>
+            {effortLevels ? (
+              <ProgramPassSelect session={session} effort={slotEfforts[index] ?? current?.effort}
+                sessionOrder={sessionOrder} sessionLabel={sessionLabel} effortLevels
+                label={`${dayLabel(weekday)} · ${index + 1}`}
+                testId="program-r5-week-block-pass"
+                className={`${controlClass({ size: "sm" })} min-h-11 min-w-24 flex-1`} disabled={!editable}
+                onChange={(next, effort) => onChange(weekday, {
+                  ...block,
+                  slots: block.slots.map((value, slot) => slot === index ? next : value),
+                  slotEfforts: slotEfforts.map((value, slot) => slot === index && effort !== undefined ? effort : value),
+                })} />
+            ) : <span className="min-w-24 flex-1 text-xs text-cz-1">{sessionLabel(session)}</span>}
             <Button variant="ghost" size="sm" disabled={!editable || index === 0}
               onClick={() => onChange(weekday, moveWeekBlock(block, index, index - 1))} aria-label={t("up", { n: index + 1 })}>
               <ChevronUpIcon size={14} aria-hidden="true" />

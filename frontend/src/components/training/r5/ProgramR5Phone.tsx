@@ -12,12 +12,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import Button from "../../ui/Button.jsx";
-import Modal from "../../ui/Modal.jsx";
 import Segmented from "../../ui/Segmented.jsx";
 import {
   ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ClipboardIcon, FlagIcon, LockIcon, TeamIcon,
 } from "../../ui/icons/index.jsx";
-import { PROGRAM_SLOTS } from "../../../lib/trainingPrograms.ts";
+import ProgramPassSelect from "./ProgramPassSelect.tsx";
+import { PROGRAM_SLOTS, type ProgramEffort } from "../../../lib/trainingPrograms.ts";
 import {
   PHONE_VIEWS, PROGRAM_PHONE_VIEW_STORE, clampDay, dayMarks, rememberedPhoneView, startDayIndex, weekdayLong,
   type PhoneView, type WeekCell,
@@ -42,16 +42,17 @@ type Shared = {
   todayLocked: boolean;
   editable: boolean;
   sessionOrder: readonly string[];
+  effortLevels: boolean;
   sessionLabel: (session: string) => string;
   dayLabel: (weekday: string) => string;
   lang: string;
   tonight: ReactNode;
-  onEdit: (weekday: string, slot: number, session: string) => void;
+  onEdit: (weekday: string, slot: number, session: string, effort?: ProgramEffort | null) => void;
   onCopyDay: (from: string, choice: string) => void;
 };
 
 export default function ProgramR5Phone({
-  name, subtitle, typeLabel, chips, onChip, renderLibrary, limitEl, summary, hints, footer, showPlan,
+  name, subtitle, typeLabel, chips, onChip, onOpenPrograms, onOpenGroups, limitEl, summary, hints, footer, showPlan,
   saveLabel, saveDisabled, onSave, kindSelector = null, rotationEditor = null, weekBlockEditor = null, focusWeekday = null, ...shared
 }: Shared & {
   // #8580: en ugedag, der skal vælges og foldes ud (fra dagsvælgerens "Ret <ugedag> i Program").
@@ -65,8 +66,8 @@ export default function ProgramR5Phone({
   typeLabel: string | null;
   chips: PhoneChip[];
   onChip: (key: string) => void;
-  // Biblioteket (programmer, grupper, ryttere) og "hvem programmet sidder paa" i arket "Change program".
-  renderLibrary: (close: () => void) => ReactNode;
+  onOpenPrograms: () => void;
+  onOpenGroups?: () => void;
   limitEl: ReactNode;
   summary: ReactNode;
   hints: ReactNode;
@@ -82,7 +83,6 @@ export default function ProgramR5Phone({
   const [day, setDay] = useState(() => startDayIndex(weekdays, focusWeekday?.weekday ?? todayWeekday));
   const [openDay, setOpenDay] = useState<number>(() => startDayIndex(weekdays, focusWeekday?.weekday ?? todayWeekday));
   // Hver ny anmodning (n) vælger ugedagen igen, også når fanen allerede er åben.
-  const [sheet, setSheet] = useState(false);
   const focusN = focusWeekday?.n ?? null;
   const focusDay = focusWeekday?.weekday ?? null;
   useEffect(() => {
@@ -90,11 +90,9 @@ export default function ProgramR5Phone({
     const idx = startDayIndex(weekdays, focusDay);
     setDay(idx);
     setOpenDay(idx);
-    setSheet(true);
   }, [focusN, focusDay, weekdays]);
 
 
-  const closeSheet = () => setSheet(false);
   const saveBar = (
     <div className="fixed inset-x-0 bottom-(--cz-mobile-nav-offset,0px) z-sticky border-t border-cz-border bg-cz-card px-4 pb-3 pt-3"
       data-testid="program-r5-savebar">
@@ -111,11 +109,17 @@ export default function ProgramR5Phone({
           <h2 className="truncate text-base font-semibold text-cz-1">{name}</h2>
           <p className="mt-0.5 truncate text-xs text-cz-2">{subtitle}</p>
         </div>
-        <button type="button" onClick={() => setSheet(true)} data-testid="program-r5-change"
+        <button type="button" onClick={onOpenPrograms} data-testid="program-r5-change"
           className="-me-1 inline-flex min-h-11 shrink-0 items-center px-1 text-xs font-medium text-cz-accent-t">
           {tR5(showPlan ? "programR5.phone.changeProgram" : "programR5.programs")}
         </button>
       </div>
+
+      {onOpenGroups && (
+        <Button variant="secondary" size="sm" className="min-h-11 self-start" onClick={onOpenGroups} data-testid="program-r5-open-groups">
+          {tR5("programR5.groups")}
+        </Button>
+      )}
 
       {showPlan && <>
       {chips.length > 0 && <div>
@@ -160,21 +164,6 @@ export default function ProgramR5Phone({
 
       {typeof document === "undefined" ? saveBar : createPortal(saveBar, document.body)}
 
-      {sheet && (
-        <Modal
-          open
-          onClose={closeSheet}
-          size="md"
-          title={tR5("programR5.phone.changeProgram")}
-          titleId="program-r5-phone-sheet-title"
-          ariaLabelledby={undefined}
-          description={null}
-          closeLabel={tR5("programR5.phone.close")}
-          footer={<Button variant="secondary" className="min-h-11" onClick={closeSheet}>{tR5("programR5.phone.close")}</Button>}
-        >
-          <div className="flex flex-col gap-4" data-testid="program-r5-sheet">{renderLibrary(closeSheet)}</div>
-        </Modal>
-      )}
     </div>
   );
 }
@@ -242,7 +231,7 @@ function DayView(props: Shared & { day: number; onDay: (d: number) => void }) {
 
 // Dagens fem felter, "kopier dagen" og (i dag) aftenens traethed. Faelles for Dag og Uge.
 function DayBody({
-  cells, weekdays, todayWeekday, todayLocked, editable, sessionOrder, sessionLabel, dayLabel, lang, tonight, onEdit, onCopyDay, d,
+  cells, weekdays, todayWeekday, todayLocked, editable, sessionOrder, effortLevels, sessionLabel, dayLabel, lang, tonight, onEdit, onCopyDay, d,
 }: Shared & { d: number }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5");
@@ -253,7 +242,7 @@ function DayBody({
       <ol className="overflow-hidden rounded-cz border border-cz-border bg-cz-card" aria-label={tR5("programR5.phone.fieldsOf", { day: weekdayLong(weekday, lang) })}>
         {Array.from({ length: PROGRAM_SLOTS }, (_, slot) => {
           const cell = cells[d][slot];
-          const base = "relative flex min-h-11 items-center gap-3 border-t border-cz-border px-3 text-sm first:border-t-0";
+          const base = "relative flex min-h-11 items-center gap-3 border-t border-cz-border px-3 text-sm first:border-t-0 focus-within:ring-1 focus-within:ring-inset focus-within:ring-cz-border-strong";
           const num = <span className="w-9 shrink-0 font-data text-2xs font-semibold tabular-nums text-cz-3">{t("mobile.raceDayShort", { n: slot + 1 })}</span>;
           if (cell.kind === "race") {
             return (
@@ -279,17 +268,16 @@ function DayBody({
             <li key={slot} className={base}>
               {num}
               <span className={`min-w-0 flex-1 truncate ${cell.session ? "text-cz-1" : "text-cz-3"}`}>
-                {cell.session ? sessionLabel(cell.session) : "–"}
+                {cell.session ? sessionLabel(cell.session) : "–"}{cell.effort && ` · ${t(`dayPanel.level_${cell.effort}`)}`}
               </span>
               {cell.changed && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-cz-2" aria-label={tR5("programR5.notSaved")} />}
               {canEdit && (
                 <>
                   <ChevronDownIcon size={14} aria-hidden="true" className="shrink-0 text-cz-3" />
-                  <select value={cell.session ?? ""} onChange={(e) => onEdit(weekday, slot, e.target.value)} aria-label={label}
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0">
-                    {!cell.session && <option value="" disabled>–</option>}
-                    {sessionOrder.map((s) => <option key={s} value={s}>{sessionLabel(s)}</option>)}
-                  </select>
+                  <ProgramPassSelect session={cell.session} effort={cell.effort} sessionOrder={sessionOrder}
+                    sessionLabel={sessionLabel} effortLevels={effortLevels} label={label} testId="program-r5-cell"
+                    onChange={(session, effort) => onEdit(weekday, slot, session, effort)}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
                 </>
               )}
             </li>
@@ -355,7 +343,7 @@ function WeekList(props: Shared & { open: number; onOpen: (d: number) => void })
                     {c.kind === "ran" && <span className="text-cz-3">{t("settleAfterStage.ran")}</span>}
                     {c.kind === "rest" && <span className="text-cz-2">{sessionLabel("rest")}</span>}
                     {c.kind === "session" && (
-                      <span className={c.session ? "text-cz-1" : "text-cz-3"}>{c.session ? sessionLabel(c.session) : "–"}</span>
+                      <span className={c.session ? "text-cz-1" : "text-cz-3"}>{c.session ? sessionLabel(c.session) : "–"}{c.effort && ` · ${t(`dayPanel.level_${c.effort}`)}`}</span>
                     )}
                     {c.kind === "session" && c.changed && <span className="h-1.5 w-1.5 shrink-0 self-center rounded-full bg-cz-2" aria-label={tR5("programR5.notSaved")} />}
                   </li>

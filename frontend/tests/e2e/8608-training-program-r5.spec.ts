@@ -84,6 +84,18 @@ test("Program R5 requires a catalog choice and confirms rider and group assignme
   let library = await openLibrary();
   await expect(library.getByRole("button", { pressed: true })).toHaveCount(0);
   await expect(addTarget).toHaveCount(0);
+  if (isMobile) await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).last().click();
+  await page.getByTestId("program-r5-open-groups").click();
+  const groupsDialog = page.getByRole("dialog", { name: "Groups", exact: true });
+  await expect(groupsDialog.getByTestId("program-r5-group")).toHaveCount(2);
+  await groupsDialog.getByRole("button", { name: /^Group B/ }).click();
+  await expect(groupsDialog).toHaveCount(0);
+  await expect(page.getByTestId("program-r5-save")).toBeInViewport();
+  if (!isMobile) {
+    await page.getByTestId("program-r5-open-programs").click();
+    await page.getByRole("dialog", { name: "Change program" }).getByRole("button", { name: "Close", exact: true }).last().click();
+  }
+  library = await openLibrary();
   await library.getByTestId("program-r5-group").filter({ hasText: "Group A" })
     .getByRole("button", { name: "Group A Sprinter", exact: true }).click();
   await expect(copy).toBeDisabled();
@@ -157,4 +169,85 @@ test("Program R5 requires a catalog choice and confirms rider and group assignme
     await library.getByRole("button", { name: /^Climber/ }).click();
     await expect(page.getByTestId("program-r5-dayview").getByRole("heading", { name: "Tuesday" })).toBeVisible();
   }
+});
+
+test("W1 keeps a failed effort draft and saves the selected effort and recovery for the group", async ({ page }) => {
+  test.setTimeout(120_000);
+  const riders = Array.from({ length: 28 }, (_, index) => ({
+    ...squad[0], id: "w1-" + index, lastname: String(index).padStart(2, "0"),
+  }));
+  const writeAttempts: { weekday: string; slotIndex: number; session: string; effort?: string }[] = [];
+  const weekDays = Object.fromEntries(days.map((day) => [day, {
+    session: "sprint", slots: Array<string | null>(5).fill(null), slotEfforts: Array<string | null>(5).fill(null),
+  }]));
+  const groups = [
+    { id: "small", name: "Small group", programKey: "sprinter", days: weekDays, members: [member(riders[0].id)] },
+    { id: "large", name: "Large group", programKey: "sprinter", days: weekDays, members: riders.slice(1).map((rider) => member(rider.id)) },
+  ];
+  await stabilizePage(page);
+  await page.clock.setFixedTime(new Date("2026-11-23T12:00:00Z"));
+  await installNetworkMocks(page);
+  await page.route("**/api/feature-flags", (route) => json(route, {
+    flags: { training_page_r5: true, training_groups: true, training_programs: true, training_program_cells: true },
+  }));
+  await page.route("**/rest/v1/riders**", (route) => route.request().method() === "OPTIONS"
+    ? route.fulfill({ status: 204, headers: corsHeaders(route.request()) }) : json(route, riders));
+  await page.route("**/api/training/me**", (route) => json(route, {
+    enabled: true, betaTester: true, teamId: TEST_TEAM.id, plans: {}, condition: {}, progress: {},
+    capped: {}, trainability: {}, weekPlan: null, riderWeekPlans: {}, racingToday: {}, effortLevels: true,
+  }));
+  await page.route("**/api/training/programs", (route) => json(route, { enabled: true, cellsEnabled: true, catalog, assigned: {}, seeds: {} }));
+  await page.route("**/api/training/groups", (route) => json(route, { enabled: true, groups }));
+  await page.route("**/api/training/groups/large/cell", (route) => {
+    const entry = route.request().postDataJSON() as (typeof writeAttempts)[number];
+    writeAttempts.push(entry);
+    if (writeAttempts.length === 1) return json(route, { error: "test_rejected_write" }, 409);
+    weekDays[entry.weekday].slots[entry.slotIndex] = entry.session;
+    weekDays[entry.weekday].slotEfforts[entry.slotIndex] = entry.effort ?? null;
+    return json(route, { ok: true, groups });
+  });
+  await login(page);
+  await page.addInitScript(() => window.localStorage.setItem("cz_lang", "en"));
+  await page.goto("/training");
+  await page.getByRole("tab", { name: "Program", exact: true }).click();
+  const openGroups = page.getByTestId("program-r5-open-groups");
+  const dialog = page.getByRole("dialog", { name: "Groups", exact: true });
+  const largeGroup = dialog.getByTestId("program-r5-group").filter({ hasText: "Large group" });
+  await openGroups.click();
+  await expect(dialog.getByTestId("program-r5-group").filter({ hasText: "Small group" }).getByTestId("program-r5-rider")).toHaveCount(1);
+  await expect(largeGroup.getByTestId("program-r5-rider")).toHaveCount(riders.length - 1);
+  await largeGroup.getByRole("button", { name: "Rider 27", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await openGroups.click();
+  await largeGroup.getByRole("button", { name: /^Large group/ }).click();
+
+  const pass = page.getByTestId("program-r5-cell").first();
+  await expect(pass).toHaveValue("sprint");
+  for (const level of ["easy", "normal", "hard"]) {
+    await expect(pass.locator('option[value="sprint:' + level + '"]')).toHaveCount(1);
+  }
+  await pass.selectOption("sprint:easy");
+  expect(writeAttempts).toHaveLength(0);
+  const save = page.getByTestId("program-r5-save");
+  await expect(save).toBeInViewport();
+  await save.click();
+  const error = page.getByRole("status").filter({ hasText: /could not be saved/i });
+  await expect(error).toBeVisible();
+  await expect(pass).toHaveValue("sprint:easy");
+  await expect(save).toBeEnabled();
+  await save.click();
+  await expect(save).toBeDisabled();
+  expect(writeAttempts.slice(0, 2)).toEqual([
+    expect.objectContaining({ session: "sprint", effort: "easy" }),
+    expect.objectContaining({ session: "sprint", effort: "easy" }),
+  ]);
+  await pass.selectOption("recovery");
+  await save.click();
+  await expect(save).toBeDisabled();
+  expect(writeAttempts.at(-1)).toEqual(expect.objectContaining({ session: "recovery" }));
+  await page.reload();
+  await page.getByRole("tab", { name: "Program", exact: true }).click();
+  await openGroups.click();
+  await largeGroup.getByRole("button", { name: /^Large group/ }).click();
+  await expect(pass).toHaveValue("recovery");
 });

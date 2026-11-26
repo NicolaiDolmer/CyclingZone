@@ -236,3 +236,29 @@ test("#8608 gruppeskift bevarer alle modtagergruppens medlemmer", () => {
   assert.equal(groupMovePatch(GROUPS[0], "a"), null);
   assert.equal(groupMovePatch(GROUPS[0], "b"), null);
 });
+
+test("W1 drafts an effort-only edit, copies the effort and preserves recovery", () => {
+  const days = week("sprint");
+  days.mon = { session: "sprint", effort: "easy", slotEfforts: [null, "hard"] };
+  let draft = setDraftCell({}, days, "mon", 0, "sprint", "normal");
+  draft = setDraftCell(draft, days, "mon", 1, "recovery");
+  draft = copyDayIntoDraft(draft, days, "mon", ["tue"], true);
+  const writes = draftSteps(draft, W);
+  assert.deepEqual(writes.slice(0, 4), [
+    { weekday: "mon", slotIndex: 0, session: "sprint", effort: "normal" },
+    { weekday: "mon", slotIndex: 1, session: "recovery" },
+    { weekday: "tue", slotIndex: 0, session: "sprint", effort: "normal" },
+    { weekday: "tue", slotIndex: 1, session: "recovery" },
+  ]);
+  assert.deepEqual(setDraftCell({}, days, "mon", 0, "sprint", "easy"), {});
+  assert.deepEqual(draftSteps(setDraftCell({}, days, "mon", 1, "sprint", null), W),
+    [{ weekday: "mon", slotIndex: 1, session: "sprint", effort: null }]);
+});
+
+test("W1 copies a standard-level pass without inheriting the target day's override", () => {
+  const days = week("endurance");
+  days.tue = { session: "endurance", effort: "hard" };
+  const writes = draftSteps(copyDayIntoDraft({}, days, "mon", ["tue"], true), W);
+  assert.equal(writes.length, 5);
+  assert.ok(writes.every((write) => write.effort && write.effort !== "hard"));
+});

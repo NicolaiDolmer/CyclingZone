@@ -46,7 +46,7 @@ import type { FatigueRulesClient } from "../useFatigueRules.ts";
 import type { TrainingGroupsClient } from "../groups/useTrainingGroups.ts";
 import type { ProgramsResult } from "../useTrainingPrograms.ts";
 import { sessionI18nKey } from "../../../lib/trainingDayTypes.js";
-import { PROGRAM_SLOTS, programName, programTagline, type CatalogProgram, type ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
+import { PROGRAM_SLOTS, programName, programTagline, type CatalogProgram, type ProgramEffort, type ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
 import {
   availableKinds, PROGRAM_VIEW_STORE, buildLibrary, catalogWeekDays, copyCandidates, copyDayIntoDraft, copyDayTargets,
   draftSteps, draftTotal, parseSubjectKey, programKeyOf, rememberedKind, riderWeekDays, setDraftCell, shortRiderName,
@@ -55,6 +55,7 @@ import {
   GROUP_LIMIT_MODES, createdGroupId, dropDrafts, followAgainTarget, groupLimitDraft, groupLimitValid, groupLimitWrite,
   groupAfterPatch, groupMenuActions, groupMovePatch, groupPatch, type GroupLimitDraft, type GroupMenuAction,
 } from "./programR5Model.ts";
+import ProgramPassSelect from "./ProgramPassSelect.tsx";
 import ProgramR5Phone, { type PhoneChip } from "./ProgramR5Phone.tsx";
 import RotationEditor, { type RotationPreviewDay } from "./RotationEditor.tsx";
 import { useTrainingWeek } from "./useTrainingWeek.ts";
@@ -157,6 +158,8 @@ export default function ProgramR5({
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
+  const [libraryView, setLibraryView] = useState<"programs" | "groups" | null>(null);
+  const editorRef = useRef<HTMLElement | null>(null);
   const [addTarget, setAddTarget] = useState<Subject | null>(null);
   const [moveRider, setMoveRider] = useState<{ id: string; add: boolean } | null>(null);
   const [dialogError, setDialogError] = useState(false);
@@ -177,11 +180,17 @@ export default function ProgramR5({
     onRequestHandled?.();
     if (request.kind === "limit") { setLimitOpen(true); return; }
     // #8580: dagsvaelgerens "Ret <ugedag> i Program" -> telefonen viser netop den ugedag.
-    if (request.kind === "weekday") { if (request.weekday) setFocusWeekday({ weekday: request.weekday, n: request.n }); return; }
+    if (request.kind === "weekday") {
+      if (request.weekday) {
+        setFocusWeekday({ weekday: request.weekday, n: request.n });
+        if (mobile) setLibraryView("programs");
+      }
+      return;
+    }
     if (!request.id) return;
     setChosenProgramKey(null);
     setSubject({ kind: "rider", id: request.id });
-  }, [request, onRequestHandled]);
+  }, [request, onRequestHandled, mobile]);
 
   const chosenProgram = programs.catalog.find((p) => p.key === chosenProgramKey) ?? null;
   const programKey = chosenProgram?.key ?? (subject ? programKeyOf(subject, library) : null);
@@ -251,7 +260,7 @@ export default function ProgramR5({
       ? { ...placement, restSlots, fieldSource: placement.fieldSource.map((source, slot) => restSlots.includes(slot) ? null : source) }
       : placement]];
   })) : {};
-  const cells = weekCells({ days: gridDays, draft, weekdays, todayWeekday, raceToday, pendingToday, lockedToday, placements });
+  const cells = weekCells({ days: gridDays, draft, weekdays, todayWeekday, raceToday, pendingToday, lockedToday, placements, effortLevels });
   const tonight = (subject?.kind === "rider"
     ? forecast?.riders?.[subject.id] ?? null
     : groupForecastEntry(forecast?.riders, memberIds)) as ForecastEntry | null;
@@ -338,7 +347,7 @@ export default function ProgramR5({
       key={sKey}
       dayKeys={weekdays} today={todayWeekday} closed={todayLocked} days={days}
       draft={draft} changes={weekDayDrafts} disabled={busy}
-      dayLabel={dayLabel} sessionLabel={sessionLabel}
+      dayLabel={dayLabel} sessionLabel={sessionLabel} sessionOrder={sessionOrder} effortLevels={effortLevels}
       racesFor={racesFor} placements={placements}
       onChange={(day, block) => {
         setWeekDrafts((prev) => ({ ...prev, [sKey]: { ...prev[sKey], [day]: block } }));
@@ -350,13 +359,13 @@ export default function ProgramR5({
     />
   ) : null;
 
-  const editCell = (weekday: string, slot: number, session: string) => {
+  const editCell = (weekday: string, slot: number, session: string, effort?: ProgramEffort | null) => {
     const sourceSlot = placements[weekday]?.fieldSource[slot] ?? slot;
-    setDrafts((prev) => ({ ...prev, [sKey]: setDraftCell(prev[sKey] ?? {}, gridDays, weekday, sourceSlot, session) }));
+    setDrafts((prev) => ({ ...prev, [sKey]: setDraftCell(prev[sKey] ?? {}, gridDays, weekday, sourceSlot, session, effort) }));
   };
   const copyDay = (from: string, choice: string) => {
     const targets = copyDayTargets(from, choice, weekdays, { todayWeekday, todayLocked });
-    setDrafts((prev) => ({ ...prev, [sKey]: copyDayIntoDraft(prev[sKey] ?? {}, gridDays, from, targets) }));
+    setDrafts((prev) => ({ ...prev, [sKey]: copyDayIntoDraft(prev[sKey] ?? {}, gridDays, from, targets, effortLevels) }));
   };
 
   // Save plan: hver rettelse er en felt-skrivning til den eksisterende API (rytter eller gruppe).
@@ -387,10 +396,11 @@ export default function ProgramR5({
     for (const [key, d] of Object.entries(drafts)) {
       const target = parseSubjectKey(key);
       if (!target) continue;
-      const rest: Record<string, string> = { ...d };
+      const rest = { ...d };
       for (const step of draftSteps(d, weekdays)) {
         if (unsavedDays[key]?.[step.weekday]) continue;
-        const result = await saveCell(target, step.weekday, step.slotIndex, step.session, markWeek);
+        const result = await saveCell(target, step.weekday, step.slotIndex, step.session,
+          effortLevels && step.effort !== undefined ? { ...markWeek, effort: step.effort } : markWeek);
         if (!result.ok) { failed = true; break; }
         delete rest[`${step.weekday}:${step.slotIndex}`];
       }
@@ -766,6 +776,53 @@ export default function ProgramR5({
     />
   ) : null;
 
+  const revealEditor = () => {
+    editorRef.current?.scrollIntoView({ block: "nearest" });
+  };
+  const renderLibrary = (view: typeof libraryView = null) => {
+    const close = () => setLibraryView(null);
+    return (
+      <LibraryPanel
+        library={library}
+        catalog={programs.catalog}
+        lang={lang}
+        selectedProgram={chosenProgram?.key ?? null}
+        selectedSubject={sKey}
+        touch={mobile}
+        groupsOnly={view === "groups"}
+        riderName={(id) => riderById.get(id)?.name ?? ""}
+        onProgram={(key) => { pickProgram(key); close(); revealEditor(); }}
+        onSubject={(next) => { pickSubject(next); close(); revealEditor(); }}
+        groupActions={menuActions}
+        groupBusy={busy}
+        onNewGroup={groupsOn ? () => { close(); openGroupDialog(null); } : undefined}
+        onGroupAction={groupsOn ? (id, action) => { close(); groupAction(id, action); } : undefined}
+        onMoveRider={groupsOn ? (id, add) => { close(); openMove(id, add); } : undefined}
+      />
+    );
+  };
+  const librarySheet = libraryView && (
+    <Modal
+      open
+      onClose={() => setLibraryView(null)}
+      size="md"
+      title={tR5(libraryView === "groups" ? "programR5.groups" : "programR5.phone.changeProgram")}
+      titleId="program-r5-library-title"
+      ariaLabelledby={undefined}
+      description={null}
+      closeLabel={tR5("programR5.phone.close")}
+      footer={<Button variant="secondary" className="min-h-11" onClick={() => setLibraryView(null)}>{tR5("programR5.phone.close")}</Button>}
+    >
+      <div className="flex flex-col gap-4" data-testid="program-r5-sheet">
+        {mobile && libraryView === "programs" && program && (
+          <AppliedTo library={library} programKey={program.key} riders={riders} groups={groupList} busy={busy}
+            touch canAdd={!!chosenProgram} onAdd={(value) => { setLibraryView(null); askToAdd(value); }} onRemoveRider={removeRider} />
+        )}
+        {renderLibrary(libraryView)}
+      </div>
+    </Modal>
+  );
+
   // #8547 telefon: Skifter Dag/Uge. "Copy to riders" bliver i sidehovedet, Gem staar fast i bunden.
   if (mobile) {
     const entry = library.programs.find((p) => p.key === programKey);
@@ -802,31 +859,8 @@ export default function ProgramR5({
           typeLabel={riderType ? tTypes(`types.${riderType}`) : null}
           chips={chips}
           onChip={(key) => setSubject(parseSubjectKey(key))}
-          renderLibrary={(close) => (
-            <>
-              {program && (
-                <AppliedTo library={library} programKey={program.key} riders={riders} groups={groupList} busy={busy}
-                  touch canAdd={!!chosenProgram} onAdd={(value) => { close(); askToAdd(value); }} onRemoveRider={removeRider} />
-              )}
-              <LibraryPanel
-                library={library}
-                catalog={programs.catalog}
-                lang={lang}
-                selectedProgram={chosenProgram?.key ?? null}
-                selectedSubject={sKey}
-                touch
-                riderName={(id) => riderById.get(id)?.name ?? ""}
-                onProgram={(key) => { pickProgram(key); close(); }}
-                onSubject={(next) => { pickSubject(next); close(); }}
-                // Arket lukkes foer dialogen aabnes, saa der aldrig staar to vinduer oven i hinanden.
-                groupActions={menuActions}
-                groupBusy={busy}
-                onNewGroup={groupsOn ? () => { close(); openGroupDialog(null); } : undefined}
-                onGroupAction={groupsOn ? (id, action) => { close(); groupAction(id, action); } : undefined}
-                onMoveRider={groupsOn ? (id, add) => { close(); openMove(id, add); } : undefined}
-              />
-            </>
-          )}
+          onOpenPrograms={() => setLibraryView("programs")}
+          onOpenGroups={groupsOn ? () => setLibraryView("groups") : undefined}
           limitEl={limitEl}
           summary={activeTotal > 0
             ? (
@@ -868,6 +902,7 @@ export default function ProgramR5({
           todayLocked={todayLocked}
           editable={editable && !busy}
           sessionOrder={sessionOrder}
+          effortLevels={effortLevels}
           sessionLabel={sessionLabel}
           dayLabel={dayLabel}
           lang={lang}
@@ -875,6 +910,7 @@ export default function ProgramR5({
           onEdit={editCell}
           onCopyDay={copyDay}
         />
+        {librarySheet}
         {copyModal}
         {groupModals}
         {targetDialogs}
@@ -886,23 +922,19 @@ export default function ProgramR5({
     <div className="grid grid-cols-[256px_minmax(0,1fr)] gap-5" data-testid="program-r5">
       {actionsEl ? createPortal(actions, actionsEl) : <div className="flex justify-end">{actions}</div>}
 
-      <LibraryPanel
-        library={library}
-        catalog={programs.catalog}
-        lang={lang}
-        selectedProgram={chosenProgram?.key ?? null}
-        selectedSubject={sKey}
-        riderName={(id) => riderById.get(id)?.name ?? ""}
-        onProgram={pickProgram}
-        onSubject={pickSubject}
-        groupActions={menuActions}
-        groupBusy={busy}
-        onNewGroup={groupsOn ? () => openGroupDialog(null) : undefined}
-        onGroupAction={groupsOn ? groupAction : undefined}
-        onMoveRider={groupsOn ? openMove : undefined}
-      />
+      <div className="col-span-full flex flex-wrap gap-2 border-b border-cz-border pb-2">
+        {groupsOn && (
+          <Button variant="secondary" size="sm" onClick={() => setLibraryView("groups")} data-testid="program-r5-open-groups">
+            {tR5("programR5.groups")}
+          </Button>
+        )}
+        <Button variant="secondary" size="sm" onClick={() => setLibraryView("programs")} data-testid="program-r5-open-programs">
+          {tR5("programR5.phone.changeProgram")}
+        </Button>
+      </div>
+      {renderLibrary()}
 
-      <section className="flex min-w-0 flex-col gap-4" aria-label={title}>
+      <section ref={editorRef} className="flex min-w-0 scroll-mt-24 flex-col gap-4" aria-label={title}>
         <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <div className="min-w-0">
             <h2 className="text-[15px] font-semibold text-cz-1">{tR5("programR5.title", { name: title })}</h2>
@@ -961,6 +993,7 @@ export default function ProgramR5({
             raceCount={raceToday.size}
             editable={editable && !busy}
             sessionOrder={sessionOrder}
+            effortLevels={effortLevels}
             sessionLabel={sessionLabel}
             dayLabel={dayLabel}
             tonight={tonightEl}
@@ -980,6 +1013,7 @@ export default function ProgramR5({
         </p>
       </section>
 
+      {librarySheet}
       {copyModal}
       {groupModals}
       {targetDialogs}
@@ -991,13 +1025,14 @@ export default function ProgramR5({
 
 function LibraryPanel({
   library, catalog, lang, selectedProgram, selectedSubject, riderName, onProgram, onSubject, touch = false,
-  groupActions = [], groupBusy = false, onNewGroup, onGroupAction, onMoveRider,
+  groupActions = [], groupBusy = false, onNewGroup, onGroupAction, onMoveRider, groupsOnly = false,
 }: {
   library: Library;
   catalog: CatalogProgram[];
   lang: string;
   selectedProgram: string | null;
   selectedSubject: string;
+  groupsOnly?: boolean;
   touch?: boolean; // telefonens ark: mindst 44 px trykflader
   riderName: (id: string) => string;
   onProgram: (key: string) => void;
@@ -1030,7 +1065,7 @@ function LibraryPanel({
 
   return (
     <aside className="flex flex-col gap-4" aria-label={tR5("programR5.library")} data-testid="program-r5-library">
-      <section>
+      {!groupsOnly && <section>
         <h3 className={`mb-1.5 ${LABEL}`}>{tR5("programR5.programs")}</h3>
         <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto" data-testid="program-r5-catalog">
           {library.programs.map((p) => {
@@ -1052,7 +1087,7 @@ function LibraryPanel({
             );
           })}
         </ul>
-      </section>
+      </section>}
 
       <section>
         <h3 className={`mb-1.5 ${LABEL}`}>{tR5("programR5.groupsAndRiders")}</h3>
@@ -1275,7 +1310,7 @@ function AppliedTo({
 // --- Ugen ---------------------------------------------------------------------------------
 
 function WeekGrid({
-  cells, weekdays, todayWeekday, todayLocked, raceCount, editable, sessionOrder, sessionLabel, dayLabel, tonight,
+  cells, weekdays, todayWeekday, todayLocked, raceCount, editable, sessionOrder, effortLevels, sessionLabel, dayLabel, tonight,
   onEdit, onCopyDay,
 }: {
   cells: WeekCell[][];
@@ -1285,10 +1320,11 @@ function WeekGrid({
   raceCount: number;
   editable: boolean;
   sessionOrder: readonly string[];
+  effortLevels: boolean;
   sessionLabel: (s: string) => string;
   dayLabel: (w: string) => string;
   tonight: ReactNode;
-  onEdit: (weekday: string, slot: number, session: string) => void;
+  onEdit: (weekday: string, slot: number, session: string, effort?: ProgramEffort | null) => void;
   onCopyDay: (from: string, choice: string) => void;
 }) {
   const { t } = useTranslation("training");
@@ -1332,7 +1368,7 @@ function WeekGrid({
         })}
         {Array.from({ length: PROGRAM_SLOTS }, (_, slot) => (
           <Row key={slot} slot={slot} cells={cells} weekdays={weekdays} todayWeekday={todayWeekday} todayLocked={todayLocked}
-            editable={editable} sessionOrder={sessionOrder} sessionLabel={sessionLabel} dayLabel={dayLabel} onEdit={onEdit} />
+            editable={editable} sessionOrder={sessionOrder} effortLevels={effortLevels} sessionLabel={sessionLabel} dayLabel={dayLabel} onEdit={onEdit} />
         ))}
         <span className={sideLabel}>{t("forecast.label")}</span>
         {weekdays.map((weekday) => (
@@ -1346,7 +1382,7 @@ function WeekGrid({
 }
 
 function Row({
-  slot, cells, weekdays, todayWeekday, todayLocked, editable, sessionOrder, sessionLabel, dayLabel, onEdit,
+  slot, cells, weekdays, todayWeekday, todayLocked, editable, sessionOrder, effortLevels, sessionLabel, dayLabel, onEdit,
 }: {
   slot: number;
   cells: WeekCell[][];
@@ -1355,9 +1391,10 @@ function Row({
   todayLocked: boolean;
   editable: boolean;
   sessionOrder: readonly string[];
+  effortLevels: boolean;
   sessionLabel: (s: string) => string;
   dayLabel: (w: string) => string;
-  onEdit: (weekday: string, slot: number, session: string) => void;
+  onEdit: (weekday: string, slot: number, session: string, effort?: ProgramEffort | null) => void;
 }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
@@ -1399,12 +1436,10 @@ function Row({
               <div className="relative min-w-0 flex-1">
                 {/* Kittets felt-stil (controlClass, som Select) med en smal chevron, saa sessionsnavnet
                     kan laeses i en syvendedel af ugen; Select's faste pr-9 afkortede det. */}
-                <select value={cell.session ?? ""} onChange={(e) => onEdit(weekday, slot, e.target.value)}
-                  aria-label={label} title={cell.session ? sessionLabel(cell.session) : undefined} data-testid="program-r5-cell"
-                  className={`${controlClass({ size: "sm" })} min-h-11 cursor-pointer appearance-none truncate border-transparent bg-transparent pe-5 ps-1.5 hover:border-cz-border ${cell.session ? "text-cz-1" : "text-cz-3"}`}>
-                  {!cell.session && <option value="" disabled>–</option>}
-                  {sessionOrder.map((s) => <option key={s} value={s}>{sessionLabel(s)}</option>)}
-                </select>
+                <ProgramPassSelect session={cell.session} effort={cell.effort} sessionOrder={sessionOrder}
+                  sessionLabel={sessionLabel} effortLevels={effortLevels} label={label} testId="program-r5-cell"
+                  onChange={(session, effort) => onEdit(weekday, slot, session, effort)}
+                  className={`${controlClass({ size: "sm" })} min-h-11 cursor-pointer appearance-none truncate border-transparent bg-transparent pe-5 ps-1.5 hover:border-cz-border ${cell.session ? "text-cz-1" : "text-cz-3"}`} />
                 <ChevronDownIcon size={12} aria-hidden="true" className="pointer-events-none absolute end-1 top-1/2 -translate-y-1/2 text-cz-3" />
               </div>
               {dot}
@@ -1414,7 +1449,7 @@ function Row({
         return (
           <div key={weekday} className={base}>
             <span className={`min-w-0 flex-1 truncate ${cell.session ? "text-cz-1" : "text-cz-3"}`}>
-              {cell.session ? sessionLabel(cell.session) : "–"}
+              {cell.session ? sessionLabel(cell.session) : "–"}{cell.effort && ` · ${t(`dayPanel.level_${cell.effort}`)}`}
             </span>
             {dot}
           </div>
