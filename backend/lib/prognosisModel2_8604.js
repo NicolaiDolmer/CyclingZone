@@ -39,7 +39,7 @@ import {
 import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam, v3SmartDefaultFocus } from "./trainingCatalogV3.js";
 import { resolveProgram } from "./dailyTraining.js";
 import { RACE_DAY_FALLBACK_PROFILE, raceDayProgram } from "./raceDayYield.js";
-import { PROGRAM_SLOTS, programForSession, resolveDayProgram, sessionForDayEntry, weekDaysHaveSessions } from "./trainingPrograms.js";
+import { PROGRAM_SLOTS, programForSession, resolveDayProgram, weekDaysHaveSessions } from "./trainingPrograms.js";
 import { WEEKDAY_KEYS, isValidIntensity } from "./training.js";
 import { loadRotationPlans, loadRotationReceipts, rotationProgram } from "./trainingRotationProgress.js";
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
