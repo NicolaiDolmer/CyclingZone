@@ -238,6 +238,8 @@ export type StageInput = {
   split_attack_cause_7640?: true | null;
   // #7644 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): loft paa samlingens gevinst pr. km paa lange nedkoersler (mechanics/descentRegroup6486.ts). Udeladt = som foer.
   descent_regroup_cap_7644?: true | null;
+  // #7645 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): dalens selektion paa kuperet og mellembjerg (mechanics/timeModel.ts valleySelectionTempo7645). Udeladt = som foer.
+  valley_selection_7645?: import("./mechanics/timeModel.ts").ValleySelection7645Variant | null;
   // #7726 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): enkeltstarten koeres uden dagsudsving (mechanics/individualTimeTrial.ts). Udeladt = som foer.
   itt_no_day_roll_7726?: true | null;
   // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + app_config day_form_6649): dagsformen med forklaring
@@ -686,6 +688,8 @@ export type RiderState = {
 export type EngineState = {
   /** #7236 (KUN kontakten queen_stage_gap_7236): topgabets loft greb paa denne etape. Udeladt = som foer. */
   queen_cap_7236?: true;
+  /** #7645 (KUN kontakten valley_selection_7645): km hver hjaelper har foert jagt eller forsvar i dalen. Udeladt = som foer. */
+  valley_work_km_7645?: Readonly<Record<string, number>>;
   /** Cohort lineage is internal; it does not rename film groups. */
   shared_grupetto_groups?: Readonly<Record<string, true>>;
   km: number; // cursor, km allerede tilbagelagt

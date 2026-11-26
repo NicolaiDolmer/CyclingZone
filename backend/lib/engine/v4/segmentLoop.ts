@@ -92,7 +92,7 @@ import { isOfficialTimesV4OrLater, isOrdersGcRulesRevision, isOrdersGcV2OrLater,
 import { findChaseGroup, isMorningRegroupCatch, noteFormationRiders, teamChase7730On } from "./mechanics/chaseGroup.ts";
 import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
-import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
+import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3, valleySelection7645For, valleySelectionTempo7645 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { compareIds } from "../../compareIds.ts";
 import { queenStageGap7236On } from "./mechanics/queenStageGap7236.ts"; // #7236
@@ -826,6 +826,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // kort stykke uden stigning (finishDescentIndexFor). Ellers etapens sidste segment.
   const finishDescentIndex = timeModelV3 ? finishDescentIndexFor(route, loopTimeModel) : route.segments.length - 1;
   const finalClimbStart = finalClimbStartIndex(route.segments);
+  // #7645 (KUN kontakten valley_selection_7645, slukket): dalens selektion paa kuperet og mellembjerg.
+  const valleySelection7645 = valleySelection7645For(input, route.profile_type);
   let entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
   // #7003 (KUN s5_profiles_v3, slukket): etapeplanen langs ruten (lib/stagePlanEngine.ts). Uden plan: null, loopet uroert.
@@ -960,7 +962,12 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         loopTimeModel.letGoMinChaseRiders ?? undefined); // #5578: official_times_v2's egen felt-graense
 
       // #6200 (KUN official_times_v3): ingen dal paa stykket efter nedkoerslen mod maal (se nedenfor).
-      if (!runInAfterFinishDescent) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
+      if (!runInAfterFinishDescent && valleySelection7645 !== null && ordersGcV3) {
+        // #7645 (KUN kontakten, slukket): raekkevidden mod forgruppen + jagten med en aarsag.
+        const valley = valleySelectionTempo7645({ groups: state.groups, tempoByGroup, segments, segmentIndex, incidentChasers: state.incident_chasers, variant: valleySelection7645, entrants: entrantsById, riders: state.riders, finaleType: route.finale_type, profileType: route.profile_type, workKm: state.valley_work_km_7645, t: loopTimeModel });
+        tempoByGroup = valley.tempo;
+        if (valley.workKm !== state.valley_work_km_7645 && valley.workKm !== undefined) state = { ...state, valley_work_km_7645: valley.workKm };
+      } else if (!runInAfterFinishDescent) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
       if (segment.kind === "descent") {
         const lengthKm = Math.max(0, segment.to_km-segment.from_km);
         const minimumDurations = new Map(state.groups.map(group => {
@@ -1056,7 +1063,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // #6200 (KUN official_times_v3): paa stykket efter nedkoerslen mod maal lukkes
     // intet ved tempo (loftet gaelder fra toppen til stregen); ellers dalen.
     if (runInAfterFinishDescent) tempoByGroup = runInOpenOnlyTempo(state.groups, tempoByGroup, state.incident_chasers);
-    else if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
+    // #7645 (KUN kontakten): dalen er allerede afgjort foer tick'et (ovenfor); kaeden koeres ikke igen.
+    else if (ordersGcV3 && !(sharedGroupTime && valleySelection7645 !== null)) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
     // #6486 (KUN s5_profiles_v3, slukket): grupper samler sig efter sidste top paa bjerg uden topankomst.
     // #7236 (KUN kontakten): greb topgabets loft (kort vej fra sidste top til maal), regrupperer de lidt staerkere.
     if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers, descentRegroupTuning7236(state.queen_cap_7236 === true && queenStageGap7236On(input), route), descentRegroupCap7644On(input)); // #7644 (slukket)
