@@ -146,10 +146,14 @@ export function aggregateDemandVector(stageProfiles) {
  * Indlæs de involverede holds training_day_runs i et dato-interval → normaliseret
  * form { team_id, ord, riderMap: Map(rider_id → {status, focus}) }. report.riders
  * pakkes ud pr. dag, så orkestratoren kan slå en rytters dag-entry op i O(1).
- * @param {{supabase, teamIds:string[], startDate:string, endDate:string}} args
+ *
+ * #8180: `allRows` (kun sand for et løb stemplet ved start, peakLeadupAllRows8180Flag.js) læser
+ * kopien side for side i en fast rækkefølge, så intet hold afkortes ved PostgRESTs rækkeloft.
+ * Uden den er læsningen præcis main's (ét kald, også loftet), så slukket er bit-identisk.
+ * @param {{supabase, teamIds:string[], startDate:string, endDate:string, fromTicks?:boolean, allRows?:boolean}} args
  * @returns {Promise<Array<{team_id:string, ord:number, riderMap:Map}>>}
  */
-export async function loadTeamTrainingRuns({ supabase, teamIds, startDate, endDate, fromTicks }) {
+export async function loadTeamTrainingRuns({ supabase, teamIds, startDate, endDate, fromTicks, allRows = false }) {
   const out = [];
   const ids = [...new Set(teamIds || [])];
   if (!ids.length || !startDate || !endDate) return out;
@@ -168,7 +172,18 @@ export async function loadTeamTrainingRuns({ supabase, teamIds, startDate, endDa
         .select("team_id, tick_date, report")
         .order("team_id").order("tick_date").order("game_day").order("id"))
         .then((rows) => ({ data: rows, error: null }), (err) => ({ data: null, error: err }))
-      : await supabase
+      : allRows === true
+        // #8180: samme rækker og kolonner som main's kald, men alle sider. id er primærnøglen, så
+        // rækkefølgen er total og ingen række kan tabes eller gentages på en sidegrænse.
+        ? await fetchAllRows(() => supabase
+          .from("training_day_runs")
+          .select("team_id, tick_date, report")
+          .in("team_id", slice)
+          .gte("tick_date", startDate)
+          .lt("tick_date", endDate)
+          .order("team_id").order("tick_date").order("game_day").order("id"))
+          .then((rows) => ({ data: rows, error: null }), (err) => ({ data: null, error: err }))
+        : await supabase
       .from("training_day_runs")
       .select("team_id, tick_date, report")
       .in("team_id", slice)
@@ -265,6 +280,9 @@ export async function resolvePeakTrainingQualities({
   peakPlansByRider,
   tuning = RACE_V3_TUNING,
   focusAbilitiesMap = TRAINING_FOCUSES,
+  // #8180: kun sand for et løb stemplet ved start (raceRunner). Slukket får loaderen præcis de samme
+  // argumenter som før, så også injicerede loadere ser det uændrede kald.
+  allRows = false,
   loadTeamTrainingRuns: loadRunsFn = loadTeamTrainingRuns,
   loadRiderConditions: loadCondFn = loadRiderConditions,
   loadTargetRaceDemands: loadDemandsFn = loadTargetRaceDemands,
@@ -295,7 +313,7 @@ export async function resolvePeakTrainingQualities({
   const endDate = ordinalToDateString(maxWinStart); // eksklusiv: optakt slutter dagen før vinduets start
 
   const [runs, condByRider, demandByRace] = await Promise.all([
-    loadRunsFn({ supabase, teamIds: [...teamIds], startDate, endDate }),
+    loadRunsFn({ supabase, teamIds: [...teamIds], startDate, endDate, ...(allRows === true ? { allRows: true } : {}) }),
     loadCondFn({ supabase, riderIds: [...riderIds] }),
     loadDemandsFn({ supabase, raceIds: [...raceIds] }),
   ]);

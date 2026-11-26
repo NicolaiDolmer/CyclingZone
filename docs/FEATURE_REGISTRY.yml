@@ -183,6 +183,19 @@ features:
     decision: ejer-beslutning
     decide_by: 2026-11-18
 
+  - id: race-peak-leadup-all-rows-8180
+    area: race-engine
+    title_en: Form peak lead-up reads every team
+    title_da: Formtoppens optakt læser alle hold
+    state: dormant
+    flag: peak_leadup_all_rows_8180
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 8180
+    verified: 2026-11-26
+    note: "Slukket; tændes af ejeren efter Fable-dom. Kun løb der starter efter tænding."
+    decision: ejer-beslutning
+    decide_by: 2026-12-10
+
   - id: race-team-chase-7730
     area: race-engine
     title_en: The chase is decided by the teams chasing
@@ -1061,6 +1074,7 @@ features:
     title_en: Academy page with tabs and age focus
     title_da: Akademisiden med faner og aldersfokus
     state: building
+    flag: academy_page_v2_8081
     ssot: docs/YOUTH_RULES.md
     epic: 8081
     verified: 2026-11-16

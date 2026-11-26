@@ -171,6 +171,9 @@ export const STAGE_FLAGS = Object.freeze([
   // #7733: fra etape 2 afgoer pulje og trup ikke laengere hvem der er i loebet (kun loeb der ikke er startet).
   // Seedet off; kun "on" taender, "beta" laeses som off; "stop" er noedstop for loeb i gang. Ejer-only flip.
   { key: "started_field_lock_7733", area: "race-engine", label: "Etapeløb — startfeltet holder til mål" },
+  // #8180: formtoppens optakt læser alle træningsrækker for alle hold (kun løb der ikke er startet). Seedet off;
+  // kun "on" tænder, "beta" læses som off; "stop" er nødstop for løb i gang (peakLeadupAllRows8180Flag.js). Ejer-only flip.
+  { key: "peak_leadup_all_rows_8180", area: "race-engine", label: "Formtop — optakten læser alle hold" },
   // #7730: jagten afgøres af de hold der jager (kun s5_profiles_v3, kun løb der ikke er startet). Seedet off;
   // kun "on" tænder, "beta" læses som off; "stop" er nødstop for løb i gang (teamChase7730Flag.js). Ejer-only flip.
   { key: "team_chase_7730", area: "race-engine", label: "Jagten — afgøres af de hold der jager" },

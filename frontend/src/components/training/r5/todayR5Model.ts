@@ -302,8 +302,8 @@ export function dayFields({
   pendingSlots?: readonly number[];
 }): Field[] {
   return Array.from({ length: SLOTS }, (_, slot) => {
-    if (pendingSlots.includes(slot)) return PENDING;
     if (raceSlots.has(slot)) return STAGE;
+    if (pendingSlots.includes(slot)) return PENDING;
     return programSlot(slot) ?? planSession ?? null;
   });
 }
@@ -391,7 +391,7 @@ export function settledDayFields(
   return planned.map((f, slot) => {
     const a = bySlot[slot];
     if (!a) return f;
-    if (a.intensity === PENDING) return PENDING;
+    if (a.intensity === PENDING) return planned[slot] === STAGE ? STAGE : PENDING;
     return a.race_day === true ? STAGE : sessionOf(a);
   });
 }

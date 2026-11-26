@@ -6,10 +6,9 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · slet `backup_7401_20261101_riders`, `backup_7488_20261102_riders`, `backup_7508_20261102_notif_ids` (forfaldne) · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (tor 26/11, PC1 alene; Dolmer PC lukket):** 1) Kontraktloft #7138/#8691 (ejer beslutter først) → 2) sæsonskifte lør: prøveskifte på lokal PG17-kopi #7325 (aldrig dårligere end normalt), heal-sweep for 1 transfer/1 escrow/1 frigivelse, S6-kalender, **mail 1 kl. 17-18** på ejerens ja, AI-hold fryses #8614 (Codex) → 3) **træning live**: W1 + rotation til alle + #8549 + #8678 efter Fable (#7947) → 4) prognoser #8604/#8476 → 5) motor #8189+#4596+#7645 (Claude) → 6) akademisiden #8081 tændes efter billeder → 7) annonce med store UI-billeder → 8) design-løft #8737 (fundament først). Codex-bølgen på PC1: se #8719.
-> **25/11 aften:** 11 PR'er merget (bl.a. #8728 migrationsrettelse + #8727 seniorplads, begge verificeret i prod). Byggestop slukkes (#8729/#8735). Readiness uden force: ikke klar (S5 aktiv). Usynlige PR'er merger Claude selv; synlige vises ejeren (#8719). **Åbent:** `backup_7153_wander_*` må ikke slettes · #8734 blokeret (akademimenu mister cache).
+> **🎯 Next action (tor 26/11 aften → Dolmer PC):** PC1 stoppet ~20 til genstart; alle laner gemt med genoptag-note på issue + PR. Rækkefølge: 1) **S6-kalender #8830 / PR #8836 færdig i aften** (ejer) · 2) merge-tog: #8777, #8801, #8779, #8732, #8796, #8792, #8815, #8809 (merget i aften: #8787 #8724 #8678) · 3) tændinger (rotation, ugeprioritet, akademisiden) efter optælling, så #8820 · 4) mail 1: ejer sætter webhook, test, ejerens "send" · 5) laner på pause: #8819/PR #8834, #8828/PR #8835 (taktik før man 30/11), #8816/PR #8832 (lav prio) · 6) skift lør 28/11. Falsk lukket: #8793 rodårsag.
 >
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Ingen aktiv session (PC1 stoppet 26/11 ~20; Dolmer PC overtager).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

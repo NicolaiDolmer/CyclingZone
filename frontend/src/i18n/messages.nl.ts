@@ -13,7 +13,6 @@ import auth from "../../public/locales/nl/auth.json";
 import errors from "../../public/locales/nl/errors.json";
 import auctions from "../../public/locales/nl/auctions.json";
 import transfers from "../../public/locales/nl/transfers.json";
-import dashboard from "../../public/locales/nl/dashboard.json";
 import banners from "../../public/locales/nl/banners.json";
 import feedback from "../../public/locales/nl/feedback.json";
 import rider from "../../public/locales/nl/rider.json";
@@ -26,7 +25,6 @@ import sponsor from "../../public/locales/nl/sponsor.json";
 import headtohead from "../../public/locales/nl/headtohead.json";
 import halloffame from "../../public/locales/nl/halloffame.json";
 import races from "../../public/locales/nl/races.json";
-import training from "../../public/locales/nl/training.json";
 import academy from "../../public/locales/nl/academy.json";
 import klub from "../../public/locales/nl/klub.json";
 import staff from "../../public/locales/nl/staff.json";
@@ -39,7 +37,6 @@ export default {
   errors,
   auctions,
   transfers,
-  dashboard,
   banners,
   feedback,
   rider,
@@ -52,7 +49,6 @@ export default {
   headtohead,
   halloffame,
   races,
-  training,
   academy,
   klub,
   staff,

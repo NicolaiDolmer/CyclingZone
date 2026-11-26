@@ -274,7 +274,11 @@ const FOER_LOEFT = Object.freeze({
   "ren-puncheur|classic|hunter": {"climbing": 5.711, "time_trial": 4.2833, "flat": 5.711, "tempo": 14.2776, "sprint": 4.2833, "acceleration": 5.711, "punch": 86.988, "endurance": 14.2776, "recovery": 5.711, "durability": 30.6352, "descending": 5.2695, "cobblestone": 5.2695, "positioning": 71.0683, "aggression": 7.3495, "tactics": 7.9042, "teamwork": 7.9042, "leadership": 7.9042},
   "ren-brostensrytter|cobbles|luxury_helper": {"climbing": 4.2833, "time_trial": 5.711, "flat": 79.188, "tempo": 5.711, "sprint": 5.711, "acceleration": 5.711, "punch": 14.2776, "endurance": 14.2776, "recovery": 5.711, "durability": 30.6352, "descending": 5.2695, "cobblestone": 73.6683, "positioning": 18.3737, "aggression": 5.2695, "tactics": 7.9042, "teamwork": 11.0242, "leadership": 7.9042},
   "veteran-33|hilly|captain": {"climbing": 2.1209, "time_trial": 0.1483, "flat": 0.1977, "tempo": 2.6511, "sprint": 0.1483, "acceleration": 0.1977, "punch": 3.0111, "endurance": 0.4942, "recovery": 0.1977, "durability": 0.1977, "descending": 0.1824, "cobblestone": 0.1824, "positioning": 0.456, "aggression": 1.4592, "tactics": 2.1889, "teamwork": 2.9185, "leadership": 3.0529},
-  "ren-tt|itt|helper|rolleStyrerBasis": {"climbing": 4.2833, "time_trial": 14.2776, "flat": 5.711, "tempo": 23.7138, "sprint": 4.2833, "acceleration": 5.711, "punch": 4.2833, "endurance": 23.7138, "recovery": 5.711, "durability": 5.711, "descending": 5.2695, "cobblestone": 5.2695, "positioning": 7.9042, "aggression": 5.2695, "tactics": 7.9042, "teamwork": 33.1421, "leadership": 7.9042},
+  // #5950 (tempo ud af hjaelperens evner, ejer 4/11 + 20/11, briefet til lanen): kun denne raekke
+  // (underkontakten taendt) er rettet. Taget med samme kald uden loeftet (xpRaceDayFit: null),
+  // der gengiver de ti andre raekker ovenfor bit for bit. Foer rettelsen: tempo og udholdenhed
+  // var hjaelpe-evner; nu er tempo kun en del af ruten.
+  "ren-tt|itt|helper|rolleStyrerBasis": {"climbing": 4.2833, "time_trial": 14.2776, "flat": 5.711, "tempo": 9.871, "sprint": 4.2833, "acceleration": 5.711, "punch": 4.2833, "endurance": 30.6352, "recovery": 5.711, "durability": 5.711, "descending": 5.2695, "cobblestone": 5.2695, "positioning": 7.9042, "aggression": 5.2695, "tactics": 7.9042, "teamwork": 42.641, "leadership": 7.9042},
 });
 const foerLoeftNu = () => Object.fromEntries(GULV_TILFAELDE.map(({ noegle, rytter, profil, rolle, valg }) =>
   [noegle, Object.fromEntries(Object.entries(loebsdag(rytter, profil, rolle, valg).xp).map(([e, x]) => [e, Number(x.toFixed(4))]))]));
@@ -396,8 +400,13 @@ test("R15b + R16: gulvet er ikke et loft, den gamle regel om +1 pr. loebsdag kli
 // ── R1: slukket kontakt er uaendret ──────────────────────────────────────────────────────────
 // Fingeraftrykket er taget af dommeren paa origin/main d5d2511ac (13/11), FOER R15b blev bygget.
 // Afrundet til 9 betydende cifre foer hash (#8113). Maa ikke rettes til.
-const SLUKKET_FOER_R15B = "c6aaf302dc4a7bc5c2f8fad92b7c5ea812e768cb787afe8ed708e763192f2ea1";
-const SLUKKET_ANTAL = 648;
+// #5950 (tempo ud af hjaelperens evner, ejer 4/11 + 20/11, briefet til lanen): rettelsen
+// flytter bevidst hjaelperens og den fri rolles tal med underkontakten rolleStyrerBasis
+// taendt. Fingeraftrykket for hele saettet (c6aaf302..., 648 scenarier) holdt paa merge-basen
+// 9d246b82e; aftrykket nedenfor er de samme scenarier UDEN underkontakten, taget af
+// merge-basens kode foer rettelsen. Underkontaktens nye tal doemmes i raceDayRoleYield5950.test.js.
+const SLUKKET_FOER_R15B = "b3a31230911275fa07f7f5a18d353e5354086faa6d5819a64a435483f8d50306";
+const SLUKKET_ANTAL = 432;
 
 function slukketScenarier() {
   const ud = [];
@@ -405,6 +414,7 @@ function slukketScenarier() {
   for (const { rytter, profil, rolle } of KERNE) {
     for (const rolletal of [ROLLETAL.dommer, ROLLETAL.rolleStyrerBasis, null]) {
       n += 1;
+      if (rolletal === ROLLETAL.rolleStyrerBasis) continue; // #5950: samme scenarier, uden underkontakten
       const { riderLevel, ...r } = rytter;
       ud.push({
         ...r, dateStr: dato(n % 5), caps: lofter(rytter.abilities, 4 + (n % 9)),
