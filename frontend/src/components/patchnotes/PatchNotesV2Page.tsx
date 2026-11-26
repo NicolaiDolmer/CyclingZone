@@ -1,20 +1,11 @@
-// #8049 · Den nye patch notes-side bag kontakten patch_notes_v2_8049 (off = gammel side).
-//
-// Ejerens valg 12/11 + 16/11 (issue #8049): efter område, uge for uge, arkiv pr. måned.
-//  1. "Denne uge" som variant A (område med linjer); en åbnet ældre uge/måned som B.
-//  2. Mandagsreglen: sidste uge står også åben, når denne uge har under 10 ændringer.
-//  3. Ugens store nyhed vælges automatisk (Tændt for alle > Nyt > Beta); `highlight` overstyrer.
-//  4. Billede kun ved ugens nyhed.
-//  5. Gamle noter uden område ligger i "Andet" (kun arkivet).
-//  6. Beta og tændt samme uge: kun den seneste vises i ugen; begge findes i arkiv og søgning.
-// T1 (896 px), den kanoniske PageHeader og højst to section cards (fold-disciplinen).
-// "Nyt siden sidst" og prikkerne følger brugeren via seen_markers (#6515), ikke enheden.
+// #8449: noter læses i én kolonne, grupperet efter kategori, med dato på hver note.
+// Uger, månedsarkiv, rollout og synkroniseret læsestatus følger #8049 og #6515.
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  PATCH_NOTE_AREAS_WITH_OTHER, patchNotesRecentUrl, patchNotesIndexUrl, patchNotesMonthUrl,
+  PATCH_NOTE_AREAS_WITH_OTHER, PATCH_NOTE_CATEGORIES, patchNotesRecentUrl, patchNotesIndexUrl, patchNotesMonthUrl,
   loadPatchNotesFile, weekStartOf, addDaysIso, isoWeekNumber, todayIso, dedupeWeek, pickHero,
-  isNewSince, isThinWeek, filterV2Items, normalizeQuery, matchesQuery, weekSummary, tagOf,
+  isNewSince, isThinWeek, filterV2Items, normalizeQuery, matchesQuery, weekSummary,
   compareNewestFirst,
 } from "../../lib/patchNotes.js";
 import { markSeen, readLocalSeenMarker, useSeenMarkersSynced } from "../../lib/seenMarkers6515.ts";
@@ -24,7 +15,7 @@ import {
   ErrorState, PageLoader, SkeletonLines, SearchIcon, XIcon,
 } from "../ui";
 import {
-  AreaBlocksA, AreaRowsB, PatchHero, PatchTag, NewDot, QuietButton, DisclosureLabel, TOUCH,
+  PatchNote, PatchNoteGroups, NewDot, QuietButton, DisclosureLabel, TOUCH,
   type PatchItem, type Translate, type LiveFlags,
 } from "./PatchNoteParts.tsx";
 
@@ -89,6 +80,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
 
   const [query, setQuery] = useState("");
   const [area, setArea] = useState("all");
+  const [category, setCategory] = useState("all");
   const [betaOnly, setBetaOnly] = useState(false);
   const [onlyNew, setOnlyNew] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -102,8 +94,8 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
   }, []);
 
   const areaLabel = useCallback((a: string) => t(`v2.area.${a}`), [t]);
-  const filters = { area, betaOnly, onlyNew, marker, liveFlags };
-  const filtering = area !== "all" || betaOnly || onlyNew;
+  const filters = { area, category, betaOnly, onlyNew, marker, liveFlags };
+  const filtering = area !== "all" || category !== "all" || betaOnly || onlyNew;
 
   const today = todayIso();
   const thisWeek = weekStartOf(today);
@@ -146,11 +138,11 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
     }
   }, [lang, loadMonth]);
 
-  // Et søgefund i arkivet åbnes på sin plads: måneden hentes, området og linjen foldes ud.
+  // Et søgefund i arkivet åbner måneden med den fulde note.
   const showInArchive = (item: PatchItem) => {
     const m = item.d.slice(0, 7);
     if (!expanded.has(`month:${m}`)) toggleMonth(m);
-    setExpanded((prev) => new Set([...prev, `month:${m}`, `m${m}:b:${item.a}`, `line:${item.k}`, ...(archiveMonths.slice(ARCHIVE_MONTHS_SHOWN).some((x) => x.m === m) ? ["months:older"] : [])]));
+    setExpanded((prev) => new Set([...prev, `month:${m}`, ...(archiveMonths.slice(ARCHIVE_MONTHS_SHOWN).some((x) => x.m === m) ? ["months:older"] : [])]));
     setQuery("");
   };
 
@@ -189,11 +181,11 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
     return () => { active = false; };
   }, [searching, lang]);
   const [searchLimit, setSearchLimit] = useState(SEARCH_PAGE);
-  useEffect(() => { setSearchLimit(SEARCH_PAGE); }, [q, area, betaOnly, onlyNew]);
+  useEffect(() => { setSearchLimit(SEARCH_PAGE); }, [q, area, category, betaOnly, onlyNew]);
+  const recentKeys = new Set(allRecent.map((it) => it.k));
   let hits: PatchItem[] = [];
   if (searching) {
     const fromRecent: PatchItem[] = filterV2Items(recent?.items || [], filters).filter((it) => matchesQuery(it, q));
-    const recentKeys = new Set((recent?.items || []).map((it) => it.k));
     const fromIndex: PatchItem[] = index.lang === lang
       ? filterV2Items(index.items, filters).filter((it) => !recentKeys.has(it.k) && (it.ti || "").toLowerCase().includes(q))
       : [];
@@ -214,11 +206,8 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
   // Måned midt i en sætning ("april 2026 til juli 2026"): sprogets egen skrivemåde, ikke stort bogstav.
   const monthName = (m: string) => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${m}-15T12:00:00Z`));
   const weekLabel = (i: number, start: string) => (i === 0 ? t("v2.thisWeek") : i === 1 ? t("v2.lastWeek") : t("v2.week", { week: isoWeekNumber(start) }));
-  const sourceLabel = (item: PatchItem) => {
-    const i = weeks.findIndex((w) => item.d >= w.start && item.d <= w.end);
-    if (i >= 0) return `${weekLabel(i, weeks[i].start)} · ${rangeLabel(weeks[i].start, weeks[i].end)}`;
-    return monthLabel(item.d.slice(0, 7));
-  };
+  const dateFormat = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" });
+  const dateLabel = (date: string) => dateFormat.format(new Date(`${date}T12:00:00Z`));
 
   if (!recent && !loadError) {
     return (
@@ -241,27 +230,35 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
     );
   }
 
-  const clearFilters = () => { setArea("all"); setBetaOnly(false); setOnlyNew(false); setQuery(""); };
-  const lineProps = { t, liveFlags, marker, areaLabel, expanded, toggle };
+  const clearFilters = () => { setArea("all"); setCategory("all"); setBetaOnly(false); setOnlyNew(false); setQuery(""); };
+  const noteProps = { t, liveFlags, marker, areaLabel, dateLabel };
 
   const header = (
     <Header
       title={t("title", { defaultValue: "Patch notes" })}
-      subtitle={t("v2.subtitle")}
-      actions={newCount > 0 ? (
-        <Button
-          size="sm"
-          variant="secondary"
-          aria-pressed={onlyNew}
-          onClick={() => setOnlyNew((v) => !v)}
-          className={onlyNew ? "bg-cz-subtle" : ""}
-        >
-          <NewDot t={t} />
-          <span className="font-data tabular-nums">{t("v2.newSince", { count: newCount })}</span>
-          {/* Aktiv filtrering vises ikke kun med farve: et kryds siger "tryk for at fjerne" (WCAG 1.4.1). */}
-          {onlyNew && <XIcon size={13} aria-hidden="true" className="text-cz-2" />}
-        </Button>
-      ) : null}
+      subtitle={t("subtitle")}
+      actions={(
+        <div className="flex flex-wrap items-center gap-2">
+          <Select size="sm" value={category} onChange={(e: ChangeEvent<HTMLSelectElement>) => setCategory(e.target.value)} aria-label={t("filter.ariaLabel")}>
+            <option value="all">{t("category.all")}</option>
+            {PATCH_NOTE_CATEGORIES.map((key) => <option key={key} value={key}>{t(`category.${key}`)}</option>)}
+          </Select>
+          {(newCount > 0 || onlyNew) && (
+            <Button
+              size="sm"
+              type="button"
+              variant="secondary"
+              aria-pressed={onlyNew}
+              onClick={() => setOnlyNew((value) => !value)}
+              className={onlyNew ? "bg-cz-subtle" : ""}
+            >
+              <NewDot />
+              <span className="font-data tabular-nums">{t("v2.newSince", { count: newCount })}</span>
+              {onlyNew && <XIcon size={13} aria-hidden="true" className="text-cz-2" />}
+            </Button>
+          )}
+        </div>
+      )}
     />
   );
 
@@ -314,27 +311,16 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
           ) : (
             <ul>
               {shown.map((it) => (
-                <li key={it.k} className="grid grid-cols-[132px_minmax(0,1fr)_12px] items-start gap-x-3 border-t border-cz-border py-2.5 first:border-t-0 first:pt-0 max-sm:grid-cols-[minmax(0,1fr)_12px] max-sm:gap-y-1">
-                  <PatchTag tag={tagOf(it, liveFlags)} t={t} className="justify-self-start max-sm:col-span-2" />
-                  <div className="min-w-0">
-                    <p className="text-[13.5px] font-medium leading-snug text-cz-1">{it.ti || it.b}</p>
-                    {it.b && it.b !== it.ti && (
-                      <button
-                        type="button"
-                        aria-expanded={expanded.has(`line:${it.k}`)}
-                        onClick={() => toggle(`line:${it.k}`)}
-                        className={`mt-px text-left text-[12.5px] leading-[1.45] text-cz-2 ${expanded.has(`line:${it.k}`) ? "block whitespace-pre-line" : "line-clamp-2"}`}
-                      >
-                        {it.b}
-                      </button>
-                    )}
-                    {!it.b && (
-                      <QuietButton chevron="right" className="mt-0.5" onClick={() => showInArchive(it)}>{t("v2.showInArchive")}</QuietButton>
-                    )}
-                    <p className="mt-1 font-data text-2xs tabular-nums text-cz-3">{areaLabel(it.a)} · {sourceLabel(it)}</p>
-                  </div>
-                  <span className="pt-[6px] max-sm:col-start-2 max-sm:row-start-2">{isNewSince(it, marker) && <NewDot t={t} />}</span>
-                </li>
+                <PatchNote
+                  key={it.k}
+                  item={it}
+                  heading="h3"
+                  showCategory
+                  action={!recentKeys.has(it.k) && (
+                    <QuietButton className="mt-0.5" onClick={() => showInArchive(it)}>{t("v2.showInArchive")}</QuietButton>
+                  )}
+                  {...noteProps}
+                />
               ))}
             </ul>
           )}
@@ -354,7 +340,6 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
 
   const week0 = filterV2Items(weeks[0].items, filters);
   const hero = filtering ? null : pickHero(week0, liveFlags);
-  const rest0 = hero ? week0.filter((it) => it.k !== hero.k) : week0;
   const previous = weeks.slice(1);
   const anyContent = week0.length > 0 || previous.some((w) => filterV2Items(w.items, filters).length > 0);
   const olderMonths = archiveMonths.slice(ARCHIVE_MONTHS_SHOWN);
@@ -375,20 +360,19 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
         />
       ) : (
         <SectionStack>
-          <Section aria-labelledby="pn-this-week">
+          <Section role="region" aria-labelledby="pn-this-week">
             <CardHeader
               title={<span id="pn-this-week">{t("v2.thisWeek")}</span>}
               meta={<span className="tabular-nums">{t("v2.weekMeta", { range: rangeLabel(weeks[0].start, weeks[0].end), count: week0.length })}</span>}
             />
-            {hero && <PatchHero item={hero} t={t} liveFlags={liveFlags} marker={marker} areaLabel={areaLabel(hero.a)} />}
-            {rest0.length > 0 ? (
-              <AreaBlocksA items={rest0} prefix="w0" {...lineProps} />
+            {week0.length > 0 ? (
+              <PatchNoteGroups items={week0} highlightedKey={hero?.k} {...noteProps} />
             ) : (
-              !hero && <p className="text-[13px] text-cz-2">{t(filtering ? "v2.emptyWeekFiltered" : "v2.emptyWeek")}</p>
+              <p className="text-[13px] text-cz-2">{t(filtering ? "v2.emptyWeekFiltered" : "v2.emptyWeek")}</p>
             )}
           </Section>
 
-          <Section aria-labelledby="pn-earlier">
+          <Section role="region" aria-labelledby="pn-earlier">
             <CardHeader title={<span id="pn-earlier">{t("v2.earlierWeeks")}</span>} />
             <ul>
               {previous.map((w, j) => {
@@ -414,8 +398,8 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
                     </button>
                     {open ? (
                       list.length > 0 ? (
-                        <div className="mt-3 rounded-cz border border-cz-border px-3.5 py-1">
-                          <AreaRowsB items={list} prefix={`w${i}`} {...lineProps} />
+                        <div className="mt-3">
+                          <PatchNoteGroups items={list} {...noteProps} />
                         </div>
                       ) : (
                         <p className="mt-1 text-[13px] text-cz-2">{t("v2.emptyWeekFiltered")}</p>
@@ -460,10 +444,10 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
                           <DisclosureLabel label={t(open ? "v2.close" : "v2.open")} open={open} locale={locale} />
                         </button>
                         {open && (
-                          <div className="mb-2.5 rounded-cz border border-cz-border px-3.5 py-1" aria-busy={data?.status === "loading" || undefined}>
+                          <div className="mb-2.5 pt-1" aria-busy={data?.status === "loading" || undefined}>
                             {data?.status === "ready" ? (
                               list.length > 0
-                                ? <AreaRowsB items={list} prefix={`m${m}`} {...lineProps} />
+                                ? <PatchNoteGroups items={list} archive {...noteProps} />
                                 : <p className="py-2.5 text-[13px] text-cz-2">{t("v2.emptyWeekFiltered")}</p>
                             ) : data?.status === "error" ? (
                               <div className="flex items-center justify-between gap-3 py-2.5">

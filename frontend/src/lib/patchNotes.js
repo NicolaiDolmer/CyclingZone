@@ -177,11 +177,18 @@ export function todayIso(now = new Date()) {
  * Linjens mærke. Udrulning vinder over kategori; en beta-note følger sin kontakt
  * (#6154), så den læses som "Tændt for alle", når kontakten er on for alle.
  */
+export const PATCH_NOTE_CATEGORIES = /** @type {const} */ (["new", "improved", "fixed"]);
+
+/** @param {{ c?: string }} item */
+export function patchNoteCategory(item) {
+  return item.c === "new" || item.c === "fixed" ? item.c : "improved";
+}
+
 export function tagOf(item, liveFlags) {
   const rollout = effectiveRollout({ rollout: item.r, flag: item.f }, liveFlags);
   if (rollout === "beta") return "beta";
   if (rollout === "switched_on" || rollout === "beta_to_live") return "on";
-  return item.c === "new" || item.c === "improved" || item.c === "fixed" ? item.c : "improved";
+  return patchNoteCategory(item);
 }
 
 /**
@@ -266,11 +273,12 @@ export function isThinWeek(count) {
 
 /**
  * @param {any[]} items
- * @param {{ area?: string, betaOnly?: boolean, onlyNew?: boolean, marker?: string | null, liveFlags?: Record<string, boolean> | null }} [options]
+ * @param {{ area?: string, category?: string, betaOnly?: boolean, onlyNew?: boolean, marker?: string | null, liveFlags?: Record<string, boolean> | null }} [options]
  */
-export function filterV2Items(items, { area = "all", betaOnly = false, onlyNew = false, marker = null, liveFlags = null } = {}) {
+export function filterV2Items(items, { area = "all", category = "all", betaOnly = false, onlyNew = false, marker = null, liveFlags = null } = {}) {
   return (items || []).filter((it) => {
     if (area !== "all" && it.a !== area) return false;
+    if (category !== "all" && patchNoteCategory(it) !== category) return false;
     if (betaOnly && tagOf(it, liveFlags) !== "beta") return false;
     if (onlyNew && !isNewSince(it, marker)) return false;
     return true;
