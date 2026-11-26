@@ -85,8 +85,11 @@ function appliesOn(on: boolean | undefined, route: RouteLike): boolean {
 
 /** (A) Faktor paa sprinterholdenes etapeinteresse (1 = uaendret). */
 export function hillyFinish8189ChaseScale(on: boolean | undefined, route: RouteLike): number {
-  if (!appliesOn(on, route) || route.profile_type !== "hilly") return 1;
-  return Math.max(0, 1 - HILLY_FINISH_8189_TUNING.chaseInterestCut * hillyFinish8189Hardness(route));
+  if (!appliesOn(on, route)) return 1;
+  const t = HILLY_FINISH_8189_TUNING;
+  // Boelget: feltet kontrollerer udbruddet og henter det sent i stedet for tidligt.
+  if (route.profile_type === "rolling") return t.rollingChaseScale > 0 ? t.rollingChaseScale : 1;
+  return Math.max(0, 1 - t.chaseInterestCut * hillyFinish8189Hardness(route));
 }
 
 /** (A) Faktor paa lad-gaa-loftet (1 = uaendret). */

@@ -1785,22 +1785,23 @@ export const HILLY_FINISH_8189_TUNING = deepFreeze({
   // `hardnessFull`. En stigning laengere fra maal end `nearFinishKm` taeller mindre, ned til
   // `farWeight` ved `farFinishKm`.
   categoryWeight: { "4": 1, "3": 2, "2": 4, "1": 6, HC: 8 } as Readonly<Record<string, number>>,
-  hardnessFloor: 2,
-  hardnessFull: 10,
+  hardnessFloor: 1,
+  hardnessFull: 8,
   nearFinishKm: 20,
   farFinishKm: 80,
   farWeight: 0.5,
   // (A) Udbruddet: sprinterholdenes interesse i at jage falder med haardheden; lad-gaa-loftet
   // vokser med den. Paa boelget loeftes loftet altid (feltet giver et udbrud lidt mere), og
   // feltet kommer oftere for sent end paa en flad dag.
-  chaseInterestCut: 0.5,
-  letGoGain: 0.5,
-  rollingLetGoScale: 2,
-  rollingLateChance: 0.2,
+  chaseInterestCut: 1,
+  letGoGain: 1,
+  rollingChaseScale: 0.5,
+  rollingLetGoScale: 3,
+  rollingLateChance: 0.35,
   // (A) Det sene angreb paa en kuperet spurtetape: chancen vokser med haardheden.
-  lateAttackChanceAtFull: 0.3,
+  lateAttackChanceAtFull: 0.6,
   // (B) Reduceret spurt: en andel af sprint-vaegten flyttes til udholdenhed og punch i takt med
   // haardheden. Alle vaegte >= 0, saa finale-scorens monotoni i hver evne bevares.
-  sprintShiftAtFull: 0.25,
+  sprintShiftAtFull: 0.5,
   shiftToDurability: 0.6,
 });
