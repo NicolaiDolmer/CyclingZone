@@ -170,11 +170,11 @@ export function withS5ProfilePlaceholders(byProfileType) {
 //
 // Hver vaerdi ligger inden for FINISH_MATRIX for terraenet; testen holder det fast.
 export const ROAD_FINISH_WEIGHTS = Object.freeze({
-  flat: Object.freeze([{ value: "flat_sprint", weight: 84 }, { value: "uphill_sprint", weight: 16 }]),
-  rolling: Object.freeze([{ value: "flat_sprint", weight: 70 }, { value: "uphill_sprint", weight: 22 }, { value: "punch", weight: 8 }]),
+  flat: Object.freeze([{ value: "flat_sprint", weight: 74 }, { value: "uphill_sprint", weight: 26 }]),
+  rolling: Object.freeze([{ value: "flat_sprint", weight: 62 }, { value: "uphill_sprint", weight: 26 }, { value: "punch", weight: 12 }]),
   hilly: Object.freeze([
-    { value: "flat_sprint", weight: 21 }, { value: "uphill_sprint", weight: 15 }, { value: "punch", weight: 25 },
-    { value: "wall_finish", weight: 22 }, { value: "descent", weight: 17 },
+    { value: "flat_sprint", weight: 16 }, { value: "uphill_sprint", weight: 14 }, { value: "punch", weight: 28 },
+    { value: "wall_finish", weight: 26 }, { value: "descent", weight: 16 },
   ]),
   medium_mountain: Object.freeze([
     { value: "flat_sprint", weight: 18 }, { value: "punch", weight: 14 }, { value: "wall_finish", weight: 10 },
