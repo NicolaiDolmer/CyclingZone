@@ -665,7 +665,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const v3DescentDemand = (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && route.finale_type === "descent" ? TIME_MODEL_V3_TUNING.descentFinaleDemand : null;
   // #6363 (KUN s5_profiles_v1): mur, bakke og stigende spurt = grundsaet + hybrid
   // efter etapens haardhed (s5Profiles.ts). Aeldre revisioner laeser intet herfra.
-  // #8189 (KUN kontakten hilly_finish_8189, slukket = null): flad spurt paa kuperet/boelget som reduceret spurt efter dagens haardhed.
+  // #8189 (KUN kontakten hilly_selection_8799, slukket = null): flad spurt paa kuperet/boelget som reduceret spurt efter dagens haardhed.
   const hilly8189Demand = ctx.hillyFinish8189 === true && route.finale_type ? hillyFinish8189Demand(true, route, tuning.finale.demandVectorByFinaleType[route.finale_type]) : null;
   const s5Demand = ctx.s5ProfilesV1 === true ? (hilly8189Demand ?? s5FinaleDemandVector(route)) : null;
   const demandVector = cobbledFinaleDemandVector(

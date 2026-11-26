@@ -238,8 +238,10 @@ export type StageInput = {
   split_attack_cause_7640?: true | null;
   // #7644 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): loft paa samlingens gevinst pr. km paa lange nedkoersler (mechanics/descentRegroup6486.ts). Udeladt = som foer.
   descent_regroup_cap_7644?: true | null;
-  // #7645 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): dalens selektion paa kuperet og mellembjerg (mechanics/timeModel.ts valleySelectionTempo7645). Udeladt = som foer.
-  valley_selection_7645?: import("./mechanics/timeModel.ts").ValleySelection7645Variant | null;
+  // #8799 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): én kontakt for dalens selektion paa kuperet og mellembjerg
+  // (#7645, mechanics/timeModel.ts) og afslutningen paa kuperet/boelget efter dagens haardhed (#8189, mechanics/hillyFinish8189.ts).
+  // Broen saetter feltet kun for et loeb stemplet til kontakten ved foerste etape. Udeladt = som foer.
+  hilly_selection_8799?: true | null;
   // #7726 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): enkeltstarten koeres uden dagsudsving (mechanics/individualTimeTrial.ts). Udeladt = som foer.
   itt_no_day_roll_7726?: true | null;
   // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + app_config day_form_6649): dagsformen med forklaring
@@ -253,8 +255,6 @@ export type StageInput = {
   // #7855 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): troejejagten i etapeplanen (Hent point / Hent bjergpoint,
   // mechanics/jerseyHunt7855.ts). Udeladt = opgaverne findes ikke, som foer.
   jersey_hunt_7855?: true | null;
-  // #8189 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): flad spurt paa kuperet/boelget afgoeres af dagens haardhed (mechanics/hillyFinish8189.ts). Udeladt = som foer.
-  hilly_finish_8189?: true | null;
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
@@ -690,7 +690,7 @@ export type RiderState = {
 export type EngineState = {
   /** #7236 (KUN kontakten queen_stage_gap_7236): topgabets loft greb paa denne etape. Udeladt = som foer. */
   queen_cap_7236?: true;
-  /** #7645 (KUN kontakten valley_selection_7645): km hver hjaelper har foert jagt eller forsvar i dalen. Udeladt = som foer. */
+  /** #7645 (KUN kontakten hilly_selection_8799): km hver hjaelper har foert jagt eller forsvar i dalen. Udeladt = som foer. */
   valley_work_km_7645?: Readonly<Record<string, number>>;
   /** Cohort lineage is internal; it does not rename film groups. */
   shared_grupetto_groups?: Readonly<Record<string, true>>;
@@ -849,7 +849,7 @@ export type SegmentHookContext = {
   breakawayCurve6912?: true;
   // #7730 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.team_chase_7730): jagten afgoeres af de hold der jager. Udeladt = som foer.
   teamChase7730?: true;
-  // #8189 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.hilly_finish_8189): flad spurt paa kuperet/boelget efter dagens haardhed. Udeladt = som foer.
+  // #8189 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.hilly_selection_8799): flad spurt paa kuperet/boelget efter dagens haardhed. Udeladt = som foer.
   hillyFinish8189?: true;
   // #7380 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 med en etapeplan): etapeplanens aktuelle opgave pr. rytter med plan,
   // som runtimen satte den ved segmentets start (stagePlanEngine.stagePlanCurrentTasks). Udeladt = ingen plan.
