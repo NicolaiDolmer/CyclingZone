@@ -101,6 +101,12 @@ test("Program R5 requires a catalog choice and confirms rider and group assignme
   await expect(copy).toBeDisabled();
   await openLibrary();
   await expect(addTarget).toBeDisabled();
+  if (!isMobile) {
+    const groupsShortcut = page.getByTestId("program-r5-open-groups");
+    const shortcutTop = (await groupsShortcut.boundingBox())?.y;
+    await library.getByTestId("program-r5-catalog").getByRole("button", { name: /^Sprinter/ }).click();
+    await expect.poll(async () => (await groupsShortcut.boundingBox())?.y).toBe(shortcutTop);
+  }
   await library.getByRole("button", { name: /^Climber/ }).click();
   await expect(copy).toBeEnabled();
 

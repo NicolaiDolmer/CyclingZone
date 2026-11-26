@@ -777,7 +777,13 @@ export default function ProgramR5({
   ) : null;
 
   const revealEditor = () => {
-    editorRef.current?.scrollIntoView({ block: "nearest" });
+    const editor = editorRef.current;
+    if (!editor) return;
+    const editorTop = editor.getBoundingClientRect().top;
+    const headerBottom = actionsEl?.getBoundingClientRect().bottom ?? 0;
+    if (editorTop < headerBottom || editorTop >= window.innerHeight) {
+      editor.scrollIntoView({ block: "start" });
+    }
   };
   const renderLibrary = (view: typeof libraryView = null) => {
     const close = () => setLibraryView(null);
