@@ -283,7 +283,7 @@ test('#8019 a long balance wraps honestly without horizontal page overflow', asy
     return params.has('current_bidder_id') ? json(route, []) : route.fallback();
   });
   await page.goto('/auctions?tab=all');
-  await expect(page.locator('main header')).toContainText('123.456.789.012.345 CZ$ til rådighed');
+  await expect(page.locator('main header')).toContainText(/Balance\s*123\.456\.789\.012\.345\s+CZ\$/);
   await expect(page.locator('main header a[href="/auctions/history"]')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
 });

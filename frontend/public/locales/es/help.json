@@ -1437,9 +1437,9 @@
           "En un día de entrenamiento, elige la sesión: Salida larga (suave), Tempo (media), o Intervalos mixtos, Intervalos de escalada, Intervalos de punch, Umbral, Sprint, Sectores de adoquines, Ejercicios de abanicos o Repeticiones de ataque (duras). En un día de técnica: Técnica, Aerodinámica o Lectura de carrera.",
           "Guarda. El día se ejecuta todos los días hasta que lo cambies.",
           "No hay tope en cuántos ciclistas pueden tener un programa: puedes fijar uno para toda tu plantilla.",
-          "Cuando Rotación esté disponible en Programa, ordena las sesiones como quieras realizarlas. Una carrera, una lesión o el descanso por el límite de fatiga detienen la secuencia. Si la misma sesión se realiza con esfuerzo suave, la rotación avanza.",
-          "Usa Ir a la sesión para cambiar la posición de un ciclista. Copiar una rotación de la misma longitud conserva su posición, salvo que elijas Empezar en la sesión 1. Una longitud distinta reinicia la rotación en la sesión 1.",
-          "Cuando la prioridad de los turnos esté disponible en Bloques semanales, ordena las sesiones de cada día por prioridad. Puedes bloquear una sesión por día. Sesiones desplazadas por carreras indica cuáles se quedaron sin turno."
+          "En Programa, cambia el Tipo de plan a Rotación y ordena las sesiones como quieras realizarlas. Una carrera, una lesión o el descanso por el límite de fatiga detienen la secuencia. Si la misma sesión se realiza con esfuerzo suave, la rotación avanza.",
+          "Usa Ir a la sesión para cambiar la posición de un ciclista. Copiar una rotación de la misma longitud conserva su posición, salvo que elijas Empezar en la sesión 1. Una longitud distinta reinicia la rotación en la sesión 1. La rotación propia de un ciclista prevalece sobre los bloques semanales del grupo.",
+          "En Programa, cambia el Tipo de plan a Bloques semanales. Ordena las sesiones de cada día por prioridad y bloquea una sesión ese día. Las carreras ocupan la prioridad más baja, y Sesiones desplazadas por carreras indica cuáles se quedaron sin turno. Una sesión bloqueada se queda en su propio turno. Si hay una carrera allí, pasa al turno libre más cercano."
         ]
       },
       "dayTypes": {
@@ -1692,6 +1692,10 @@
     },
     "academy": {
       "label": "Academia",
+      "pageOverview": {
+        "title": "La página de la academia",
+        "text": "La página de la academia se abre con un resumen de la captación de la semana, tus plantillas júnior y sub-23, tus talentos y tu enfoque de edad. Debajo hay cuatro pestañas. Captación de la semana es donde incorporas y fichas a los candidatos. Tus talentos muestra a los ciclistas que fichaste de las ofertas de tu propia academia, con su tipo de ciclista. Los ciclistas de subastas juveniles y de traspasos no aparecen en esa lista, pero siguen contando para los límites de la plantilla. La contabilidad de la academia y el enfoque de edad tienen sus propias respuestas en las preguntas frecuentes."
+      },
       "whatAcademy": {
         "title": "¿Qué es la Academia?",
         "text": "La Academia te permite desarrollar a tu propio talento joven en lugar de comprar ciclistas consolidados en el mercado abierto. Cada temporada tu club recibe una cohorte de promesas al inicio de la temporada. Las revisas, fichas de 0 a 2 para tu Academia y las desarrollas en casa. La Academia es independiente de tu plantilla sénior y está activa, en directo desde el relanzamiento de la temporada 1."
@@ -2430,6 +2434,14 @@
     "academyAgeFocusFaq": {
       "q": "¿Cómo afecta el enfoque de edad a los fichajes semanales de la academia?",
       "a": "En la pestaña Perfil y edad, elige una edad para aumentar su probabilidad en la convocatoria semanal. Pueden aparecer otras edades. La opción mixta conserva la distribución habitual. Los cambios se aplican después de catorce días."
+    },
+    "academyLedgerFaq": {
+      "q": "¿Qué cuenta la contabilidad de la academia?",
+      "a": "La contabilidad muestra una temporada cada vez. Los gastos y las ventas cuentan los mismos ciclistas: todos los que fichaste de una oferta de la academia o ganaste en una subasta juvenil. Los gastos aparecen con signo menos, y los costes de funcionamiento tienen su propia línea. Las ventas enumeran cada ciclista que vendiste, de dónde venía y si salió por subasta o por traspaso."
+    },
+    "weekBlocksLockFaq": {
+      "q": "¿Qué pasa con una sesión bloqueada cuando una carrera o una lesión se interpone?",
+      "a": "Una carrera se corre siempre en sus turnos fijos, así que la sesión bloqueada pasa al turno libre más cercano ese día, y al posterior si dos están igual de cerca. Si el ciclista está lesionado en ese turno pero se recupera más tarde ese mismo día, la sesión pasa al primer turno en que está sano y la semana indica de dónde viene. Una sesión que se llevó una carrera no se recupera, y una sesión nunca se ejecuta dos veces. El límite de fatiga sigue prevaleciendo sobre el bloqueo."
     },
     "academyIntakeExpiryFaq": {
       "q": "¿Caducan las ofertas de cantera de la Academia?",

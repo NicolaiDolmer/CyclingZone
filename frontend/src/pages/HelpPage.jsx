@@ -471,6 +471,7 @@ const SECTION_DEFS = [
     key: "academy",
     Icon: BookOpenIcon,
     blocks: [
+      { id: "pageOverview", kind: "text" }, // #8549 (HELP_BLOCK_FLAGS.academy)
       { id: "whatAcademy", kind: "text" },
       { id: "intakeCohort", kind: "text" },
       // #6666: optag 2.0 (faciliteten, profilen, prognose gennem træning) vises
@@ -627,6 +628,8 @@ const FAQ_KEYS = [
   "riderDevelopment",
   "academyIntakeScoutingFaq",
   "academyAgeFocusFaq",
+  "academyLedgerFaq", // #8549 (HELP_FAQ_FLAGS)
+  "weekBlocksLockFaq", // #8549 (HELP_FAQ_FLAGS)
   "academyIntakeExpiryFaq",
   "academySigningMidRaceFaq",
   "howToWinRace",
