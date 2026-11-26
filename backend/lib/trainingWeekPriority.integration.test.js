@@ -574,3 +574,20 @@ test("golden OLD-1 og OFF-1: frosset main med lås og week-rækker", async () =>
   assert.equal(off.value, golden.fingerprint);
   assert.equal(old.readFlag, false);
 });
+
+test("#8678 Fable 4a: ordinary unbound selection keeps the forecast across stage start", async () => {
+  const { state } = scenario({ race: [2], bound: [], pending: true, stage: "off" });
+  state.race_entries.push({ id: "8678-unbound", race_id: RACE, rider_id: RIDER, team_id: TEAM, race_role: "captain" });
+  const start = Date.parse(state.race_stage_schedule.find((row) => row.race_id === RACE).scheduled_at);
+  const forecastAt = async (now) => (await loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase),
+    team: state.teams[0], seasonId: SEASON.id, now,
+  })).riders[RIDER];
+
+  const before = await forecastAt(new Date(start - 1));
+  const after = await forecastAt(new Date(start + 1));
+  assert.notEqual(before.fatigue, state.rider_condition[0].fatigue, "fixture must show a real forecast");
+  assert.equal(after.pendingSlots, undefined, "the ordinary unbound selection has no pending field");
+  assert.equal(after.fatigue, before.fatigue, "stage start alone must not replace the forecast");
+  assert.notEqual(after.fatigueIsActual, true);
+});

@@ -568,7 +568,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   });
   if (!settled) {
     for (const [id, entry] of Object.entries(forecast)) {
-      if (previousRiders.has(id) || entry.pendingSlots?.length || overdueByRider.get(id)?.size) {
+      if (previousRiders.has(id) || entry.pendingSlots?.length) {
         forecast[id] = showRecordedFatigue(entry, conditionByRider.get(id));
       }
     }
