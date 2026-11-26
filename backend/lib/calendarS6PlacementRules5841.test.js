@@ -12,7 +12,9 @@ import {
   CALENDAR_PLACEMENT_RULES_FIRST_SEASON,
 } from "./calendarTierCaps.js";
 import { detectSeasonPlacementRuleViolations } from "./calendarPlacementGates.js";
-import { enumeratePlacementSkeletons } from "./raceCalendarLanePacker.js";
+import {
+  enumeratePlacementSkeletons, BAND_SKELETON_GT_STAGES_PER_DAY, MAX_GT_SPAN_DAYS, MAX_GT_STAGES_PER_DAY,
+} from "./raceCalendarLanePacker.js";
 import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 import { SEASON_RACE_DATES, SEASON_RACE_DAYS_DEFAULT, resolveSeasonWindow } from "./calendarStartDate.js";
 import { injuryEndGameDay } from "./injuryRaceDays.js";
@@ -132,7 +134,29 @@ test("#5841 mod prod-kataloget: S6 (27 datoer, 140) holder monument-reglerne og 
   assert.deepEqual(monumentBrud, [], monumentBrud.join("\n"));
   const d1 = r.plan.planTiers.find((t) => t.tier === 1);
   assert.ok(d1.monumentRulesHeld, "D1's pakning er fundet MED monument-reglerne");
-  // D2-D4 holder overlap-baandet (D1: se PR'ens spoergsmaal til ejeren).
-  const baandBrud = r.hard.filter((h) => h.includes("2+ samtidige løb") && !h.includes("tier 1:"));
+  // #8837: alle fire divisioner holder overlap-baandet, ogsaa D1 ("55 % ogsaa i D1", ejer 26/11).
+  const baandBrud = r.hard.filter((h) => h.includes("2+ samtidige løb"));
   assert.deepEqual(baandBrud, [], baandBrud.join("\n"));
+  assert.equal(d1.solveAttempts.find((x) => x.ok)?.shareBand, true, "D1's pakning er fundet MED overlap-baandet, ikke i trinnet uden");
+  assert.deepEqual(r.hard, [], r.hard.join("\n"));
+});
+
+test("#8837: baand-skeletterne antager fulde GT-spaend; standard-skeletterne er uaendrede", () => {
+  const gts = [{ id: "g1", stages: 17, seasonFraction: 0.4 }, { id: "g2", stages: 18, seasonFraction: 0.6 }, { id: "g3", stages: 17, seasonFraction: 0.78 }];
+  const mons = [0.2, 0.28, 0.3, 0.35, 0.95].map((f, i) => ({ id: `m${i}`, stages: 1, seasonFraction: f }));
+  const args = {
+    gtsByPhase: gts, monumentsByPhase: mons, days: 27, gtEarliestStartDate: 2,
+    minGapDays: 3, minSpreadDays: 20, monumentsAfterGts: 1, endWithOneDay: true, limit: 200,
+  };
+  const spaendOk = (sk, minDatoer) => {
+    const p = sk.gtStartPins;
+    for (let i = 1; i < p.length; i++) if (p[i] - p[i - 1] < minDatoer + 1) return false;
+    return true;
+  };
+  const standard = enumeratePlacementSkeletons(args);
+  const baand = enumeratePlacementSkeletons({ ...args, maxGtStagesPerDate: BAND_SKELETON_GT_STAGES_PER_DAY });
+  assert.ok(standard.some((sk) => !spaendOk(sk, MAX_GT_SPAN_DAYS)), "standard-skeletterne tillader kortere GT-spaend");
+  assert.ok(baand.length > 0);
+  for (const sk of baand) assert.ok(spaendOk(sk, MAX_GT_SPAN_DAYS), JSON.stringify(sk));
+  assert.deepEqual(enumeratePlacementSkeletons({ ...args, maxGtStagesPerDate: MAX_GT_STAGES_PER_DAY }), standard);
 });
