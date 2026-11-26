@@ -85,7 +85,7 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
 
   // target: "squad" eller et rytter-id.
   const applyProgram = useCallback(
-    (programKey: string, target: string, planKind?: "week") => send("/api/training/programs/apply", "POST", { programKey, target, planKind }),
+    (programKey: string, target: string) => send("/api/training/programs/apply", "POST", { programKey, target }),
     [send],
   );
 

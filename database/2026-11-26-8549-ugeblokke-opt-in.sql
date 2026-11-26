@@ -15,11 +15,16 @@
 -- IDEMPOTENT: en ny kørsel finder ingen rækker. Kun plan_kind ændres (updated_at, days,
 -- rotation røres ikke). Ingen funktioner, ingen DDL. Køres post-merge af auto-migrate (#2642).
 -- Lock-sikkerhed (#6342): venter UPDATE på en låst række, giver den op i stedet for at blokere.
+-- KUN SIKKER MENS training_week_priority ER OFF (Fable 26/11): en Week blocks-skrivning, der kun
+-- ændrer prioritet, efterlader intet spor i days, så efter tænding kan et eksplicit valg ikke skelnes.
+-- Derfor gør filen intet, hvis kontakten ikke er 'off'. Den må aldrig genkøres efter tænding.
+-- Tæl igen efter deploy: 0 'week'-rækker uden lås og uden rotation i begge tabeller før tænding.
 SET lock_timeout = '3s';
 
 UPDATE public.training_week_plans AS p
 SET plan_kind = NULL
 WHERE p.plan_kind = 'week'
+  AND coalesce((SELECT value #>> '{}' FROM public.app_config WHERE key = 'training_week_priority'), 'off') = 'off'
   AND p.rotation IS NULL
   AND NOT EXISTS (
     SELECT 1
@@ -30,6 +35,7 @@ WHERE p.plan_kind = 'week'
 UPDATE public.training_groups AS g
 SET plan_kind = NULL
 WHERE g.plan_kind = 'week'
+  AND coalesce((SELECT value #>> '{}' FROM public.app_config WHERE key = 'training_week_priority'), 'off') = 'off'
   AND g.rotation IS NULL
   AND NOT EXISTS (
     SELECT 1
