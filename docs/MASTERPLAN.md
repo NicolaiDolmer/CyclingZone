@@ -68,9 +68,10 @@
 - **I morgen fre 27/11:** Pro 2.0 #8085 + moms/Stripe #4511 · patch notes-siden #8449 (med Claude) · aldring #8522 · bestyrelsen efter pause #8100 · (spejder-skøn og Android flyttet 26/11, se nedenfor).
 - **Lør 28/11:** sæsonskiftet S5→S6 #7325 · advarsel før lås #7866 · taktik på telefon #8386 · "Angrib på" motor/gem/skærm #8828 (al taktik live før første S6-løb man 30/11, ejer 26/11) · årsag til jagt/forsvar i filmen #8824 (fre/lør).
 - **Søn 29/11:** mellemtider i referatet #8343 (før sæsonstart, ejer 26/11) · kaptajn-advarsel #8458 · mail 2.
-- **Man 30/11:** stabilitet #6917 · aftenkørsel #6490 · velkommen tilbage #8282 · Postgres #6528. Kort pr. rytter #5101, hvis-så #5574 og opgaveskift #7417 afgøres sammen med taktik-opdateringerne (ejer 26/11).
-- **Næste uge (2-6/12):** markedet samlet ét sted #8440 (design med ejer først) + spejder-skøn #7986 #7455 #8024 · tidsgrænse ved træthed #7715 · første dage #8084 · spejdet potentiale-sortering #7924 · udvikling fra løb #5950.
-- **Ugen efter (7-13/12):** design-løft v2 færdig #8737 · farveblind #7988 · Android #6584.
+- **Man 30/11:** stabilitet #6917 · aftenkørsel #6490 · Postgres #6528. Kort pr. rytter #5101, hvis-så #5574 og opgaveskift #7417 afgøres sammen med taktik-opdateringerne (ejer 26/11).
+- **Næste uge (2-6/12):** markedet samlet ét sted #8440 (design med ejer først) + spejder-skøn #7986 #7455 #8024 · tidsgrænse ved træthed #7715  · spejdet potentiale-sortering #7924 · udvikling fra løb #5950.
+- **Ugen efter (7-13/12):** design-løft v2 færdig #8737 · farveblind #7988 · Android #6584. · **Onboarding-pakke:** #8282 #8084 #1140 #961 #1833 #7708 #3813 · **Motor runde 2:** #7715 #7565.
+- **Uge 51 (14-20/12):** **Udvikling runde 2:** #5950 (med roller) #7892 · **Ungdom runde 2:** #7096 #8829 · **Klub og profil-udseende med Pro 2.0:** #5113 (logo, farver, portrætter).
 - **December (S6):** potentiale 1-99 #8545 · roller pr. evne #3813 · præmiepenge i ungdomsløb · klub-udseende og portrætter #5113 · evner forklaret #1833 · ungdom i bestyrelseslokalet #7096 · etapeløbsguide #7708 · hjælp i kontekst #961 · guidet første session #1140 · enkeltstart-positionering #7565 · Pro 2.0 med tre pakker #8085.
 - **2027 Q1:** nationale mesterskaber #934 · mentorer #1177 · formtræning for færdigudviklede #5238 · træningslejr #5063 · U23- og junior-op/nedrykning #4620 #4621 · TTT #3463 · omdømme #4957 #5106 · værdi efter vist niveau #2798 · indstillingsside #3984.
 - **Fortsat fra 25/11 (uændret):** triage-byg #8661 #8399 #7925 #8501 #8398 #8610 #8395 #7928 · regler #8718 · mistet træning #8606/#8421 (fre) · auto-tog #8711 · udgifter #8712 (fre) · instant feel #8714 · Discord #8715 · oprydning #8716 · versaler #8725 (i lane).
