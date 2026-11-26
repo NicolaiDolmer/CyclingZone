@@ -1,11 +1,15 @@
 {
- "source": "3665d081e3282564a964496b58bc3126f9c2c085",
- "note": "#8592 DO-8: fingeraftryk fra merge-basen (kontakten findes ikke). Genereres aldrig med den nye kode.",
+ "source": "a1b4fd925a562fc4f1b2babb46817044ca76db6f",
+ "note": "#8592 DO-8 + #8819: fingeraftryk fra merge-basen (kontakten findes ikke). De fem første er uændrede fra basen 3665d081e; de fire uden_program er nye (#8819). Genereres aldrig med den nye kode.",
  "fingerprints": {
   "celler": "fa88390b3469c26ddc67",
   "celler_etape": "007ec88f15f099866765",
   "ugeblok": "8d09609b05917dd5a9ec",
   "rotation": "4f4768ae2298e8ab2b52",
-  "tryk": "3b79cf64ca23747bd6a0"
+  "tryk": "3b79cf64ca23747bd6a0",
+  "uden_program": "eabf6073a183318e64bc",
+  "uden_program_etape": "c7aa0c4a12e9c7d5be33",
+  "uden_program_regel": "b1148052d33f90221dbc",
+  "uden_program_tryk": "8c3077be3038393d2fb2"
  }
 }

@@ -5,8 +5,9 @@
 // (trainingDayOverride8592.golden.json) er genereret i merge-basen og genereres ALDRIG med den
 // nye kode. Testen kører den nye kode med kontakten off og sammenligner fingeraftrykkene.
 //
-// Hvert scenarie har programceller (motorens gate er åben), en dato-række i den nye tabel og
-// kontakten off. Fingeraftrykket er hele tilstanden efter kørslen (kun hash, ingen motortal).
+// Hvert scenarie har en dato-række i den nye tabel og kontakten off; de fem første har programceller,
+// de fire "uden_program" har ingen (#8819). Fingeraftrykket er hele tilstanden efter kørslen (kun hash).
+// uden_program_regel har en række med beats_fatigue_rule (DO-10), som basen ikke kender.
 //
 //   Generér i basen:  node lib/trainingDayOverride8592.golden.mjs > <fil>
 import { pathToFileURL } from "node:url";
@@ -47,13 +48,20 @@ export const GOLDEN_SCENARIOS = {
     rows: () => [programRow(rider(0), { planKind: "rotation", rotation: ROTATION }), programRow(rider(1))], overrides: [0, 1],
   },
   tryk: { seed: { count: 4 }, rows: () => [programRow(rider(0)), programRow(rider(2))], overrides: [0, 2], press: true },
+  // #8819 (ejer 26/11: virker også uden program): hold uden programfelter, med valg i tabellen og
+  // kontakten off. Motoren læser nu kontakten for alle hold; tilstanden skal være som i basen.
+  uden_program: { seed: { count: 4 }, rows: () => [], overrides: [0, 1, 2] },
+  uden_program_etape: { seed: { count: 4, entered: [0, 1], stageRun: true }, rows: () => [], overrides: [0, 1] },
+  uden_program_regel: { seed: { count: 4, fatigueRules: true, tired: [0, 2] }, rows: () => [], overrides: [0, 2], beatsRule: true },
+  uden_program_tryk: { seed: { count: 4 }, rows: () => [], overrides: [0, 3], press: true },
 };
 
 export async function goldenFingerprint(name) {
   const scenario = GOLDEN_SCENARIOS[name];
   const state = seedState({ ...scenario.seed, flags: { training_day_override_8592: "off", ...(scenario.seed.flags ?? {}) } });
   state.training_week_plans.push(...scenario.rows(state));
-  state.training_day_overrides = overrideRows(scenario.overrides.map((n) => rider(n)));
+  state.training_day_overrides = overrideRows(scenario.overrides.map((n) => rider(n)))
+    .map((row) => (scenario.beatsRule ? { ...row, beats_fatigue_rule: true } : row));
   const fake = createFake(state);
   const outcome = scenario.press ? await press(state, fake).then((r) => [{ status: r.status ?? null }], () => [{ status: "kast" }])
     : await sweep(state, fake);
