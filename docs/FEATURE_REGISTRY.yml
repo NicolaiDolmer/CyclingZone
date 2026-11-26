@@ -357,6 +357,8 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 6110
     verified: 2026-11-26
+    decision: ejer-beslutning
+    decide_by: 2026-12-03
     note: "Kontakten ai_team_frozen_state_8614 seedes off (database/2026-11-26-8614-*.sql, post-merge). Valg B, intet tick, ingen skader, engangs-nulstilling ved sæsonskiftet. Fable-dom før merge; tænding ejer-only."
 
   - id: training-fatigue-now-7801
