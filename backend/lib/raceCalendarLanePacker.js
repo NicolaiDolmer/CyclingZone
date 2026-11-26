@@ -266,6 +266,7 @@ function raceFootprint(race, spineMinStages) {
 //       valgte (`gtStartPins`, `monumentPins`). Det er soegningens svar paa hvorfor R9 ikke
 //       holdt i S6: med 27 datoer brugte det monument-bundne forsoeg hele skridt-loftet,
 //       fordi soegningen foerst opdagede et monument uden plads dybt nede i traeet.
+/** @param {any} args */
 function solveContiguousStarts({
   races, D, days, cap, spineMinStages, monumentRules = null, maxSteps = 20000000,
   stats = null, gtEarliestStartDate = 0, typeGapMaxDates = null, placementRules = null,
@@ -347,7 +348,7 @@ function solveContiguousStarts({
   let steps = 0;
 
   // #5841: R18-R22 (se doc-blokken over funktionen). Alt herunder er inaktivt uden `pr`.
-  const pr = placementRules;
+  const pr = /** @type {any} */ (placementRules);
   const gtPins = pr?.gtStartPins?.length ? pr.gtStartPins : null;
   const monPins = mr && pr?.monumentPins?.length ? pr.monumentPins : null;
   const monEfterGt = mr && pr ? Math.max(0, Number(pr.monumentsAfterGts) || 0) : 0;
@@ -843,6 +844,8 @@ function layoutContiguousRelaxed({ races, D, days, cap, spineMinStages }) {
  * efter hvor taet datoerne ligger paa loebenes virkelige placering i saesonen (seasonFraction
  * fra race_pool.date_text). Soegningen afgoer om et skelet kan fyldes.
  *
+ * @param {{gtsByPhase?:Array<any>, monumentsByPhase?:Array<any>, days:number, gtEarliestStartDate?:number,
+ *   minGapDays:number, minSpreadDays:number, monumentsAfterGts?:number, endWithOneDay?:boolean, limit?:number}} args
  * @returns {Array<{gtStartPins:number[], monumentPins:number[], score:number}>}
  */
 export function enumeratePlacementSkeletons({
@@ -907,8 +910,8 @@ export function enumeratePlacementSkeletons({
   const set = new Set();
   return ud
     .sort((a, b) => a.score - b.score
-      || String(a.gtStartPins).localeCompare(String(b.gtStartPins))
-      || String(a.monumentPins).localeCompare(String(b.monumentPins)))
+      || String(a.gtStartPins).localeCompare(String(b.gtStartPins), "en-US")
+      || String(a.monumentPins).localeCompare(String(b.monumentPins), "en-US"))
     .filter((sk) => {
       const noegle = `${sk.gtStartPins}|${sk.monumentPins}`;
       if (set.has(noegle)) return false;
@@ -928,7 +931,7 @@ export const SKELETON_STRICT_TRY_LIMIT = 12;
 
 function layoutContiguous({
   stageRaces, classics, monuments, density: D, days, cap, spineMinStages, targetG = 0,
-  gtEarliestStartDate = 0, raceTypeSpreadEnabled = true, placementRules = null,
+  gtEarliestStartDate = 0, raceTypeSpreadEnabled = true, placementRules = /** @type {any} */ (null),
 }) {
   if (D < 1 || days < 1 || cap < 1) return null;
 
@@ -976,6 +979,7 @@ function layoutContiguous({
   // #5802 - kalenderen fra det sidste forsoeg.
   const r15Aktiv = gtEarliestStartDate > 0 && gts.length > 0;
   const forsoeg = [];
+  /** @type {any} */
   let loest = null;
   let monumentRulesHeld = false;
   let gtStartRuleHeld = false;
@@ -1002,9 +1006,9 @@ function layoutContiguous({
   // (detectSeasonPlacementRuleViolations) doemmer resultatet haardt, saa en tabt regel
   // stopper --apply i stedet for at forsvinde i en fallback. Reglen slaekkes aldrig tavst.
   if (placementRules) {
-    const s6MonRegler = monuments.length
+    const s6MonRegler = /** @type {any} */ (monuments.length
       ? { minGapDays: placementRules.monumentMinGapDays, minSpreadDays: placementRules.monumentMinSpreadDays }
-      : null;
+      : null);
     const sidsteGtFraction = gts.length && gts.every(hasFraction) ? Math.max(...gts.map((r) => r.seasonFraction)) : null;
     const monumentsAfterGts = placementRules.lastMonumentAfterGrandTours && sidsteGtFraction != null
       ? monuments.filter((r) => hasFraction(r) && r.seasonFraction > sidsteGtFraction).length

@@ -538,7 +538,7 @@ function buildSquadTierPlan({
 }
 
 /**
- * @param {{ pools, catalog, from?, realDays?, quotas?, density?, slots?, baseSeed? }} args
+ * @param {{ pools, catalog, from?, realDays?, quotas?, density?, slots?, baseSeed?, seasonNumber? }} args
  * @returns {{ tierPlans: Array<object> }}
  */
 export function buildTierMaterializationPlan({

@@ -60,7 +60,7 @@ export function gameDaySpansByRace(stageRows = []) {
  * loeb kan dele dato uden at dele loebsdag. Datoerne ville baade give falske positiver og
  * misse aegte overlap.
  *
- * @param {{tier:number, raceRows:Array, stageRows:Array, minGrandTourStages?:number}} args
+ * @param {{tier?:number, raceRows?:Array<any>, stageRows?:Array<any>, minGrandTourStages?:number}} [args]
  * @returns {string[]} violation-strings (samme moenster som detectCoverageViolations)
  */
 export function detectMonumentsInsideGrandTours({
@@ -112,8 +112,8 @@ export function detectMonumentsInsideGrandTours({
  * Maalt paa `game_day` (loebsdags-aksen), samme akse som monument-gaten ovenfor. Overlap
  * mellem en GT og et andet etapeloeb er TILLADT (ejer 26/9) og maales ikke her.
  *
- * @param {{tier:number, raceRows:Array, stageRows:Array,
- *   realOrderByPoolRace:Map<string,number>, minGrandTourStages?:number}} args
+ * @param {{tier?:number, raceRows?:Array<any>, stageRows?:Array<any>,
+ *   realOrderByPoolRace?:Map<string,number>, minGrandTourStages?:number}} [args]
  *   realOrderByPoolRace: pool_race_id -> virkelig raekkefoelge-noegle (seasonFraction)
  * @returns {string[]} violation-strings
  */
@@ -129,10 +129,10 @@ export function detectGrandTourOrderViolations({
   // ingen rigtig indbyrdes raekkefoelge, saa gaten tager ikke stilling til dem. Ellers ville
   // en tie-breaker her (id) kunne doemme en placering som pakkerens R14 (anden tie-breaker)
   // lovligt valgte - fanget af CodeRabbit 26/9.
-  if (order.every((gt, i) => i === 0 || order[i - 1].realOrder <= gt.realOrder)) return [];
+  if (order.every((gt, i) => i === 0 || Number(order[i - 1].realOrder) <= Number(gt.realOrder))) return [];
   const planlagt = order.map((gt) => gt.name).join(" → ");
   const rigtig = [...order]
-    .sort((a, b) => a.realOrder - b.realOrder || String(a.id).localeCompare(String(b.id)))
+    .sort((a, b) => Number(a.realOrder) - Number(b.realOrder) || String(a.id).localeCompare(String(b.id)))
     .map((gt) => gt.name).join(" → ");
   return [
     `tier ${tier}: Grand Tours starter i rækkefølgen ${planlagt}, men den rigtige kalenderrækkefølge er ${rigtig} (#5802)`,
@@ -163,8 +163,8 @@ function calendarDaysBetween(fra, til) {
  * `scheduled_at` blandt dens etaper). En GT uden dato kan ikke doemmes og springes over;
  * mangler saesonens foerste dag, er der intet at maale op imod.
  *
- * @param {{tier:number, grandTourStarts:Array, seasonFirstDay:string|null,
- *   earliestStartDateIndex?:number}} args
+ * @param {{tier?:number, grandTourStarts?:Array<any>, seasonFirstDay?:string|null,
+ *   earliestStartDateIndex?:number}} [args]
  * @returns {string[]} violation-strings
  */
 export function detectGrandTourEarlyStartViolations({
@@ -190,6 +190,7 @@ export function detectGrandTourEarlyStartViolations({
  *
  * @returns {Array<{id:string, name:string, firstGameDay:number, firstDate:string|null,
  *   realOrder:number|null}>}
+ * @param {{raceRows?:Array<any>, stageRows?:Array<any>, realOrderByPoolRace?:Map<string,number>, minGrandTourStages?:number}} [args]
  */
 export function listGrandTourStarts({
   raceRows = [], stageRows = [], realOrderByPoolRace = new Map(),
@@ -230,7 +231,7 @@ export function listGrandTourStarts({
  * vaelge imellem. Et loft uden et gulv er en halv regel.
  *
  * @returns {{minOverlap:number|null, maxOverlap:number, gameDays:number, histogram:object,
- *   lowDays:number[]}}
+ *   lowDays:number[], multiRaceDays:number, multiRaceShare:number}}
  */
 export function computeGameDayOverlap({ stageRows = [], overlapMin = null, multiRaceMin = 2 } = {}) {
   const racesByGameDay = new Map();
@@ -262,7 +263,8 @@ export function computeGameDayOverlap({ stageRows = [], overlapMin = null, multi
 }
 
 /**
- * §1/#3329: fejl hvis en division har loebsdage under sit mindste-overlap.
+ * `overlapMin[tier] == null` = ingen bund sat for den division (ikke "groen").
+ * @param {{tier?:any, overlap?:any, overlapMin?:any, multiRaceShareMin?:any, maxListed?:number}} [args]
  * `overlapMin[tier] == null` = ingen bund sat for den division (ikke "groen").
  */
 export function detectMinOverlapViolations({
@@ -298,6 +300,7 @@ export function detectMinOverlapViolations({
  * praecis det antal loebsdage divisionens tidsplan HAR - leverer en division faerre, staar
  * der tomme slots; leverer den flere, er tae­theden broedt. Et interval ville vaere en
  * indroemmelse af at vi ikke ved hvad tallet skal vaere. Vi ved det.
+ * @param {{tier?:number, quota?:number|null, totalGameDays?:number|null}} [args]
  */
 export function detectQuotaViolations({ tier, quota, totalGameDays } = {}) {
   if (quota == null || totalGameDays == null) return [];
@@ -324,8 +327,8 @@ export function detectQuotaViolations({ tier, quota, totalGameDays } = {}) {
  *   §3 etapeloeb vs. GT-start            loebsdags-aksen
  *   §1 overlap-baand                     loebsdage med loeb (computeGameDayOverlap)
  *
- * @param {{tier:number, rules:object|null, raceRows:Array, stageRows:Array,
- *   realOrderByPoolRace?:Map<string,number>, minGrandTourStages?:number}} args
+ * @param {{tier?:number, rules?:any, raceRows?:Array<any>, stageRows?:Array<any>,
+ *   realOrderByPoolRace?:Map<string,number>, minGrandTourStages?:number}} [args]
  * @returns {string[]} violation-strings
  */
 export function detectSeasonPlacementRuleViolations({
@@ -347,6 +350,8 @@ export function detectSeasonPlacementRuleViolations({
     const v = realOrderByPoolRace.get(id);
     return typeof v === "number" && Number.isFinite(v) ? v : null;
   };
+  // Kun kaldt paa loeb der allerede er filtreret til en kendt raekkefoelge.
+  const roN = (id) => /** @type {number} */ (ro(id));
   const erGt = (r) => {
     const span = spans.get(r.pool_race_id);
     const stages = Number(r.stages) || span?.stages || 1;
@@ -371,14 +376,14 @@ export function detectSeasonPlacementRuleViolations({
     }
   }
   const doembare = mons.filter((m) => ro(m.pool_race_id) != null);
-  if (!doembare.every((m, i) => i === 0 || ro(doembare[i - 1].pool_race_id) <= ro(m.pool_race_id))) {
+  if (!doembare.every((m, i) => i === 0 || roN(doembare[i - 1].pool_race_id) <= roN(m.pool_race_id))) {
     brud.push(`tier ${tier}: monumenterne ligger i rækkefølgen ${doembare.map(navn).join(" → ")}, ikke i deres virkelige rækkefølge (§4/#5841)`);
   }
   if (rules.lastMonumentAfterGrandTours && gts.length && gts.every((g) => ro(g.pool_race_id) != null)) {
-    const sidsteGtRo = Math.max(...gts.map((g) => ro(g.pool_race_id)));
+    const sidsteGtRo = Math.max(...gts.map((g) => roN(g.pool_race_id)));
     const sidsteGtSlut = Math.max(...gts.map((g) => spans.get(g.pool_race_id).last));
     for (const m of doembare) {
-      if (ro(m.pool_race_id) > sidsteGtRo && spans.get(m.pool_race_id).first <= sidsteGtSlut) {
+      if (roN(m.pool_race_id) > sidsteGtRo && spans.get(m.pool_race_id).first <= sidsteGtSlut) {
         brud.push(`tier ${tier}: monumentet «${navn(m)}» ligger i virkeligheden efter den sidste Grand Tour, men ligger før den er slut i kalenderen (løbsdag ${spans.get(m.pool_race_id).first}, sidste GT slutter ${sidsteGtSlut}) (§4/#5841)`);
       }
     }
@@ -414,7 +419,7 @@ export function detectSeasonPlacementRuleViolations({
   // §1: overlap-baandet - gulv OG loft.
   const band = rules.multiRaceShareBand;
   if (band) {
-    const o = computeGameDayOverlap({ stageRows });
+    const o = computeGameDayOverlap(/** @type {any} */ ({ stageRows }));
     const share = o.multiRaceShare ?? 0;
     if (o.gameDays && (share < band.min - 1e-9 || share > band.max + 1e-9)) {
       brud.push(`tier ${tier}: ${(100 * share).toFixed(1)} % af løbsdagene har 2+ samtidige løb (${o.multiRaceDays}/${o.gameDays}), skal ligge i ${(100 * band.min).toFixed(0)}-${(100 * band.max).toFixed(0)} % (§1/#5841)`);
