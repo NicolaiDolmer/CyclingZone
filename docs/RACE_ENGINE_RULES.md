@@ -1200,3 +1200,7 @@ Kun visning og notifikationstekst; motoren og resultaterne er uændrede. Ejerval
 - *Startliste, Etape og Hold (#8409).* Startlistens top fem er et resultat og ligger bag skjoldet, når den senest kørte etape er uåbnet. Etapes favoritkort kræver at det seneste relevante klassement er åbent og beregnes uden skjulte etapers placeringer. Hold viser samlet placering og førertrøje-genvej, når kildeetapen er åben. Tidsgrænse- og afgangsmærker følger resultatets synlighed, også hvis en afgang mangler etapenummer.
 - *Løbssiden.* En kørt, uåbnet etape: hovedet siger "Stage finished · result hidden by your spoiler shield", talrækkens resultat-tal og etapestribens vinder og egen placering står ikke, Story starter filmen ved start og viser kun referatet op til filmens position ("The finale is ahead · keep watching"), og Resultater ligger bag "Show results".
 - *Notifikationer.* Med skjoldet for løbet får modtageren etapens og løbets neutrale tekst (`notif.stageResult.messageNoResult`, `notif.raceResult.message`) uden vinder, rubrik og placering. Push for løb sendes kun som resumé med antal og var allerede neutralt.
+
+## Hold i historiske resultater (#8399)
+
+Et resultat bruger `race_results.team_id` og det gemte `team_name` til visning, filtrering og links. Et senere holdskifte ændrer ikke resultatets hold. Hvis et gammelt resultat mangler navn, må kun en direkte relation via det gemte hold-ID levere et navn. Et bevaret navn kan vises uden link efter et holds sletning. Rækker uden bevaret holdnavn eller identificerbart hold vises uden holdtilskrivning.
