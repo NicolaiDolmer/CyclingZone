@@ -355,8 +355,10 @@ function solveContiguousStarts({
   const monEfterGt = mr && pr ? Math.max(0, Number(pr.monumentsAfterGts) || 0) : 0;
   const endagSidst = Boolean(pr?.endWithOneDay);
   const baand = pr?.shareBand ?? null;
+  // R21-GT (#8837): GT-loftet pr. dato for baand-forsoeget. Se BAND_GT_STAGES_PER_DAY.
+  const gtLoft = baand && (globalThis.__t8837?.loft ?? pr?.maxGtStagesPerDate) ? (globalThis.__t8837?.loft ?? pr.maxGtStagesPerDate) : MAX_GT_STAGES_PER_DAY;
   // Mindste antal datoer en GT fylder (R7's loft pr. dato) - til skelettets fremadsyn.
-  const gtMinDatoer = items.map((it) => (it.gt ? Math.ceil(lenOf(it.race) / MAX_GT_STAGES_PER_DAY) : 0));
+  const gtMinDatoer = items.map((it) => (it.gt ? Math.ceil(lenOf(it.race) / gtLoft) : 0));
 
   // R16 (#5830, ejer 27/9): ingen division maa have mere end `typeGapMaxDates` kalenderdatoer
   // i traek uden et endagsloeb, eller uden en etapeloebs-etape. Foer R16 tog soegningen den
@@ -429,7 +431,18 @@ function solveContiguousStarts({
       etapeBaaretIndPaaDato[dato] = aktive.some((a) => erEtape[a.i] && items[a.i].fp[a.off] === 1);
     }
     const carriedGt = aktive.filter((a) => items[a.i].gt && items[a.i].fp[a.off] === 1).length;
-    if (gtIDato + carriedGt > MAX_GT_STAGES_PER_DAY) return false;
+    if (gtIDato + carriedGt > gtLoft) return false;
+    // R21-GT fremadsyn (kun baand-forsoeget): den aktive GT skal kunne naa sine resterende
+    // etaper inden R8's sidste dato med hoejst gtLoft pr. dato.
+    if (baand && gtStartDato != null) {
+      const g = aktive.find((a) => items[a.i].gt);
+      if (g) {
+        let rest = 0;
+        for (let o = g.off; o < items[g.i].fp.length; o++) rest += items[g.i].fp[o];
+        const datoerTilbage = gtStartDato + MAX_GT_SPAN_DAYS - 1 - dato;
+        if (rest > (gtLoft - gtIDato) + datoerTilbage * gtLoft) return false;
+      }
+    }
 
     const plads = D - brugtIDato;
     const lo = Math.max(1, carriedStages);
@@ -453,6 +466,10 @@ function solveContiguousStarts({
     const loads = [];
     for (let load = hi; load >= lo; load--) loads.push(load);
     if (letFoerst) loads.reverse();
+    if (baand && globalThis.__t8837?.order) {
+      const o = globalThis.__t8837.order({ gtAktiv: carriedGt > 0 || aktive.some((a) => items[a.i].gt), carriedGt, carriedStages, multiN, totalN, lo, hi, plads, gtIDato, dato, letFoerst });
+      loads.length = 0; for (const l of o) if (l >= lo && l <= hi) loads.push(l);
+    }
     for (const load of loads) {
       const nye = load - carriedStages;
       if (nye < 0) continue;
@@ -845,6 +862,7 @@ function layoutContiguousRelaxed({ races, D, days, cap, spineMinStages }) {
 export function enumeratePlacementSkeletons({
   gtsByPhase = [], monumentsByPhase = [], days, gtEarliestStartDate = 0,
   minGapDays, minSpreadDays, monumentsAfterGts = 0, endWithOneDay = false, limit = 60,
+  maxGtStagesPerDate = MAX_GT_STAGES_PER_DAY,
 }) {
   const anker = [...gtsByPhase, ...monumentsByPhase];
   const fr = anker.map((r) => r.seasonFraction);
@@ -856,7 +874,7 @@ export function enumeratePlacementSkeletons({
     : ((idx + 0.5) / antal) * (days - 1));
   const gtIdeel = gtsByPhase.map((r, i) => ideel(r, i, anker.length));
   const monIdeel = monumentsByPhase.map((r, i) => ideel(r, gtsByPhase.length + i, anker.length));
-  const minDatoer = gtsByPhase.map((r) => Math.ceil(lenOf(r) / MAX_GT_STAGES_PER_DAY));
+  const minDatoer = gtsByPhase.map((r) => Math.ceil(lenOf(r) / maxGtStagesPerDate));
   // Saesonens sidste dato skal kunne baere et endagsloeb efter den sidste GT (R19), saa
   // den sidste GT maa ikke antages at slutte paa den.
   const sidsteGtSlutMax = endWithOneDay ? days - 2 : days - 1;
@@ -922,6 +940,10 @@ export const SKELETON_SOLVE_MAX_STEPS = 150000;
 export const SKELETON_TRY_LIMIT = 60;
 // ...og for det strammere trin (med overlap-baandet) kun de forreste.
 export const SKELETON_STRICT_TRY_LIMIT = 12;
+// #8837 (R21-GT): GT-etaper pr. dato i baand-forsoeget. En dato med fuldt R7-loft giver plads
+// til hoejst een loebsdag med 2+ loeb, saa D1 kan ikke naa baandet med fulde GT-datoer.
+// Strammere end R7, aldrig loesere; kun aktivt naar overlap-baandet er sat (S6+).
+export const BAND_GT_STAGES_PER_DAY = 3;
 
 function layoutContiguous({
   stageRaces, classics, monuments, density: D, days, cap, spineMinStages, targetG = 0,
@@ -1020,19 +1042,33 @@ function layoutContiguous({
       endWithOneDay: Boolean(placementRules.seasonEndsWithOneDayRace),
       shareBand: placementRules.multiRaceShareBand ?? null,
     };
+    // R21-GT (#8837): med overlap-baandet bærer en GT-dato faerre GT-etaper, saa datoens
+    // oevrige etaper kan ligge samtidig med GT'en. Skeletterne for det trin regnes med samme
+    // loft, ellers antager de GT-spaend der kun kan naas med fulde GT-datoer.
+    const BGL = globalThis.__t8837?.loft ?? BAND_GT_STAGES_PER_DAY;
+    const baandGtLoft = fuldt.shareBand && gts.every((r) => Math.ceil(lenOf(r) / BGL) <= MAX_GT_SPAN_DAYS)
+      ? BGL : null;
+    const baandSkeletter = baandGtLoft && gts.length && monuments.length && gtsByPhase
+      ? enumeratePlacementSkeletons({
+        gtsByPhase, monumentsByPhase: monByPhase, days, gtEarliestStartDate: r15Aktiv ? gtEarliestStartDate : 0,
+        minGapDays: s6MonRegler.minGapDays, minSpreadDays: s6MonRegler.minSpreadDays, monumentsAfterGts,
+        endWithOneDay: Boolean(placementRules.seasonEndsWithOneDayRace), limit: SKELETON_TRY_LIMIT,
+        maxGtStagesPerDate: baandGtLoft,
+      })
+      : skeletter;
     // Stigen inden for S6-reglerne: alt foerst; derefter uden overlap-baandet. Monument-
     // reglerne, R18 og R19 slippes aldrig her - de er de regler ejeren
     // bad om at faa bevist umulige, ikke slaekket (#5841 punkt 2). Det der slippes, doemmes
     // af gaten bagefter og stopper --apply; `solveAttempts` viser hvilket trin der holdt.
-    const varianter = [fuldt];
+    const varianter = [baandGtLoft ? { ...fuldt, maxGtStagesPerDate: baandGtLoft } : fuldt];
     if (fuldt.shareBand) varianter.push({ ...fuldt, shareBand: null });
     ydre: for (const [vi, regelSaet] of varianter.entries()) {
       const sidsteVariant = vi === varianter.length - 1;
       // Kun den sidste variant faar hele skelet-listen og begge R16-trin; de strammere
       // proeves paa de mest virkelighedsnaere skeletter, saa en umulig regel ikke koster
       // hele budgettet.
-      const skelVariant = sidsteVariant ? skeletter : skeletter.slice(0, SKELETON_STRICT_TRY_LIMIT);
-      for (const typeGap of raceTypeSpreadEnabled ? (sidsteVariant ? [true, false] : [true]) : [false]) {
+      const skelVariant = sidsteVariant ? skeletter : (regelSaet.shareBand ? baandSkeletter : skeletter).slice(0, globalThis.__t8837?.lim ?? SKELETON_STRICT_TRY_LIMIT);
+      for (const typeGap of globalThis.__t8837?.tg ?? (raceTypeSpreadEnabled ? (sidsteVariant ? [true, false] : [true]) : [false])) {
         for (const sk of skelVariant) {
           const stats = {};
           loest = solveContiguousStarts({
@@ -1040,7 +1076,7 @@ function layoutContiguous({
             gtEarliestStartDate: r15Aktiv ? gtEarliestStartDate : 0,
             typeGapMaxDates: typeGap ? RACE_TYPE_MAX_GAP_DATES : null,
             placementRules: { ...regelSaet, gtStartPins: sk.gtStartPins, monumentPins: sk.monumentPins },
-            maxSteps: skeletter.length > 1 ? SKELETON_SOLVE_MAX_STEPS : MONUMENT_SOLVE_MAX_STEPS,
+            maxSteps: globalThis.__t8837?.steps ?? (skeletter.length > 1 ? SKELETON_SOLVE_MAX_STEPS : MONUMENT_SOLVE_MAX_STEPS),
           });
           forsoeg.push({
             rules: Boolean(s6MonRegler), gtStartRule: r15Aktiv, typeGapRule: typeGap, placementRules: true,
