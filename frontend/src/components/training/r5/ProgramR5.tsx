@@ -277,6 +277,14 @@ export default function ProgramR5({
   const canCopy = isRotation ? Boolean(subject && rotationPasses.length >= 2) : Boolean(chosenProgram);
   const writeRotation = (target: Subject, change: RotationWrite) => target.kind === "group"
     ? groups.setRotation(target.id, change) : programs.setRotation(target.id, change);
+  // #8776 (ejer 26/11): ugeprioritet er opt-in. plan_kind 'week' saettes kun af en Week blocks-
+  // skrivning (prioritet/laas) eller af et skift fra Rotation til Ugeblokke; en almindelig
+  // gemning eller et program sat paa lader markoeren vaere, som den var.
+  const storedKindOf = (target: Subject) => (target.kind === "rider"
+    ? programs.rotations?.[target.id]?.planKind
+    : groups.groups.find((item) => item.id === target.id)?.planKind) ?? null;
+  const leaveRotation = async (target: Subject): Promise<{ ok: boolean }> => (storedKindOf(target) === "rotation"
+    ? writeRotation(target, { planKind: "week" }) : { ok: true });
   const clearRotationDraft = () => setRotationDrafts((prev) => {
     const next = { ...prev };
     delete next[sKey];
@@ -370,7 +378,9 @@ export default function ProgramR5({
       if (result.ok) groupChanged = true;
       return result;
     };
-    const markWeek = weekPriority || programs.rotationEnabled ? { planKind: "week" as const } : undefined;
+    // Planer, der skifter fra Rotation til Ugeblokke: de redigerede og den viste (switchToWeek).
+    const leaving = [...new Set([...Object.keys(drafts), ...Object.keys(weekDrafts), ...(switchToWeek && subject ? [sKey] : [])])]
+      .map(parseSubjectKey).filter((target): target is Subject => !!target && storedKindOf(target) === "rotation");
     const unsavedDays: Record<string, Record<string, WeekBlock>> = {};
     if (weekPriority) for (const [key, blocks] of Object.entries(weekDrafts)) {
       const target = parseSubjectKey(key);
@@ -390,19 +400,18 @@ export default function ProgramR5({
       const rest: Record<string, string> = { ...d };
       for (const step of draftSteps(d, weekdays)) {
         if (unsavedDays[key]?.[step.weekday]) continue;
-        const result = await saveCell(target, step.weekday, step.slotIndex, step.session, markWeek);
+        const result = await saveCell(target, step.weekday, step.slotIndex, step.session);
         if (!result.ok) { failed = true; break; }
         delete rest[`${step.weekday}:${step.slotIndex}`];
       }
       if (Object.keys(rest).length) left[key] = rest;
     }
-    // En rytters felt-gem goer planen til hans egen; gruppeklienten skal se det.
-    const savedSubjectFields = Object.keys(drafts[sKey] ?? {}).length > 0
-      || (weekPriority && Object.keys(weekDrafts[sKey] ?? {}).length > 0);
-    if (switchToWeek && subject && !failed && !savedSubjectFields) {
-      failed = !(await writeRotation(subject, { planKind: "week" })).ok;
-      if (!failed && subject.kind === "group") groupChanged = true;
+    for (const target of leaving) {
+      if (failed) break;
+      failed = !(await leaveRotation(target)).ok;
+      if (!failed && target.kind === "group") groupChanged = true;
     }
+    // En rytters felt-gem goer planen til hans egen; gruppeklienten skal se det.
     if ([...Object.keys(drafts), ...Object.keys(weekDrafts)].some((key) => parseSubjectKey(key)?.kind === "rider")) await groups.reload();
     setDrafts(left);
     setWeekDrafts(unsavedDays);
@@ -430,10 +439,10 @@ export default function ProgramR5({
     setSaving(true);
     setDialogError(false);
     try {
-      const planKind = programs.rotationEnabled || weekPriority ? "week" : undefined;
-      const result = addTarget.kind === "group"
-        ? await groups.putProgram(addTarget.id, chosenProgram.key, planKind)
-        : await programs.applyProgram(chosenProgram.key, addTarget.id, planKind);
+      const applied = addTarget.kind === "group"
+        ? await groups.putProgram(addTarget.id, chosenProgram.key)
+        : await programs.applyProgram(chosenProgram.key, addTarget.id);
+      const result = applied.ok ? await leaveRotation(addTarget) : applied;
       if (addTarget.kind === "rider") await groups.reload();
       if (!result.ok) { setDialogError(true); return; }
       setSubject(addTarget);
@@ -682,8 +691,8 @@ export default function ProgramR5({
           for (const id of ids) {
             const result = isRotation
               ? await programs.setRotation(id, { planKind: "rotation", passes: rotationPasses, keepPlace })
-              : await programs.applyProgram(chosenProgram!.key, id, programs.rotationEnabled || weekPriority ? "week" : undefined);
-            if (result.ok) done += 1;
+              : await programs.applyProgram(chosenProgram!.key, id);
+            if (result.ok && (isRotation || (await leaveRotation({ kind: "rider", id })).ok)) done += 1;
           }
           await groups.reload();
           setNote(done === ids.length
