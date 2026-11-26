@@ -298,7 +298,12 @@ jobs:
         if: steps.gate.outputs.verify == 'true'
         run: node scripts/ci/backend-test-shards.mjs verify --logs-dir "$RUNNER_TEMP/backend-test-files"
 
-  frontend-build:
+  frontend-build-variants:
+    name: frontend-build (${{ matrix.variant }})
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [standard, skew, preview]
     needs: patch-notes-mode
     if: ${{ !cancelled() && needs.patch-notes-mode.outputs.numbering_only != 'true' }}
     runs-on: ubuntu-latest
@@ -343,15 +348,17 @@ jobs:
       # bekræftet lokalt: samme `--depth=1`-fetch reproducerer PR #5381's
       # eksakte "no merge base"-fejl, en fuld fetch her retter den. Refs #5093.
       - name: Fetch main for merge-base guards (PatchNotes, now-md-sidecar)
-        if: github.event_name == 'pull_request'
+        if: matrix.variant == 'standard' && github.event_name == 'pull_request'
         working-directory: .
         run: git fetch --no-tags origin main:refs/remotes/origin/main
 
       - name: Test PatchNotes version guard
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node --test scripts/check-patch-notes-version.test.js
 
       - name: Check PatchNotes version uniqueness
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node scripts/check-patch-notes-version.js
 
@@ -364,10 +371,12 @@ jobs:
       # job gaar roedt OG merger alligevel. Ren fil-laesning, ingen dependencies,
       # saa den koerer foer `npm ci` og fejler hurtigt.
       - name: Test event-catalog guard
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node --test scripts/check-event-catalog.test.mjs
 
       - name: Run event-catalog guard
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node scripts/check-event-catalog.mjs
 
@@ -375,6 +384,7 @@ jobs:
       # Testene laaser at serveren ingen skrive-tools har, og at handshaket ikke
       # venter paa netvaerk. Ingen dependencies, saa den koerer foer `npm ci`.
       - name: Test read-only Discord MCP server
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node --test scripts/discord/mcp-readonly-server.test.mjs
 
@@ -390,6 +400,7 @@ jobs:
       # manglede. Guarden koerer kun paa pull_request (direkte close-out-
       # commits paa main er upaavirkede).
       - name: Test now-md-sidecar guard
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node --test scripts/check-now-md-sidecar.test.mjs
 
@@ -397,6 +408,7 @@ jobs:
       # privacy, atomisk restore-plan). Rene gate-funktioner, ingen database og
       # ingen credentials; kraever pwsh (findes paa ubuntu-runneren).
       - name: Test staging refresh gates
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node --test scripts/refresh-staging.test.mjs
 
@@ -404,11 +416,12 @@ jobs:
       # skrivning, git-vagt, main-forloeb med injicerede afhaengigheder). Testen
       # importerer kun scriptets rene dele; motoren og git koeres ikke.
       - name: Test refresh-fingerprints
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node --test scripts/refresh-fingerprints.test.mjs
 
       - name: Run now-md-sidecar guard
-        if: github.event_name == 'pull_request'
+        if: matrix.variant == 'standard' && github.event_name == 'pull_request'
         working-directory: .
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -418,6 +431,7 @@ jobs:
         run: npm ci
 
       - name: Lint frontend
+        if: matrix.variant == 'standard'
         run: npm run lint
 
       # Brohoved-typecheck. Spejler backend's "Type-check race engine v4"-step.
@@ -425,9 +439,11 @@ jobs:
       # Fanger den bugklasse schema-column-guard blev haandbygget mod (#3586):
       # en select mod en kolonne skemaet ikke har giver nu en typefejl i editoren.
       - name: Type-check frontend
+        if: matrix.variant == 'standard'
         run: npm run typecheck
       # #6202: build-selection CLI/helpers are outside src/** and tests/e2e/**.
       - name: Type-check build-selection tools (#6202)
+        if: matrix.variant == 'standard'
         run: npx tsc --ignoreConfig --noEmit --types node --allowImportingTsExtensions --module NodeNext --moduleResolution NodeNext --target ES2022 --strict --skipLibCheck scripts/vercel-build-decision.ts scripts/vercel-ignore-build.ts scripts/vercel-ignore-build.test.ts
 
       # #5534: hard rule 31 kraever nu .ts/.tsx for nye frontend-filer, ogsaa
@@ -438,9 +454,11 @@ jobs:
       # 4346-report-trade.spec.ts, rettet i samme PR), saa gaten er en hard
       # fejl fra dag ét — ingen advarsels-periode noedvendig.
       - name: Type-check e2e specs (#5534)
+        if: matrix.variant == 'standard'
         run: npx tsc --noEmit -p tests
 
       - name: Run frontend tests
+        if: matrix.variant == 'standard'
         run: npm test -- --test-reporter=spec
 
       # #4595: buildet koeres med MARKOER-env, saa det naeste trin kan bevise at
@@ -450,6 +468,7 @@ jobs:
       # VITE_SENTRY_DSN er obligatorisk: uden DSN dead-code-eliminerer Rollup hele
       # Sentry.init-kaldet, og saa maaler guarden et build der ikke ligner prod.
       - name: Build frontend
+        if: matrix.variant == 'standard'
         env:
           VERCEL_GIT_COMMIT_SHA: c2de7e1211111111111111111111111111111111
           VITE_VERCEL_GIT_COMMIT_SHA: c2de7e1222222222222222222222222222222222
@@ -465,6 +484,7 @@ jobs:
       # ovenfor. Den fulde variant (`--full`, to builds + byte-sammenligning) er
       # ~2 x 25 s og koeres lokalt/manuelt, ikke paa hver PR.
       - name: Run build-determinism guard (#4595)
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node scripts/check-build-determinism.mjs
 
@@ -473,10 +493,12 @@ jobs:
       # knaekkede hele appen i prod 4/9 (PR #4745, revertet). Skew Protection
       # koerer via __vdpl-cookien i stedet, som ikke roerer en eneste URL.
       - name: Test skew-protection guard
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node --test scripts/check-skew-protection.test.mjs
 
       - name: Run skew-protection guard
+        if: matrix.variant == 'standard'
         working-directory: .
         run: node scripts/check-skew-protection.mjs
 
@@ -490,6 +512,7 @@ jobs:
       # printer "[skip] Skew Protection er slaaet fra i koden (#2423)" og er
       # groen, hvilket er den tilsigtede tilstand, ikke en attrap.
       - name: Build frontend with Skew Protection enabled (#2423)
+        if: matrix.variant == 'skew'
         env:
           VERCEL_SKEW_PROTECTION_ENABLED: "1"
           VERCEL_DEPLOYMENT_ID: dpl_ci_test
@@ -497,6 +520,7 @@ jobs:
         run: npm run build
 
       - name: Run skew-protection guard (skew-enabled build)
+        if: matrix.variant == 'skew'
         working-directory: .
         env:
           VERCEL_DEPLOYMENT_ID: dpl_ci_test
@@ -506,6 +530,7 @@ jobs:
       # Preview-deploys maa aldrig pinnes: samme env, men VERCEL_ENV=preview skal
       # give et build UDEN deployment-id, og vagten skal bekraefte det.
       - name: Build frontend as a preview deploy (#2423)
+        if: matrix.variant == 'preview'
         env:
           VERCEL_SKEW_PROTECTION_ENABLED: "1"
           VERCEL_DEPLOYMENT_ID: dpl_ci_test
@@ -513,11 +538,25 @@ jobs:
         run: npm run build
 
       - name: Run skew-protection guard (preview build must not pin)
+        if: matrix.variant == 'preview'
         working-directory: .
         env:
           VERCEL_DEPLOYMENT_ID: dpl_ci_test
           VERCEL_ENV: preview
         run: node scripts/check-skew-protection.mjs
+
+  # Preserve the required check context and fail if any matrix job did not pass.
+  frontend-build:
+    name: frontend-build
+    needs: [patch-notes-mode, frontend-build-variants]
+    if: ${{ !cancelled() && needs.patch-notes-mode.outputs.numbering_only != 'true' }}
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require all frontend build variants
+        env:
+          FRONTEND_BUILD_RESULT: ${{ needs.frontend-build-variants.result }}
+        run: test "$FRONTEND_BUILD_RESULT" = success
 
   # #5085: marketing/ (Next.js App Router, offentligt SEO-site på
   # cyclingzone.org) havde ingen CI-vagt overhovedet - kun Vercels
