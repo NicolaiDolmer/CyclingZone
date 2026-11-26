@@ -109,17 +109,18 @@ export default function ProgramR5Phone({
           <h2 className="truncate text-base font-semibold text-cz-1">{name}</h2>
           <p className="mt-0.5 truncate text-xs text-cz-2">{subtitle}</p>
         </div>
-        <button type="button" onClick={onOpenPrograms} data-testid="program-r5-change"
-          className="-me-1 inline-flex min-h-11 shrink-0 items-center px-1 text-xs font-medium text-cz-accent-t">
-          {tR5(showPlan ? "programR5.phone.changeProgram" : "programR5.programs")}
-        </button>
+        <div className="-me-1 flex shrink-0 items-center gap-1">
+          {onOpenGroups && (
+            <Button variant="secondary" size="sm" className="min-h-11" onClick={onOpenGroups} data-testid="program-r5-open-groups">
+              {tR5("programR5.groups")}
+            </Button>
+          )}
+          <button type="button" onClick={onOpenPrograms} data-testid="program-r5-change"
+            className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-cz-accent-t">
+            {tR5(showPlan ? "programR5.phone.changeProgram" : "programR5.programs")}
+          </button>
+        </div>
       </div>
-
-      {onOpenGroups && (
-        <Button variant="secondary" size="sm" className="min-h-11 self-start" onClick={onOpenGroups} data-testid="program-r5-open-groups">
-          {tR5("programR5.groups")}
-        </Button>
-      )}
 
       {showPlan && <>
       {chips.length > 0 && <div>

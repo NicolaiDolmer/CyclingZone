@@ -232,6 +232,13 @@ test("W1 keeps a failed effort draft and saves the selected effort and recovery 
     await expect(save).toBeInViewport();
   }
   const openGroups = page.getByTestId("program-r5-open-groups");
+  if (isMobile) {
+    const groupsAction = await openGroups.boundingBox();
+    const programAction = await page.getByTestId("program-r5-change").boundingBox();
+    expect(groupsAction).not.toBeNull();
+    expect(programAction).not.toBeNull();
+    expect(groupsAction!.y).toBe(programAction!.y);
+  }
   const dialog = page.getByRole("dialog", { name: "Groups", exact: true });
   const largeGroup = dialog.getByTestId("program-r5-group").filter({ hasText: "Large group" });
   await openGroups.click();
