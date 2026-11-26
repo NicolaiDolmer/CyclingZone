@@ -532,3 +532,26 @@ test("#7138 resolveContractSeasonNumber: aktiv, ellers kommende sæson i pausen"
   const season = await resolveContractSeasonNumber(seasonsMock([{ number: 5, status: "completed" }]));
   assert.deepEqual(cappedContractTerm(season, 3), { contract_length: 2, contract_end_season: 7 });
 });
+
+test("#7138 resolveContractSeasonNumber: to aktive sæsoner (PGRST116) giver den nyeste, ikke en fejl", async () => {
+  let calls = 0;
+  const supabase = {
+    from() {
+      let ordered = false;
+      const api = {
+        select() { return api; },
+        eq() { return api; },
+        order() { ordered = true; return api; },
+        limit() { return api; },
+        maybeSingle() {
+          calls += 1;
+          if (!ordered) return Promise.resolve({ data: null, error: { code: "PGRST116", message: "multiple rows" } });
+          return Promise.resolve({ data: { number: 6 }, error: null });
+        },
+      };
+      return api;
+    },
+  };
+  assert.equal(await resolveContractSeasonNumber(supabase), 6);
+  assert.equal(calls, 2);
+});
