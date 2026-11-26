@@ -138,6 +138,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "planning_workbench", area: "race-day", label: "Ny planlægningsside (/planning/workbench)" },
   // #8049: den nye patch notes-side (uge for uge, efter område, arkiv pr. måned). Kun visning, seedet off.
   { key: "patch_notes_v2_8049", area: "onboarding", label: "Patch notes: ny side efter område og uge" },
+  // #8045: løbsfilmen fortæller angrebet, mens det sker. Kun visning, seedet off.
+  { key: "attack_story_8045", area: "race-day", label: "Løbsfilm: angrebet fortalt mens det sker (forspring, hentet eller holder)" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -352,6 +354,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "rider_hover_card",
   // #8049: patch notes-siden vaelger den nye side paa dette flag (ogsaa for udloggede, naar det er on).
   "patch_notes_v2_8049",
+  // #8045: loebsfilmen fortaeller angrebet kronologisk paa dette flag.
+  "attack_story_8045",
   // #7725: Hjaelp viser svaret om dagsformen i ord paa dette flag (binaert, som motoren).
   "day_words_7725",
   // #7801: Hjaelp viser traethed lige nu og regel-teksten paa dette flag (binaert, som motoren).

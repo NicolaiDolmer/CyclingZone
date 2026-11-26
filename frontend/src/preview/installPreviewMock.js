@@ -37,6 +37,7 @@ import { buildMockSurveyResults } from "./surveyResultsMock.js"; // #4943
 import { stagePlanPreviewActive, stagePlanPreviewTimeline, withStagePlanPreview } from "../components/race/StagePlanPreviewMock.ts"; // #7003
 import { luxuryHelperPreviewActive, withLuxuryHelperSelection, withLuxuryHelperStageRoles, withSeasonRoles } from "./luxuryHelperPreviewMock.ts"; // #5982
 import { film7861Profiles, film7861Results, film7861Timeline } from "./raceFilm7861PreviewMock.ts"; // #7861
+import { attackStory8045Profiles, attackStory8045Results, attackStory8045Timeline } from "./attackStory8045PreviewMock.ts"; // #8045
 
 // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — statefuld in-memory
 // toggle, samme princip som klubMock/plannerMock: POST flipper den, GET
@@ -272,7 +273,8 @@ export function installPreviewMock() {
         }
         const table = parseTable(url);
         if (!wantsObject(accept)) {
-          const filmRows = film7861Results(url, restRows(table, url)) ?? film7861Profiles(url, restRows(table, url)); // #7861
+          const filmRows = attackStory8045Results(url, restRows(table, url)) ?? attackStory8045Profiles(url, restRows(table, url)) // #8045 (?attackStoryStage=1)
+            ?? film7861Results(url, restRows(table, url)) ?? film7861Profiles(url, restRows(table, url)); // #7861
           if (filmRows) return jsonResponse(filmRows);
         }
         return jsonResponse(wantsObject(accept) ? restObject(table, url) : restRows(table, url));
@@ -445,7 +447,7 @@ export function installPreviewMock() {
         return jsonResponse(stagePlanPreviewTimeline()); // #7003
       }
       // #7861: etape 2 i race-live-1 har en rigtig løbshistorie, så løbsfilmen kan ses.
-      const film7861 = method === "GET" ? film7861Timeline(url) : null;
+      const film7861 = method === "GET" ? (attackStory8045Timeline(url) ?? film7861Timeline(url)) : null; // #8045 foerst (?attackStoryStage=1)
       if (film7861) return jsonResponse(film7861);
       if (method === "PUT" && /\/api\/races\/[^/]+\/team-orders\/[0-9]+$/.test(url)) {
         return jsonResponse({ ok: true });

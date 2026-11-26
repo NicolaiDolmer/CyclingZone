@@ -193,6 +193,8 @@ export const HELP_FAQ_FLAGS = Object.freeze({
   typeRatingScaleFaq: POTENTIAL_ESTIMATE_OFF,
   // #7725: ordene om dagsformen findes kun i referatet naar kontakten er on.
   dayWordsFaq: Object.freeze({ flag: "day_words_7725", when: true }),
+  // #8045: svaret om angrebets forløb i løbsfilmen findes kun, når kontakten er on.
+  attackStoryFaq: Object.freeze({ flag: "attack_story_8045", when: true }),
 });
 
 /**

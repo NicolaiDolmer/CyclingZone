@@ -539,6 +539,18 @@ features:
     roadmap_en: "New race page: the race film, your orders and the results in one place"
     roadmap_da: "Ny løbsside: løbsfilmen, dine ordrer og resultaterne samlet ét sted"
 
+  - id: race-film-attack-story-8045
+    area: race-day
+    title_en: Race film tells the attack as it happens
+    title_da: Løbsfilmen fortæller angrebet, mens det sker
+    state: building
+    ssot: docs/superpowers/specs/2026-11-12-8045-angrebsforloeb-design.md
+    epic: 8045
+    verified: 2026-11-26
+    note: "Nøgle attack_story_8045 seedet off (migration 2026-11-26); kun visning, motoren uændret."
+    decision: ejer-beslutning
+    decide_by: 2026-12-10
+
   - id: spoiler-shield
     area: race-day
     title_en: Spoiler shield

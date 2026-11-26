@@ -22,6 +22,107 @@
     "cracked": "{rider} knækker på stigningen og bliver sat.",
     "crackedNamed": "{rider} knækker på {climb} og bliver sat."
   },
+  "attackStory": {
+    "aRider": "En rytter",
+    "lastClimb": "den sidste stigning",
+    "names": {
+      "list": "{list} og {last}",
+      "more": "{list} og {count} andre"
+    },
+    "gap": {
+      "second": "1 sekund",
+      "seconds": "{count} sekunder",
+      "minute": "1 minut",
+      "minutes": "{count} minutter",
+      "join": "{minutes} og {seconds}"
+    },
+    "group": {
+      "peloton": {
+        "one": "feltet",
+        "many": "feltet"
+      },
+      "breakaway": {
+        "one": "udbruddet",
+        "many": "udbruddet"
+      },
+      "group": {
+        "one": "sin gruppe",
+        "many": "deres gruppe"
+      },
+      "chasers": {
+        "one": "de nærmeste forfølgere",
+        "many": "de nærmeste forfølgere"
+      }
+    },
+    "started": {
+      "one": "{rider} angriber på {climb}!",
+      "many": "{riders} angriber på {climb}!"
+    },
+    "away": {
+      "one": "{rider} er kørt fra {group}.",
+      "many": "{riders} er kørt fra {group}."
+    },
+    "checkpoint": {
+      "first": {
+        "one": "{rider} er {gap} foran {group}.",
+        "many": "{riders} er {gap} foran {group}."
+      },
+      "growing": {
+        "one": "{rider} er nu {gap} foran {group} og vinder stadig tid.",
+        "many": "{riders} er nu {gap} foran {group} og vinder stadig tid."
+      },
+      "shrinking": {
+        "one": "{rider} har kun {gap} tilbage til {group}, som kommer nærmere.",
+        "many": "{riders} har kun {gap} tilbage til {group}, som kommer nærmere."
+      },
+      "steady": {
+        "one": "{rider} er stadig {gap} foran {group}.",
+        "many": "{riders} er stadig {gap} foran {group}."
+      }
+    },
+    "bridged": {
+      "one": "{rider} er kørt op til {group}.",
+      "many": "{riders} er kørt op til {group}."
+    },
+    "caught": {
+      "one": "Det er slut for {rider}. Han er hentet af {group} igen.",
+      "many": "Det er slut for {riders}. De er hentet af {group} igen."
+    },
+    "dropped": {
+      "cracked": {
+        "one": "{rider} betaler for angrebet. Han er træt og bliver sat af {group}.",
+        "many": "{riders} betaler for angrebet. De er trætte og bliver sat af {group}."
+      },
+      "out_of_strength": {
+        "one": "{rider} har ikke mere at give og mister kontakten til {group}.",
+        "many": "{riders} har ikke mere at give og mister kontakten til {group}."
+      },
+      "outpaced": {
+        "one": "{rider} kan ikke følge tempoet i {group}.",
+        "many": "{riders} kan ikke følge tempoet i {group}."
+      }
+    },
+    "held": {
+      "finish": {
+        "one": "{rider} holder hele vejen til mål, {gap} foran {group}!",
+        "many": "{riders} holder hele vejen til mål, {gap} foran {group}!"
+      },
+      "top": {
+        "one": "{rider} holder hele vejen til toppen, {gap} foran {group}!",
+        "many": "{riders} holder hele vejen til toppen, {gap} foran {group}!"
+      }
+    },
+    "level": {
+      "finish": {
+        "one": "{rider} kommer ikke væk og når målet med {group}.",
+        "many": "{riders} kommer ikke væk og når målet med {group}."
+      },
+      "top": {
+        "one": "{rider} kommer ikke væk og når toppen med {group}.",
+        "many": "{riders} kommer ikke væk og når toppen med {group}."
+      }
+    }
+  },
   "none": "Etapen har ingen løbsfilm. Hele resultatet står under Resultater.",
   "error": "Løbsfilmen kunne ikke hentes. Hele resultatet står under Resultater."
 }
