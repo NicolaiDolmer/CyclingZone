@@ -9972,6 +9972,7 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
     try {
       contractSeason = await resolveContractSeasonNumber(supabase);
     } catch (seasonError) {
+      captureException(seasonError);
       return res.status(500).json({ error: seasonError.message });
     }
     contractPatch = contractOnAcquirePatch(rider, contractSeason);
