@@ -18,6 +18,7 @@ import { mobileRaceWindow, shiftMobileRaceWindow } from "../../lib/seasonMatrixM
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { fitTier, trainNowLockSummary } from "../../lib/raceHubLogic.js";
 import { MIN_RACE_ENTRIES } from "../../lib/raceSelectionLogic.js"; // #6740
+import { intlLocale } from "../../lib/intlLocale.ts"; // #8781
 import TrainNowLockBanner from "./TrainNowLockBanner.tsx"; // #6383
 import { trainNowLockCopy } from "../training/trainNowClock.ts";
 import { Spinner, EmptyState, ErrorState, Button, Segmented, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
@@ -430,7 +431,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
               const date = dayDatesMap.get(day.gameDay);
               return <th key={day.key} className={`border-b border-cz-border bg-cz-subtle px-1 py-1 text-center text-2xs ${capsClass} text-cz-3`}>
                 <button type="button" disabled={!date && !onOpenRace} onClick={() => openDayColumn(selectedMobileRace.id, date)} title={t("matrix.dayAria", { index: day.stageIndex, date: date ?? "?" })} className="w-full leading-tight disabled:cursor-default">
-                  <span className="block font-semibold">{date ? formatBandDate(date, embedded) : "—"}</span>
+                  <span className="block font-semibold">{date ? formatBandDate(date, embedded ? i18n.language : null) : "—"}</span>
                   <span className="block tabular-nums">{t("matrix.mobile.gameDay", { day: day.gameDay })}</span>
                   {!readOnly && raceHasTrainNowLock(selectedMobileRace.id) && (
                     <span className="flex items-center justify-center gap-0.5 normal-case text-cz-warning"><LockIcon size={9} aria-hidden="true" />{t("selection.trainNowLock.columnLocked")}</span>
@@ -507,7 +508,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
                   title={band.date ?? undefined}
                   className={`border-b border-cz-border bg-cz-subtle px-1 py-1 text-2xs ${capsClass} text-cz-3 font-semibold whitespace-nowrap overflow-hidden text-ellipsis`}
                 >
-                  {band.date ? formatBandDate(band.date, embedded) : "—"}
+                  {band.date ? formatBandDate(band.date, embedded ? i18n.language : null) : "—"}
                 </th>
               ))}
             </tr>
@@ -732,10 +733,14 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
 }
 
 // "27 Aug"-datobånd-label, sprog-neutral kort form (samme mønster som SeasonView's fmt.range).
-function formatBandDate(iso, plain = false) {
+// #8781: med `plainLanguage` (den nye side) i spillerens sprog og uden versaler.
+/** @param {string} iso @param {string | null} [plainLanguage] */
+function formatBandDate(iso, plainLanguage = null) {
   const d = new Date(`${iso}T00:00:00Z`);
-  const label = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(d).replace(/\./g, "");
-  return plain ? label : label.toUpperCase();
+  if (plainLanguage) {
+    return new Intl.DateTimeFormat(intlLocale(plainLanguage), { day: "numeric", month: "short", timeZone: "UTC" }).format(d).replace(/\./g, "");
+  }
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(d).replace(/\./g, "").toUpperCase();
 }
 
 // Race-gruppe-header-tint: monument/GT skiller sig ud, samme signal som SeasonView's bandClasses.
