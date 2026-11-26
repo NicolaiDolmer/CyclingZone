@@ -11,6 +11,8 @@ import { programSessionToday, type ProgramWeekDays } from "../../../lib/training
 import { DAY_TYPES_WITHOUT_SESSION, dayTypeForProgram, sessionForProgram, sessionI18nKey } from "../../../lib/trainingDayTypes.js";
 import { STAGE } from "./todayR5Model.ts";
 import { autoRaces, dayKind, futureCounts, futureFields, pickerWindow, ownRaces, type WeekResponse } from "./dayPickerModel.ts";
+import { DayOverrideAction, DayOverrideRowNote, useDayOverrideStatus } from "./DayOverrideV1.tsx"; // #8592
+import { dayOverridesOf, hasDayOverrides, overrideReplaced } from "./dayOverrideModel.ts";
 
 type Rider = { id: string; firstname?: string | null; lastname?: string | null };
 type Plan = { focus?: string | null; intensity?: string | null } | null | undefined;
@@ -19,7 +21,7 @@ const HEAD = "font-data text-2xs font-semibold uppercase tracking-[.06em] text-c
 const dateOf = (ymd: string) => new Date(`${ymd}T12:00:00`);
 
 export default function DayPickerR5({
-  week, riders, planFor, riderWeekPlans, phone, onEditWeekday, today,
+  week, riders, planFor, riderWeekPlans, phone, onEditWeekday, today, groups = [], onWeekChanged,
 }: {
   week: WeekResponse;
   riders: Rider[];
@@ -28,7 +30,11 @@ export default function DayPickerR5({
   phone: boolean;
   onEditWeekday?: (weekday: string) => void;
   today: ReactNode;
+  /** #8592: grupperne og genindlæsning efter et "Kun denne dag"-valg. */
+  groups?: ReadonlyArray<{ id: string; name: string; members: ReadonlyArray<{ riderId: string }> }>;
+  onWeekChanged?: () => void;
 }) {
+  const overrideStatus = useDayOverrideStatus(); // #8592: null = slukket, intet tegnes
   const { t, i18n } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const [selected, setSelected] = useState(0);
@@ -63,6 +69,10 @@ export default function DayPickerR5({
               className={`min-h-11 min-w-0 rounded-cz border px-2 py-1.5 text-start ${active ? "border-cz-1 bg-cz-card" : "border-cz-border bg-cz-card hover:border-cz-3"}`}>
               <span className={`block truncate font-data text-xs tabular-nums ${active ? "font-semibold text-cz-1" : "text-cz-2"}`}>
                 {i === 0 ? tR5("dayPicker.today") : `${t(`weekday_${day.weekday}`)} ${d.getDate()}`}
+                {hasDayOverrides(day) && (
+                  <span className="ms-1 inline-block h-1.5 w-1.5 rounded-full bg-cz-accent align-middle" role="img"
+                    aria-label={tR5("dayOverride.dot")} data-testid="r5-day-override-dot" />
+                )}
               </span>
               <span className={`block truncate text-3xs ${racing ? "font-semibold text-cz-1" : "text-cz-3"}`}>
                 {racing ? <span className="inline-flex items-center gap-0.5"><FlagIcon size={10} aria-hidden="true" className="shrink-0" />{chipWord(i)}</span> : chipWord(i)}
@@ -91,13 +101,16 @@ export default function DayPickerR5({
   })();
   const label = (s: string | null) => (s == null ? "–" : t([sessionI18nKey("dayPanel.session", s), `dayPanel.dayType_${s}`], { defaultValue: s }));
 
+  const overrides = dayOverridesOf(day); // #8592
+  const dayLabel = `${weekdayWord} ${d.getDate()}`;
   const rows = riders.map((rider) => {
     const plan = planFor(rider.id);
     const planDay = plan?.focus ? (dayTypeForProgram(plan) as string) : null;
     const planSession = planDay && (DAY_TYPES_WITHOUT_SESSION as readonly string[]).includes(planDay) ? planDay : (sessionForProgram(plan) as string | null);
     const weekDays = riderWeekPlans[rider.id] ?? null;
+    const override = overrides[rider.id]?.session ?? null;
     const fields = futureFields({
-      programSlot: (slot) => programSessionToday(weekDays, WEEKDAY_KEYS, day.weekday, slot + 1),
+      programSlot: (slot) => override ?? programSessionToday(weekDays, WEEKDAY_KEYS, day.weekday, slot + 1),
       planSession: planSession ?? null,
       fields: day.riders?.[rider.id] ?? null,
     });
@@ -135,6 +148,13 @@ export default function DayPickerR5({
           {tR5("dayPicker.notReady")}
         </p>
       ) : (
+        <>
+        {overrideStatus && (
+          <div className="flex flex-wrap items-center gap-2">
+            <DayOverrideAction status={overrideStatus} date={day.date} dayLabel={dayLabel} riders={riders} groups={[...groups]}
+              overrides={overrides} sessionLabel={(s) => label(s)} onChanged={onWeekChanged} />
+          </div>
+        )}
         <div className="rounded-cz border border-cz-border bg-cz-card">
           <div className={`grid items-center gap-2 border-b border-cz-border bg-cz-subtle px-3 py-2 ${HEAD} ${grid}`}>
             <span>{tR5("dayPicker.rider")}</span>
@@ -151,12 +171,19 @@ export default function DayPickerR5({
             ));
             return (
               <div key={rider.id} className={`grid items-center gap-2 border-t border-cz-border px-3 py-2 first:border-t-0 ${grid}`} data-testid="r5-day-ahead-row">
-                <span className="min-w-0 truncate text-[13px] font-medium text-cz-1">{`${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim()}</span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[13px] font-medium text-cz-1">{`${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim()}</span>
+                  {overrideStatus && overrides[rider.id] && (
+                    <DayOverrideRowNote riderId={rider.id} date={day.date} dayLabel={dayLabel} weekdayWord={weekdayWord}
+                      replaced={overrideReplaced(day.riders?.[rider.id])} onChanged={onWeekChanged} />
+                  )}
+                </span>
                 {phone ? <span className="grid grid-cols-5 gap-1">{cells}</span> : cells}
               </div>
             );
           })}
         </div>
+        </>
       )}
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-cz-2">
         <span>{tR5("dayPicker.aheadNote", { weekday: weekdayWord })}</span>

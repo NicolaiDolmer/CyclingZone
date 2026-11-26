@@ -264,5 +264,26 @@
     "autoNote": "Assistenten udtager holdet til {races} ved løbsstart. Hvem der kører, ses først da.",
     "aheadNote": "Dagene frem viser planen. En ændring gælder hver {weekday}.",
     "editInProgram": "Ret {weekday} i Program"
+  },
+  "dayOverride": {
+    "action": "Kun {day}",
+    "title": "Kun {day}",
+    "description": "Vælg et andet pas for denne dato. Ugeplanen ændres ikke, og dagen efter kører planen igen.",
+    "groups": "Grupper",
+    "riders": "Ryttere",
+    "selected": "{n} valgt",
+    "selectAll": "Vælg alle",
+    "clear": "Fravælg alle",
+    "session": "Pas",
+    "save": "Gem for {day}",
+    "cancel": "Annuller",
+    "raceWins": "Et løb går altid forud. Ryttere, der kører løb den dag, beholder løbet.",
+    "only": "Kun {day}",
+    "back": "Tilbage til planen",
+    "replaced": "Dit valg for {weekday} blev erstattet af løbet.",
+    "replacedSome": "Løbet går forud i sine felter. Dit valg gælder resten af dagen.",
+    "programRequired": "Kun denne dag virker, når holdet har et program. Sæt et i Program.",
+    "error": "Valget blev ikke gemt. Prøv igen.",
+    "dot": "Har et valg kun for denne dag"
   }
 }

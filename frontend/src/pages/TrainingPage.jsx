@@ -2525,6 +2525,7 @@ export default function TrainingPage() {
     onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram, onClearPlan: handleClearPlan,
     onOpenPlan: openOwnPlan, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: openFatigueRule,
     week: trainingWeek.week, onEditWeekday: openProgramWeekday, // #8580
+    onWeekChanged: () => { trainingWeek.reload(); reloadForecast(); }, // #8592
     onOpenAssistant: handleOpenAssistantPanel, renderCard: renderRiderCard,
     effortLevels: training.effortLevels === true, // #7947 PR 3: Let/Mellem/Haard (training_effort_levels)
   } : null;

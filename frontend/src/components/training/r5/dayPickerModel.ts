@@ -30,6 +30,8 @@ export type WeekDay = {
   races: WeekRace[];
   riders?: Record<string, WeekRiderFields>;
   today?: ForecastResponse;
+  /** #8592: datoens "Kun denne dag"-valg pr. rytter (kun med kontakten training_day_override_8592). */
+  dayOverrides?: Record<string, { session: string }>;
 };
 export type WeekResponse = { available: boolean; reason?: string; tickDate?: string; days: WeekDay[] };
 

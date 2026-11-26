@@ -13,6 +13,7 @@ export type ForecastEntry = {
   fieldSource?: (number | null)[];
   taken?: number[];
   lockMovedFrom?: number | null;
+  dateOverride?: { session: string } | null; // #8592: dagens "Kun denne dag"-valg
 };
 export type ForecastResponse = {
   available?: boolean;
