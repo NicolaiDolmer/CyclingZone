@@ -88,7 +88,7 @@ test("Program R5 requires a catalog choice and confirms rider and group assignme
   await page.getByTestId("program-r5-open-groups").click();
   const groupsDialog = page.getByRole("dialog", { name: "Groups", exact: true });
   await expect(groupsDialog.getByTestId("program-r5-group")).toHaveCount(2);
-  await groupsDialog.getByRole("button", { name: /^Group B/ }).click();
+  await groupsDialog.getByRole("button", { name: "Group B Own week", exact: true }).click();
   await expect(groupsDialog).toHaveCount(0);
   await expect(page.getByTestId("program-r5-save")).toBeInViewport();
   if (!isMobile) {
@@ -171,14 +171,20 @@ test("Program R5 requires a catalog choice and confirms rider and group assignme
   }
 });
 
-test("W1 keeps a failed effort draft and saves the selected effort and recovery for the group", async ({ page }) => {
+test("W1 keeps a failed effort draft and saves the selected effort and recovery for the group", async ({ page, isMobile }) => {
   test.setTimeout(120_000);
   const riders = Array.from({ length: 28 }, (_, index) => ({
     ...squad[0], id: "w1-" + index, lastname: String(index).padStart(2, "0"),
   }));
-  const writeAttempts: { weekday: string; slotIndex: number; session: string; effort?: string }[] = [];
+  const writeAttempts: {
+    weekday: string;
+    slotIndex: number;
+    session: string;
+    effort?: string | null;
+    weekBlock?: { slots: string[]; slotEfforts: (string | null)[]; lockSlot: number | null };
+  }[] = [];
   const weekDays = Object.fromEntries(days.map((day) => [day, {
-    session: "sprint", slots: Array<string | null>(5).fill(null), slotEfforts: Array<string | null>(5).fill(null),
+    session: "sprint", slots: Array<string | null>(5).fill(null), slotEfforts: Array<string | null>(5).fill(null), lockSlot: null as number | null,
   }]));
   const groups = [
     { id: "small", name: "Small group", programKey: "sprinter", days: weekDays, members: [member(riders[0].id)] },
@@ -202,14 +208,23 @@ test("W1 keeps a failed effort draft and saves the selected effort and recovery 
     const entry = route.request().postDataJSON() as (typeof writeAttempts)[number];
     writeAttempts.push(entry);
     if (writeAttempts.length === 1) return json(route, { error: "test_rejected_write" }, 409);
-    weekDays[entry.weekday].slots[entry.slotIndex] = entry.session;
-    weekDays[entry.weekday].slotEfforts[entry.slotIndex] = entry.effort ?? null;
+    const day = weekDays[entry.weekday];
+    if (entry.weekBlock) Object.assign(day, entry.weekBlock);
+    else {
+      day.slots[entry.slotIndex] = entry.session;
+      if (entry.effort !== undefined) day.slotEfforts[entry.slotIndex] = entry.effort;
+    }
     return json(route, { ok: true, groups });
   });
   await login(page);
   await page.addInitScript(() => window.localStorage.setItem("cz_lang", "en"));
   await page.goto("/training");
   await page.getByRole("tab", { name: "Program", exact: true }).click();
+  const save = page.getByTestId("program-r5-save");
+  if (!isMobile) {
+    await page.getByTestId("program-r5-library").getByRole("button", { name: "Rider 27", exact: true }).scrollIntoViewIfNeeded();
+    await expect(save).toBeInViewport();
+  }
   const openGroups = page.getByTestId("program-r5-open-groups");
   const dialog = page.getByRole("dialog", { name: "Groups", exact: true });
   const largeGroup = dialog.getByTestId("program-r5-group").filter({ hasText: "Large group" });
@@ -219,7 +234,7 @@ test("W1 keeps a failed effort draft and saves the selected effort and recovery 
   await largeGroup.getByRole("button", { name: "Rider 27", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await openGroups.click();
-  await largeGroup.getByRole("button", { name: /^Large group/ }).click();
+  await largeGroup.getByRole("button", { name: "Large group Sprinter", exact: true }).click();
 
   const pass = page.getByTestId("program-r5-cell").first();
   await expect(pass).toHaveValue("sprint");
@@ -228,7 +243,6 @@ test("W1 keeps a failed effort draft and saves the selected effort and recovery 
   }
   await pass.selectOption("sprint:easy");
   expect(writeAttempts).toHaveLength(0);
-  const save = page.getByTestId("program-r5-save");
   await expect(save).toBeInViewport();
   await save.click();
   const error = page.getByRole("status").filter({ hasText: /could not be saved/i });
@@ -245,9 +259,30 @@ test("W1 keeps a failed effort draft and saves the selected effort and recovery 
   await save.click();
   await expect(save).toBeDisabled();
   expect(writeAttempts.at(-1)).toEqual(expect.objectContaining({ session: "recovery" }));
+  await page.route("**/api/training/programs", (route) => json(route, {
+    enabled: true, cellsEnabled: true, weekPriorityEnabled: true, catalog, assigned: {}, seeds: {},
+  }));
   await page.reload();
   await page.getByRole("tab", { name: "Program", exact: true }).click();
   await openGroups.click();
-  await largeGroup.getByRole("button", { name: /^Large group/ }).click();
+  await largeGroup.getByRole("button", { name: "Large group Sprinter", exact: true }).click();
   await expect(pass).toHaveValue("recovery");
+
+  const priorityPass = page.getByTestId("program-r5-week-block-pass").first();
+  await expect(priorityPass).toHaveValue("recovery");
+  await priorityPass.selectOption("tempo:hard");
+  await save.click();
+  await expect(save).toBeDisabled();
+  expect(writeAttempts.at(-1)?.weekBlock).toEqual(expect.objectContaining({
+    slots: ["tempo", "sprint", "sprint", "sprint", "sprint"],
+    slotEfforts: ["hard", null, null, null, null],
+  }));
+  await expect(pass).toHaveValue("tempo:hard");
+  await pass.selectOption("tempo");
+  await page.getByRole("button", { name: "Lock field 1", exact: true }).click();
+  await save.click();
+  await expect(save).toBeDisabled();
+  expect(writeAttempts.at(-1)?.weekBlock).toEqual(expect.objectContaining({
+    lockSlot: 0, slotEfforts: [null, null, null, null, null],
+  }));
 });
