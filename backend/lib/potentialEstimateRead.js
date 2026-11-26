@@ -58,8 +58,11 @@ export function buildPotentialView({ row = null, currentRating = null, learningY
     const view = publicEstimateView(row, { currentRating });
     if (!view.hidden) return view;
   }
-  if (learningYouth && trainings < TRAININGS_NEEDED) {
-    return { hidden: true, reason: "learning", trainings, trainingsNeeded: TRAININGS_NEEDED };
+  // #8604: et eget akademitalent forbliver i Læres, til skønnet er skrevet. Før faldt han
+  // efter grænsen til "uscoutet" (intet tal, ingen tekst) indtil søndagen; nu skriver
+  // timesweepet skønnet, og imens står han på x af x.
+  if (learningYouth) {
+    return { hidden: true, reason: "learning", trainings: Math.min(trainings, TRAININGS_NEEDED), trainingsNeeded: TRAININGS_NEEDED };
   }
   return aiTeam ? AI_TEAM : UNSCOUTED;
 }

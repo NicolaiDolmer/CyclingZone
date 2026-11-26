@@ -35,7 +35,7 @@ import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 
 export const POTENTIAL_ESTIMATES_TABLE = "rider_potential_estimates";
 export const POTENTIAL_ESTIMATE_PARAMS_KEY = "potential_estimate_params";
-export const ESTIMATE_RIDER_COLUMNS = "id, team_id, talent_ceiling, is_retired";
+export const ESTIMATE_RIDER_COLUMNS = "id, team_id, talent_ceiling, is_retired, is_academy";
 
 const UPSERT_CHUNK_SIZE = 500;
 
@@ -189,7 +189,14 @@ export function planTeamEstimates({
       freshLook: trigger === "new_knowledge",
       maxLooks: params.scout.maxLooks,
     });
-    const knowledge = { own, trainingDates: datesByRider.get(rider.id) ?? 0, staffSpeed, ...scout };
+    // #8604 (ejervalg 12/11): en egen rytter uden for akademiet har et bud fra første
+    // dag. Uden det stod en købt eller hentet rytter uden tal til første søndag efter
+    // grænsen. Akademiets talenter læres stadig først (Læres · x af y). Kun en rytter,
+    // der eksplicit står uden for akademiet: et ukendt felt følger den gamle regel.
+    const fromDayOne = own && rider.is_academy === false;
+    const knowledge = {
+      own, trainingDates: datesByRider.get(rider.id) ?? 0, staffSpeed, ...scout, ...(fromDayOne ? { fromDayOne } : {}),
+    };
     const plan = planEstimateWrite({
       stored,
       truePot,

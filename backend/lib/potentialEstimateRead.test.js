@@ -118,7 +118,10 @@ test("buildPotentialView: egen ungdomsrytter læres indtil grænsen", () => {
   assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: 2 }), {
     hidden: true, reason: "learning", trainings: 2, trainingsNeeded: TRAININGS_NEEDED,
   });
-  assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: TRAININGS_NEEDED }), { hidden: true, reason: "unscouted" });
+  // #8604: efter grænsen og før skønnet er skrevet, står han på x af x, aldrig uden tekst.
+  assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: TRAININGS_NEEDED }), {
+    hidden: true, reason: "learning", trainings: TRAININGS_NEEDED, trainingsNeeded: TRAININGS_NEEDED,
+  });
 });
 
 test("buildPotentialView: et gemt skøn vinder over læretiden", () => {

@@ -124,6 +124,28 @@ test("egen rytter får sit første skøn ved grænsen", () => {
   assert.equal(rows[0].team_id, "t1");
 });
 
+test("#8604: egen rytter uden for akademiet får sit første skøn fra dag ét", () => {
+  for (const trigger of ["team_change", "backfill", "sunday"]) {
+    const { rows } = planOne({ rider: { ...own, is_academy: false }, dates: 0, trigger });
+    assert.equal(rows.length, 1, trigger);
+    assert.equal(rows[0].knowledge_key, "own0");
+  }
+});
+
+test("#8604: akademitalentet læres stadig først, og et ukendt akademifelt følger den gamle regel", () => {
+  assert.equal(planOne({ rider: { ...own, is_academy: true }, dates: 4, trigger: "backfill" }).counts.noKnowledge, 1);
+  assert.equal(planOne({ rider: { ...own, is_academy: true }, dates: 5, trigger: "backfill" }).rows.length, 1);
+  assert.equal(planOne({ rider: own, dates: 0, trigger: "backfill" }).counts.noKnowledge, 1);
+});
+
+test("#8604: dag ét gælder kun egne ryttere, aldrig en fremmed uden kig", () => {
+  assert.equal(planOne({ rider: { ...foreign, is_academy: false }, trigger: "sunday" }).counts.noKnowledge, 1);
+});
+
+test("#8604: dag ét ændrer ikke trinnet for en rytter med mange datoer", () => {
+  assert.equal(planOne({ rider: { ...own, is_academy: false }, dates: 25, trigger: "sunday" }).rows[0].knowledge_key, "own2");
+});
+
 test("trænerstaben fremskynder viden om egne ryttere", () => {
   assert.equal(planOne({ rider: own, dates: 10, trigger: "sunday" }).rows[0].knowledge_key, "own0");
   assert.equal(planOne({ rider: own, dates: 10, staffSpeed: 1, trigger: "sunday" }).rows[0].knowledge_key, "own1");
