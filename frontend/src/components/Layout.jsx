@@ -534,7 +534,8 @@ function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineC
   );
 }
 
-export default function Layout() {
+/** @param {{ viewerId?: string }} [props] */
+export default function Layout({ viewerId } = {}) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const location = useLocation();
@@ -562,7 +563,7 @@ export default function Layout() {
   const [forumUnread, setForumUnread]                   = useState(false);
   // #3034: role kommer fra den delte UserProfileProvider (ét Supabase-kald pr.
   // session) i stedet for Layouts eget `.from("users").select("role, username")`.
-  const { profile, userId } = useUserProfile();
+  const { profile } = useUserProfile();
   const isAdmin = profile?.role === "admin";
   const [isOwner, setIsOwner]               = useState(false); // #3750 ejer-only-menupunkter
   const [mobileOpen, setMobileOpen]         = useState(false);
@@ -576,7 +577,7 @@ export default function Layout() {
   const [setupPrefill, setSetupPrefill]     = useState({ teamName: "", managerName: "" });
   // Init fra cache (#1792-klasse): vis akademiet med det samme hvis brugeren har
   // set det før, så et forbigående fetch-hikke ikke skjuler et fungerende akademi.
-  const academyViewer = /** @type {string | null} */ (userId) ?? session?.user.id;
+  const academyViewer = viewerId;
   const academyProfile = /** @type {{ role?: string | null, is_beta_tester?: boolean | null } | null} */ (profile);
   const [legacyAcademyEnabled] = useState(() => Boolean(readCachedAcademyNav()));
   const [legacyAcademyViewer, setLegacyAcademyViewer] = useState(() => academyViewer ?? null);
@@ -585,7 +586,7 @@ export default function Layout() {
     ? academyMenu.visible
     : academyViewer
       ? readCachedAcademyNav(academyViewer) ?? (academyViewer === legacyAcademyViewer && legacyAcademyEnabled)
-      : legacyAcademyEnabled;
+      : false;
   // #1441 A3: Klub-nav gater på API'ets `enabled` (403 facilities_disabled →
   // false), samme flag-kilde som selve /klub-siden. Skjult i prod indtil ejer-flip.
   const { enabled: facilitiesEnabled } = useFacilities();

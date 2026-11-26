@@ -307,7 +307,7 @@ export default function App({ initialSession = undefined }) {
           {/* App-flader: pathless protected layout-route — URL'erne (/dashboard, /riders ...)
               er uændrede, men "/" er ikke længere forælder, så landing kan eje roden. */}
           <Route element={
-            <ProtectedRoute session={session}><Layout /></ProtectedRoute>
+            <ProtectedRoute session={session}><Layout viewerId={session?.user?.id} /></ProtectedRoute>
           }>
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="riders" element={<RidersPage />} />
@@ -452,7 +452,7 @@ export default function App({ initialSession = undefined }) {
               widgets — balance, online-count, admin group — simply stay hidden); no
               RLS was touched (roadmap_items/roadmap_votes stay `authenticated`-only,
               see PR body). Deliberately NOT wrapped in ProtectedRoute. */}
-          <Route element={<Layout />}>
+          <Route element={<Layout viewerId={session?.user?.id} />}>
             <Route path="help" element={<HelpPage />} />
             <Route path="rules" element={<RulesPage />} />
             <Route path="patch-notes" element={<PatchNotesPage />} />
