@@ -9,6 +9,10 @@
 //     tilbagegang (developRiderSeasonV2) og samme aldringsregel som skiftet.
 //   - En endelig, afregnet dato erstatter én simuleret dato i rytterens mix. Intervallet
 //     snævrer ind, efterhånden som flere af mixets datoer er faktiske.
+//   - #8810: de simulerede datoer opløses som i motoren (gemt plan, ugeplanens lag med
+//     resolveDayProgram, rotationen med rotationProgram og holdets kontakter); et løbsfelt
+//     bruger sin etapes profil; en dato med et uafgjort felt er ikke endelig; og holdets
+//     afregnede datoer fra forrige sæson bliver i vinduet hen over sæsonskiftet.
 //   - Skønnet manageren ser, kalibrerer referencekarrieren: holdets synlige potentiale er
 //     forventet toprating, så kørslen finder det optjeningsinput, der fører standard-
 //     karrieren fra rytterens nuværende evner op til netop det skøn. Rytterens skjulte

@@ -9,7 +9,11 @@ import {
   DEFAULT_TRAINING_SWITCHES, MODEL2_BAND_HALF_FULL, MODEL2_BAND_HALF_START, MODEL2_WINDOW_DATES, PROGNOSIS_MODEL2_TABLE,
   bandHalfWidth, blendMix, calibrateEarningProxy, computeModel2Prognosis, model2View, observedDateEntries,
   plannedDateEntries, prepareTeamModel2, raceProfilesBySlot, raceSlotKey, runPrognosisModel2Batch, simulateMixCareer, slotShares,
+  supabaseModel2Io,
 } from "./prognosisModel2_8604.js";
+import { applyTrainingCatalog } from "./trainingCatalogV3.js";
+import { programForSession } from "./trainingPrograms.js";
+import { WEEKDAY_KEYS } from "./training.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { ageForSeason } from "./riderSeasonAge.js";
@@ -142,6 +146,216 @@ test("faktiske datoer: samme felt to gange tæller én gang, og dagens åbne dat
 test("deterministisk: samme input giver samme svar", () => {
   const input = { rider: RIDER, estimate: estimateAt(3.3) };
   assert.deepEqual(computeModel2Prognosis(input, XP), computeModel2Prognosis(input, XP));
+});
+
+// ── #8810 fund 1: samme planopløsning som motoren ───────────────────────────
+
+const sharesOf = (program) => standardCareerShares(TYPES.primaryType, TYPES.secondaryType, XP, applyTrainingCatalog({ ...program }, { v3: true }));
+const sessionShares = (session) => {
+  const chosen = programForSession(session, null, { catalogV3: true });
+  return sharesOf({ focus: chosen.focus, intensity: chosen.intensity });
+};
+const CELLS_ON = { programsOn: true, catalogV3: true, effortLevels: false };
+const everyDay = (entry) => Object.fromEntries(WEEKDAY_KEYS.map((weekday) => [weekday, entry]));
+
+test("fund 1: holdets ugeplan med programceller styrer en rytter uden egen plan, dag for dag", () => {
+  const teamDays = { ...everyDay({ session: "endurance" }), mon: { session: "vo2max_climb" }, sun: { session: "rest" } };
+  const dates = plannedDateEntries(null, TYPES, XP, { teamDays, switches: CELLS_ON, startWeekday: "mon" });
+  assert.equal(dates.length, 7, "én dato pr. ugedag");
+  assert.deepEqual(dates[0], sessionShares("vo2max_climb"), "mandag: holdets celle");
+  assert.deepEqual(dates[1], sessionShares("endurance"), "tirsdag: holdets celle");
+  assert.deepEqual(dates[6], {}, "søndag: hvile giver intet");
+  const standard = standardCareerRotation(TYPES.primaryType).map((program) => standardCareerShares(TYPES.primaryType, TYPES.secondaryType, XP, program));
+  assert.notDeepEqual(dates, standard, "ikke længere standardkarrieren, når holdet har valgt en plan");
+});
+
+test("fund 1: rytterens egen række vinder over holdets, og hans gemte plan vinder over holdets (#2438)", () => {
+  const teamDays = everyDay({ session: "endurance" });
+  const riderDays = { ...everyDay({}), tue: { session: "sprint" } };
+  const own = plannedDateEntries(null, TYPES, XP, { teamDays, riderDays, switches: CELLS_ON, startWeekday: "mon" });
+  assert.deepEqual(own[1], sessionShares("sprint"), "tirsdag: rytterens egen celle");
+  assert.deepEqual(own[0], sessionShares("endurance"), "mandag: holdets celle, rytteren har intet");
+  const plan = { focus: "long_climbs", intensity: "hard" };
+  const planned = plannedDateEntries(plan, TYPES, XP, { teamDays, switches: CELLS_ON, startWeekday: "mon" });
+  assert.deepEqual(planned, [sharesOf(plan)], "hans plan alle dage: én gentaget dato");
+});
+
+test("fund 1: en ren ugerytme ændrer kun intensiteten, som resolveDayIntensity", () => {
+  const plan = { focus: "long_climbs", intensity: "hard" };
+  const riderDays = { mon: { intensity: "rest" }, wed: { intensity: "easy" } };
+  const dates = plannedDateEntries(plan, TYPES, XP, { riderDays, startWeekday: "mon" });
+  assert.equal(dates.length, 7);
+  assert.deepEqual(dates[0], {}, "mandag: hvile");
+  assert.deepEqual(dates[1], sharesOf(plan), "tirsdag: planen");
+  assert.deepEqual(dates[2], sharesOf({ ...plan, intensity: "easy" }), "onsdag: rytmens intensitet, planens fokus");
+  const fromWed = plannedDateEntries(plan, TYPES, XP, { riderDays, startWeekday: "wed" });
+  assert.deepEqual(fromWed[0], dates[2], "datoerne følger kalenderen fra i dag");
+});
+
+test("fund 1: en rotation kører passene i rækkefølge fra rytterens plads, ét pas pr. felt", () => {
+  const rotation = { v: 1, passes: [{ session: "vo2max_climb" }, { session: "endurance" }], rev: 3, anchor: { rev: 3, index: 1 } };
+  const dates = plannedDateEntries({ focus: "long_climbs", intensity: "hard" }, TYPES, XP, { rotation, startWeekday: "mon" });
+  assert.equal(dates.length, rotation.passes.length, "én hel omgang");
+  const climb = sessionShares("vo2max_climb");
+  const easy = sessionShares("endurance");
+  // Ankeret starter på pas 2: datoens fem felter er pas 2, 1, 2, 1, 2.
+  const mixOf = (wClimb, wEasy) => {
+    const out = {};
+    for (const [a, s] of Object.entries(climb)) out[a] = (out[a] ?? 0) + s * wClimb;
+    for (const [a, s] of Object.entries(easy)) out[a] = (out[a] ?? 0) + s * wEasy;
+    return out;
+  };
+  for (const [ability, share] of Object.entries(mixOf(2 / 5, 3 / 5))) assert.ok(Math.abs(dates[0][ability] - share) < 1e-12, `første dato ${ability}`);
+  for (const [ability, share] of Object.entries(mixOf(3 / 5, 2 / 5))) assert.ok(Math.abs(dates[1][ability] - share) < 1e-12, `anden dato ${ability}`);
+  // Plads fra seneste kvittering med samme rev (motorens rotationProgram).
+  const receipts = [{ tick_date: "2026-11-25", report: { rotation: { rev: 3, index: 0, length: 2, advanced: false, order: 1 } } }];
+  const held = plannedDateEntries(null, TYPES, XP, { rotation, rotationReceipts: receipts, startWeekday: "mon" });
+  for (const [ability, share] of Object.entries(mixOf(3 / 5, 2 / 5))) assert.ok(Math.abs(held[0][ability] - share) < 1e-12, `kvitteringens plads ${ability}`);
+});
+
+test("fund 1: uden nogen plan er det fortsat standardkarrieren (kalibreringens reference)", () => {
+  const standard = standardCareerRotation(TYPES.primaryType).map((program) => standardCareerShares(TYPES.primaryType, TYPES.secondaryType, XP, program));
+  assert.deepEqual(plannedDateEntries(null, TYPES, XP), standard);
+  assert.deepEqual(plannedDateEntries(null, TYPES, XP, { teamDays: everyDay({}), switches: CELLS_ON }), standard, "en tom ugerække er ingen plan");
+});
+
+test("fund 1: batchen sender holdets ugeplan, kontakter og rotation ind, og hashen følger planen", async () => {
+  const base = { riders: [BATCH_RIDER], estimates: [estimateRow(estimateAt(3))], abilities: [{ rider_id: "r1", ...ABILITIES, ability_progress: {} }] };
+  const plain = memoryIo(base);
+  await prepareTeamModel2({ io: plain, teamId: "t1", season: { id: "s1", number: 1 }, params: XP, today: "2026-11-26", now: NOW });
+  const restWeek = memoryIo({ ...base, weekRows: [{ rider_id: null, days: everyDay({ session: "rest" }), plan_kind: null }], switches: CELLS_ON });
+  await prepareTeamModel2({ io: restWeek, teamId: "t1", season: { id: "s1", number: 1 }, params: XP, today: "2026-11-26", now: NOW });
+  const [plainRow] = plain.table.values();
+  const [restRow] = restWeek.table.values();
+  assert.notEqual(plainRow.input_hash, restRow.input_hash);
+  assert.ok(restRow.value < plainRow.value, "et hold, der hviler hver dag, giver en lavere prognose");
+});
+
+// ── #8810 fund 2: etapens rigtige profil ────────────────────────────────────
+
+test("fund 2: et løbsfelt bruger etapens profil, en ukendt profil motorens fallback", () => {
+  const raceSlot = (profile_type) => ({ race_day: "true", intensity: "race", focus: "race_day", profile_type });
+  const mountain = slotShares(raceSlot("mountain"), TYPES, XP);
+  const flat = slotShares(raceSlot("flat"), TYPES, XP);
+  assert.notDeepEqual(mountain, flat);
+  assert.ok(mountain.climbing > flat.climbing, "bjergetapen træner klatring");
+  assert.ok(flat.sprint > mountain.sprint, "den flade etape træner spurt");
+  assert.deepEqual(slotShares(raceSlot(null), TYPES, XP), slotShares(raceSlot("rolling"), TYPES, XP));
+});
+
+test("fund 2: profilopslaget er scopet til feltets sæson og tæller aldrig tour-GC", () => {
+  const profiles = raceProfilesBySlot({
+    races: [{ id: "tourA", season_id: "s0", race_type: "stage_race" }, { id: "tourB", season_id: "s1", race_type: "stage_race" }, { id: "oneDay", season_id: "s1", race_type: "single" }],
+    schedule: [
+      { race_id: "tourA", stage_number: 2, game_day: 7 },
+      { race_id: "tourB", stage_number: 4, game_day: 7 },
+      { race_id: "oneDay", stage_number: 1, game_day: 9 },
+    ],
+    results: [
+      { rider_id: "r1", race_id: "tourA", stage_number: 2, result_type: "stage" },
+      { rider_id: "r1", race_id: "tourB", stage_number: 4, result_type: "stage" },
+      { rider_id: "r2", race_id: "tourB", stage_number: 4, result_type: "gc" },
+      { rider_id: "r1", race_id: "oneDay", stage_number: 1, result_type: "gc" },
+    ],
+    profileRows: [
+      { race_id: "tourA", stage_number: 2, profile_type: "mountain" },
+      { race_id: "tourB", stage_number: 4, profile_type: "itt" },
+      { race_id: "oneDay", stage_number: 1, profile_type: "cobbles" },
+    ],
+  });
+  assert.equal(profiles.get(raceSlotKey("r1", "s0", 7)), "mountain");
+  assert.equal(profiles.get(raceSlotKey("r1", "s1", 7)), "itt", "samme løbsdag i en anden sæson er en anden etape");
+  assert.equal(profiles.get(raceSlotKey("r1", "s1", 9)), "cobbles", "endagsløbets GC tæller");
+  assert.equal(profiles.has(raceSlotKey("r2", "s1", 7)), false, "tour-GC er aldrig en etape");
+});
+
+test("fund 2: batchen slår profilen op for løbsfelterne og bruger den i mixet", async () => {
+  const days = Array.from({ length: MODEL2_WINDOW_DATES }, (_, i) => i + 1);
+  const slots = days.map((day) => ({ rider_id: "r1", season_id: "s1", game_day: day, tick_date: `2026-11-${String(day).padStart(2, "0")}`, focus: "race_day", intensity: "race", race_day: "true", status: "trained" }));
+  const base = { riders: [BATCH_RIDER], estimates: [estimateRow(estimateAt(4))], abilities: [{ rider_id: "r1", ...ABILITIES, ability_progress: {} }], slots };
+  const run = async (profile) => {
+    const io = memoryIo({ ...base, profiles: new Map(days.map((day) => [raceSlotKey("r1", "s1", day), profile])) });
+    await prepareTeamModel2({ io, teamId: "t1", season: { id: "s1", number: 1 }, params: XP, today: "2026-11-26", now: NOW });
+    return { io, row: [...io.table.values()][0] };
+  };
+  const mountain = await run("high_mountain");
+  const flat = await run("flat");
+  assert.equal(mountain.io.calls.raceProfiles.length, 1);
+  assert.deepEqual(mountain.io.calls.raceProfiles[0].riderIds, ["r1"]);
+  assert.equal(mountain.io.calls.raceProfiles[0].slots.length, MODEL2_WINDOW_DATES);
+  assert.notEqual(mountain.row.input_hash, flat.row.input_hash, "profilen indgår i beregningen");
+  assert.ok(mountain.row.value > flat.row.value, "en klatrer, der kører bjergetaper, ender højere end på flade etaper");
+});
+
+test("fund 2: Supabase-opslaget kobler løbsfeltet til etapen på feltets løbsdag", async () => {
+  const sb = createFakeSupabase({
+    races: [{ id: "tour", season_id: "s1", race_type: "stage_race" }, { id: "old", season_id: "s0", race_type: "stage_race" }],
+    race_stage_schedule: [{ race_id: "tour", stage_number: 3, game_day: 12 }, { race_id: "tour", stage_number: 4, game_day: 13 }, { race_id: "old", stage_number: 3, game_day: 12 }],
+    race_results: [
+      { rider_id: "r1", race_id: "tour", stage_number: 3, result_type: "stage" },
+      { rider_id: "r1", race_id: "tour", stage_number: 4, result_type: "stage" },
+      { rider_id: "r1", race_id: "old", stage_number: 3, result_type: "stage" },
+    ],
+    race_stage_profiles: [
+      { race_id: "tour", stage_number: 3, profile_type: "mountain" },
+      { race_id: "tour", stage_number: 4, profile_type: "itt" },
+      { race_id: "old", stage_number: 3, profile_type: "flat" },
+    ],
+  });
+  const profiles = await supabaseModel2Io(sb).raceProfiles({ riderIds: ["r1"], slots: [{ rider_id: "r1", season_id: "s1", game_day: 12 }] });
+  assert.equal(profiles.get(raceSlotKey("r1", "s1", 12)), "mountain");
+  assert.equal(profiles.has(raceSlotKey("r1", "s0", 12)), false, "en anden sæsons løb læses ikke");
+});
+
+// ── #8810 fund 3: et uafgjort felt er ikke afregnet ─────────────────────────
+
+test("fund 3: en dato med et uafgjort felt tæller ikke som faktisk og snævrer ikke intervallet", () => {
+  const slot = (day, extra = {}) => ({ season_id: "s", game_day: day, tick_date: `2026-11-${String(10 + Math.ceil(day / 5)).padStart(2, "0")}`, intensity: "hard", focus: "long_climbs", ...extra });
+  const settledDate = [1, 2, 3, 4, 5].map((day) => slot(day));
+  const pendingDate = [6, 7, 8, 9].map((day) => slot(day)).concat(slot(10, { intensity: "unknown_pending", status: "unknown_pending", focus: "long_climbs" }));
+  const observed = observedDateEntries([...settledDate, ...pendingDate], TYPES, XP, { today: "2026-11-26" });
+  assert.equal(observed.length, 1, "kun den afregnede dato");
+  assert.deepEqual(slotShares({ intensity: "unknown_pending", focus: "long_climbs" }, TYPES, XP), {}, "ingen opfundet XP");
+  assert.deepEqual(slotShares({ intensity: "hard", focus: "long_climbs", status: "unknown_pending" }, TYPES, XP), {});
+  const estimate = estimateAt(3);
+  const withPending = computeModel2Prognosis({ rider: RIDER, estimate, observed }, XP);
+  const settledOnly = computeModel2Prognosis({ rider: RIDER, estimate, observed: observedDateEntries(settledDate, TYPES, XP, { today: "2026-11-26" }) }, XP);
+  assert.deepEqual(withPending, settledOnly, "den uafgjorte dato er simuleret, ikke faktisk");
+  assert.equal(withPending.observedDates, 1);
+});
+
+test("fund 3: batchen sender aldrig et uafgjort løbsfelt til profilopslaget", async () => {
+  const slots = [
+    { rider_id: "r1", season_id: "s1", game_day: 1, tick_date: "2026-11-20", focus: "race_day", intensity: "unknown_pending", race_day: "false", status: "unknown_pending" },
+  ];
+  const io = memoryIo({ riders: [BATCH_RIDER], estimates: [estimateRow(estimateAt(3))], abilities: [{ rider_id: "r1", ...ABILITIES, ability_progress: {} }], slots });
+  await prepareTeamModel2({ io, teamId: "t1", season: { id: "s1", number: 1 }, params: XP, today: "2026-11-26", now: NOW });
+  assert.equal(io.calls.raceProfiles.length, 0);
+  assert.equal([...io.table.values()][0].observed_dates, 0);
+});
+
+// ── #8810 fund 4: afregnede datoer fra forrige sæson på samme hold ───────────
+
+test("fund 4: datoer fra forrige sæson bevares, også med samme løbsdagsnummer", () => {
+  const slots = [
+    { season_id: "s0", game_day: 3, tick_date: "2026-11-20", intensity: "hard", focus: "long_climbs" },
+    { season_id: "s1", game_day: 3, tick_date: "2026-11-24", intensity: "hard", focus: "long_climbs" },
+  ];
+  assert.equal(observedDateEntries(slots, TYPES, XP, { today: "2026-11-26" }).length, 2);
+});
+
+test("fund 4: batchen læser holdets kvitteringer på tværs af sæsonskiftet", async () => {
+  const slot = (season_id, day, date) => ({ rider_id: "r1", season_id, game_day: day, tick_date: date, focus: "long_climbs", intensity: "hard", race_day: "false", status: "trained" });
+  const slots = [slot("s0", 60, "2026-11-20"), slot("s0", 61, "2026-11-21"), slot("s1", 1, "2026-11-24")];
+  const io = memoryIo({ riders: [BATCH_RIDER], estimates: [estimateRow(estimateAt(3))], abilities: [{ rider_id: "r1", ...ABILITIES, ability_progress: {} }], slots, seasonIds: ["s1", "s0"] });
+  await prepareTeamModel2({ io, teamId: "t1", season: { id: "s1", number: 2 }, params: XP, today: "2026-11-26", now: NOW });
+  assert.deepEqual(io.calls.slots[0].seasonIds, ["s1", "s0"]);
+  assert.equal([...io.table.values()][0].observed_dates, 3, "forrige sæsons datoer tæller med");
+});
+
+test("fund 4: sæson-opslaget giver sæsonen nu og den før", async () => {
+  const sb = createFakeSupabase({ seasons: [{ id: "s0", number: 1 }, { id: "s1", number: 2 }, { id: "sx", number: 7 }] });
+  assert.deepEqual((await supabaseModel2Io(sb).seasonIds({ id: "s1", number: 2 })).sort(), ["s0", "s1"]);
 });
 
 // ── Visningen ───────────────────────────────────────────────────────────────
