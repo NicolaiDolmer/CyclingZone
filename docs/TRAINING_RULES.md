@@ -1536,6 +1536,19 @@ Kontakt `training_week_priority` (off | beta | on), seedet off; tænding er ejer
 
 - **Skrivning fra Program R5:** `PUT /api/training/programs/cell` for ryttere og `PUT /api/training/groups/:id/cell` for grupper tager valgfri `weekBlock: { slots, lockSlot, slotEfforts? }` sammen med cellens sædvanlige felter. `slots` indeholder datoens pas i prioriteret rækkefølge. `lockSlot` er et nulbaseret felt eller `null`, der fjerner låsen. Med indsatskontakten på har `slotEfforts` én gyldig indsats eller `null` pr. felt. En `weekBlock`-skrivning sætter `plan_kind = 'week'` og kopierer gruppeplanen til følgere. Off giver 409 `feature_disabled`. Ugyldigt indhold giver 400 uden skrivning.
 
+### 13.11 Kun denne dag: et pas på én dato (#8592; bag slukket kontakt)
+
+Kontakt `training_day_override_8592` (off | beta | on), seedet off; tænding er ejer-only. Ejerbeslutning 26/11 på #8592. Dommer-scenarier: `docs/audits/8592-kun-denne-dag-dommer-scenarier.md` (DO-1..11). Kode: `backend/lib/trainingDayOverride8592.js`.
+
+- **Data:** `training_day_overrides`, én række pr. (hold, rytter, dato) med ét pas fra programkataloget. Ugeplanen (`training_week_plans`) røres aldrig. Datoen skal ligge i den rullende uge (i morgen til og med om 7 dage); fortiden, i dag og dag 8 giver 400 `invalid_date`. Udløbne rækker slettes ved næste læsning eller skrivning for holdet.
+- **Forrang:** løb / binding / skade > træthedsgrænsen > dato-valget > rotation > ugeblok > ugedagens felt > plan. Valget gælder alle datoens frie felter; felter med løb, bundet hvile og skade er urørte.
+- **Rotation og ugeblokke:** rotationen venter på datoen (intet stempel), og næste frie felt efter datoen kører passet, der stod for tur. Ugeblokkens kildefelt og lås gælder ikke på datoen.
+- **Markering:** hvert felt på datoen får `date_override: { session, outcome }` på kvitteringen; `outcome` er `trained`, `race`, `bound_rest`, `injured`, `unknown`, `fatigue_rule` eller `unavailable`. Dagsvælgeren viser "Dit valg for tirsdag blev erstattet af løbet", når løb eller hvile tager alle datoens felter.
+- **Gate:** motoren læser kontakten og tabellen kun med programceller på holdet (samme gate som programcellerne). Et hold uden programfelter får 409 `program_required` ved skrivning.
+- **API:** `GET|PUT|DELETE /api/training/programs/day-overrides`. PUT tager `{ riderIds?, groupId?, date, session }` (en gruppe giver én række pr. medlem på skrivetidspunktet); DELETE er "Tilbage til planen".
+- **Prognoser:** `GET /forecast` og `GET /forecast/week` får datoens valg (`dateOverride` pr. rytter i dag, `dayOverrides` pr. dag i ugen) og regner med samme forrang.
+- **Kontakten off:** motoren er bit-identisk med en frossen kopi af merge-basen (`backend/lib/trainingDayOverride8592.golden.json`), og API'et afviser skrivning med 409 `feature_disabled`.
+
 ## Program R5 · tildeling og gruppemedlemmer (#8608, ejer 23/11)
 
 - **Editorer på desktop og telefon:** Ugeblokke kan omprioritere pas og låse ét felt pr. dag. Kopiér dag bruger kladdens rækkefølge. Prognosen viser pas taget af løb og låsens oprindelige felt. Rotation kan tilføje, flytte, kassere og fjerne pas, vælge Hvile, springe til et pas og bekræfte en kopi til andre ryttere. I dag viser passets session. Pladsen i rotationen vises på Program-fanen. De to editorer følger deres egne kontakter (`training_week_priority` og `training_rotation`).

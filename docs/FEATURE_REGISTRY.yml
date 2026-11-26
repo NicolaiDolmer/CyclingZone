@@ -1045,6 +1045,19 @@ features:
     decision: taend
     decide_by: 2026-12-06
 
+  - id: training-day-override-8592
+    area: training
+    title_en: Only this day, one session for a rider, several riders or a group on one date
+    title_da: Kun denne dag, et pas for en rytter, flere eller en gruppe på én dato
+    state: building
+    flag: training_day_override_8592
+    ssot: docs/TRAINING_RULES.md
+    epic: 7456
+    verified: 2026-11-26
+    note: "Datotabel training_day_overrides, motor, prognose og dagsvælgeren bag training_day_override_8592 (seedet off). Løb, binding og skade vinder altid; rotationen venter på datoen. Fable-dom før merge, preview før tænding."
+    decision: goer-faerdigt
+    decide_by: 2026-12-10
+
   # --- academy -------------------------------------------------------------
   - id: academy
     area: academy

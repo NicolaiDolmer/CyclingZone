@@ -35,7 +35,7 @@ løb / binding / skade > træthedsgrænsen (spillerens egen regel) > **dato-valg
 | DO-5b | Flere ryttere ad gangen | Én række pr. valgt rytter. En rytter fra et andet hold afvises (403), og intet skrives. |
 | DO-6 | Sletning ("Tilbage til planen") | Rækken slettes. Motoren og prognosen kører planen. |
 | DO-7 | Dato i fortiden, i dag eller mere end 7 dage frem | Afvises med 400 `invalid_date`. Intet skrives. |
-| DO-8 | Kontakten off | Motoren er bit-identisk med en frossen kopi af merge-basen (golden). Intet ekstra databasekald i motoren. API'et svarer 409 `feature_disabled` på skrivning, og GET svarer `enabled: false`. |
+| DO-8 | Kontakten off | Motoren er bit-identisk med en frossen kopi af merge-basen (golden). Uden programceller intet ekstra databasekald i motoren; med programceller kun kontaktens eget opslag, aldrig tabellen. API'et svarer 409 `feature_disabled` på skrivning, og GET svarer `enabled: false`. |
 | DO-9 | Udløbne valg | Rækker med en dato før i dag slettes ved næste læsning eller skrivning for holdet. Motoren læser kun datoens egen dato og kan aldrig bruge et gammelt valg. |
 | DO-10 | Træthedsgrænsen | Er rytteren over sin egen grænse, vinder grænsens erstatning over dato-valget (som WB-7). |
 | DO-11 | Hold uden program (ingen programfelter) | Skrivning afvises med 409 `program_required`, så skærmen aldrig viser et valg, motoren ikke bruger. (Ejer-spørgsmål i PR'en.) |
