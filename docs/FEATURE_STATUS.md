@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-162 poster: live 134 · dormant 7 · building 10 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+163 poster: live 134 · dormant 7 · building 11 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -47,9 +47,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## squad
 
-**live:** Rider card (`rider-hover-card`) 2026-11-11
-
-**arkiv:** `champion-jerseys` · `contracts` · `rider-compare-and-watchlist` · `rider-rating-best-role-display` · `squad-management` · `talent-marks` · `youth-squad-pages`
+**arkiv:** `champion-jerseys` · `contracts` · `rider-compare-and-watchlist` · `rider-hover-card` · `rider-rating-best-role-display` · `squad-management` · `talent-marks` · `youth-squad-pages`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -67,6 +65,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Development Score B in the engine (`development-score-b-engine`)|dormant|`development_score_v2`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-13|Parkeret (ejer 31/10) til Udvikling 2.0. Aldrig samtidig med XP. Før tænding: #7584.|
 |Catch-up via racing (`race-day-catchup`)|dormant|`race_day_catchup_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6950|2026-10-25|Ejer, med Udvikling 2.0.|
 |Race day role base day (`race-day-role-base-day`)|dormant|`race_day_role_base_day_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-03|#5950 løsning A (ejer 3/11), underkontakt til race-day-role-yield. Off.|
+|Prognosis model 2: where he ends up if he keeps training as now (`prognosis-model2-8604`)|building|`prognosis_model2`|[PROGRESSION_RULES](PROGRESSION_RULES.md)|#6110|2026-11-26|Bag prognosis_model2 (seedet off, #8604): batch uden for anmodningen simulerer motorens trænings- og løbsgrene med rytterens mix, kalibreret mod holdets synlige skøn; ét tal på alle flader og et interval i Udvikling. Slukket = nuværende prognose.|
 |Injuries heal over the off-season (`season-injury-reset`)|building|`season_injury_reset_mode`|[TRAINING_RULES](TRAINING_RULES.md)|#5865|2026-11-25|Prod 25/11: season_injury_reset_mode = clear. Selve nulstillingen efterprøves ved S5→S6.|
 |Rotation plans that wait on rest and races (`training-rotation-8548`)|building|`training_rotation`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-22|Data, API, afregning og prognose bag training_rotation. Pladsen fortsætter over sæsonskift. Beta i to dage med aftenverifikation før ejerens go til on.|
 |Week blocks with priority and one locked session per day (`training-week-priority-8549`)|building|`training_week_priority`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-22|Motor, prognose og Program R5 bag training_week_priority. Feltprioritet og lås gemmes med weekBlock på celle-API'et for ryttere og grupper.|
