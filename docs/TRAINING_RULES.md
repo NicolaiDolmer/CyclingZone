@@ -1522,7 +1522,7 @@ Kontakt `training_week_forecast` (off | beta | on), seedet off; tænding er ejer
 
 Kontakt `training_week_priority` (off | beta | on), seedet off; tænding er ejer-only. Design: `docs/audits/undersoegelse-docs-8549-prioritet-laast-pas-design.md` §5. Dommer-scenarier: `docs/audits/7456-program-dommer-scenarier.md` §2 (WB-1..10). Kode: `backend/lib/trainingWeekBlocks.js` (kernen) og `backend/lib/trainingWeekPriority.js` (motorens og prognosens fælles indgang).
 
-- **Gælder kun rækker med `plan_kind = 'week'`** (sættes af den nye Program-fane, K-9). `NULL` = gammel felt-plan med dagens regel (OLD-1). `'rotation'` hører til §13.8 (OFF-2).
+- **Gælder kun rækker med `plan_kind = 'week'`** (sættes af den nye Program-fane, K-9). **Opt-in (ejer 26/11, #8776):** kun managerens eget valg sætter mærket, dvs. en Week blocks-skrivning (prioritet/lås) eller et skift fra Rotation til Ugeblokke i Plantype. Et almindeligt felt eller et program sat på lader `plan_kind` være, som det var, også når klienten sender `planKind`. `NULL` = gammel felt-plan med dagens regel (OLD-1). `'rotation'` hører til §13.8 (OFF-2).
 - **Kildefeltet omdirigeres, ikke træningsstien:** session og indsats kommer fra kildefeltet (`resolveDayProgram` med kildefeltet), træthedsgrænsen vurderes på feltets eget tidspunkt og vinder over låsen (WB-7, ejer 19/11).
 - **Løb tager laveste prioritet;** pas taget af løb indhentes ikke. Låsen bliver i sit hjemmefelt, ellers flytter den til nærmeste frie, ikke-afregnede felt (lige afstand: det senere; ejer 21/11). Intet frit felt: låsen er taget.
 - **Afregnede felter ligger fast:** kvitteringen får `source_slot` (hvilket pas feltet kørte). Et felt uden stempel ligger fast med sin egen plads, et løbsfelt uden kilde. Et felt, træthedsgrænsen erstattede, er afregnet MED sin kilde (WB-7-kontrakten). Det gør afregning i rækkefølge, ude af rækkefølge (Træn nu) og efter etapen ens (WB-8).
@@ -1538,7 +1538,7 @@ Kontakt `training_week_priority` (off | beta | on), seedet off; tænding er ejer
 - **Prognosen** bruger samme indgang (I5), så ugegitteret viser det samme som motoren.
 - **Kontakten off:** intet ekstra opslag, ingen `source_slot` i rapporten, kildefeltet = feltet (bit-identisk).
 
-- **Skrivning fra Program R5:** `PUT /api/training/programs/cell` for ryttere og `PUT /api/training/groups/:id/cell` for grupper tager valgfri `weekBlock: { slots, lockSlot, slotEfforts? }` sammen med cellens sædvanlige felter. `slots` indeholder datoens pas i prioriteret rækkefølge. `lockSlot` er et nulbaseret felt eller `null`, der fjerner låsen. Med indsatskontakten på har `slotEfforts` én gyldig indsats eller `null` pr. felt. En `weekBlock`-skrivning sætter `plan_kind = 'week'` og kopierer gruppeplanen til følgere. Off giver 409 `feature_disabled`. Ugyldigt indhold giver 400 uden skrivning.
+- **Skrivning fra Program R5:** `PUT /api/training/programs/cell` for ryttere og `PUT /api/training/groups/:id/cell` for grupper tager valgfri `weekBlock: { slots, lockSlot, slotEfforts? }` sammen med cellens sædvanlige felter. `slots` indeholder datoens pas i prioriteret rækkefølge. `lockSlot` er et nulbaseret felt eller `null`, der fjerner låsen. Med indsatskontakten på har `slotEfforts` én gyldig indsats eller `null` pr. felt. En `weekBlock`-skrivning sætter `plan_kind = 'week'` og kopierer gruppeplanen til følgere; en skrivning uden `weekBlock` sætter aldrig mærket (#8776). Off giver 409 `feature_disabled`. Ugyldigt indhold giver 400 uden skrivning.
 
 ## Program R5 · tildeling og gruppemedlemmer (#8608, ejer 23/11)
 

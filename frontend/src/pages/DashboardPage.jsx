@@ -121,7 +121,7 @@ const EMPTY_LIST = /** @type {any[]} */ ([]);
 export default function DashboardPage() {
   const [cardTrackingRoot, setCardTrackingRoot] = useState(/** @type {HTMLDivElement | null} */ (null));
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation(["dashboard", "common", "finance"]);
+  const { t, i18n, ready: dashboardCopyReady } = useTranslation(["dashboard", "common", "finance"]);
   // #3697: board.json (55 KB rå pr. sprogpar) lazy-loades via HttpBackend i
   // stedet for at ligge inline i language-chunken. Dashboardets bestyrelseskort
   // er den ENESTE forbruger uden for BoardPage, og feedback-blokken er den
@@ -324,7 +324,7 @@ export default function DashboardPage() {
 
   // #2230: resolve conditional top-strip presence before placing the dashboard.
   // Once revealed, background refresh never replaces it with a page loader.
-  if (!initialWaitExpired && !initialDataReady && !error) return <AuthLoading />;
+  if (!dashboardCopyReady || (!initialWaitExpired && !initialDataReady && !error)) return <AuthLoading />;
 
   // #3510 — kanonisk ErrorState (docs/design/PAGE_TEMPLATES.md) i stedet for at
   // falde igennem til et fuldt tomt dashboard. Retry gen-kalder loadAll direkte

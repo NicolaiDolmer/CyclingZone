@@ -41,7 +41,8 @@ const TrafficBeacon = lazy(() => import("./components/TrafficBeacon.jsx"));
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const importDashboardPage = () => import("./pages/DashboardPage");
+const DashboardPage = lazy(importDashboardPage);
 const RidersPage = lazy(() => import("./pages/RidersPage"));
 const AuctionsPage = lazy(() => import("./pages/AuctionsPage"));
 const AuctionHistoryPage = lazy(() => import("./pages/AuctionHistoryPage"));
@@ -192,6 +193,14 @@ export default function App({ initialSession = undefined }) {
   // server-render (renderToString kan ikke fuldføre en lazy boundary → React #419).
   const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (pathname.replace(/\/+$/, "").toLowerCase() !== "/dashboard") return;
+    // Start the dashboard chunk alongside auth and Layout on a direct visit.
+    // The lazy route still owns retries and error handling when it renders.
+    void importDashboardPage().catch(() => {});
+  }, [pathname]);
 
   // #5033/#5159: proaktivt lag over lazyWithRetry. Tjekker ved route-skift, ved
   // tab-fokus efter >5 min og hvert 5. minut om der er deployet en ny frontend,
@@ -291,7 +300,7 @@ export default function App({ initialSession = undefined }) {
           <Route path="/terms" element={<TermsPageEn />} />
           <Route path="/founder-supporter" element={<I18nReadyGate ns="founder"><FounderSupporterPage /></I18nReadyGate>} />
           <Route path="/ui" element={<KitchenSinkPage />} />
-          <Route path="/ui/season-experience" element={<I18nReadyGate ns="seasonEnd"><SeasonExperiencePreviewPage /></I18nReadyGate>} />
+          <Route path="/ui/season-experience" element={<I18nReadyGate ns={["seasonEnd", "dashboard", "training"]}><SeasonExperiencePreviewPage /></I18nReadyGate>} />
           {/* #4557 — draft-only mockup-preview, DEV-only (se App.jsx's import
               ovenfor + BoardroomPreviewPage.jsx). Fjernes ved flip. Registreret
               her, langt før "/" og catch-all'en nedenfor, saa den aldrig
@@ -309,7 +318,7 @@ export default function App({ initialSession = undefined }) {
           <Route element={
             <ProtectedRoute session={session}><Layout /></ProtectedRoute>
           }>
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="dashboard" element={<Suspense fallback={<RouteFallback />}><DashboardPage /></Suspense>} />
             <Route path="riders" element={<RidersPage />} />
             <Route path="riders/:id" element={<RiderStatsPage />} />
             {/* #3104 etape C: personale-oversigten er en fane i Klub nu (~400
@@ -425,7 +434,7 @@ export default function App({ initialSession = undefined }) {
             <Route path="admin/sprint-metrics" element={<Navigate to="/admin/growth?tab=sprint" replace />} />
             <Route path="admin/attribution" element={<Navigate to="/admin/growth?tab=attribution" replace />} />
             <Route path="admin/retention" element={<Navigate to="/admin/growth?tab=retention" replace />} />
-            <Route path="training" element={<TrainingPage />} />
+            <Route path="training" element={<I18nReadyGate ns="training"><TrainingPage /></I18nReadyGate>} />
             <Route path="planner" element={<PlannerLegacyRedirect />} />
             <Route path="academy" element={<AcademyPage />} />
             <Route path="academy/graduation" element={<Navigate to="/academy" replace />} />
