@@ -264,5 +264,35 @@
     "autoNote": "L’assistant sélectionne ton équipe pour {races} au départ. Les coureurs ne sont connus qu’à ce moment-là.",
     "aheadNote": "Les jours à venir montrent le plan. Un changement s'applique à chaque {weekday}.",
     "editInProgram": "Modifier le {weekday} dans Programme"
+  },
+  "programW1": {
+    "allRiders": "Tous les coureurs",
+    "weekFor": "Semaine de {name}",
+    "raceDay": "Jour de course {n}",
+    "noSession": "Aucune séance",
+    "effortFor": "Effort, {pass}",
+    "noEffort": "Aucun effort",
+    "removeOwnPlan": "Retirer le plan propre",
+    "copyNeedsProgram": "Mets un programme sur ce plan pour le copier",
+    "changeTitle": "Changer le programme de {name}",
+    "current": "Actuel",
+    "openWeek": "Ouvrir la semaine de {name}",
+    "noGroup": "Aucun groupe",
+    "col": {
+      "rider": "Coureur",
+      "group": "Groupe",
+      "program": "Programme",
+      "today": "Aujourd'hui",
+      "tomorrow": "Demain",
+      "next": "Jours suivants"
+    },
+    "groups": {
+      "follows": "Suit le groupe",
+      "withoutGroup": "Sans groupe",
+      "emptyTitle": "Crée ton premier groupe",
+      "emptyBody": "Un groupe partage un plan de semaine. Chaque coureur peut garder le sien.",
+      "offTitle": "Les groupes ne sont pas encore ouverts",
+      "offBody": "Planifie la semaine de chaque coureur dans Programme."
+    }
   }
 }

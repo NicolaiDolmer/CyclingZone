@@ -51,6 +51,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   // #7947 ejer 20/11: træningssidens I dag-fane i R5-udgaven. Seedet off; kun "on" tænder. Ejer-only flip.
   { key: "training_page_r5", area: "training", label: "Træningssiden: I dag-fanen i R5-udgaven" },
+  // #7947 W1 v2 (ejer 26/11): Program-ugen + egen Grupper-fane. Seedet off; kun "on" tænder. Ejer-only flip.
+  { key: "training_w1_v2", area: "training", label: "Træningssiden: Program W1 v2 (ugeplan, Grupper-fane)" },
   // #8548: rotation (pas 1..N der venter ved hvile og løb). Seedet off; ejer-only flip.
   { key: "training_rotation", area: "training", label: "Træning — rotation (pas der venter ved hvile og løb)" },
   // #8549 PR 2: Week blocks i motoren (prioritet pr. felt, ét låst pas pr. dag). Seedet off; ejer-only flip.
@@ -380,6 +382,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "training_page_r5",
   // #8570: Hjaelp gater Let/Mellem/Haard-teksterne paa dette flag (binaert: motoren laeser kun "on").
   "training_effort_levels",
+  // #7947 W1 v2: Program-fanens ugeplan og Grupper-fanen paa dette flag (binaert: kun "on").
+  "training_w1_v2",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
@@ -387,4 +391,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "jersey_hunt_7855", "development_xp_model", "training_page_r5", "training_effort_levels"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "jersey_hunt_7855", "development_xp_model", "training_page_r5", "training_effort_levels", "training_w1_v2"]);

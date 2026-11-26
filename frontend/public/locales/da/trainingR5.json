@@ -264,5 +264,35 @@
     "autoNote": "Assistenten udtager holdet til {races} ved løbsstart. Hvem der kører, ses først da.",
     "aheadNote": "Dagene frem viser planen. En ændring gælder hver {weekday}.",
     "editInProgram": "Ret {weekday} i Program"
+  },
+  "programW1": {
+    "allRiders": "Alle ryttere",
+    "weekFor": "Ugen for {name}",
+    "raceDay": "Løbsdag {n}",
+    "noSession": "Ingen session",
+    "effortFor": "Indsats, {pass}",
+    "noEffort": "Ingen indsats",
+    "removeOwnPlan": "Fjern egen plan",
+    "copyNeedsProgram": "Sæt et program på planen for at kopiere den",
+    "changeTitle": "Skift program for {name}",
+    "current": "Nuværende",
+    "openWeek": "Åbn ugen for {name}",
+    "noGroup": "Ingen gruppe",
+    "col": {
+      "rider": "Rytter",
+      "group": "Gruppe",
+      "program": "Program",
+      "today": "I dag",
+      "tomorrow": "I morgen",
+      "next": "De næste dage"
+    },
+    "groups": {
+      "follows": "Følger gruppen",
+      "withoutGroup": "Uden gruppe",
+      "emptyTitle": "Lav din første gruppe",
+      "emptyBody": "En gruppe deler én ugeplan. Hver rytter kan stadig få sin egen.",
+      "offTitle": "Grupper er ikke åbne endnu",
+      "offBody": "Planlæg hver rytters uge i Program."
+    }
   }
 }

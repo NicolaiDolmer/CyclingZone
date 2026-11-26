@@ -264,5 +264,35 @@
     "autoNote": "The assistant picks your team for {races} at race start. Who rides is known then.",
     "aheadNote": "Days ahead show the plan. A change applies to every {weekday}.",
     "editInProgram": "Edit {weekday} in Program"
+  },
+  "programW1": {
+    "allRiders": "All riders",
+    "weekFor": "Week for {name}",
+    "raceDay": "Race day {n}",
+    "noSession": "No session",
+    "effortFor": "Effort, {pass}",
+    "noEffort": "No effort",
+    "removeOwnPlan": "Remove own plan",
+    "copyNeedsProgram": "Put a program on this plan to copy it",
+    "changeTitle": "Change program for {name}",
+    "current": "Current",
+    "openWeek": "Open the week for {name}",
+    "noGroup": "No group",
+    "col": {
+      "rider": "Rider",
+      "group": "Group",
+      "program": "Program",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "next": "Next days"
+    },
+    "groups": {
+      "follows": "Follows the group",
+      "withoutGroup": "Without a group",
+      "emptyTitle": "Make your first group",
+      "emptyBody": "A group shares one week plan. Each rider can still get his own.",
+      "offTitle": "Groups are not open yet",
+      "offBody": "Plan each rider's week in Program."
+    }
   }
 }
