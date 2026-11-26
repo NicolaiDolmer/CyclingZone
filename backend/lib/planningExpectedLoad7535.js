@@ -90,6 +90,8 @@ export function expectedLoad7535({ riderIds, stages, stagesCompleted = 0, season
   return out;
 }
 
+const RACE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const RACE_COLUMNS = "id, season_id, status, stages_completed, engine_rules_revision, scheduled_for, race_type, stages";
 
 /**
@@ -105,6 +107,10 @@ export async function loadExpectedLoad7535({ supabase, teamId, raceId, deps = {}
   const readThresholds = deps.readThresholds ?? readPlanningExpectedLoadThresholds;
   const thresholds = await readThresholds({ supabase });
   if (!thresholds) return { status: 200, body: { enabled: false, riders: {} } };
+
+  // Et id der ikke er et UUID kan ikke være et løb: 404 uden at spørge Postgres (ellers 500 +
+  // Sentry-støj, CYCLINGZONE-BH: preview-mockens "wb-dender" ramte prod 25/11).
+  if (typeof raceId !== "string" || !RACE_ID_RE.test(raceId)) return { status: 404, body: { error: "race_not_found" } };
 
   const { data: race, error: raceErr } = await supabase.from("races").select(RACE_COLUMNS).eq("id", raceId).maybeSingle();
   if (raceErr) throw new Error(`races (expected load 7535): ${raceErr.message}`);
