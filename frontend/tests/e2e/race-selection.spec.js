@@ -50,6 +50,7 @@ test(loseResponse ? "manager ser gemt efter mistet svar på udtagelsen" : "manag
   const phase = process.env.CZ_8714_PHASE === "before" ? "before" : "after";
   const measureSave = Boolean(process.env.CZ_8714_PHASE) && !loseResponse;
   if (measureSave) await page.setViewportSize({ width: 1440, height: 950 });
+  if (measureSave) await page.setViewportSize({ width: 1440, height: 950 });
 
   // Override races-tabellen så RaceDetailPage finder SCHEDULED_RACE.
   // Følger race-detail.spec.js: registreres efter installNetworkMocks → vinder (LIFO).
@@ -165,12 +166,12 @@ test(loseResponse ? "manager ser gemt efter mistet svar på udtagelsen" : "manag
   await saveBtn.click();
   if (measureSave) {
     await expect(panel.getByRole("button", { name: /^Gemmer/ })).toBeDisabled();
-    const ms = await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => {
+    const ms = await page.evaluate(() => {
       const start = performance.getEntriesByName("lineup-save").at(-1)?.startTime;
       if (start == null) throw new Error("Missing lineup save event");
-      resolve(Math.round(performance.now() - start));
-    })));
-    console.log("8714 " + JSON.stringify({ phase, width: 1440, action: "lineup-save", samples: [ms] }));
+      return Math.round(performance.now() - start);
+    });
+    console.log("8714 " + JSON.stringify({ phase, width: page.viewportSize()?.width, action: "lineup-save", samples: [ms] }));
   }
 
   // Succesbesked vises: "Udtagelsen er gemt." i DA-locale.

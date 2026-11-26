@@ -1,4 +1,4 @@
-import type { Locator, Page, Route } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import { corsHeaders, evidenceShotPath, installNetworkMocks, json, login, RIDERS, stabilizePage, TEST_TEAM } from "./fixtures.js";
 
@@ -8,19 +8,7 @@ const settled = (route: Route, data: unknown) => route.request().method() === "O
   ? route.fulfill({ status: 204, headers: corsHeaders(route.request()) })
   : json(route, data);
 
-async function arm(target: Locator, event: "click" | "change") {
-  await target.evaluate((element, type) => {
-    element.addEventListener(type, () => performance.mark("action"), { once: true });
-  }, event);
-}
-
-async function elapsed(page: Page) {
-  return page.evaluate(() => new Promise<number>((resolve) => requestAnimationFrame(() => {
-    const start = performance.getEntriesByName("action").at(-1)?.startTime;
-    if (start == null) throw new Error("Missing initial interaction event");
-    resolve(Math.round(performance.now() - start));
-  })));
-}
+const elapsed = (started: number) => Math.round(performance.now() - started);
 
 async function boot(page: Page) {
   await page.clock.setFixedTime(new Date("2026-11-25T10:00:00Z"));
@@ -30,11 +18,10 @@ async function boot(page: Page) {
 
 async function navigate(page: Page, route: string) {
   await login(page);
-  await page.addInitScript(() => localStorage.setItem("cz_lang", "en"));
   await page.goto(route);
 }
 
-test("training choice paints before acknowledgement and survives the server round trip", async ({ page, isMobile }, info) => {
+test("training choice appears before acknowledgement and survives the server round trip", async ({ page, isMobile }, info) => {
   const width = isMobile ? 390 : 1440;
   await page.setViewportSize({ width, height: isMobile ? 844 : 950 });
   await boot(page);
@@ -45,11 +32,13 @@ test("training choice paints before acknowledgement and survives the server roun
     slots: { used: 1 }, weekPlan: null, riderWeekPlans: {}, racingToday: {},
   }));
   await page.route("**/api/training/programs**", (route) => settled(route, { enabled: false }));
+  let responseGate: Promise<void> | undefined;
   await page.route(`**/api/training/${rider.id}`, async (route) => {
     if (route.request().method() === "OPTIONS") return settled(route, null);
     const session = route.request().postDataJSON().session;
     // Controlled transport delay, independent of the fixed in-game time.
-    await new Promise((resolve) => setTimeout(resolve, 900));
+    if (responseGate) await responseGate;
+    else await new Promise((resolve) => setTimeout(resolve, 900));
     await settled(route, { plan: { focus: session, intensity: session === "endurance" ? "easy" : "hard" } });
   });
   await navigate(page, "/training");
@@ -57,17 +46,26 @@ test("training choice paints before acknowledgement and survives the server roun
   const samples = [];
   for (const choice of ["sprint", "endurance", "sprint", "endurance", "sprint"]) {
     await expect(picker).toBeEnabled();
-    await arm(picker, "change");
+    const started = performance.now();
     await picker.selectOption(choice);
     await expect(picker).toHaveValue(choice);
-    samples.push(await elapsed(page));
+    samples.push(elapsed(started));
     if (ruler === "after") await expect(picker).toBeDisabled();
-    if (samples.length === 1 && process.env.CZ_8714_PHASE && info.project.name !== "mobile-webkit") {
-      await picker.evaluate((element) => element.scrollIntoView({ block: "center" }));
-      await page.screenshot({ path: evidenceShotPath("pr-screens/8714/" + width + "-training-" + ruler + ".png"), scale: "css", animations: "disabled" });
-    }
     await expect(picker).toBeEnabled();
     await expect(picker).toHaveValue(choice);
+  }
+  if (process.env.CZ_8714_PHASE && info.project.name !== "mobile-webkit") {
+    let releaseResponse: () => void = () => undefined;
+    responseGate = new Promise((resolve) => { releaseResponse = resolve; });
+    try {
+      await picker.selectOption("endurance");
+      await expect(picker).toHaveValue(ruler === "after" ? "endurance" : "sprint");
+      await picker.evaluate((element) => element.scrollIntoView({ block: "center" }));
+      await page.screenshot({ path: evidenceShotPath("pr-screens/8714/" + width + "-training-" + ruler + ".png"), scale: "css", animations: "disabled" });
+    } finally {
+      releaseResponse();
+    }
+    await expect(picker).toHaveValue("endurance");
   }
   console.log("8714 " + JSON.stringify({ phase: ruler, width, action: "training", samples }));
 });
@@ -91,21 +89,22 @@ test("inbox read changes are optimistic and a failed change preserves another su
       failed = true;
       return route.fulfill({ status: 400, headers: { ...corsHeaders(request), "content-type": "application/json" }, body: '{"message":"Fixture failure"}' });
     }
+    if (id !== "note-6") await new Promise((resolve) => setTimeout(resolve, 900));
     const row = rows.find((item) => item.id === id);
     if (row) row.is_read = true;
     return settled(route, null);
   });
   await navigate(page, "/notifications?tab=mine&mineFilter=unread");
   const note = (i: number) => page.getByText("Fixture note " + i, { exact: true });
-  const select = page.getByRole("combobox", { name: "Filter notifications" });
+  const select = page.getByRole("combobox", { name: "Filtrér notifikationer" });
   const mark = [], filter = [], tab = [];
   for (let i = 0; i < 5; i++) {
     const chosen = note(i);
     await expect(chosen).toBeVisible();
-    await arm(chosen, "click");
+    const started = performance.now();
     await chosen.click();
     await expect(chosen).toHaveCount(0);
-    mark.push(await elapsed(page));
+    mark.push(elapsed(started));
   }
   await note(5).click();
   await note(6).click();
@@ -115,17 +114,17 @@ test("inbox read changes are optimistic and a failed change preserves another su
   if (ruler === "after") await expect(note(6)).toHaveCount(0);
   for (let i = 0; i < 5; i++) {
     const all = i % 2 === 0;
-    await arm(select, "change");
+    const started = performance.now();
     await select.selectOption(all ? "all" : "unread");
     await expect(note(7)).toHaveCount(all ? 1 : 0);
-    filter.push(await elapsed(page));
+    filter.push(elapsed(started));
   }
   for (let i = 0; i < 5; i++) {
-    const next = page.getByRole("tab", { name: i % 2 === 0 ? /^To handle/ : /^Mine/ });
-    await arm(next, "click");
+    const next = page.getByRole("tab", { name: i % 2 === 0 ? /^Skal handles/ : /^Mine/ });
+    const started = performance.now();
     await next.click();
     await expect(next).toHaveAttribute("aria-selected", "true");
-    tab.push(await elapsed(page));
+    tab.push(elapsed(started));
   }
   for (const [action, samples] of [["mark-read", mark], ["filter", filter], ["tab", tab]]) {
     console.log("8714 " + JSON.stringify({ phase: ruler, width, action, samples }));
