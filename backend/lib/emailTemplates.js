@@ -855,7 +855,7 @@ const S6_COPY = {
       teamLine: null,
       newsHeading: "The newest features in the game",
       openings: {
-        active: "Thanks for racing in Season 5. Before the new season starts, here is what's new since it began.",
+        active: "Season 5 ends on Friday. Before Season 6 starts, here is what's new in the game.",
         dormant: "It's been a few weeks since you were last in. Here is what's new, all ready before the new season starts.",
         away: "It's been a while since you played, and the game has changed a lot. A new season is a good time to come back. Here is what's new.",
       },
@@ -922,7 +922,7 @@ const S6_COPY = {
       teamLine: null,
       newsHeading: "De nyeste funktioner i spillet",
       openings: {
-        active: "Tak fordi du kørte med i sæson 5. Inden den nye sæson starter, kan du se, hvad der er nyt, siden den begyndte.",
+        active: "Sæson 5 slutter fredag. Inden sæson 6 starter, kan du se, hvad der er nyt i spillet.",
         dormant: "Det er et par uger siden, du sidst var inde. Her er det nye, og det er klar, før den nye sæson starter.",
         away: "Det er længe siden, du har spillet, og spillet har ændret sig meget. En ny sæson er et godt tidspunkt at komme tilbage. Her er det nye.",
       },
