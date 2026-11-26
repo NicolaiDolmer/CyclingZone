@@ -13,15 +13,27 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import I18nReadyGate from "../I18nReadyGate.jsx";
-import { Button, Toggle } from "../ui";
+import { Button, Skeleton, Toggle } from "../ui";
 
-function Gate({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
+function Gate({ children, fallback = false }: { children: ReactNode; fallback?: ReactNode }) {
   return <I18nReadyGate ns="spoiler" fallback={fallback}>{children}</I18nReadyGate>;
 }
 
 /** Billede 1: kontakten i løbets hoved. */
 export function SpoilerHeroSwitch({ id, on, onChange, failed = false }: { id: string; on: boolean; onChange: (on: boolean) => void; failed?: boolean }) {
-  return <Gate><HeroSwitch id={id} on={on} onChange={onChange} failed={failed} /></Gate>;
+  return (
+    <Gate fallback={<SpoilerHeroSwitchSkeleton />}>
+      <HeroSwitch id={id} on={on} onChange={onChange} failed={failed} />
+    </Gate>
+  );
+}
+
+export function SpoilerHeroSwitchSkeleton() {
+  return (
+    <div data-testid="race-spoiler-skeleton" aria-hidden="true" className="h-11 w-40 max-w-full">
+      <Skeleton className="h-full w-full" />
+    </div>
+  );
 }
 
 function HeroSwitch({ id, on, onChange, failed }: { id: string; on: boolean; onChange: (on: boolean) => void; failed: boolean }) {
@@ -38,7 +50,7 @@ function HeroSwitch({ id, on, onChange, failed }: { id: string; on: boolean; onC
 
 /** Billede 2-3: hovedets linje, når den valgte etape er skjult. */
 export function SpoilerHeroNote() {
-  return <Gate><HeroNote /></Gate>;
+  return <Gate fallback={<Skeleton className="h-4 w-48 max-w-full" />}><HeroNote /></Gate>;
 }
 
 function HeroNote() {

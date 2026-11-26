@@ -40,6 +40,7 @@ export async function fetchSpoilerShield(raceId: string | null): Promise<Spoiler
 
 export interface RaceSpoilerShield {
   view: SpoilerShieldView;
+  loading: boolean;
   /** Åbn en etape: ét tryk på "Show results" eller filmen i mål. Gælder på alle enheder. */
   openStage: (stage: number) => void;
   /** Kontakten i løbets hoved. */
@@ -51,6 +52,7 @@ export interface RaceSpoilerShield {
 /** Løbssiden: skjoldet for ét løb. */
 export function useRaceSpoilerShield(raceId: string | null): RaceSpoilerShield {
   const [view, setView] = useState<SpoilerShieldView>(() => initialView(readRememberedShield()));
+  const [loadedRaceId, setLoadedRaceId] = useState<string | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -67,6 +69,7 @@ export function useRaceSpoilerShield(raceId: string | null): RaceSpoilerShield {
     fetchSpoilerShield(raceId).then((next) => {
       if (!alive) return;
       setView(next);
+      setLoadedRaceId(raceId);
       rememberShield(raceShielded(next) || (next.enabled && next.settings.shieldAll));
     });
     return () => { alive = false; };
@@ -98,7 +101,7 @@ export function useRaceSpoilerShield(raceId: string | null): RaceSpoilerShield {
     });
   }, [raceId]);
 
-  return { view, openStage, setRaceShield, saveFailed };
+  return { view, loading: !!raceId && loadedRaceId !== raceId, openStage, setRaceShield, saveFailed };
 }
 
 export type SettingsSaveState = "idle" | "saving" | "saved" | "failed";

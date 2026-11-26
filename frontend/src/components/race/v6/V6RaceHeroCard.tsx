@@ -35,16 +35,20 @@ export const V6_STRIP_RESERVED_CLASS = "h-[81px] border-t border-cz-border";
 export default function V6RaceHeroCard({ hero, strip, aside = null, note = null, editions = null, actionNote = null }: { hero: RacePageV6Hero; strip: ReactNode; aside?: ReactNode; note?: ReactNode; editions?: ReactNode; actionNote?: string | null }) {
   return (
     <section data-race-hero="e" aria-label={hero.name} className="overflow-hidden rounded-cz border border-cz-border border-t-2 border-t-cz-accent bg-cz-card">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pt-3.5 pb-3 md:px-5">
-        <h1 className="m-0 min-w-0 font-display text-[40px] leading-[.92] uppercase text-cz-1 wrap-break-word">{hero.name}</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {hero.tags}
-          {/* #7566: et endagsløb gentager ikke typen fra mærket ved siden af (siden bygger linjen). */}
-          {hero.meta && <span className="font-data text-2xs uppercase tracking-[.08em] tabular-nums text-cz-3">{hero.meta}</span>}
+      <div className="grid items-center gap-2 px-4 pt-3.5 pb-3 md:px-5 xl:grid-cols-[minmax(0,1fr)_23rem]">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="m-0 min-w-0 font-display text-[40px] leading-[.92] uppercase text-cz-1 wrap-break-word">{hero.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            {hero.tags}
+            {/* #7566: et endagsløb gentager ikke typen fra mærket ved siden af (siden bygger linjen). */}
+            {hero.meta && <span className="font-data text-2xs uppercase tracking-[.08em] tabular-nums text-cz-3">{hero.meta}</span>}
+          </div>
         </div>
-        {editions}
-        {aside && <div className={editions ? "" : "ms-auto"}>{aside}</div>}
-        {note}
+        <div className="flex min-w-0 flex-col gap-2 empty:hidden sm:flex-row sm:flex-wrap sm:items-center xl:justify-end">
+          {editions}
+          {aside && <div className="min-h-11">{aside}</div>}
+        </div>
+        {note && <div className="min-h-4 xl:col-span-2">{note}</div>}
       </div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-cz-border px-4 py-2.5 md:px-5">
         <HeroStats flush items={hero.stats} className="min-w-0 max-sm:w-full" />
