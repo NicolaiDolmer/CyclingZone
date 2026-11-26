@@ -17,6 +17,7 @@ compose the recipes from that file. One gold primary button per view, hairline b
 
 ## Shared rules (all templates)
 - App shell: always-navy sidebar `w-52` (208px); main content scrolls independently.
+  - **Sidebar menu, rule A (owner 26/11, #8816, TASTE P5):** group headings are the same size as the items below them (**15px**), semibold, in the muted sidebar colour `--text-sidebar-2` (about 5.8:1 on the navy, light and dark alike, so ≥4.5:1), with extra space above (24px). Items are 15px with **one stroke icon each** (16px, from `components/ui/icons`, text colour, gold when active), never a dot. The group holding the current page is always open and cannot be folded; the others remember the player's choice on the device (`lib/navOpenGroups.ts`). Headings and items are sentence case and use "and", never "&" ("Account and help"). Scouting lives under Market. Behind `sentence_case_8725` until it is on for everyone; the item move and the "and" are live for all.
 - Page padding: `pt-7 px-8 pb-16` (28 / 32 / 64px). Mobile (≤640px): 16px side padding.
 - **Page header (the ONE recipe):** flex row, `items-center justify-between gap-4`, `mb-6` (24px).
   - Title: Inter Tight (`font-data`) **20px / 700**, tracking −0.01em, `--text-1`, sentence case.

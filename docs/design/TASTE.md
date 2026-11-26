@@ -65,6 +65,7 @@ Tæt er ikke det samme som rodet. Football Manager er tæt fordi alt sidder i et
 - **Rigtigt i dag:** `standings-desktop-light.png`: kolonner højrestillet, tabulære tal, "FØRER"-pille i guld, DIG-markør, zone-forklaring under.
 - **Forkert i dag:** `riders-desktop-light.png`: rytterens hold ("E2E Racing") ombrydes over to linjer i en smal kolonne, status-badge og type-badge har forskellig højde og farvelogik, og CLM-kolonnens 52/86 vises som farvede firkanter uden forklaring på fladen.
 - **Forkert på mobil:** `riders-mobile-light.png`. Tabellen dropper al numerik og viser kun navn + én meta-linje i ~19 px og ~15 px uppercase. Genren kører 14 px navn og 11 px meta. Mobil skal være tæt, ikke stor (P10).
+- **Regel A: overskrifter i menuer (ejer 26/11, #8816, fast for alle sektionsoverskrifter i menuer):** når versalerne er væk, bærer størrelse, tyngde og luft hierarkiet. Gruppenavnet har samme størrelse som punkterne under det (15 px), står i halvfed, i en dæmpet farve med mindst 4,5:1 kontrast (på den navy menu: `--text-sidebar-2`, ca. 5,8:1, i både lys og mørk), og har ekstra luft ovenover (24 px), som i Material 3. Et gruppenavn mindre end punkterne vender hierarkiet om (før: 13 px gruppe over 16 px punkter). Hvert punkt har ét stroke-ikon fra spillets eget sæt (P7) i tekstens farve; ingen prikker. Gruppen med den aktive side er altid åben, de andre husker spillerens valg på enheden. Bag kontakten `sentence_case_8725`, indtil den er tændt for alle.
 - **Evne-skalaen (ejer 7/11):** evner vises altid som `statColor`-firkanter med tallet indeni, i profilens rækkefølge. Skalaen bruges aldrig til penge, form eller andet. Én forklaring bor i Hjælp og i hover-kortet. Gælder, indtil vi har en bedre løsning for farveblinde (tallet står der altid).
 - **Spørgsmål:** Er tal tabulære og højrestillede, står ens ting ens (samme badge-højde, samme radius, samme rækkehøjde), og er der intet under 10 px?
 
@@ -351,6 +352,10 @@ Række 6 ovenfor er rettet til D-047 (ordlyd godkendt ved merge af #8070-forslag
 | 5 | "Gemt" | Når noget er gemt, hedder det "Gemt" overalt, aldrig "bekræftet" |
 | 6 | Huskede valg | Et visningsvalg som "Skjul rute" huskes på brugeren, på tværs af sider og enheder |
 | 7 | Løbshovedet | Et kort med guld-streg øverst, ikke en mørk blok |
+
+### Ejer-beslutninger 26/11 (navigationsmenuen, efter billeder, #8816)
+
+Variant A for gruppenavne (regel A under P5), stroke-ikoner i stedet for prikker, "Konto og hjælp" i stedet for "&", aktiv gruppe altid åben, og Spejder flyttet fra Klubhus til Marked (ruten er den samme). Markedet som ét punkt med faner kommer med #8440.
 
 De tekniske opskrifter står i `PAGE_TEMPLATES.md` (Shared rules, T2-undtagelsen og T3). Hoved plus etapestribe (ca. 310 px) er afgjort i spørgsmål 2: etapestriben tæller som data, hovedet alene skal under 250 px (#8070).
 

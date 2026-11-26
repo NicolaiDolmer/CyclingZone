@@ -60,6 +60,37 @@ const KIT = [
   "../components/Layout.jsx",
 ];
 
+// #8816: rytterprofilens egne små labels ("Aktiv auktion", "Højeste bud",
+// "Naturlig rolle" …) følger samme kontakt. Display-fonten (navnet) er undtaget.
+const PROFILE = [
+  "../pages/RiderStatsPage.jsx",
+  "../components/rider/RiderTypeBadge.jsx",
+  "../components/rider/PotentialEstimate.tsx",
+  "../components/rider/profile/RiderAbilityHistoryPro.jsx",
+  "../components/rider/profile/RiderDevelopmentTab.jsx",
+  "../components/rider/profile/RiderHistoryTab.jsx",
+  "../components/rider/profile/RiderInterestTab.jsx",
+  "../components/rider/profile/RiderPalmaresTab.jsx",
+  "../components/rider/profile/RiderPhysiologyTab.jsx",
+  "../components/rider/profile/RiderProfileHero.jsx",
+  "../components/rider/profile/RiderResultsTab.jsx",
+  "../components/rider/profile/RiderScoutingTab.jsx",
+  "../components/rider/profile/RiderSwitcherBar.jsx",
+  "../components/rider/profile/RiderTrainingScoreCard.tsx",
+  "../components/rider/profile/RiderTrainingTab.jsx",
+  "../components/rider/profile/RiderTypeRadar.jsx",
+];
+
+for (const rel of PROFILE) {
+  test(`${rel.split("/").pop()}: rytterprofilens versal-labels baerer SENTENCE_CASE`, () => {
+    const lines = read(rel).split("\n").filter((l) => /\buppercase\b/.test(l) && !l.trim().startsWith("//") && !l.includes("font-display") && /className=|= "|= `/.test(l));
+    assert.ok(lines.length > 0, "forventede mindst én versal-label");
+    for (const line of lines) {
+      assert.match(line, /\$\{SENTENCE_CASE\}/, `mangler SENTENCE_CASE: ${line.trim()}`);
+    }
+  });
+}
+
 for (const rel of KIT) {
   test(`${rel.split("/").pop()}: hver uppercase-label baerer SENTENCE_CASE`, () => {
     const src = read(rel);
