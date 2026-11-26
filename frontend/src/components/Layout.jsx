@@ -55,6 +55,8 @@ import { youthSquadNavItems, YOUTH_SQUAD_PATHS } from "../lib/youthSquadPages.ts
 import { useYouthSquadPages, useYouthSquadPagesSync } from "../lib/useYouthSquadPages.ts"; // #5519
 import { loadFeatureFlagStages, isBetaStage } from "../lib/featureStage.ts"; // #5404
 import BetaBadge from "./ui/BetaBadge.tsx"; // #5404
+import { SENTENCE_CASE_FLAG_KEY, isSentenceCaseOn, applySentenceCase } from "../lib/sentenceCaseFlag.ts"; // #8725
+import { SENTENCE_CASE } from "./ui/sentenceCase.ts"; // #8725
 import { useAppBadge } from "../pwa/appBadge.ts"; // #6584
 
 const API = import.meta.env.VITE_API_URL;
@@ -419,7 +421,7 @@ function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineC
           )}
           {marketBalance.mode === "balance" && (
             <>
-              <p className="text-3xs text-cz-sidebar-2 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
+              <p className={`text-3xs text-cz-sidebar-2 uppercase tracking-widest mb-0.5 ${SENTENCE_CASE}`}>{t("sidebar.balance")}</p>
               <p className="text-cz-accent font-mono font-bold text-sm leading-tight tabular-nums">{formatNumber(marketBalance.value)} CZ$</p>
             </>
           )}
@@ -456,7 +458,7 @@ function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineC
               <button
                 onClick={() => toggleGroup(group.key)}
                 className="w-full flex items-center justify-between px-4 pt-4 pb-1 group">
-                <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2 group-hover:text-cz-sidebar-1 transition-colors">
+                <span className={`text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2 group-hover:text-cz-sidebar-1 transition-colors ${SENTENCE_CASE}`}>
                   {group.label}
                 </span>
                 <ChevronDownIcon aria-hidden="true" className={`w-3 h-3 text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -476,7 +478,7 @@ function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineC
         {/* Bottom nav items */}
         <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
         <div className="px-4 pt-4 pb-1">
-          <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2">
+          <span className={`text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2 ${SENTENCE_CASE}`}>
             {t("nav.group.accountHelp")}
           </span>
         </div>
@@ -591,6 +593,12 @@ export default function Layout() {
   const [flagStages, setFlagStages] = useState({});
   const patchNotesLatestDate = pickPatchNotesMarker(patchNotesMeta, /** @type {Record<string, string>} */ (flagStages).patch_notes_v2_8049); // #8049
   const boardMandateBeta = isBetaStage(flagStages.board_mandate_model_enabled);
+  const sentenceCaseOn = isSentenceCaseOn(flagStages[SENTENCE_CASE_FLAG_KEY]); // #8725
+  useEffect(() => {
+    applySentenceCase(sentenceCaseOn);
+    // Fjern attributten når Layout unmountes (fx log ud → /login), så beta-stilen ikke hænger ved.
+    return () => applySentenceCase(false);
+  }, [sentenceCaseOn]);
   // #3102 etape 3: peak_planner-nav-gaten (usePlanner) udgik — Formplan er en
   // fane i Planlægnings-hubben, og fanen selv viser tom-staten ved kill-switch.
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
@@ -643,8 +651,9 @@ export default function Layout() {
 
   // #5404: éen hentning pr. session (loadFeatureFlagStages deler løftet med
   // andre samtidige kaldere, se lib/featureStage.ts) — kun til Beta-badgen.
+  // #8725: også uden session, så offentlige Layout-sider (/help, /rules, /patch-notes,
+  // /roadmap) får kontakternes stadie; loaderen læser de anonyme flag selv.
   useEffect(() => {
-    if (!session) return;
     let cancelled = false;
     loadFeatureFlagStages().then((stages) => { if (!cancelled) setFlagStages(stages); });
     return () => { cancelled = true; };

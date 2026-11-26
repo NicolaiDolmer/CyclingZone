@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SortIndicator } from "./SortableTh.jsx";
 import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
 import { TableRowContext } from "./tableRowContext.js";
+import { SENTENCE_CASE } from "./sentenceCase.ts";
 import { Segmented } from "./Segmented.jsx";
 import TableTitleBar from "./TableTitleBar.tsx";
 import { ChevronRightIcon, TableIcon } from "./icons/index.jsx";
@@ -449,7 +450,7 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
 function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable, modes = /** @type {any} */ (null), t }) {
   const base =
     "flex-none inline-flex items-center gap-1.5 rounded-cz-pill border px-2.5 min-h-[32px] " +
-    "font-data text-2xs font-semibold uppercase tracking-[.06em] transition-colors duration-150 " +
+    `font-data text-2xs font-semibold uppercase tracking-[.06em] ${SENTENCE_CASE} transition-colors duration-150 ` +
     "[@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11";
   return (
     <div className="mb-2 flex items-center gap-1.5">
@@ -815,7 +816,7 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
           type-etiketter (riderTypes.short.*). */}
       {(sub != null || folded.length > 0) && (
         <span
-          className={`mt-0.5 block font-data text-3xs uppercase tracking-wider text-cz-3 ${wrap ? "min-w-0 wrap-break-word **:whitespace-normal" : "whitespace-nowrap"} ${indent}`}
+          className={`mt-0.5 block font-data text-3xs uppercase tracking-wider text-cz-3 ${SENTENCE_CASE} ${wrap ? "min-w-0 wrap-break-word **:whitespace-normal" : "whitespace-nowrap"} ${indent}`}
         >
           {folded.length > 0 && (
             <span className="sm:hidden">

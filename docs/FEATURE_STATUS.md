@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-162 poster: live 134 · dormant 7 · building 10 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+163 poster: live 134 · dormant 7 · building 11 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -47,14 +47,13 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## squad
 
-**live:** Rider card (`rider-hover-card`) 2026-11-11
-
-**arkiv:** `champion-jerseys` · `contracts` · `rider-compare-and-watchlist` · `rider-rating-best-role-display` · `squad-management` · `talent-marks` · `youth-squad-pages`
+**arkiv:** `champion-jerseys` · `contracts` · `rider-compare-and-watchlist` · `rider-hover-card` · `rider-rating-best-role-display` · `squad-management` · `talent-marks` · `youth-squad-pages`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`)|building|-|[holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md)|#1177|2026-11-04|Kun data bygget (#5268); motor (#5348), mentorpar (#5349) mangler.|
 |New riders' primary type (`rider-primary-type-from-distribution`)|building|-|[RIDER_GENERATION](RIDER_GENERATION.md)|#8696|2026-11-25|Ejer 25/11: #5327 indgår i #8696 om rytterfødsel fra spillets egne priors. Eksisterende ryttere ændres ikke.|
+|Small labels in sentence case (`sentence-case-labels`)|building|-|[TASTE](design/TASTE.md)|#8725|2026-11-26|Kontakt sentence_case_8725 (seedet off, migration 2026-11-26) i kittet og menuen; ejeren afgør tyngde/størrelse på før/efter-billederne før beta.|
 
 ## training
 
