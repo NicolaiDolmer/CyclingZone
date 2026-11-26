@@ -423,7 +423,9 @@ test('main CI gates the heavy jobs on numbering proof and retains the patch note
   assert.match(block('patch-notes-numbering'), /needs\.patch-notes-mode\.outputs\.numbering_only == 'true'/);
   assert.match(block('patch-notes-numbering'), /node --test frontend\/src\/lib\/patchNotes\.test\.js/);
   assert.match(block('backend-changes'), /if \[\[ "\$NUMBERING_ONLY" == "true" \]\]; then\s+record "false"/);
-  for (const job of ['frontend-build', 'build-determinism-two-builds', 'warning-budget', 'static-guards', 'ops-script-tests', 'migration-idempotency']) {
+  assert.match(block('frontend-build'), /needs: \[patch-notes-mode, frontend-build-variants\]/);
+  assert.match(block('frontend-build'), /!cancelled\(\) && needs\.patch-notes-mode\.outputs\.numbering_only != 'true'/);
+  for (const job of ['frontend-build-variants', 'build-determinism-two-builds', 'warning-budget', 'static-guards', 'ops-script-tests', 'migration-idempotency']) {
     assert.match(block(job), /needs: patch-notes-mode/);
     assert.match(block(job), /!cancelled\(\) && needs\.patch-notes-mode\.outputs\.numbering_only != 'true'/);
   }
