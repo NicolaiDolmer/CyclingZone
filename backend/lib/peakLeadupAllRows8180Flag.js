@@ -46,14 +46,13 @@ export async function resolvePeakLeadupAllRows8180({
   checkEnabled = isPeakLeadupAllRows8180Enabled, readStage = readFlagStage,
 }) {
   const column = PEAK_LEADUP_ALL_ROWS_8180_FLAG_KEY;
-  if (firstStageClaim === true) {
-    const enabled = await Promise.resolve().then(() => checkEnabled(supabase)).catch(() => false);
-    if (enabled !== true) return false;
-    const { stamped, missingColumn, stagesCompleted } = await readRaceStamp({ supabase, race, column });
-    if (missingColumn) return false;
-    return stamped || stampRaceAtFirstClaim({ supabase, race, column, stagesCompleted, firstStageClaim, dryRun });
-  }
-  const { stamped } = await readRaceStamp({ supabase, race, column });
-  if (!stamped) return false;
-  return !(await isRaceStampEmergencyStop({ supabase, flagKey: column, readStage }));
+  // Fable 26/11: laes STEMPLET foerst. Et allerede stemplet loeb (fx en genkoersel af etape 1, der
+  // ogsaa er et "foerste claim") skal koere med hele optakten uanset kontaktens tilstand, ellers
+  // kunne etape 1 koere paa den afkortede laesning og etape 2+ paa alle raekker.
+  const { stamped, missingColumn, stagesCompleted } = await readRaceStamp({ supabase, race, column });
+  if (stamped) return !(await isRaceStampEmergencyStop({ supabase, flagKey: column, readStage }));
+  if (firstStageClaim !== true || missingColumn) return false;
+  const enabled = await Promise.resolve().then(() => checkEnabled(supabase)).catch(() => false);
+  if (enabled !== true) return false;
+  return stampRaceAtFirstClaim({ supabase, race, column, stagesCompleted, firstStageClaim, dryRun });
 }

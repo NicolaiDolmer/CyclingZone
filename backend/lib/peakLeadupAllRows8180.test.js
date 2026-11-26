@@ -239,6 +239,19 @@ test("stempel: et stemplet loeb koerer faerdigt med hele optakten, ogsaa naar ko
   }
 });
 
+test("stempel (Fable 26/11): genkoersel af etape 1 paa et stemplet loeb beholder hele optakten, ogsaa med kontakten slukket eller opslagsfejl", async () => {
+  for (const flag of [null, "off", "beta"]) {
+    const db = raceWorld({ id: "race-1", stages_completed: 0, [KEY]: true }, { flag });
+    assert.equal(await resolvePeakLeadupAllRows8180({ supabase: db, race: { id: "race-1" }, firstStageClaim: true }), true, String(flag));
+  }
+  const failing = raceWorld({ id: "race-1", stages_completed: 0, [KEY]: true }, { flag: "on" });
+  const result = await resolvePeakLeadupAllRows8180({
+    supabase: failing, race: { id: "race-1" }, firstStageClaim: true,
+    checkEnabled: async () => { throw new Error("opslag fejlede"); },
+  });
+  assert.equal(result, true);
+});
+
 test("stempel: stop er ejerens noedstop for stemplede loeb", async () => {
   const db = raceWorld({ id: "race-1", stages_completed: 3, [KEY]: true }, { flag: "stop" });
   assert.equal(await resolvePeakLeadupAllRows8180({ supabase: db, race: { id: "race-1" }, firstStageClaim: false }), false);
