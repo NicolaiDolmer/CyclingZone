@@ -235,6 +235,7 @@ import {
   computeContractExtension,
   maxAllowedContractEndSeason,
   contractExtensionCapInfo,
+  resolveContractSeasonNumber,
 } from "../lib/contractSeed.js";
 import { quoteBatchExtension, applyBatchExtension } from "../lib/contractBatchExtension.js"; // #6855
 import { buildRiderHistory } from "../lib/riderHistory.js";
@@ -2008,7 +2009,7 @@ router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
   const result = await loadOwnedRiderForExtension(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
-  const currentSeason = await getActiveSeasonNumber();
+  const currentSeason = await resolveContractSeasonNumber(supabase); // #7138: kommende sæson i pausen
   const next = computeContractExtension({ ...rider, currentSeason });
   const capError = contractExtensionCapError(next, currentSeason);
   // #3186: tælleren skal være synlig FØR spilleren handler — udregnet fra
@@ -2400,7 +2401,7 @@ router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, asyn
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
 
-  const currentSeason = await getActiveSeasonNumber();
+  const currentSeason = await resolveContractSeasonNumber(supabase); // #7138: kommende sæson i pausen
   const next = computeContractExtension({ ...rider, currentSeason });
 
   // #3143: hårdt loft — afvis eksplicit i stedet for at clampe stille (se

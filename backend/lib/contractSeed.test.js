@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 
 import {
+  cappedContractTerm,
+  resolveContractSeasonNumber,
   CONTRACT,
   computeFrozenSalary,
   pickContractLength,
@@ -480,4 +482,53 @@ test("runContractSeed: kaster uden supabase-client", async () => {
     () => runContractSeed(null, { getManagerTeams: async () => [] }),
     /Supabase client required/,
   );
+});
+
+// #7138 (ejer 26/11, valg A): ét fælles loft på alle oprettelsesveje.
+
+test("#7138 cappedContractTerm: slutsæson klippes til indeværende + 1, længden følger med", () => {
+  assert.deepEqual(cappedContractTerm(6, 3), { contract_length: 2, contract_end_season: 7 });
+  assert.deepEqual(cappedContractTerm(6, 2), { contract_length: 2, contract_end_season: 7 });
+  assert.deepEqual(cappedContractTerm(6, 1), { contract_length: 1, contract_end_season: 6 });
+  // S5: gulvet (MIN_EXTENSION_END_SEASON 6) og indeværende + 1 giver begge S6.
+  assert.deepEqual(cappedContractTerm(5, 3), { contract_length: 2, contract_end_season: 6 });
+  // Ugyldig længde falder til MIN_LENGTH, aldrig over MAX_LENGTH.
+  assert.deepEqual(cappedContractTerm(6, undefined), { contract_length: 1, contract_end_season: 6 });
+  assert.deepEqual(cappedContractTerm(6, 9), { contract_length: 2, contract_end_season: 7 });
+});
+
+test("#7138 contractOnAcquirePatch bryder aldrig loftet", () => {
+  const patch = contractOnAcquirePatch({ salary: null, contract_end_season: null, current_production_value: 1000 }, 6);
+  assert.equal(patch.contract_end_season, 7);
+  assert.equal(patch.contract_length, 2);
+});
+
+function seasonsMock(rows) {
+  return {
+    from() {
+      let status = null;
+      let asc = true;
+      const api = {
+        select() { return api; },
+        eq(_col, value) { status = value; return api; },
+        order(_col, opts) { asc = opts?.ascending !== false; return api; },
+        limit() { return api; },
+        maybeSingle() {
+          const hits = rows.filter((r) => r.status === status).sort((a, b) => (asc ? a.number - b.number : b.number - a.number));
+          return Promise.resolve({ data: hits[0] ?? null, error: null });
+        },
+      };
+      return api;
+    },
+  };
+}
+
+test("#7138 resolveContractSeasonNumber: aktiv, ellers kommende sæson i pausen", async () => {
+  assert.equal(await resolveContractSeasonNumber(seasonsMock([{ number: 5, status: "active" }])), 5);
+  assert.equal(await resolveContractSeasonNumber(seasonsMock([{ number: 5, status: "completed" }, { number: 6, status: "upcoming" }])), 6);
+  assert.equal(await resolveContractSeasonNumber(seasonsMock([{ number: 4, status: "completed" }, { number: 5, status: "completed" }])), 6);
+  assert.equal(await resolveContractSeasonNumber(seasonsMock([])), 1);
+  // Pausen efter S5: loftet bliver S7, ikke S6.
+  const season = await resolveContractSeasonNumber(seasonsMock([{ number: 5, status: "completed" }]));
+  assert.deepEqual(cappedContractTerm(season, 3), { contract_length: 2, contract_end_season: 7 });
 });

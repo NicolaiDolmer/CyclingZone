@@ -77,6 +77,51 @@ export function computeContractEndSeason(startSeasonNumber, length) {
   return startSeasonNumber + length - 1;
 }
 
+// #7138 (ejer 23/10 + 26/11, valg A): ÉT fælles loft på ALLE veje, der opretter
+// en kontrakt — starttrup, ungdomsauktion, akademi, køb/bytte og seed — ikke kun
+// forlængelsen (#7187). Hver vej beder stadig om sin egen længde, men slutsæsonen
+// klippes til maxAllowedContractEndSeason(startSæson), og længden følger med, så
+// riders_contract_length_check (1..MAX_LENGTH) og "længde = slut - start + 1"
+// altid holder. Eksisterende aftaler røres ikke (ejer 26/11).
+export function cappedContractTerm(startSeasonNumber, length) {
+  const start = Number(startSeasonNumber) || 1;
+  const requested = Number(length);
+  const wanted = Number.isFinite(requested)
+    ? Math.min(CONTRACT.MAX_LENGTH, Math.max(CONTRACT.MIN_LENGTH, Math.trunc(requested)))
+    : CONTRACT.MIN_LENGTH;
+  const end = Math.min(computeContractEndSeason(start, wanted), maxAllowedContractEndSeason(start));
+  return { contract_length: end - start + 1, contract_end_season: end };
+}
+
+// #7138 (ejer 26/11): i pausen mellem to sæsoner (den forrige er afsluttet, den
+// næste ikke startet) tæller den KOMMENDE sæson som indeværende for kontrakter.
+// Samme rækkefølge som #5847 brugte i auktionsafslutningen: aktiv → første
+// upcoming → seneste completed + 1. Kun hvis ingen sæson findes, falder den til 1.
+// Fejl i opslaget kastes, så en kontrakt aldrig stille forankres i sæson 1.
+export async function resolveContractSeasonNumber(supabase) {
+  // Højst én aktiv sæson (samme opslag som de tidligere kopier i hver vej).
+  const active = await supabase
+    .from("seasons").select("number").eq("status", "active").maybeSingle();
+  if (active?.error) throw new Error(`contract season lookup (active): ${active.error.message}`);
+  const activeNumber = Number(active?.data?.number);
+  if (Number.isInteger(activeNumber) && activeNumber >= 1) return activeNumber;
+
+  const upcoming = await supabase
+    .from("seasons").select("number").eq("status", "upcoming")
+    .order("number", { ascending: true }).limit(1).maybeSingle();
+  if (upcoming?.error) throw new Error(`contract season lookup (upcoming): ${upcoming.error.message}`);
+  const upcomingNumber = Number(upcoming?.data?.number);
+  if (Number.isInteger(upcomingNumber) && upcomingNumber >= 1) return upcomingNumber;
+
+  const completed = await supabase
+    .from("seasons").select("number").eq("status", "completed")
+    .order("number", { ascending: false }).limit(1).maybeSingle();
+  if (completed?.error) throw new Error(`contract season lookup (completed): ${completed.error.message}`);
+  const completedNumber = Number(completed?.data?.number);
+  if (Number.isInteger(completedNumber) && completedNumber >= 1) return completedNumber + 1;
+  return 1;
+}
+
 // #1309 kontrakt-on-acquire: returnér et patch der opretter en standard-kontrakt
 // HVIS rytteren er kontraktløs; ellers {} (eksisterende KOMPLET kontrakt arves
 // UÆNDRET — regenerér ALDRIG). Bruges af alle erhvervelses-paths (auktion,
@@ -116,11 +161,9 @@ export function contractOnAcquirePatch(rider, currentSeasonNumber) {
     );
   }
   if (rider && rider.salary != null && rider.contract_end_season != null) return {};
-  const length = CONTRACT.DEFAULT_ACQUIRE_LENGTH;
   return {
     salary: computeFrozenSalary(rider),
-    contract_length: length,
-    contract_end_season: computeContractEndSeason(currentSeasonNumber, length),
+    ...cappedContractTerm(currentSeasonNumber, CONTRACT.DEFAULT_ACQUIRE_LENGTH),
   };
 }
 
@@ -236,9 +279,7 @@ export async function runContractSeed(supabase, {
   }
   const founderIds = new Set(founderTeams.map((t) => t.id).filter(Boolean));
 
-  const seasonRes = await supabase.from("seasons").select("number").eq("status", "active").maybeSingle();
-  if (seasonRes?.error) throw new Error(`runContractSeed season lookup: ${seasonRes.error.message}`);
-  const startSeason = seasonRes?.data?.number ?? 1;
+  const startSeason = await resolveContractSeasonNumber(supabase);
 
   const owned = await fetchAllRows(() =>
     supabase.from("riders")
@@ -255,8 +296,7 @@ export async function runContractSeed(supabase, {
       id: r.id,
       patch: {
         salary: computeFrozenSalary(r),
-        contract_length: length,
-        contract_end_season: computeContractEndSeason(startSeason, length),
+        ...cappedContractTerm(startSeason, length),
       },
     };
   });
