@@ -292,6 +292,7 @@ function overlapShare(gameDayCounts) {
  * kendte loeb (prestige, saa seniorens kronologi) indtil loebsdags-maalet er naaet, med
  * ryttertype-daekningen foerst. Et filler-loeb springes over, hvis det ville loefte andelen
  * af loebsdage med to ungdomsloeb samtidig over ejerens loft for niveauet.
+ * @param {{ squad: string, anchors?: any[], miniCatalog?: any[] }} args
  */
 export function selectMiniEditions({ squad, anchors = [], miniCatalog = [] }) {
   const rules = rulesFor(squad);
@@ -402,7 +403,7 @@ export function packMiniEditionCalendar({ squad, anchors = [], miniCatalog = [],
   }
   // lane = index i datoens sorterede ungdoms-tider, saa buildScheduleRows rammer praecis tiden.
   const slotsByDate = new Map([...youthTimes.entries()].map(([d, set]) => [d, [...set].sort((a, b) => a - b)]));
-  for (const st of stageTimes) st.lane = slotsByDate.get(st.localDate).indexOf(st.minute);
+  for (const st of stageTimes) st.lane = (slotsByDate.get(st.localDate) ?? []).indexOf(st.minute);
   for (const p of placements) for (const st of p.stagesPlaced) { delete st.localDate; delete st.minute; }
 
   if (selection.gtCount < 3) violations.push(`${squad}: ${selection.gtCount} of 3 mini Grand Tours (senior D1 has fewer GTs or a mini row is missing) (#7471)`);
@@ -436,6 +437,7 @@ export function packMiniEditionCalendar({ squad, anchors = [], miniCatalog = [],
  * Seniorens D1-ankre fra DB-raekker: races (pool_race_id, name, race_class, race_type) +
  * race_stage_schedule (race_id, stage_number, game_day, scheduled_at) + race_pool's
  * external_id. Een representativ pulje er nok: alle D1-puljer har samme kalender (#2276).
+ * @param {{ races?: any[], schedule?: any[], externalIdByPoolRace?: Map<any, any> }} args
  */
 export function seniorAnchorsFromRows({ races = [], schedule = [], externalIdByPoolRace = new Map() }) {
   const byRace = new Map();

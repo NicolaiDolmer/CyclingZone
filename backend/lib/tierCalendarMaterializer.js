@@ -468,7 +468,7 @@ function buildSquadTierPlan({
     }
     return slotsByDate.get(localDate);
   };
-  const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: packed.slotsForDate ?? slotsForDate });
+  const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: "slotsForDate" in packed ? packed.slotsForDate : slotsForDate });
   const planningWindows = measurePlanningWindows(stageRows);
   const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
 
@@ -541,7 +541,7 @@ function buildSquadTierPlan({
 }
 
 /**
- * @param {{ pools, catalog, from?, realDays?, quotas?, density?, slots?, baseSeed? }} args
+ * @param {{ pools, catalog, from?, realDays?, quotas?, density?, slots?, baseSeed?, miniEditionAnchors? }} args
  * @returns {{ tierPlans: Array<object> }}
  */
 export function buildTierMaterializationPlan({
