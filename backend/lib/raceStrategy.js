@@ -72,7 +72,7 @@ export async function loadStrategiesForTeams({ supabase, teamIds, rosterByTeam, 
   if (!teamIds.length) return out;
   const [{ data: rows }, { data: rules }] = await Promise.all([
     selectInChunks({ supabase, table: "team_race_strategy", columns: "team_id, a_chain, captain_priorities, target_race_ids", inColumn: "team_id", ids: teamIds }),
-    selectInChunks({ supabase, table: "team_rider_role_rules", columns: "team_id, rider_id, role_rule", inColumn: "team_id", ids: teamIds }),
+    selectInChunks({ supabase, table: "team_rider_role_rules", columns: "team_id, rider_id, role_rule", inColumn: "team_id", ids: teamIds, orderBy: ["team_id", "rider_id"] }), // #8797
   ]);
   const rowByTeam = new Map((rows || []).map((r) => [r.team_id, r]));
   const rulesByTeam = new Map();

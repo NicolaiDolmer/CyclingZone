@@ -64,3 +64,23 @@ test("fetchAllPaged: forbigående fejl på en side retry'es", async () => {
 test("runWithRetry: {data, error}-kontrakt", async () => {
   assert.deepEqual(await runWithRetry(async () => ({ data: [1], error: null }), noSleep), { data: [1], error: null });
 });
+
+// #8797: en bid over en ikke-unik kolonne kan give >1.000 rækker; fake'en afkorter som prod.
+test("#8797 selectInChunks: bid der rammer loftet pagineres, så ingen rækker mangler", async () => {
+  const { createFakeSupabase } = await import("./testUtils/fakeSupabase.js");
+  // 3 hold × 500 regler = 1.500 rækker i ÉN bid (team_id er ikke unik).
+  const rows = [];
+  for (const team of ["t1", "t2", "t3"]) for (let r = 0; r < 500; r++) rows.push({ team_id: team, rider_id: `r${String(r).padStart(3, "0")}`, role_rule: "x" });
+  const supabase = createFakeSupabase({ team_rider_role_rules: rows });
+  const { data, error } = await selectInChunks({ supabase, table: "team_rider_role_rules", columns: "team_id, rider_id", inColumn: "team_id", ids: ["t1", "t2", "t3"], orderBy: ["team_id", "rider_id"] });
+  assert.equal(error, null);
+  assert.equal(data.length, 1500);
+  assert.equal(new Set(data.map((d) => `${d.team_id}/${d.rider_id}`)).size, 1500);
+});
+
+test("#8797 selectInChunks: under loftet er rækkefølgen uændret (ingen .order tilføjet)", async () => {
+  const { createFakeSupabase } = await import("./testUtils/fakeSupabase.js");
+  const rows = [{ id: "c" }, { id: "a" }, { id: "b" }];
+  const { data } = await selectInChunks({ supabase: createFakeSupabase({ riders: rows }), table: "riders", columns: "id", inColumn: "id", ids: ["a", "b", "c"] });
+  assert.deepEqual(data.map((d) => d.id), ["c", "a", "b"]);
+});

@@ -5356,7 +5356,7 @@ async function fetchTeamRaceEntriesWithRider(supabase, teamId, raceIds) {
   if (!raceIds.length) return [];
   const { data, error } = await selectInChunks({
     supabase, table: "race_entries", columns: "race_id, rider_id, race_role",
-    inColumn: "race_id", ids: raceIds, extra: (q) => q.eq("team_id", teamId),
+    inColumn: "race_id", ids: raceIds, extra: (q) => q.eq("team_id", teamId), orderBy: ["race_id", "rider_id"], // #8797
   });
   if (error) throw new Error(`race_entries (selection/season): ${error.message}`);
   return data;
