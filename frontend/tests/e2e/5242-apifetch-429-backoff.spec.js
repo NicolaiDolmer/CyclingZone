@@ -40,9 +40,19 @@ test.describe("#5242 — apiFetch 429/Retry-After-backoff er stille, ikke en fej
     await stabilizePage(page);
     await installNetworkMocks(page);
 
+    // #8755: kun FOERSTE roster-hentning besvares med det samme. Senere
+    // hentninger (efter et rytter-skift) holdes tilbage til testens slutning, saa
+    // specen fejler deterministisk hvis switcher-baren igen afhaenger af en frisk
+    // roster-hentning efter hvert skift (regressionen fra #8733: baren forsvandt
+    // og pile-tasterne blev tabt indtil trup-svaret kom).
+    let rosterCalls = 0;
+    /** @type {() => void} */
+    let releaseRoster = () => {};
+    const rosterGate = new Promise((resolve) => { releaseRoster = () => resolve(undefined); });
+
     // Overskriver EFTER installNetworkMocks (senest-registrerede route vinder,
     // se #3708-specens kommentar) — giver switcheren et rigtigt 2-rytter-hold.
-    await page.route("**/rest/v1/riders**", (route) => {
+    await page.route("**/rest/v1/riders**", async (route) => {
       const request = route.request();
       if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
       if (request.method() !== "GET") return json(route, {});
@@ -51,7 +61,11 @@ test.describe("#5242 — apiFetch 429/Retry-After-backoff er stille, ikke en fej
       if (url.includes("id=eq.rider-1")) return json(route, wantsObj ? RIDER_A : [RIDER_A]);
       if (url.includes("id=eq.rider-5242b")) return json(route, wantsObj ? RIDER_B : [RIDER_B]);
       // Roster-listen til switcher-baren (team_id=eq...): begge ryttere.
-      return json(route, [RIDER_A, RIDER_B]);
+      if (url.includes("team_id=eq.")) {
+        rosterCalls += 1;
+        if (rosterCalls > 1) await rosterGate;
+      }
+      return json(route, [RIDER_A, RIDER_B]).catch(() => {});
     });
 
     // #5242 kerne-fixturen: rider-1s retirement-status (hentes UBETINGET ved hver
@@ -88,10 +102,18 @@ test.describe("#5242 — apiFetch 429/Retry-After-backoff er stille, ikke en fej
     // Prev/next — næste rytter, så tilbage til rider-1 igen, INDEN for
     // Retry-After-vinduet. Samme mønster som en spiller der klikker sig frem og
     // tilbage i switcheren (apiFetch.ts's "rytter-switcher-byge").
+    // #8755: en spiller trykker foerst naar switcher-baren er der. Profilen
+    // render'es nu foer de sekundaere hentninger (#8733), saa overskriften kan
+    // staa foer trup-svaret; uden denne vent blev ArrowRight tabt paa
+    // mobile-webkit. Knappen baerer naborytterens korte navn.
+    await expect(page.getByRole("button", { name: "B. Zenberg" })).toBeEnabled();
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("heading", { name: "Bo Zenberg" }).first()).toBeVisible();
+    // Efter skiftet skal baren staa med det samme (trup-svaret er holdt tilbage).
+    await expect(page.getByRole("button", { name: "A. Pedersen" })).toBeEnabled();
     await page.keyboard.press("ArrowLeft");
     await expect(page.getByRole("heading", { name: "Ada Pedersen" }).first()).toBeVisible();
+    releaseRoster();
 
     // #5242 kernepåstand: stille backoff — intet nyt netværkskald mod rider-1's
     // retirement-status, selvom komponenten er remountet/genrendret med samme id.
