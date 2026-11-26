@@ -38,6 +38,16 @@ function latestReviewGateRun(json, repo, number) {
   return null;
 }
 
+/** Seneste ready_for_review paa PR'en (ISO-tid), eller null hvis den aldrig var kladde. */
+function latestReadyAt(json, repo, number) {
+  const pages = json(['api', '--paginate', '--slurp', 'repos/' + repo + '/issues/' + number + '/events?per_page=100']);
+  if (!Array.isArray(pages) || pages.some(page => !Array.isArray(page))) {
+    throw new Error('GitHub returned an incomplete PR event response');
+  }
+  return pages.flat().filter(e => e?.event === 'ready_for_review' && e.created_at)
+    .reduce((latest, e) => (!latest || e.created_at > latest ? e.created_at : latest), null);
+}
+
 function currentJob(row, job, run) {
   const conclusion = job.conclusion ?? '';
   const bucket = job.status !== 'completed' ? 'pending' :
@@ -133,7 +143,18 @@ export function readLatestPrChecks({ repo, number, headSha, json, requiredOnly =
     seen.add(context(row, run));
   }
   if (filteredAll && rows.some(linkedGate) && !filteredAll.some(linkedGate)) filteredAll.push(pendingGate);
-  return { required: filteredRequired, all: filteredAll ?? filteredRequired };
+
+  // #8802: paa en kladde springes jobs over (skipped = groent hos GitHub). Lige
+  // efter `gh pr ready` er kladdens pull_request-koersel stadig den nyeste, til
+  // ready_for_review-koerslen er oprettet. Et required check fra en koersel der
+  // er aeldre end seneste ready_for_review, er derfor forældet: pending, aldrig groent.
+  const prRequired = filteredRequired.some(row => runFor(row)?.event === 'pull_request');
+  const readyAt = prRequired ? latestReadyAt(json, repo, number) : null;
+  const stale = (run) => Boolean(readyAt && run?.event === 'pull_request' && run.created_at < readyAt);
+  const current = readyAt
+    ? filteredRequired.map(row => (stale(runFor(row)) ? { name: row.name, bucket: 'pending' } : row))
+    : filteredRequired;
+  return { required: current, all: filteredAll ?? current };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
