@@ -39,6 +39,7 @@
 import type { AbilityKey, ClimbCategory, FinaleType, ProfileType, RaceGroup, Segment } from "../types.ts";
 import type { GcDangerTuning } from "./gcThreat.ts";
 import { compareIds } from "../../../compareIds.ts";
+import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts"; // #7645
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -657,6 +658,243 @@ export function valleyRegroupTempoV3<T extends { dtSeconds: number }>(
     reference = { gap: group.gap_seconds, dtSeconds: (out ?? tempoByGroup).get(group.id)?.dtSeconds ?? own.dtSeconds, size: group.rider_ids.length };
   }
   return out ?? tempoByGroup;
+}
+
+// ── #7645 (KUN kontakten valley_selection_7645, SLUKKET): selektion i dalen ────
+// Designnotat paa PR'en til #7645. Paa kuperet og mellembjerg maaler dalens
+// samling raekkevidden mod forgruppen i stedet for led for led i kaeden, saa en
+// gruppe langt bagude ikke koeres op af kaeden af smaa huller foran den.
+// Varianterne (ejeren vaelger):
+//   - "front_reach" (mulighed 1): kun raekkevidden mod forgruppen, kortere.
+//   - "team_chase" (mulighed 2, trin 1): som 1, og en gruppe uden for
+//     raekkevidden kommer kun tilbage, naar et hold med en vinderkandidat i den
+//     har hjaelpere, der jager. Jagten koster hjaelperne kraefter, og hver hjaelper
+//     kan kun foere et stykke vej, saa jagten slutter, naar hjaelperne er brugt.
+//   - "team_chase_hold" (mulighed 2, fuld): som 2, og hold med en kandidat i
+//     forgruppen, der ville blive slaaet af en rytter i gruppen bagved, koerer
+//     for at holde dem ude (deres hjaelpere betaler ogsaa).
+// Ingen tilfaeldighed: alt foelger af hvem der er hvor, deres evner og hvor
+// meget hjaelperne har kraefter til. Kalibrering: balance-internals/7645/.
+export type ValleySelection7645Variant = "front_reach" | "team_chase" | "team_chase_hold";
+
+export const VALLEY_SELECTION_7645_VARIANTS: readonly ValleySelection7645Variant[] = Object.freeze(["front_reach", "team_chase", "team_chase_hold"]);
+
+export const VALLEY_SELECTION_7645_TUNING = freeze({
+  // Kun disse etapeprofiler; bjerg og hoejfjeld er uroerte.
+  profiles: ["hilly", "medium_mountain"] as readonly ProfileType[],
+  // Raekkevidden (s) maalt mod forgruppen (den forreste gruppe der ikke er dagens udbrud).
+  frontReachSeconds: 60,
+  // Et hold har en grund til at jage, naar dets bedste rytter paa finalens krav
+  // er blandt feltets bedste saa mange (blandt dem der stadig koerer).
+  candidateTopRank: 10,
+  // Hoejst saa mange hjaelpere pr. hold foerer jagten eller forsvaret.
+  maxWorkersPerTeam: 4,
+  // Jagtens fart: sekunder pr. km pr. foerende hjaelper, med et loft pr. km.
+  chaseSecondsPerKmPerRider: 1.5,
+  chaseMaxSecondsPerKm: 8,
+  // Forsvaret foran: sekunder pr. km pr. hjaelper, med et loft pr. km.
+  holdSecondsPerKmPerRider: 1,
+  holdMaxSecondsPerKm: 5,
+  // Hvor langt (km) en hjaelper kan foere jagt eller forsvar paa en etape.
+  workerBudgetKm: 15,
+});
+
+export type ValleySelection7645Tuning = typeof VALLEY_SELECTION_7645_TUNING;
+
+/** #7645: er kontaktens vaerdi en kendt variant? Alt andet (ogsaa true) er slukket. */
+export function valleySelection7645Variant(value: unknown): ValleySelection7645Variant | null {
+  return typeof value === "string" && (VALLEY_SELECTION_7645_VARIANTS as readonly string[]).includes(value) ? value as ValleySelection7645Variant : null;
+}
+
+/**
+ * #7645: kontakten. Kun s5_profiles_v3 (og senere), kun kuperet og mellembjerg,
+ * og kun med en kendt variant paa input. Alt andet: null (motoren som foer).
+ */
+export function valleySelection7645For(
+  input: { rules_revision?: unknown; valley_selection_7645?: unknown },
+  profileType: ProfileType | undefined,
+  v: ValleySelection7645Tuning = VALLEY_SELECTION_7645_TUNING,
+): ValleySelection7645Variant | null {
+  const variant = valleySelection7645Variant(input.valley_selection_7645);
+  if (variant === null || !isS5ProfilesV3OrLater(input.rules_revision)) return null;
+  return profileType !== undefined && v.profiles.includes(profileType) ? variant : null;
+}
+
+/** #7645: finalens afgoerende evne (samme opdeling som udbrudsjagtens etapeinteresse). */
+function valleyCandidateKeys7645(finaleType: FinaleType | null | undefined, profileType: ProfileType): AbilityKey[] {
+  if (finaleType === "bunch_sprint" || finaleType === "reduced_sprint" || finaleType === "flat_sprint" || finaleType === "uphill_sprint") return ["sprint"];
+  if (finaleType === "wall_finish" || finaleType === "punch") return ["punch"];
+  if (finaleType === "solo_tt") return ["time_trial"];
+  if (finaleType === "descent") return ["climbing", "descending"];
+  return profileType === "hilly" ? ["punch"] : ["climbing"];
+}
+
+type ValleyRider7645 = { team_id?: string | null; role: string; effort: string; luxury_helper?: true; abilities: Partial<Record<AbilityKey, number>> };
+type ValleyRiderState7645 = { status: string };
+
+/** #7645: en rytter der kan arbejde for holdet i dalen (hjaelper, ikke paa grupetto-tempo). */
+function isValleyWorker7645(entrant: ValleyRider7645 | undefined): boolean {
+  if (!entrant || !entrant.team_id) return false;
+  if (entrant.role !== "helper" && entrant.role !== "hunter" && entrant.luxury_helper !== true) return false;
+  return entrant.effort !== "grupetto" && entrant.effort !== "save";
+}
+
+export type ValleySelection7645Result<T> = {
+  tempo: Map<string, T>;
+  /** Km hver arbejdende rytter har brugt af sit budget efter segmentet. Samme objekt naar ingen arbejdede. */
+  workKm: Readonly<Record<string, number>> | undefined;
+  /** Hvem der jagede og forsvarede pr. gruppe paa segmentet (kun til fortaelling og test). */
+  chases: ReadonlyArray<{ groupId: string; teamIds: string[]; workerIds: string[]; closedSeconds: number; heldSeconds: number }>;
+};
+
+/**
+ * #7645 (KUN kontakten, kuperet og mellembjerg): dalens samling med raekkevidden
+ * maalt mod forgruppen, og (varianterne med jagt) en jagt med en aarsag for
+ * grupperne uden for raekkevidden. Samme indgang som valleyRegroupTempoV3 plus
+ * startlisten, rytternes tilstand, finalen og hjaelpernes forbrugte km.
+ *
+ * Garantier: kun grupper bag forgruppen flyttes; en gruppe kommer aldrig forbi
+ * gruppen foran; dagens udbrud og grupper i en uheldsjagt roeres ikke; og en
+ * jagt koster de foerende hjaelpere (de saettes i gruppens front, saa tick'et
+ * tager arbejdet af dem). Returnerer samme Map, naar intet aendres.
+ */
+export function valleySelectionTempo7645<T extends { dtSeconds: number; frontRiderIds?: Set<string> }>(input: {
+  groups: readonly RaceGroup[];
+  tempoByGroup: Map<string, T>;
+  segments: readonly (Pick<Segment, "kind"> & Partial<Pick<Segment, "from_km" | "to_km">>)[];
+  segmentIndex: number;
+  incidentChasers: Readonly<Record<string, unknown>> | undefined;
+  variant: ValleySelection7645Variant;
+  entrants: Readonly<Record<string, ValleyRider7645>>;
+  riders: Readonly<Record<string, ValleyRiderState7645>>;
+  finaleType: FinaleType | null | undefined;
+  profileType: ProfileType;
+  workKm: Readonly<Record<string, number>> | undefined;
+  t?: TimeModelTuning;
+  v?: ValleySelection7645Tuning;
+}): ValleySelection7645Result<T> {
+  const t = input.t ?? TIME_MODEL_V3_TUNING;
+  const v = input.v ?? VALLEY_SELECTION_7645_TUNING;
+  const { groups, tempoByGroup, segments, segmentIndex, incidentChasers } = input;
+  const unchanged: ValleySelection7645Result<T> = { tempo: tempoByGroup, workKm: input.workKm, chases: [] };
+  const seg = segments[segmentIndex];
+  const kind = seg?.kind;
+  if (kind !== "flat" && kind !== "rolling") return unchanged;
+  if (!segments.slice(0, segmentIndex).some((s) => s.kind === "climb")) return unchanged;
+  const lengthKm = seg && Number.isFinite(seg.from_km) && Number.isFinite(seg.to_km) ? Math.max(0, (seg.to_km as number) - (seg.from_km as number)) : 0;
+  const sorted = [...groups].filter((g) => !isEscapeGroupV3(g)).sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
+  if (sorted.length <= 1) return unchanged;
+  const front = sorted[0];
+  const inIncident = (g: RaceGroup) => incidentChasers !== undefined && g.rider_ids.some((id) => incidentChasers[id] !== undefined);
+  const withChase = input.variant === "team_chase" || input.variant === "team_chase_hold";
+
+  // Kandidaterne: feltets bedste paa finalens krav (blandt dem der stadig koerer).
+  const keys = valleyCandidateKeys7645(input.finaleType, input.profileType);
+  const abilityOf = (id: string) => {
+    const a = input.entrants[id]?.abilities;
+    if (!a) return 0;
+    return keys.reduce((s, k) => s + (Number(a[k]) || 0), 0) / keys.length;
+  };
+  const racing = groups.flatMap((g) => g.rider_ids).filter((id) => input.riders[id]?.status === "racing" && input.entrants[id]);
+  const ranked = [...racing].sort((a, b) => abilityOf(b) - abilityOf(a) || compareIds(a, b));
+  const topSet = new Set(ranked.slice(0, Math.max(0, v.candidateTopRank)));
+  const groupOf = new Map<string, string>();
+  for (const g of groups) for (const id of g.rider_ids) groupOf.set(id, g.id);
+  // Hvert holds bedste rytter paa finalens krav og hvor han er.
+  const bestByTeam = new Map<string, string>();
+  for (const id of ranked) {
+    const team = input.entrants[id]?.team_id;
+    if (team && !bestByTeam.has(team)) bestByTeam.set(team, id);
+  }
+
+  let workKm = input.workKm;
+  const spentKm = (id: string) => workKm?.[id] ?? 0;
+  const workersIn = (group: RaceGroup, teamId: string) => group.rider_ids
+    .filter((id) => input.entrants[id]?.team_id === teamId && id !== bestByTeam.get(teamId) && isValleyWorker7645(input.entrants[id]) && input.riders[id]?.status === "racing" && spentKm(id) < v.workerBudgetKm)
+    .sort((a, b) => spentKm(a) - spentKm(b) || compareIds(a, b))
+    .slice(0, Math.max(0, v.maxWorkersPerTeam));
+  const bookWork = (ids: readonly string[]) => {
+    if (ids.length === 0 || !(lengthKm > 0)) return;
+    const next: Record<string, number> = { ...(workKm ?? {}) };
+    for (const id of ids) next[id] = round2((next[id] ?? 0) + lengthKm);
+    workKm = next;
+  };
+
+  let out: Map<string, T> | null = null;
+  const chases: Array<{ groupId: string; teamIds: string[]; workerIds: string[]; closedSeconds: number; heldSeconds: number }> = [];
+  let reference: { gap: number; dtSeconds: number; size: number } | null = null;
+  let frontHolders: string[] | null = null;
+  for (const group of sorted) {
+    const own = (out ?? tempoByGroup).get(group.id);
+    if (!own) continue;
+    if (reference === null) {
+      reference = { gap: group.gap_seconds, dtSeconds: own.dtSeconds, size: group.rider_ids.length };
+      continue;
+    }
+    const incident = inIncident(group);
+    const gapToAhead = Math.max(0, group.gap_seconds - reference.gap);
+    const withinReach = group.gap_seconds - front.gap_seconds <= v.frontReachSeconds;
+    if (!incident && withinReach) {
+      // Inden for raekkevidden af forgruppen: dalens regel som foer (hullet vokser ikke og lukker som fart).
+      const closing = !(t.valleyClosingSecondsPerKm > 0 || t.valleyClosingGapFractionPerKm > 0) ? 0
+        : Math.min(gapToAhead, lengthKm * (t.valleyClosingSecondsPerKm + t.valleyClosingGapFractionPerKm * gapToAhead)
+          * clamp(group.rider_ids.length / Math.max(1, reference.size), 0, 1));
+      if (own.dtSeconds > reference.dtSeconds - closing) {
+        out ??= new Map(tempoByGroup);
+        out.set(group.id, { ...own, dtSeconds: reference.dtSeconds - closing });
+      }
+    } else if (!incident && withChase && lengthKm > 0) {
+      // Uden for raekkevidden: kun en jagt med en aarsag bringer gruppen tilbage.
+      const chaseTeams = [...new Set(group.rider_ids.map((id) => input.entrants[id]?.team_id).filter((x): x is string => !!x))]
+        .filter((team) => {
+          const best = bestByTeam.get(team);
+          return best !== undefined && topSet.has(best) && groupOf.get(best) === group.id;
+        })
+        .sort((a, b) => compareIds(a, b));
+      const chasers = chaseTeams.flatMap((team) => workersIn(group, team));
+      if (chasers.length > 0) {
+        const chaseTeamIds = chaseTeams.filter((team) => chasers.some((id) => input.entrants[id]?.team_id === team));
+        let perKm = Math.min(v.chaseMaxSecondsPerKm, v.chaseSecondsPerKmPerRider * chasers.length);
+        let held = 0;
+        let holders: string[] = [];
+        if (input.variant === "team_chase_hold") {
+          // Forgruppens hold med en kandidat, som en kandidat i den jagende gruppe ville slaa.
+          const bestBehind = Math.max(...chaseTeamIds.map((team) => abilityOf(bestByTeam.get(team) as string)));
+          if (frontHolders === null) {
+            const frontTeams = [...new Set(front.rider_ids.map((id) => input.entrants[id]?.team_id).filter((x): x is string => !!x))]
+              .filter((team) => {
+                const best = bestByTeam.get(team);
+                return best !== undefined && topSet.has(best) && groupOf.get(best) === front.id && abilityOf(best) < bestBehind;
+              })
+              .sort((a, b) => compareIds(a, b));
+            frontHolders = frontTeams.flatMap((team) => workersIn(front, team));
+          }
+          holders = frontHolders;
+          held = Math.min(perKm, Math.min(v.holdMaxSecondsPerKm, v.holdSecondsPerKmPerRider * holders.length));
+          perKm -= held;
+        }
+        const closed = Math.min(gapToAhead, perKm * lengthKm);
+        bookWork(chasers);
+        out ??= new Map(tempoByGroup);
+        // Hjaelperne foerer: de saettes i gruppens front, saa tick'et tager arbejdet af dem.
+        const chasedDt = Math.min(own.dtSeconds, Math.max(reference.dtSeconds - gapToAhead, own.dtSeconds - closed));
+        out.set(group.id, { ...own, dtSeconds: chasedDt, ...(own.frontRiderIds ? { frontRiderIds: new Set(chasers) } : {}) });
+        chases.push({ groupId: group.id, teamIds: chaseTeamIds, workerIds: [...chasers].sort(compareIds), closedSeconds: round2(Math.max(0, own.dtSeconds - chasedDt)), heldSeconds: round2(held * lengthKm) });
+      }
+    }
+    reference = { gap: group.gap_seconds, dtSeconds: (out ?? tempoByGroup).get(group.id)?.dtSeconds ?? own.dtSeconds, size: group.rider_ids.length };
+  }
+  if (frontHolders !== null && (frontHolders as string[]).length > 0) {
+    const holders = frontHolders as string[];
+    bookWork(holders);
+    const ownFront = (out ?? tempoByGroup).get(front.id);
+    if (ownFront && ownFront.frontRiderIds) {
+      out ??= new Map(tempoByGroup);
+      out.set(front.id, { ...ownFront, frontRiderIds: new Set([...ownFront.frontRiderIds, ...holders]) });
+    }
+  }
+  if (!out && workKm === input.workKm) return unchanged;
+  return { tempo: out ?? tempoByGroup, workKm, chases };
 }
 
 /** A: maa en tom reserve tvinge rytteren af paa denne stigning? Kun fra ca. kat. 2. */
