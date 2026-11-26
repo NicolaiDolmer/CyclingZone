@@ -594,7 +594,11 @@ export default function Layout() {
   const patchNotesLatestDate = pickPatchNotesMarker(patchNotesMeta, /** @type {Record<string, string>} */ (flagStages).patch_notes_v2_8049); // #8049
   const boardMandateBeta = isBetaStage(flagStages.board_mandate_model_enabled);
   const sentenceCaseOn = isSentenceCaseOn(flagStages[SENTENCE_CASE_FLAG_KEY]); // #8725
-  useEffect(() => { applySentenceCase(sentenceCaseOn); }, [sentenceCaseOn]);
+  useEffect(() => {
+    applySentenceCase(sentenceCaseOn);
+    // Fjern attributten når Layout unmountes (fx log ud → /login), så beta-stilen ikke hænger ved.
+    return () => applySentenceCase(false);
+  }, [sentenceCaseOn]);
   // #3102 etape 3: peak_planner-nav-gaten (usePlanner) udgik — Formplan er en
   // fane i Planlægnings-hubben, og fanen selv viser tom-staten ved kill-switch.
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
@@ -647,8 +651,9 @@ export default function Layout() {
 
   // #5404: éen hentning pr. session (loadFeatureFlagStages deler løftet med
   // andre samtidige kaldere, se lib/featureStage.ts) — kun til Beta-badgen.
+  // #8725: også uden session, så offentlige Layout-sider (/help, /rules, /patch-notes,
+  // /roadmap) får kontakternes stadie; loaderen læser de anonyme flag selv.
   useEffect(() => {
-    if (!session) return;
     let cancelled = false;
     loadFeatureFlagStages().then((stages) => { if (!cancelled) setFlagStages(stages); });
     return () => { cancelled = true; };
