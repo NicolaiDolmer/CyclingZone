@@ -28,7 +28,7 @@ import { attachSegmentsAndWeather } from "./routeSegments.js";
 import { buildElevationProfile, elevationSeedKey } from "./routeElevationProfile.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 import { isAscendingOrder, REAL_STAGE_RACES, positionBucket, coarseClassOf } from "./stageOrderVariationGate.js";
-import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders, canonicalFinaleType, isFinishAllowed } from "./stageProfileTypes.js";
+import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders, canonicalFinaleType, isFinishAllowed, roadFinishWeightsFor } from "./stageProfileTypes.js";
 // #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
 // afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
 import { FINALE_CLASS_BY_TYPE, FINALE_CLASSES, OVERALL_FINALE_BAND, TERRAIN_FINALE_BANDS } from "./stageFinaleMetrics.js";
@@ -1465,7 +1465,9 @@ function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = n
   // kald) = samme kvantil-træk som før; true = bjergtop; false = samme kvantil uden bjergtop.
   const chooseFinish = (/** @type {string} */ terrain, /** @type {{ summit?: boolean | null }} */ { summit = null } = {}) => {
     if (finish) return finish;
-    const weights = /** @type {Record<string, any>} */ (S5_FINISH_WEIGHTS)[terrain];
+    // #8259: uden for en Grand Tour gælder S6-vægtene (stageProfileTypes.js afsnit 5).
+    const s6 = isStageRace && race?.terrain_archetype === "grand_tour" ? null : roadFinishWeightsFor(terrain, targetType);
+    const weights = /** @type {any} */ (s6 ?? /** @type {Record<string, any>} */ (S5_FINISH_WEIGHTS)[terrain]);
     if (summit === true) return "long_climb";
     if (summit === false) return pickByQuantile(weights.filter((/** @type {any} */ it) => it.value !== "long_climb"), u);
     return pickByQuantile(weights, u);

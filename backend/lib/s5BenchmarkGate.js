@@ -40,7 +40,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import {
-  TERRAIN_TYPES, FINISH_MATRIX, canonicalFinaleType,
+  TERRAIN_TYPES, FINISH_MATRIX, canonicalFinaleType, descentTopWindowFor,
 } from "./stageProfileTypes.js";
 import { regionOf } from "./raceRouteGenerator.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
@@ -237,7 +237,7 @@ export function checkStage(stage) {
     }
   } else if (finish === "descent") {
     const toGo = last && Number.isFinite(distance) ? distance - Number(last.crest_km) : NaN;
-    const [lo, hi] = S5_DESCENT_TOP_WINDOW_KM;
+    const [lo, hi] = descentTopWindowFor(terrain); // #8259: kort vindue undtagen bjerg/højbjerg
     if (!last || !(String(last.category) in CAT_RANK) || CAT_RANK[String(last.category)] > CAT_RANK["3"]) {
       violations.push(`nedkørsel kræver at sidste top er kat. 3 eller hårdere (er ${last ? `kat. ${last.category}` : "ingen stigning"})`);
     } else if (!Number.isFinite(toGo) || toGo < lo - GEOMETRY_EPS || toGo > hi + GEOMETRY_EPS) {

@@ -12,7 +12,7 @@
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { seasonSeedSuffix } from "./raceSeedAxis.js";
 // S5 (#6359): matrixen (spec §3) og pladsholder-kilderne bor i Fase 0's ordforråd.
-import { isFinishAllowed as isFinishAllowedS5, S5_PLACEHOLDER_SOURCE_PROFILE, FINISH_MATRIX as FINISH_MATRIX_S5 } from "./stageProfileTypes.js";
+import { isFinishAllowed as isFinishAllowedS5, S5_PLACEHOLDER_SOURCE_PROFILE, FINISH_MATRIX as FINISH_MATRIX_S5, descentTopWindowFor } from "./stageProfileTypes.js";
 
 // FNV-1a 32-bit (lokal kopi af raceStageProfileGenerator.stableSeed — selvstændig fil).
 function stableSeed(str) {
@@ -697,7 +697,8 @@ function placeS5Climbs(rng, set, finish, distanceKm, namer, { summitClimax = fal
   const last = set[n - 1];
   let lastCrest;
   if (finish === "long_climb" || summitClimax) lastCrest = distanceKm;
-  else if (finish === "descent") lastCrest = distanceKm - randInt(rng, S5_DESCENT_TOP_WINDOW_KM[0], S5_DESCENT_TOP_WINDOW_KM[1]);
+  // #8259: vinduet afhænger af terrænet (stageProfileTypes.js descentTopWindowFor).
+  else if (finish === "descent") { const [dLo, dHi] = descentTopWindowFor(deriveTerrainType(set)); lastCrest = distanceKm - randInt(rng, dLo, dHi); }
   else lastCrest = distanceKm - randInt(rng, S5_OPEN_FINISH_LAST_TOP_KM[0], S5_OPEN_FINISH_LAST_TOP_KM[1]);
   const anchor = lastCrest - last.length_km; // klimaksets fod
   const START_KM = 5;

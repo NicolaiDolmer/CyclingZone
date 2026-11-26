@@ -50,6 +50,10 @@ const UNIFORM_AXIS_TYPES = Object.freeze({ itt: ["itt", "itt_hilly"], cobbles: [
 // Bjerg-familien i #3327's forstand: et etapeløb med en af dem er ikke bjergfrit.
 const MOUNTAIN_FAMILY_TYPES = Object.freeze(new Set(["mountain", "high_mountain", "medium_mountain"]));
 
+// #8259 (ejer 26/11, punkt 5 på #5841): færre flade og flere kuperede etaper end K-B-målet,
+// så afslutningsmålene kan nås. Kun de to kategorier flyttes; summen er uændret.
+export const S5_QUOTA_KB_TARGET = Object.freeze({ ...ACTIVE_TARGET, flat: ACTIVE_TARGET.flat - 2, hilly: ACTIVE_TARGET.hilly + 2 });
+
 // Margin til §5's gulve og rolling-loftet: én etape, så en regel ikke står på kanten.
 export const S5_QUOTA_FAMILY_MARGIN = 1;
 // Straf pr. ændret filler-plads: lille, men > 0, så kvoten kun ændrer et træk når det
@@ -86,7 +90,7 @@ export function tierTerrainLoss(counts, tier) {
   const hinge = (/** @type {number} */ dev, /** @type {number} */ allowed) => S5_QUOTA_GATE_PENALTY_PER_PP * Math.max(0, Math.abs(dev) - allowed);
   const tierTol = Math.max(/** @type {any} */ (TIER_COMPOSITION_TOLERANCE_PP)[tier] ?? COMPOSITION_TOLERANCE_PP, toleranceFor(n));
   for (const cat of KB_CATEGORIES) {
-    const dev = (100 * (kb[cat] ?? 0)) / n - /** @type {any} */ (ACTIVE_TARGET)[cat];
+    const dev = (100 * (kb[cat] ?? 0)) / n - /** @type {any} */ (S5_QUOTA_KB_TARGET)[cat];
     loss += (dev / COMPOSITION_TOLERANCE_PP) ** 2 + hinge(dev, tierTol - S5_QUOTA_TIER_KB_MARGIN_PP);
   }
   for (const [axis, types] of Object.entries(UNIFORM_AXIS_TYPES)) {

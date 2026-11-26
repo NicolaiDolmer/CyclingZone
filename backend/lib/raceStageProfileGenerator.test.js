@@ -1188,7 +1188,9 @@ const FLAT_FAM = new Set(["flat", "rolling"]);
 
 // Fingeraftryk af v5- og S5-output for løb UDEN identitet, målt på main FØR #6928 (samme
 // procedure som nedenfor). "v5 og S5-stien uden type skal være bit-identiske" (design §2).
-const PRE_6928_FINGERPRINT = Object.freeze({ races: 516, v5: "6cd254d21e6cd125", s5: "3700d8d4d7414afe" });
+// #8259: S5-aftrykket er bevidst ændret (S6-afslutningerne uden for Grand Tours og det korte
+// nedkørsels-vindue); v5-aftrykket er uændret.
+const PRE_6928_FINGERPRINT = Object.freeze({ races: 516, v5: "6cd254d21e6cd125", s5: "a3c83afd55bb3280" });
 function fingerprint({ withIdentity }) {
   const races = [];
   for (const [archetype, cfg] of Object.entries(ARCHETYPE_PROFILES)) {
