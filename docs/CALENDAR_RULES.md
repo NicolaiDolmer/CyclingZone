@@ -1334,7 +1334,7 @@ Et etapeløb uden flad etape giver sprinteren ingen dag at vinde pointtrøjen p�
 
 **Tolerance ±2 point (ejer 26/11).** Divisionen er en stikprøve af katalogets løb (samme løb = samme rute i alle divisioner), så en division kan ligge et point fra båndet, uden at vægtene er forkerte. Målene og toleransen er data (`S6_FINISH_TARGETS`, `S6_FINISH_TOLERANCE_PP` i `stageFinaleMetrics.js`), og `s6FinishTargets8830.test.js` måler den offline S6-kalender over frø 1-5 og fejler uden for ±2.
 
-**Målt 26/11 (offline, S6 30/11-26/12, 140, frø 1-5), opad / flad spurt:** D1 41,9 / 33,2 · D2 35,0 / 25,9 · D3 35,6 / 32,6 · D4 39,5 / 23,7 · U23 38,5 / 31,3 · junior 29,3 / 32,1.
+**Målt 26/11 (offline, S6 30/11-26/12, 140, frø 1-5), opad / flad spurt:** D1 40,1 / 33,2 · D2 35,0 / 25,9 · D3 35,6 / 32,6 · D4 39,5 / 23,7 · U23 41,0 / 30,8 · junior 29,3 / 32,1. Med D1-pakningen fra #8837 (D1 55,6 % løbsdage med 2+ løb i frø 1-7). Benchmark-gaten (§7c) er grøn med GT_FINISH_WEIGHTS_S6: GT-muren og -bakken holdes inden for benchmarkens tolerance.
 
 ### 7f. Variation i etaperækkefølgen (ejer 24/10, [#2757](https://github.com/NicolaiDolmer/CyclingZone/issues/2757))
 

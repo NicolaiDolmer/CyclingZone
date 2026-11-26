@@ -239,18 +239,19 @@ export const YOUTH_FINISH_WEIGHTS = Object.freeze({
 /**
  * #8830 (ejer 26/11, afslutningsmaal pr. division): D1's Grand Tours ender i spurt paa 43 %
  * af de kuperede etaper (benchmarkens vaegte), og det loefter D1's flade spurt over 32 %.
- * Fra S6 flyttes en del af GT'ernes kuperede og mellembjergs-spurter til punch og mur.
- * Benchmark-gatens del (3) maaler stadig GT-afslutningerne mod rigtige Grand Tours (flad
- * spurt 33,7 % +-13,1 pp). Bjerg, hoejbjerg og flad er uaendrede.
+ * Fra S6 flyttes en del af GT'ernes kuperede og mellembjergs-spurter mest til spurt op ad
+ * bakke, lidt til bakke og mur; begge holdes lave, for rigtige GT'er ender sjaeldent paa en mur.
+ * Benchmark-gatens del (3) maaler GT-afslutningerne mod rigtige Grand Tours (flad spurt
+ * 33,7 % +-13,1 pp, mur 2,5 % +-4,4 pp). Bjerg, hoejbjerg og flad er uaendrede.
  */
 export const GT_FINISH_WEIGHTS_S6 = Object.freeze({
   hilly: Object.freeze([
-    { value: "flat_sprint", weight: 18 }, { value: "uphill_sprint", weight: 4 }, { value: "punch", weight: 12 },
-    { value: "wall_finish", weight: 11 }, { value: "descent", weight: 22 },
+    { value: "flat_sprint", weight: 18 }, { value: "uphill_sprint", weight: 16 }, { value: "punch", weight: 5 },
+    { value: "wall_finish", weight: 6 }, { value: "descent", weight: 22 },
   ]),
   medium_mountain: Object.freeze([
-    { value: "flat_sprint", weight: 8 }, { value: "punch", weight: 3 }, { value: "wall_finish", weight: 3 },
-    { value: "long_climb", weight: 7 }, { value: "descent", weight: 8 },
+    { value: "flat_sprint", weight: 8 }, { value: "punch", weight: 1 }, { value: "wall_finish", weight: 1 },
+    { value: "long_climb", weight: 9 }, { value: "descent", weight: 8 },
   ]),
 });
 
