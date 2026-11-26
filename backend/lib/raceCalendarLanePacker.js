@@ -875,7 +875,8 @@ function layoutContiguousRelaxed({ races, D, days, cap, spineMinStages }) {
  * fra race_pool.date_text). Soegningen afgoer om et skelet kan fyldes.
  *
  * @param {{gtsByPhase?:Array<any>, monumentsByPhase?:Array<any>, days:number, gtEarliestStartDate?:number,
- *   minGapDays:number, minSpreadDays:number, monumentsAfterGts?:number, endWithOneDay?:boolean, limit?:number}} args
+ *   minGapDays:number, minSpreadDays:number, monumentsAfterGts?:number, endWithOneDay?:boolean, limit?:number,
+ *   maxGtStagesPerDate?:number}} args
  * @returns {Array<{gtStartPins:number[], monumentPins:number[], score:number}>}
  */
 export function enumeratePlacementSkeletons({
