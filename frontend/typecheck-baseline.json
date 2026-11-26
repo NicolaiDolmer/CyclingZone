@@ -295,9 +295,7 @@
     "TS2741": 1
   },
   "../backend/lib/raceCalendarLanePacker.js": {
-    "TS18047": 3,
-    "TS2322": 4,
-    "TS2339": 15,
+    "TS2339": 4,
     "TS2345": 6
   },
   "../backend/lib/raceClassifications.js": {
