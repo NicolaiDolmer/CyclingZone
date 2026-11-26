@@ -280,6 +280,13 @@ export default function ProgramWeekV2({
   const canCopy = isRotation ? Boolean(subject && rotationPasses.length >= 2) : Boolean(program);
   const writeRotation = (target: Subject, change: RotationWrite) => target.kind === "group"
     ? groups.setRotation(target.id, change) : programs.setRotation(target.id, change);
+  // #8776 (ejer 26/11, som R5 efter #8779): ugeprioritet er opt-in. plan_kind 'week' saettes kun af
+  // en Week blocks-skrivning eller et skift fra Rotation; en almindelig gemning roerer den ikke.
+  const storedKindOf = (target: Subject) => (target.kind === "rider"
+    ? programs.rotations?.[target.id]?.planKind
+    : groups.groups.find((item) => item.id === target.id)?.planKind) ?? null;
+  const leaveRotation = async (target: Subject): Promise<{ ok: boolean }> => (storedKindOf(target) === "rotation"
+    ? writeRotation(target, { planKind: "week" }) : { ok: true });
   const clearRotationDraft = () => setRotationDrafts((prev) => {
     const next = { ...prev };
     delete next[sKey];
@@ -369,7 +376,9 @@ export default function ProgramWeekV2({
       if (result.ok) groupChanged = true;
       return result;
     };
-    const markWeek = weekPriority || programs.rotationEnabled ? { planKind: "week" as const } : undefined;
+    // Planer, der skifter fra Rotation til Ugeblokke: de redigerede og den viste (switchToWeek).
+    const leaving = [...new Set([...Object.keys(drafts), ...Object.keys(weekDrafts), ...(switchToWeek && subject ? [sKey] : [])])]
+      .map(parseSubjectKey).filter((target): target is Subject => !!target && storedKindOf(target) === "rotation");
     const unsavedDays: Record<string, Record<string, WeekBlock>> = {};
     if (weekPriority) for (const [key, blocks] of Object.entries(weekDrafts)) {
       const target = parseSubjectKey(key);
@@ -389,18 +398,17 @@ export default function ProgramWeekV2({
       const rest: Record<string, DraftV2[string]> = { ...d };
       for (const step of draftStepsV2(d, weekdays, effortLevels)) {
         if (unsavedDays[key]?.[step.weekday]) continue;
-        const write = step.effort === undefined ? markWeek : ({ ...markWeek, effort: step.effort } as WeekCellWrite);
+        const write = step.effort === undefined ? undefined : ({ effort: step.effort } as unknown as WeekCellWrite);
         const result = await saveCell(target, step.weekday, step.slotIndex, step.session, write);
         if (!result.ok) { failed = true; break; }
         delete rest[`${step.weekday}:${step.slotIndex}`];
       }
       if (Object.keys(rest).length) left[key] = rest;
     }
-    const savedSubjectFields = Object.keys(drafts[sKey] ?? {}).length > 0
-      || (weekPriority && Object.keys(weekDrafts[sKey] ?? {}).length > 0);
-    if (switchToWeek && subject && !failed && !savedSubjectFields) {
-      failed = !(await writeRotation(subject, { planKind: "week" })).ok;
-      if (!failed && subject.kind === "group") groupChanged = true;
+    for (const target of leaving) {
+      if (failed) break;
+      failed = !(await leaveRotation(target)).ok;
+      if (!failed && target.kind === "group") groupChanged = true;
     }
     if ([...Object.keys(drafts), ...Object.keys(weekDrafts)].some((key) => parseSubjectKey(key)?.kind === "rider")) await groups.reload();
     setDrafts(left);
@@ -423,10 +431,10 @@ export default function ProgramWeekV2({
     setSaving(true);
     setDialogError(false);
     try {
-      const planKind = programs.rotationEnabled || weekPriority ? "week" : undefined;
-      const result = subject.kind === "group"
-        ? await groups.putProgram(subject.id, putTarget, planKind)
-        : await programs.applyProgram(putTarget, subject.id, planKind);
+      const applied = subject.kind === "group"
+        ? await groups.putProgram(subject.id, putTarget)
+        : await programs.applyProgram(putTarget, subject.id);
+      const result = applied.ok ? await leaveRotation(subject) : applied;
       if (subject.kind === "rider") await groups.reload();
       if (!result.ok) { setDialogError(true); return; }
       // Den nye uge erstatter den gamle; kladder til den gamle uge gaelder ikke laengere.
@@ -663,8 +671,8 @@ export default function ProgramWeekV2({
           for (const id of ids) {
             const result = isRotation
               ? await programs.setRotation(id, { planKind: "rotation", passes: rotationPasses, keepPlace })
-              : await programs.applyProgram(program!.key, id, programs.rotationEnabled || weekPriority ? "week" : undefined);
-            if (result.ok) done += 1;
+              : await programs.applyProgram(program!.key, id);
+            if (result.ok && (isRotation || (await leaveRotation({ kind: "rider", id })).ok)) done += 1;
           }
           await groups.reload();
           setNote(done === ids.length
@@ -1083,7 +1091,8 @@ function AllRidersTable({
     : row.plan.via === "own" ? tR5("programR5.ownPlan", { name: programLabel(row.plan.programKey) }) : programLabel(row.plan.programKey));
   return (
     <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card" data-testid="program-w1-all">
-      <table className="w-full table-fixed border-collapse">
+      <table className="w-full table-fixed border-collapse" data-sort-exempt="ugeplan i navneorden; kolonnerne er dage, ikke tal">
+        <caption className="sr-only">{tR5("programW1.allRiders")}</caption>
         <thead>
           <tr>
             <th scope="col" className={`${th} ${mobile ? "w-[44%]" : "w-[18%]"}`}>{tR5("programW1.col.rider")}</th>
