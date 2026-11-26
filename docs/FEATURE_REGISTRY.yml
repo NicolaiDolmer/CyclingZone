@@ -1054,7 +1054,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 7456
     verified: 2026-11-26
-    note: "Datotabel training_day_overrides, motor, prognose og dagsvælgeren bag training_day_override_8592 (seedet off). Løb, binding og skade vinder altid; rotationen venter på datoen. Fable-dom før merge, preview før tænding."
+    note: "Datotabel training_day_overrides, motor, prognose og dagsvælgeren bag training_day_override_8592 (seedet off). Løb, binding og skade vinder altid; rotationen venter på datoen. Virker også uden program, og et valg truffet efter træthedsgrænsens markering går forud for grænsen (#8819). Fable-dom før merge, preview før tænding."
     decision: goer-faerdigt
     decide_by: 2026-12-10
 

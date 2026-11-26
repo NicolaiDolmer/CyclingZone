@@ -31,7 +31,9 @@ export type WeekDay = {
   riders?: Record<string, WeekRiderFields>;
   today?: ForecastResponse;
   /** #8592: datoens "Kun denne dag"-valg pr. rytter (kun med kontakten training_day_override_8592). */
-  dayOverrides?: Record<string, { session: string }>;
+  dayOverrides?: Record<string, { session: string; beatsRule?: boolean }>;
+  /** #8819 DO-10: træthedsgrænsens markering pr. rytter (kun i morgen, kun med kontakten). */
+  fatigueRuleAhead?: Record<string, { kind: "fatigue" | "after_stage"; fallback: "light" | "recovery" | "rest" }>;
 };
 export type WeekResponse = { available: boolean; reason?: string; tickDate?: string; days: WeekDay[] };
 

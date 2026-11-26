@@ -11,8 +11,8 @@ import { programSessionToday, type ProgramWeekDays } from "../../../lib/training
 import { DAY_TYPES_WITHOUT_SESSION, dayTypeForProgram, sessionForProgram, sessionI18nKey } from "../../../lib/trainingDayTypes.js";
 import { STAGE } from "./todayR5Model.ts";
 import { autoRaces, dayKind, futureCounts, futureFields, pickerWindow, ownRaces, type WeekResponse } from "./dayPickerModel.ts";
-import { DayOverrideAction, DayOverrideRowNote, useDayOverrideStatus } from "./DayOverrideV1.tsx"; // #8592
-import { dayOverridesOf, hasDayOverrides, overrideReplaced } from "./dayOverrideModel.ts";
+import { DayOverrideAction, DayOverrideRowNote, DayOverrideRuleNote, DayOverrideTodayNotes, useDayOverrideStatus } from "./DayOverrideV1.tsx"; // #8592
+import { dayOverridesOf, hasDayOverrides, overrideReplaced, ruleMarksOf } from "./dayOverrideModel.ts";
 
 type Rider = { id: string; firstname?: string | null; lastname?: string | null };
 type Plan = { focus?: string | null; intensity?: string | null } | null | undefined;
@@ -88,7 +88,22 @@ export default function DayPickerR5({
     </div>
   );
 
-  if (selected === 0) return <div className="space-y-3">{strip}{today}</div>;
+  const label = (s: string | null) => (s == null ? "–" : t([sessionI18nKey("dayPanel.session", s), `dayPanel.dayType_${s}`], { defaultValue: s }));
+
+  if (selected === 0) {
+    // #8819 fund 1: dagens valg og de seneste dages udfald, over I dag (kun med kontakten).
+    const dateLabel = (ymd: string) => `${weekdayLong.format(dateOf(ymd))} ${dateOf(ymd).getDate()}`;
+    return (
+      <div className="space-y-3">
+        {strip}
+        {overrideStatus && (
+          <DayOverrideTodayNotes todayRiders={days[0]?.today?.riders} recent={overrideStatus.recent} riders={riders}
+            sessionLabel={(s) => label(s)} dateLabel={dateLabel} />
+        )}
+        {today}
+      </div>
+    );
+  }
 
   const day = days[selected];
   const d = dateOf(day.date);
@@ -99,9 +114,8 @@ export default function DayPickerR5({
     const kind = dayKind(day);
     return kind.kind === "training" ? tR5("dayPicker.training") : chipWord(selected);
   })();
-  const label = (s: string | null) => (s == null ? "–" : t([sessionI18nKey("dayPanel.session", s), `dayPanel.dayType_${s}`], { defaultValue: s }));
-
   const overrides = dayOverridesOf(day); // #8592
+  const ruleMarks = ruleMarksOf(day); // #8819 DO-10: kun i morgen
   const dayLabel = `${weekdayWord} ${d.getDate()}`;
   const rows = riders.map((rider) => {
     const plan = planFor(rider.id);
@@ -151,8 +165,8 @@ export default function DayPickerR5({
         <>
         {overrideStatus && (
           <div className="flex flex-wrap items-center gap-2">
-            <DayOverrideAction status={overrideStatus} date={day.date} dayLabel={dayLabel} riders={riders} groups={[...groups]}
-              overrides={overrides} sessionLabel={(s) => label(s)} onChanged={onWeekChanged} />
+            <DayOverrideAction date={day.date} dayLabel={dayLabel} riders={riders} groups={[...groups]}
+              overrides={overrides} ruleMarks={ruleMarks} sessionLabel={(s) => label(s)} onChanged={onWeekChanged} />
           </div>
         )}
         <div className="rounded-cz border border-cz-border bg-cz-card">
@@ -175,8 +189,10 @@ export default function DayPickerR5({
                   <span className="block truncate text-[13px] font-medium text-cz-1">{`${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim()}</span>
                   {overrideStatus && overrides[rider.id] && (
                     <DayOverrideRowNote riderId={rider.id} date={day.date} dayLabel={dayLabel} weekdayWord={weekdayWord}
-                      replaced={overrideReplaced(day.riders?.[rider.id])} onChanged={onWeekChanged} />
+                      replaced={overrideReplaced(day.riders?.[rider.id])} beatsRule={overrides[rider.id]?.beatsRule === true}
+                      ruleMark={ruleMarks[rider.id] ?? null} onChanged={onWeekChanged} />
                   )}
+                  {overrideStatus && !overrides[rider.id] && ruleMarks[rider.id] && <DayOverrideRuleNote mark={ruleMarks[rider.id]} />}
                 </span>
                 {phone ? <span className="grid grid-cols-5 gap-1">{cells}</span> : cells}
               </div>

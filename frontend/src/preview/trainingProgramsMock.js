@@ -86,20 +86,39 @@ const ymdPlus = (n) => {
   d.setDate(d.getDate() + n);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
-function dayOverridesMockRoute(method, body) {
+// #8819: preview-fiktion for markeringerne. Grænsens markering i morgen for ryttere, hvis prognose
+// for i aften er hoej (samme greb som serveren: aftenens tal er morgendagens start), og et par
+// udfald i gaar, saa "Kun denne dag" over I dag kan ses. Ingen motortal.
+const PREVIEW_RULE_FATIGUE = 60;
+function previewRuleMarks(seedTraining) {
+  const riders = previewForecast(seedTraining).riders ?? {};
+  return Object.fromEntries(Object.entries(riders).filter(([, r]) => r.fatigue > PREVIEW_RULE_FATIGUE).map(([id]) => [id, { kind: "fatigue", fallback: "rest" }]));
+}
+function previewRecent(seedTraining) {
+  const ids = Object.keys(seedTraining.condition ?? {});
+  if (ids.length < 3) return [];
+  const yesterday = ymdPlus(-1);
+  return [
+    { date: yesterday, riderId: ids[1], session: "threshold", outcome: "fatigue_rule", some: false, beatsRule: false },
+    { date: yesterday, riderId: ids[0], session: "rest", outcome: "race", some: true, beatsRule: false },
+    { date: yesterday, riderId: ids[2], session: "endurance", outcome: "trained", some: false, beatsRule: false },
+  ];
+}
+function dayOverridesMockRoute(method, body, seedTraining) {
   if (!previewDayOverrideEnabled()) {
     return method === "GET" ? { status: 200, body: { enabled: false, overrides: [] } } : { status: 409, body: { error: "feature_disabled" } };
   }
   const window7 = Array.from({ length: 7 }, (_, i) => ymdPlus(i + 1));
   if (method === "GET") {
-    const overrides = [...previewDayOverrides].flatMap(([date, map]) => Object.entries(map).map(([riderId, o]) => ({ riderId, date, session: o.session })));
-    return { status: 200, body: { enabled: true, today: ymdPlus(0), window: window7, programRequired: false, overrides } };
+    const overrides = [...previewDayOverrides].flatMap(([date, map]) => Object.entries(map).map(([riderId, o]) => ({ riderId, date, ...o })));
+    return { status: 200, body: { enabled: true, today: ymdPlus(0), window: window7, overrides, recent: previewRecent(seedTraining) } };
   }
   if (!window7.includes(body?.date)) return { status: 400, body: { error: "invalid_date" } };
   const ids = Array.isArray(body?.riderIds) ? body.riderIds : [];
   const map = { ...(previewDayOverrides.get(body.date) ?? {}) };
+  const marks = body.date === ymdPlus(1) ? previewRuleMarks(seedTraining) : {}; // DO-10: som serveren, kun i morgen
   for (const id of ids) {
-    if (method === "PUT") map[id] = { session: body.session };
+    if (method === "PUT") map[id] = { session: body.session, ...(marks[id] ? { beatsRule: true } : {}) };
     else delete map[id];
   }
   previewDayOverrides.set(body.date, map);
@@ -136,8 +155,10 @@ function previewWeek(seedTraining) {
       restSlots: i === 3 && idx === 1 ? [0, 1, 2, 3, 4] : [],
     }]));
     const overrides = previewDayOverrideEnabled() ? previewDayOverrides.get(date) : null; // #8592
+    const marks = previewDayOverrideEnabled() && i === 1 ? previewRuleMarks(seedTraining) : {}; // #8819 DO-10
     days.push({ date, weekday, available: true, races: fx ? [{ ...fx.race, ownRiders: racers.length }] : [], riders,
-      ...(overrides && Object.keys(overrides).length ? { dayOverrides: { ...overrides } } : {}) });
+      ...(overrides && Object.keys(overrides).length ? { dayOverrides: { ...overrides } } : {}),
+      ...(Object.keys(marks).length ? { fatigueRuleAhead: marks } : {}) });
   }
   return { available: true, tickDate: days[0].date, days };
 }
@@ -209,12 +230,17 @@ function previewForecast(seedTraining) {
     fatigue = Math.max(0, Math.min(100, Math.round(fatigue)));
     riders[id] = { fatigue, band: fatigue >= 70 ? "risk" : fatigue > 60 ? "warn" : "ok", raceSlots };
   });
+  // #8819 fund 1: dagens valg med udfald paa preview (fiktion), saa linjerne over I dag kan ses.
+  if (previewDayOverrideEnabled() && ids.length >= 2) {
+    riders[ids[0]].dateOverride = { session: "rest", outcome: "race", some: true };
+    riders[ids[1]].dateOverride = { session: "threshold", outcome: "fatigue_rule", some: false };
+  }
   return { available: true, settled: false, riders };
 }
 
 export function trainingProgramsMockRoute(method, pathname, body, seedTraining) {
   if (!/^\/api\/training\/programs(\/|$)/.test(pathname)) return null;
-  if (/\/programs\/day-overrides\/?$/.test(pathname)) return dayOverridesMockRoute(method, body); // #8592
+  if (/\/programs\/day-overrides\/?$/.test(pathname)) return dayOverridesMockRoute(method, body, seedTraining); // #8592
   // #8580: dagsvaelgerens uge. ?trainingWeek=1 taender den paa preview (kontakten er off i prod).
   if (method === "GET" && pathname.endsWith("/forecast/week")) {
     return { status: 200, body: previewTrainingWeekEnabled() ? previewWeek(seedTraining) : { available: false, reason: "disabled", days: [] } };

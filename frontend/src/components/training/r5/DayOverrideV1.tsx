@@ -2,6 +2,9 @@
 // rytter, flere eller en hel gruppe, kun på én dato i den rullende uge. Ugeplanen ændres aldrig,
 // og et løb vinder altid. Kontakten training_day_override_8592 afgøres på serveren: svarer GET
 // enabled:false, tegnes intet herfra, og dagsvælgeren er præcis som før.
+// #8819: virker også uden program; træthedsgrænsens markering for i morgen vises, og et valg
+// truffet efter den går forud (serveren afgør det); hvad der skete med valget vises i dag og
+// efter datoen.
 import { useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import ModalBase from "../../ui/Modal.jsx";
@@ -11,9 +14,13 @@ import { authHeaders } from "../../../lib/supabase";
 import { apiFetch } from "../../../lib/apiFetch.ts";
 import { SKILL_SESSIONS, sessionsByLevelFor } from "../../../lib/trainingDayTypes.js";
 import { isDisplayCatalogV3 } from "../../../lib/training.js";
-import { overrideSessionGroups, selectedRiderIds, type DayOverride } from "./dayOverrideModel.ts";
+import {
+  outcomeLineKey, overrideSessionGroups, recentByDate, selectedRiderIds, todayOverrides,
+  type DayOverride, type RecentOverride, type RuleMark, type TodayOverride,
+} from "./dayOverrideModel.ts";
 
 const API = "/api/training/programs/day-overrides";
+const HEAD = "font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
 
 // Primitiverne i components/ui er .jsx uden typer (samme greb som RacePeekCard.tsx).
 const Modal = ModalBase as unknown as ComponentType<{
@@ -27,11 +34,11 @@ const Button = ButtonBase as unknown as ComponentType<{
 
 type Rider = { id: string; firstname?: string | null; lastname?: string | null };
 type Group = { id: string; name: string; members: ReadonlyArray<{ riderId: string }> };
-export type DayOverrideStatus = { enabled: boolean; programRequired: boolean };
+export type DayOverrideStatus = { enabled: boolean; recent: RecentOverride[] };
 
-const riderName = (r: Rider) => `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim();
+const riderName = (r: Rider | undefined) => `${r?.firstname ?? ""} ${r?.lastname ?? ""}`.trim();
 
-/** Kontakten og om holdet har et program (DO-11). null = ikke svaret endnu eller slukket. */
+/** Kontakten og de seneste valgs udfald (DO-12). null = ikke svaret endnu eller slukket. */
 export function useDayOverrideStatus(): DayOverrideStatus | null {
   const [status, setStatus] = useState<DayOverrideStatus | null>(null);
   useEffect(() => {
@@ -40,8 +47,8 @@ export function useDayOverrideStatus(): DayOverrideStatus | null {
       const headers = await authHeaders();
       if (!headers) return;
       const res = await apiFetch(API, { headers }, { source: "training-day-override" });
-      const data = res.data as { enabled?: boolean; programRequired?: boolean } | null;
-      if (alive && res.ok && data?.enabled === true) setStatus({ enabled: true, programRequired: data.programRequired === true });
+      const data = res.data as { enabled?: boolean; recent?: RecentOverride[] } | null;
+      if (alive && res.ok && data?.enabled === true) setStatus({ enabled: true, recent: Array.isArray(data.recent) ? data.recent : [] });
     })();
     return () => { alive = false; };
   }, []);
@@ -55,12 +62,35 @@ async function send(method: "PUT" | "DELETE", body: Record<string, unknown>): Pr
   return res.ok;
 }
 
-/** Rækkens linje: "Kun tirsdag 24 · Tilbage til planen", og hvad et løb tog (ejer punkt 2 og 4). */
+/** DO-10: grænsens markering for i morgen, som serveren også afgør valget efter. */
+function RuleMarkLine({ mark, beatsRule = false, chosen }: { mark?: RuleMark; beatsRule?: boolean; chosen: boolean }) {
+  const { t } = useTranslation("trainingR5");
+  if (beatsRule || !mark) return <span className="block text-cz-2" data-testid="r5-day-override-beats">{t("dayOverride.beatsRule")}</span>;
+  const line = mark.kind === "after_stage"
+    ? t("dayOverride.ruleAfterStage")
+    : t("dayOverride.ruleAhead", { fallback: t(`dayOverride.fallback_${mark.fallback}`) });
+  return (
+    <span className="block text-cz-2" data-testid="r5-day-override-rule">
+      {line} {t(chosen ? "dayOverride.ruleChooseAgain" : "dayOverride.ruleChoose")}
+    </span>
+  );
+}
+
+/** En rytter uden valg på datoen, men med grænsens markering (i morgen). */
+export function DayOverrideRuleNote({ mark }: { mark: RuleMark }) {
+  return (
+    <span className="mt-0.5 block text-xs" data-testid="r5-day-override-rule-note">
+      <RuleMarkLine mark={mark} chosen={false} />
+    </span>
+  );
+}
+
+/** Rækkens linje: "Kun tirsdag 24 · Tilbage til planen", og hvad et løb eller grænsen tog (ejer punkt 2 og 4). */
 export function DayOverrideRowNote({
-  riderId, date, dayLabel, weekdayWord, replaced, onChanged,
+  riderId, date, dayLabel, weekdayWord, replaced, beatsRule = false, ruleMark = null, onChanged,
 }: {
   riderId: string; date: string; dayLabel: string; weekdayWord: string;
-  replaced: "all" | "some" | "rest" | null; onChanged?: () => void;
+  replaced: "all" | "some" | "rest" | null; beatsRule?: boolean; ruleMark?: RuleMark | null; onChanged?: () => void;
 }) {
   const { t } = useTranslation("trainingR5");
   const [busy, setBusy] = useState(false);
@@ -82,24 +112,83 @@ export function DayOverrideRowNote({
       </button>
       {replaced === "all" && <span className="block text-cz-2" data-testid="r5-day-override-replaced">{t("dayOverride.replaced", { weekday: weekdayWord })}</span>}
       {replaced === "rest" && <span className="block text-cz-2" data-testid="r5-day-override-replaced">{t("dayOverride.replacedRest", { weekday: weekdayWord })}</span>}
-      {replaced === "some" &&<span className="block text-cz-2" data-testid="r5-day-override-replaced">{t("dayOverride.replacedSome")}</span>}
+      {replaced === "some" && <span className="block text-cz-2" data-testid="r5-day-override-replaced">{t("dayOverride.replacedSome")}</span>}
+      {replaced !== "all" && replaced !== "rest" && beatsRule && <RuleMarkLine beatsRule chosen />}
+      {replaced !== "all" && replaced !== "rest" && !beatsRule && ruleMark && <RuleMarkLine mark={ruleMark} chosen />}
       {failed && <span className="block text-cz-danger" role="alert">{t("dayOverride.error")}</span>}
     </span>
   );
 }
 
+/**
+ * I dag (dag 0, #8819 fund 1): dagens valg og hvad der sker med dem, og hvordan de seneste dages
+ * valg gik. Tegnes kun med kontakten og kun, når der er noget at sige.
+ */
+export function DayOverrideTodayNotes({
+  todayRiders, recent, riders, sessionLabel, dateLabel,
+}: {
+  todayRiders: Record<string, { dateOverride?: TodayOverride | null } | undefined> | null | undefined;
+  recent: RecentOverride[];
+  riders: Rider[];
+  sessionLabel: (session: string) => string;
+  dateLabel: (ymd: string) => string;
+}) {
+  const { t } = useTranslation("trainingR5");
+  const byId = useMemo(() => new Map(riders.map((r) => [r.id, r])), [riders]);
+  const today = todayOverrides(todayRiders, riders);
+  const past = recentByDate(recent, riders).map(({ date, entries }) => ({
+    date,
+    told: entries.filter((e) => outcomeLineKey(e) != null),
+    trained: entries.filter((e) => outcomeLineKey(e) == null).length,
+  })).filter((d) => d.told.length > 0 || d.trained > 0);
+  if (today.length === 0 && past.length === 0) return null;
+  const row = (key: string, name: string, session: string, line: string) => (
+    <li key={key} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-t border-cz-border px-3 py-2 text-xs first:border-t-0" data-testid="r5-day-override-outcome">
+      <span className="text-[13px] font-medium text-cz-1">{name}</span>
+      <span className="text-cz-3">{sessionLabel(session)}</span>
+      <span className="basis-full text-cz-2 md:basis-auto">{line}</span>
+    </li>
+  );
+  return (
+    <section className="rounded-cz border border-cz-border bg-cz-card" data-testid="r5-day-override-today">
+      <h3 className={`border-b border-cz-border bg-cz-subtle px-3 py-2 ${HEAD}`}>{t("dayOverride.notesTitle")}</h3>
+      {today.length > 0 && (
+        <div>
+          <p className="px-3 pt-2 text-xs font-semibold text-cz-2">{t("dayOverride.todayHeading")}</p>
+          <ul>
+            {today.map((o) => {
+              const key = outcomeLineKey(o);
+              return row(`today-${o.riderId}`, riderName(byId.get(o.riderId)), o.session, key ? t(key) : t("dayOverride.outcome.trainedToday"));
+            })}
+          </ul>
+        </div>
+      )}
+      {past.map(({ date, told, trained }) => (
+        <div key={date} className="border-t border-cz-border">
+          <p className="px-3 pt-2 text-xs font-semibold text-cz-2">{t("dayOverride.pastHeading", { day: dateLabel(date) })}</p>
+          <ul>
+            {told.map((e) => row(`${date}-${e.riderId}`, riderName(byId.get(e.riderId)), e.session, t(outcomeLineKey(e) as string)))}
+          </ul>
+          {trained > 0 && (
+            <p className="px-3 pb-2 pt-1 text-xs text-cz-2" data-testid="r5-day-override-trained-count">
+              {told.length > 0 ? t("dayOverride.trainedOthers", { n: trained }) : t("dayOverride.trainedAll", { n: trained })}
+            </p>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 /** Knappen over rækkerne og dialogen: hvem (ryttere, flere eller grupper) og hvilket pas. */
 export function DayOverrideAction({
-  status, date, dayLabel, riders, groups, overrides, sessionLabel, onChanged,
+  date, dayLabel, riders, groups, overrides, ruleMarks, sessionLabel, onChanged,
 }: {
-  status: DayOverrideStatus; date: string; dayLabel: string; riders: Rider[]; groups: Group[];
-  overrides: Record<string, DayOverride>; sessionLabel: (session: string) => string; onChanged?: () => void;
+  date: string; dayLabel: string; riders: Rider[]; groups: Group[];
+  overrides: Record<string, DayOverride>; ruleMarks: Record<string, RuleMark>; sessionLabel: (session: string) => string; onChanged?: () => void;
 }) {
   const { t } = useTranslation("trainingR5");
   const [open, setOpen] = useState(false);
-  if (status.programRequired) {
-    return <p className="text-xs text-cz-2" data-testid="r5-day-override-program">{t("dayOverride.programRequired")}</p>;
-  }
   return (
     <>
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)} iconLeft={<CalendarIcon size={14} aria-hidden="true" />}
@@ -107,7 +196,7 @@ export function DayOverrideAction({
         {t("dayOverride.action", { day: dayLabel })}
       </Button>
       {open && (
-        <DayOverrideDialog date={date} dayLabel={dayLabel} riders={riders} groups={groups} overrides={overrides}
+        <DayOverrideDialog date={date} dayLabel={dayLabel} riders={riders} groups={groups} overrides={overrides} ruleMarks={ruleMarks}
           sessionLabel={sessionLabel} onClose={() => setOpen(false)} onSaved={() => { setOpen(false); onChanged?.(); }} />
       )}
     </>
@@ -115,10 +204,10 @@ export function DayOverrideAction({
 }
 
 function DayOverrideDialog({
-  date, dayLabel, riders, groups, overrides, sessionLabel, onClose, onSaved,
+  date, dayLabel, riders, groups, overrides, ruleMarks, sessionLabel, onClose, onSaved,
 }: {
   date: string; dayLabel: string; riders: Rider[]; groups: Group[]; overrides: Record<string, DayOverride>;
-  sessionLabel: (session: string) => string; onClose: () => void; onSaved: () => void;
+  ruleMarks: Record<string, RuleMark>; sessionLabel: (session: string) => string; onClose: () => void; onSaved: () => void;
 }) {
   const { t } = useTranslation("trainingR5");
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
@@ -131,6 +220,7 @@ function DayOverrideDialog({
   }), []);
   const ids = useMemo(() => selectedRiderIds({ riderIds: picked, groupIds: pickedGroups, groups, roster: riders }),
     [picked, pickedGroups, groups, riders]);
+  const markedPicked = ids.filter((id) => ruleMarks[id]).length;
   const toggle = useCallback((set: Set<string>, id: string) => {
     const next = new Set(set);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -189,6 +279,7 @@ function DayOverrideDialog({
                   <input type="checkbox" className="h-4 w-4 rounded-[3px] accent-cz-accent" checked={on}
                     onChange={() => setPicked((s) => toggle(s, r.id))} data-testid="r5-day-override-rider" />
                   <span className="min-w-0 flex-1 truncate text-[13px] text-cz-1">{riderName(r)}</span>
+                  {ruleMarks[r.id] && <span className="shrink-0 text-xs text-cz-2" data-testid="r5-day-override-rider-rule">{t("dayOverride.ruleBadge")}</span>}
                   {current && <span className="shrink-0 text-xs text-cz-3">{sessionLabel(current.session)}</span>}
                 </label>
               );
@@ -211,6 +302,11 @@ function DayOverrideDialog({
           </div>
         </fieldset>
         <p className="text-xs text-cz-2">{t("dayOverride.raceWins")}</p>
+        {markedPicked > 0 ? (
+          <p className="text-xs text-cz-2" data-testid="r5-day-override-beats-note">{t("dayOverride.beatsRuleNote", { n: markedPicked })}</p>
+        ) : (
+          <p className="text-xs text-cz-2">{t("dayOverride.ruleWins")}</p>
+        )}
         {failed && <p className="text-xs text-cz-danger" role="alert">{t("dayOverride.error")}</p>}
       </div>
     </Modal>
