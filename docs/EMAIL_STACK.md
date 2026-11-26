@@ -102,6 +102,7 @@ Engangskampagne, ikke en del af mail-loopet. Sendes kun med `scripts/s6-mail-sen
 - **Dedupe:** `s6_season:<udgave>:<userId>` i `email_log` og som Resend-idempotencyKey. Ved genkørsel springes allerede kontaktede brugere OG deres adresser over.
 - **Retry:** fejlede afsendelser lægges i retry-køen som andre mails, men `emailRetrySweep.js` (`CAMPAIGN_RETRY_GATES`) følger kampagnens egen gate `winback_send_enabled`, aldrig `email_loop_enabled`. Slukkes gaten, stopper både nye mails og retries.
 - **Stop:** sæt `winback_send_enabled` til false.
+- **Kontrolgruppe (#8807):** `--holdout <andel>` (0-0,5, default 0 = slukket; ejer 26/11: først når listen er meget større). Deterministisk på bruger-id via `emailHoldout.js`, saltet med kampagnen, så mail 2 beholder mail 1's kontrolgruppe.
 
 ## 3. Gate-kæden
 
@@ -233,6 +234,7 @@ Hvor det aflæses:
 | Ugentlige tal | Mandagstals-proceduren i `docs/GROWTH_STACK.md` |
 | Klik fra mail | Alle CTA'er bærer `utm_source=email` og `utm_medium`/`utm_campaign` = mailtypen (`emailTemplates.js:223-226`), så klik lander i den eksisterende kanal-tragt. Discord-CTA'en er bevidst ikke tagget |
 | Mail-klik i signup-attribution | Referrer-domænet fra Gmail-appen tæller som mail-klik i `signup_attribution` (11 rækker målt 8/9) |
+| Kampagne-effekt (S6 og frem, #8807) | `scripts/email-campaign-report.mjs --campaign s6_season [--edition before-start] [--holdout <andel>]`, kun læsning. Pr. mail/kontrol × gruppe × sprog × emne: sendt, leveret, bounce hård/blød, klage, afmeldt, unikke klik og aktivitet efter 1/3/7/14 dage (logget ind, træning, udtagelse, sæsonløb, Pro). Tallene skrives KUN til en privat OneDrive-fil (afviser Git-mapper). Exit 2 = webhooken leverer ikke (ingen `email_events` for afsendelser ældre end 2 t). Forbehold står i rapporten og i `emailCampaignReport.js` |
 
 Målt tilstand 2026-09-08 ✅ (read-only mod prod):
 
