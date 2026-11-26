@@ -100,8 +100,15 @@ export function cappedContractTerm(startSeasonNumber, length) {
 // Fejl i opslaget kastes, så en kontrakt aldrig stille forankres i sæson 1.
 export async function resolveContractSeasonNumber(supabase) {
   // Højst én aktiv sæson (samme opslag som de tidligere kopier i hver vej).
-  const active = await supabase
+  let active = await supabase
     .from("seasons").select("number").eq("status", "active").maybeSingle();
+  // Overgangen kan kortvarigt have to aktive sæsoner (S6 aktiveres før S5
+  // afsluttes): tag den nyeste i stedet for at fejle handlen.
+  if (active?.error?.code === "PGRST116") {
+    active = await supabase
+      .from("seasons").select("number").eq("status", "active")
+      .order("number", { ascending: false }).limit(1).maybeSingle();
+  }
   if (active?.error) throw new Error(`contract season lookup (active): ${active.error.message}`);
   const activeNumber = Number(active?.data?.number);
   if (Number.isInteger(activeNumber) && activeNumber >= 1) return activeNumber;

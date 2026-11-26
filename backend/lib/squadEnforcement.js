@@ -43,24 +43,17 @@ import {
   SQUAD_FINE_AMOUNT,
   SQUAD_PENALTY_POINTS,
 } from "./economyConstants.js";
-import { contractOnAcquirePatch } from "./contractSeed.js";
+import { contractOnAcquirePatch, resolveContractSeasonNumber } from "./contractSeed.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace, shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { fetchLiveAcademyOffers, filterOutPromisedAcademyRiders } from "./academyOfferProtection.ts";
 import { applySeniorSquadFilter } from "./squads.js";
 import { loadProtectedSeniorRiderIds } from "./seasonSquadPromotion.js";
 
-// #1309: aktiv sæson-number til contract_end_season-beregning.
-// Spejler transferExecution.fetchActiveSeasonNumber — default 1 som edge-case.
+// #1309: sæson-number til contract_end_season-beregning.
+// #7138 (ejer 26/11): kommende sæson i pausen, aldrig sæson 1.
 async function fetchActiveSeasonNumber(supabase) {
-  const { data } = await supabase
-    .from("seasons")
-    .select("number")
-    .eq("status", "active")
-    .order("number", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data?.number ?? 1;
+  return resolveContractSeasonNumber(supabase);
 }
 
 const NOOP = async () => {};
