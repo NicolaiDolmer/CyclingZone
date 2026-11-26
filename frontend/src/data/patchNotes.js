@@ -1,5 +1,30 @@
 export const PATCHES = [
 {
+  "version": "7.520",
+  "date": "2026-11-26",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Contracts",
+      "area": "market",
+      "en": {
+        "title": "One contract limit for every new rider",
+        "body": "New contracts now follow the same limit as extensions, however the rider joins you: at most until the end of next season. Between seasons, the coming season counts. Existing contracts are unchanged."
+      },
+      "da": {
+        "title": "Ét kontraktloft for alle nye ryttere",
+        "body": "Nye kontrakter følger nu samme loft som forlængelser, uanset hvordan rytteren kommer til dig: højst til udgangen af næste sæson. Mellem to sæsoner tæller den kommende sæson. Eksisterende kontrakter er uændrede."
+      },
+      "refs": [
+        7138,
+        8691
+      ]
+    }
+  ]
+},
+{
   "version": "7.519",
   "date": "2026-11-26",
   "changes": [
