@@ -1,4 +1,5 @@
 import { retirementBannerSeason } from "../lib/retirementNotice.ts";
+import ReservedBody from "../components/ui/ReservedBody.tsx";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -955,11 +956,33 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
 }
 
 export default function RiderStatsPage() {
+  const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  // #3203: initial fane fra ?tab= hvis gyldig (deep-link fra spejder-historik/
+  // andre flader), ellers uændret default "overview". Kun læst ved mount —
+  // efterfølgende navigation via fanebjælken styrer som hidtil via setTab.
+  const [tab, setTab] = useState(() => {
+    const requested = searchParams.get("tab");
+    return VALID_RIDER_TABS.includes(requested) ? requested : "overview";
+  });
+  const training = useTraining();
+  const trainingHistory = useTrainingHistory();
+  return <RiderStats key={id} tab={tab} setTab={setTab} training={training} trainingHistory={trainingHistory} />;
+}
+
+/**
+ * @param {{
+ *   tab: string | null,
+ *   setTab: (tab: string | null) => void,
+ *   training: ReturnType<typeof useTraining>,
+ *   trainingHistory: ReturnType<typeof useTrainingHistory>,
+ * }} props
+ */
+function RiderStats({ tab, setTab, training, trainingHistory }) {
+  const { id } = useParams();
   // #8069 T02: handlingsraekkens formularer deler EN aaben-plads (een guld-knap).
   const panelSlot = usePanelSlotState();
-  const { id } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { t } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
   const reputationOn = useRiderReputation();
@@ -968,9 +991,6 @@ export default function RiderStatsPage() {
   // #3071: sæson-referenceår (samme mønster som resten af appens sæson-hentning)
   // — erstatter det tidligere wall-clock `new Date().getFullYear()` nedenfor.
   const seasonYear = useActiveSeasonYear();
-  const training = useTraining();
-  // #1533: træningsrapport-historik (egne ryttere) — vises i Development-fanen.
-  const trainingHistory = useTrainingHistory();
   // #3496 punkt 3: genvej til et åbent transfer-tilbud på DENNE rytter, på
   // samme måde som en aktiv auktion allerede vises på rytter-siden (se
   // activeAuction/RiderBidPanel nedenfor). Samme kanoniske "skal handles"-kilde
@@ -988,21 +1008,14 @@ export default function RiderStatsPage() {
   const [retirementStatus, setRetirementStatus] = useState(/** @type {import("../lib/retirementNotice.ts").RetirementStatus | null} */ (null));
   const announcedRetirement = Boolean(retirementStatus?.announced_retirement);
   const [visits, setVisits]                 = useState(null);
-  const [seasonRows, setSeasonRows]         = useState([]);
+  const [seasonResults, setSeasonResults]   = useState(/** @type {Awaited<ReturnType<typeof fetchAllRiderSeasonRows>> | null} */ (null));
   const [reputationEvents, setReputationEvents] = useState([]);
   // Fejl-flag for resultat-hentningen (#1338-princippet): en query-fejl må ikke
   // ligne "ingen resultater" eller stille trunkerede totaler.
-  const [seasonRowsFailed, setSeasonRowsFailed] = useState(false);
+  const [marketLoading, setMarketLoading]   = useState(true);
   // #2000 Interesse: null = loader (fanen viser spinner, ikke "ingen interesse").
   const [interest, setInterest]             = useState(null);
   const [loading, setLoading]               = useState(true);
-  // #3203: initial fane fra ?tab= hvis gyldig (deep-link fra spejder-historik/
-  // andre flader), ellers uændret default "overview". Kun læst ved mount —
-  // efterfølgende navigation via fanebjælken styrer som hidtil via setTab.
-  const [tab, setTab] = useState(() => {
-    const requested = searchParams.get("tab");
-    return VALID_RIDER_TABS.includes(requested) ? requested : "overview";
-  });
   // Roster for switcher-baren (#2000): det VISTE holds trup, til prev/next + index.
   const [roster, setRoster]                 = useState([]);
   const [myTeamId, setMyTeamId]             = useState(null);
@@ -1441,7 +1454,7 @@ export default function RiderStatsPage() {
         .order("occurred_at", { ascending: false })
         .limit(5))
       : Promise.resolve({ data: [] });
-    const [riderRes, seasonRowsAll, physRes, abilRes, progressRes, reputationEventsRes] = await Promise.all([
+    const [riderRes, physRes, abilRes, progressRes, reputationEventsRes] = await Promise.all([
       // #1162: eksplicit kolonneliste — `select=*` på riders afvises efter
       // column-privilege-migrationen (potentiale er server-skjult; klienter får
       // kun det maskerede estimat via POST /api/scouting/estimates).
@@ -1457,10 +1470,6 @@ export default function RiderStatsPage() {
         nationality_code, primary_type, secondary_type, team_id, acquired_at, popularity, reputation,
         team:team_id(id, name, is_ai, is_bank, division),
         pending_team:pending_team_id(id, name)`).eq("id", id).single(),
-      // ALLE rækker (pagineret) til Resultater-fanen — både PCS-tabellen og
-      // totalerne bygger på det fulde sæt (en .limit(20) ville trunkere begge).
-      // #2000: den gamle separate "seneste 20"-visningsquery er fjernet.
-      fetchAllRiderSeasonRows(id),
       safe(supabase.from("rider_physiology_profiles").select("*").eq("rider_id", id).maybeSingle()),
       // #1162: eksplicit kolonneliste — hidden_potential er server-skjult (eksakt
       // invertérbar til potentiale: ungdom + seeded støj kan begge beregnes i
@@ -1486,13 +1495,14 @@ export default function RiderStatsPage() {
           abilityProgress: progressRes.data?.ability_progress || null,
         }
       : riderRes.data);
-    setSeasonRows(seasonRowsAll.rows);
-    setSeasonRowsFailed(seasonRowsAll.failed);
     setReputationEvents(reputationOn ? (reputationEventsRes.data || []) : []);
-
-    await Promise.all([loadActiveAuctionFull(riderRes.data), loadTransferListing()]);
-    if (riderFetchIdRef.current !== fetchId) return;
     setLoading(false);
+
+    if (riderRes.data) {
+      void Promise.all([loadActiveAuctionFull(riderRes.data), loadTransferListing()])
+        .then(() => setMarketLoading(false))
+        .catch((error) => console.error("rider market read failed:", error));
+    }
 
     // Log besøg for ALLE ryttere (#963) — ikke kun hold-ejede. Endpointet
     // håndterer både besøgs-logging og det (team-gated) transferrygte internt.
@@ -1570,7 +1580,11 @@ export default function RiderStatsPage() {
       tabFetchedRef.current.keys.add(key);
       load();
     };
-    if (tab === "history") {
+    if (tab === "results" || tab === "palmares") {
+      once("season-results", async () => {
+        setSeasonResults(await fetchAllRiderSeasonRows(id));
+      });
+    } else if (tab === "history") {
       once("history", loadHistory);
     } else if (tab === "development") {
       once("development", loadDevelopmentHistory);
@@ -2048,7 +2062,7 @@ export default function RiderStatsPage() {
             salaryText={salaryText}
             isAiTeam={isAiRider}
             pendingTeam={pendingTeam}
-            banner={statusBanner}
+            banner={marketLoading ? null : statusBanner}
             scouting={scouting}
             onWatchlist={onWatchlist}
             onToggleWatchlist={toggleWatchlist}
@@ -2060,6 +2074,7 @@ export default function RiderStatsPage() {
                  rækken (hver komponents wrapper skifter selv til w-full). Fuld-
                  bredde-elementer (notiser, fejl, bid-panel) er w-full-børn. */
               <PanelSlotContext.Provider value={panelSlot}>
+              <ReservedBody name="rider-market" loading={marketLoading} rows={3} rowHeight={44}>
               <div className="flex flex-wrap items-start gap-2">
                 {isPendingTransfer && (
                   <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-cz border border-cz-border">
@@ -2151,6 +2166,7 @@ export default function RiderStatsPage() {
               {canDirectOffer && <DirectOfferButton rider={rider} seasonYear={seasonYear} />}
               {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
             </div>
+              </ReservedBody>
               </PanelSlotContext.Provider>
           }
         />
@@ -2218,12 +2234,13 @@ export default function RiderStatsPage() {
       {/* #2000 sidste faner — Resultater (PCS-stil: totaler + udfoldelige etapeløb),
           Interesse (ægte interesse-signaler) og Historik (kompakt handels-tabel).
           key={id} nulstiller fanens lokale state (filter/udfoldning) ved rytter-skift. */}
-      {tab === "results" && <RiderResultsTab key={rider.id} seasonRows={seasonRows} loadFailed={seasonRowsFailed} />}
-
-      {/* #1997 S1 — Palmarès: trofæskab + karrieretotaler + sæson-æresliste
-          m. holdet ved hvert resultat (#1993-snapshot). Samme seasonRows som
-          Resultater-fanen, ingen dublet-fetch. */}
-      {tab === "palmares" && <RiderPalmaresTab key={rider.id} riderId={rider.id} seasonRows={seasonRows} loadFailed={seasonRowsFailed} />}
+      {(tab === "results" || tab === "palmares") && (
+        <ReservedBody name="rider-season-results" loading={seasonResults == null} rows={4} rowHeight={44}>
+          {tab === "results"
+            ? <RiderResultsTab key={rider.id} seasonRows={seasonResults?.rows} loadFailed={seasonResults?.failed} />
+            : <RiderPalmaresTab key={rider.id} riderId={rider.id} seasonRows={seasonResults?.rows} loadFailed={seasonResults?.failed} />}
+        </ReservedBody>
+      )}
 
       {tab === "interest" && (
         <RiderInterestTab
