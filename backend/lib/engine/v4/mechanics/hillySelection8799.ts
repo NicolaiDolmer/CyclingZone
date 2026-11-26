@@ -15,6 +15,6 @@ import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import type { StageInput } from "../types.ts";
 
 /** Kontakten: kun s5_profiles_v3 (og senere) OG et eksplicit true paa StageInput. */
-export function hillySelection8799On(input: Pick<StageInput, "rules_revision" | "hilly_selection_8799">): boolean {
+export function hillySelection8799On(input: { rules_revision?: unknown; hilly_selection_8799?: StageInput["hilly_selection_8799"] }): boolean {
   return input.hilly_selection_8799 === true && isS5ProfilesV3OrLater(input.rules_revision);
 }
