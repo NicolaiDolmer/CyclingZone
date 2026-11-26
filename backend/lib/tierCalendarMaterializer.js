@@ -442,7 +442,7 @@ function buildSquadTierPlan({
   usedRaceIds, usedRaceNamesRunning, miniEditionAnchors = null,
 }) {
   const packed = miniEditionAnchors
-    ? packMiniEditionCalendar({ squad, anchors: miniEditionAnchors, miniCatalog: catalog, from, days: realDays })
+    ? packMiniEditionCalendar({ squad, anchors: miniEditionAnchors, miniCatalog: catalog, from, days: realDays, seasonLastRaceDay: lastRaceDay })
     : packSquadCalendar({
       squad, catalog, days: realDays, racesPerWeek: squadCfg.racesPerWeek, maxRacingDayShare: squadCfg.maxRacingDayShare,
       raceDayTarget, seed, usedNames: usedRaceNamesBeforeTier, seasonFractionOf,

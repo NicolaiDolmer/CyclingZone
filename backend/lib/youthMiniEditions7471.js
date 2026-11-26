@@ -363,9 +363,10 @@ export function selectMiniEditions({ squad, anchors = [], miniCatalog = [] }) {
  * en senior-tid eller en anden ungdomsetape paa datoen.
  *
  * @param {{ squad: "u23"|"junior", anchors: SeniorAnchor[], miniCatalog: object[], from: Date,
- *   days: number, latest?: string }} args  from = materializerens anker (real_day 0 = dagen efter).
+ *   days: number, latest?: string, seasonLastRaceDay?: string|null }} args  from = materializerens anker
+ *   (real_day 0 = dagen efter); seasonLastRaceDay = saesonens sidste loebsdag (dansk dato).
  */
-export function packMiniEditionCalendar({ squad, anchors = [], miniCatalog = [], from, days, latest = MINI_LATEST_SLOT }) {
+export function packMiniEditionCalendar({ squad, anchors = [], miniCatalog = [], from, days, latest = MINI_LATEST_SLOT, seasonLastRaceDay = null }) {
   const rules = rulesFor(squad);
   const firstDate = calendarDayZero(from);
   const selection = selectMiniEditions({ squad, anchors, miniCatalog });
@@ -380,8 +381,10 @@ export function packMiniEditionCalendar({ squad, anchors = [], miniCatalog = [],
     const stagesPlaced = c.picks.map((s, i) => {
       const localDate = cphDate(s.scheduled_at);
       const taken = new Set([...(seniorTimes.get(localDate) ?? []), ...(youthTimes.get(localDate) ?? [])]);
-      let at = toMin(cphTime(s.scheduled_at)) + MINI_SLOT_OFFSET_MINUTES[squad];
-      while (taken.has(at)) at += SLOT_STEP;
+      // Saesonens sidste loebsdag slutter kl. 15 (#5592): dér ligger ungdommen lige FOER seniorens etape.
+      const dir = localDate === seasonLastRaceDay ? -1 : 1;
+      let at = toMin(cphTime(s.scheduled_at)) + dir * MINI_SLOT_OFFSET_MINUTES[squad];
+      while (taken.has(at)) at += dir * SLOT_STEP;
       if (at > toMin(latest)) violations.push(`${squad}: ${c.row.name} stage ${i + 1} would start at ${toHHMM(at)}, after ${latest} (#7471)`);
       if (!youthTimes.has(localDate)) youthTimes.set(localDate, new Set());
       youthTimes.get(localDate).add(at);
