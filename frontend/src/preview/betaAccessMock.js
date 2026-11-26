@@ -121,10 +121,11 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "development_xp_model", // #6110 Hjaelp XP-tvillingerne (binaert, off)
   "training_page_r5", // #7947 I dag-fanen R5 (binaert, off; ?trainingR5=1 viser den)
   "training_effort_levels", // #8570 Hjaelp Let/Mellem/Haard (binaert, off)
+  "training_w1_v2", // #7947 W1 v2 Program-ugen + Grupper (binaert, off; ?trainingW1=1 viser den)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "jersey_hunt_7855", "development_xp_model", "training_page_r5", "training_effort_levels"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "jersey_hunt_7855", "development_xp_model", "training_page_r5", "training_effort_levels", "training_w1_v2"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage
@@ -207,6 +208,20 @@ export function previewTrainingR5Enabled() {
 }
 previewTrainingR5Enabled();
 
+// #7947 W1 v2: Program-ugen + Grupper-fanen er OFF på preview (som i prod); ?trainingW1=1 viser den
+// (sammen med ?trainingR5=1), ?trainingW1=0 slukker. Huskes i localStorage.
+export function previewTrainingW1Enabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("trainingW1");
+    if (param === "1" || param === "on") localStorage.setItem("cz_mock_training_w1", "1");
+    if (param === "0" || param === "off") localStorage.setItem("cz_mock_training_w1", "0");
+    return localStorage.getItem("cz_mock_training_w1") === "1";
+  } catch {
+    return false;
+  }
+}
+previewTrainingW1Enabled();
+
 // #7778: visningsvalg på brugeren (GET/PUT /api/me/ui-prefs), i hukommelsen.
 let uiPrefs = {};
 
@@ -219,6 +234,7 @@ function playerFlags() {
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
     if (key === "training_train_now_bonus") return [key, previewTrainNowBonusEnabled()];
     if (key === "training_page_r5") return [key, previewTrainingR5Enabled()];
+    if (key === "training_w1_v2") return [key, previewTrainingW1Enabled()];
     // #8540: ?xp=1 taender XP-kontakten paa preview, saa profilens Udvikling-fane kan ses med XP-linjer.
     if (key === "development_xp_model" && previewXpLinesActive()) return [key, true];
     if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];
