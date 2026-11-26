@@ -117,6 +117,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "academy_page_v2_8081", // #8081 akademisiden udgave A (off)
   "training_train_now_bonus", // #7741 bonusmaerket og teksterne (off paa preview; ?trainNowBonus=on viser dem)
   "patch_notes_v2_8049", // #8049 (off; ?patchNotesV2=on paa preview)
+  "attack_story_8045", // #8045 (off; ?attackStory=on paa preview)
   "jersey_hunt_7855", // #7855 Hjaelp og patch-noten (binaert, off)
   "development_xp_model", // #6110 Hjaelp XP-tvillingerne (binaert, off)
   "training_page_r5", // #7947 I dag-fanen R5 (binaert, off; ?trainingR5=1 viser den)
@@ -182,6 +183,19 @@ function previewPatchNotesV2Enabled() {
 }
 previewPatchNotesV2Enabled();
 
+// #8045: angrebets forløb i løbsfilmen er OFF på preview (som i prod); ?attackStory=on viser det.
+function previewAttackStory8045Enabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("attackStory");
+    if (param === "on") localStorage.setItem("cz_mock_attack_story_8045", "1");
+    if (param === "off") localStorage.setItem("cz_mock_attack_story_8045", "0");
+    return localStorage.getItem("cz_mock_attack_story_8045") === "1";
+  } catch {
+    return false;
+  }
+}
+previewAttackStory8045Enabled();
+
 // #7741: Træn nu-bonussen er OFF på preview (som i prod), men ?trainNowBonus=on viser mærket og teksterne.
 export function previewTrainNowBonusEnabled() {
   try {
@@ -214,6 +228,7 @@ function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
     if (key === "race_page_v6") return [key, previewRacePageV6Enabled()];
     if (key === "patch_notes_v2_8049") return [key, previewPatchNotesV2Enabled()];
+    if (key === "attack_story_8045") return [key, previewAttackStory8045Enabled()];
     // #8298: holdplanerne (Today's plan) foelger ?stagePlan=1 paa preview; i prod er kontakten taendt.
     if (key === "tactics_ready_7864" && stagePlanPreviewActive()) return [key, true];
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];

@@ -186,9 +186,12 @@ function nearestBehind(times, t) {
   return best;
 }
 
+// Under dette antal er en gruppe ikke "feltet" (samme regel som filmens grupper, #7704).
+const PELOTON_MIN_SIZE = 10;
+
 function labelOf(road, groupId) {
   if (typeof groupId === "string" && groupId.startsWith("breakaway-")) return "breakaway";
-  if (road.largest() === groupId) return "peloton";
+  if (road.largest() === groupId && road.size(groupId) >= PELOTON_MIN_SIZE) return "peloton";
   return "group";
 }
 

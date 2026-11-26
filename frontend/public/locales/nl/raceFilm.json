@@ -22,6 +22,107 @@
     "cracked": "{rider} kraakt op de klim en moet lossen.",
     "crackedNamed": "{rider} kraakt op {climb} en moet lossen."
   },
+  "attackStory": {
+    "aRider": "Een renner",
+    "lastClimb": "de laatste klim",
+    "names": {
+      "list": "{list} en {last}",
+      "more": "{list} en {count} anderen"
+    },
+    "gap": {
+      "second": "1 seconde",
+      "seconds": "{count} seconden",
+      "minute": "1 minuut",
+      "minutes": "{count} minuten",
+      "join": "{minutes} en {seconds}"
+    },
+    "group": {
+      "peloton": {
+        "one": "het peloton",
+        "many": "het peloton"
+      },
+      "breakaway": {
+        "one": "de vlucht",
+        "many": "de vlucht"
+      },
+      "group": {
+        "one": "zijn groep",
+        "many": "hun groep"
+      },
+      "chasers": {
+        "one": "de eerste achtervolgers",
+        "many": "de eerste achtervolgers"
+      }
+    },
+    "started": {
+      "one": "{rider} valt aan op {climb}!",
+      "many": "{riders} vallen aan op {climb}!"
+    },
+    "away": {
+      "one": "{rider} is weg uit {group}.",
+      "many": "{riders} zijn weg uit {group}."
+    },
+    "checkpoint": {
+      "first": {
+        "one": "{rider} heeft {gap} voorsprong op {group}.",
+        "many": "{riders} hebben {gap} voorsprong op {group}."
+      },
+      "growing": {
+        "one": "{rider} heeft nu {gap} voorsprong op {group} en wint nog steeds tijd.",
+        "many": "{riders} hebben nu {gap} voorsprong op {group} en winnen nog steeds tijd."
+      },
+      "shrinking": {
+        "one": "{rider} heeft nog maar {gap} over op {group}, dat dichterbij komt.",
+        "many": "{riders} hebben nog maar {gap} over op {group}, dat dichterbij komt."
+      },
+      "steady": {
+        "one": "{rider} heeft nog steeds {gap} voorsprong op {group}.",
+        "many": "{riders} hebben nog steeds {gap} voorsprong op {group}."
+      }
+    },
+    "bridged": {
+      "one": "{rider} is overgestoken naar {group}.",
+      "many": "{riders} zijn overgestoken naar {group}."
+    },
+    "caught": {
+      "one": "Het is voorbij voor {rider}. Hij is weer ingelopen door {group}.",
+      "many": "Het is voorbij voor {riders}. Ze zijn weer ingelopen door {group}."
+    },
+    "dropped": {
+      "cracked": {
+        "one": "{rider} betaalt voor de aanval. Hij is leeg en {group} rijdt bij hem weg.",
+        "many": "{riders} betalen voor de aanval. Ze zijn leeg en {group} rijdt bij hen weg."
+      },
+      "out_of_strength": {
+        "one": "{rider} heeft niets meer over en verliest het contact met {group}.",
+        "many": "{riders} hebben niets meer over en verliezen het contact met {group}."
+      },
+      "outpaced": {
+        "one": "{rider} kan het tempo van {group} niet volgen.",
+        "many": "{riders} kunnen het tempo van {group} niet volgen."
+      }
+    },
+    "held": {
+      "finish": {
+        "one": "{rider} houdt stand tot de streep, {gap} voor {group}!",
+        "many": "{riders} houden stand tot de streep, {gap} voor {group}!"
+      },
+      "top": {
+        "one": "{rider} houdt stand tot de top, {gap} voor {group}!",
+        "many": "{riders} houden stand tot de top, {gap} voor {group}!"
+      }
+    },
+    "level": {
+      "finish": {
+        "one": "{rider} komt niet weg en bereikt de finish met {group}.",
+        "many": "{riders} komen niet weg en bereiken de finish met {group}."
+      },
+      "top": {
+        "one": "{rider} komt niet weg en bereikt de top met {group}.",
+        "many": "{riders} komen niet weg en bereiken de top met {group}."
+      }
+    }
+  },
   "none": "Deze etappe heeft geen koersfilm. De volledige uitslag staat bij Uitslagen.",
   "error": "De koersfilm kon niet worden geladen. De volledige uitslag staat bij Uitslagen."
 }

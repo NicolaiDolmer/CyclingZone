@@ -22,6 +22,107 @@
     "cracked": "{rider} cracks on the climb and is dropped.",
     "crackedNamed": "{rider} cracks on {climb} and is dropped."
   },
+  "attackStory": {
+    "aRider": "A rider",
+    "lastClimb": "the final climb",
+    "names": {
+      "list": "{list} and {last}",
+      "more": "{list} and {count} others"
+    },
+    "gap": {
+      "second": "1 second",
+      "seconds": "{count} seconds",
+      "minute": "1 minute",
+      "minutes": "{count} minutes",
+      "join": "{minutes} {seconds}"
+    },
+    "group": {
+      "peloton": {
+        "one": "the peloton",
+        "many": "the peloton"
+      },
+      "breakaway": {
+        "one": "the breakaway",
+        "many": "the breakaway"
+      },
+      "group": {
+        "one": "his group",
+        "many": "their group"
+      },
+      "chasers": {
+        "one": "the nearest chasers",
+        "many": "the nearest chasers"
+      }
+    },
+    "started": {
+      "one": "{rider} attacks on {climb}!",
+      "many": "{riders} attack on {climb}!"
+    },
+    "away": {
+      "one": "{rider} has gone clear of {group}.",
+      "many": "{riders} have gone clear of {group}."
+    },
+    "checkpoint": {
+      "first": {
+        "one": "{rider} has {gap} on {group}.",
+        "many": "{riders} have {gap} on {group}."
+      },
+      "growing": {
+        "one": "{rider} is now {gap} clear of {group} and still gaining time.",
+        "many": "{riders} are now {gap} clear of {group} and still gaining time."
+      },
+      "shrinking": {
+        "one": "{rider} has only {gap} left on {group}, and the gap is coming down.",
+        "many": "{riders} have only {gap} left on {group}, and the gap is coming down."
+      },
+      "steady": {
+        "one": "{rider} is still {gap} clear of {group}.",
+        "many": "{riders} are still {gap} clear of {group}."
+      }
+    },
+    "bridged": {
+      "one": "{rider} has bridged across to {group}.",
+      "many": "{riders} have bridged across to {group}."
+    },
+    "caught": {
+      "one": "It's over for {rider}. He has been caught by {group}.",
+      "many": "It's over for {riders}. They have been caught by {group}."
+    },
+    "dropped": {
+      "cracked": {
+        "one": "{rider} pays for the attack. He is empty, and {group} rides away from him.",
+        "many": "{riders} pay for the attack. They are empty, and {group} rides away from them."
+      },
+      "out_of_strength": {
+        "one": "{rider} has nothing left and loses contact with {group}.",
+        "many": "{riders} have nothing left and lose contact with {group}."
+      },
+      "outpaced": {
+        "one": "{rider} cannot follow the pace of {group}.",
+        "many": "{riders} cannot follow the pace of {group}."
+      }
+    },
+    "held": {
+      "finish": {
+        "one": "{rider} holds on all the way to the line, {gap} ahead of {group}!",
+        "many": "{riders} hold on all the way to the line, {gap} ahead of {group}!"
+      },
+      "top": {
+        "one": "{rider} holds on all the way to the top, {gap} ahead of {group}!",
+        "many": "{riders} hold on all the way to the top, {gap} ahead of {group}!"
+      }
+    },
+    "level": {
+      "finish": {
+        "one": "{rider} cannot get away and reaches the line with {group}.",
+        "many": "{riders} cannot get away and reach the line with {group}."
+      },
+      "top": {
+        "one": "{rider} cannot get away and reaches the top with {group}.",
+        "many": "{riders} cannot get away and reach the top with {group}."
+      }
+    }
+  },
   "none": "This stage has no race film. The full result is in Results.",
   "error": "The race film could not be loaded. The full result is in Results."
 }

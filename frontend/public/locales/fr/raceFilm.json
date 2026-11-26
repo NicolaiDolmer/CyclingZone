@@ -22,6 +22,107 @@
     "cracked": "{rider} craque dans l'ascension et est lâché.",
     "crackedNamed": "{rider} craque dans {climb} et est lâché."
   },
+  "attackStory": {
+    "aRider": "Un coureur",
+    "lastClimb": "la dernière montée",
+    "names": {
+      "list": "{list} et {last}",
+      "more": "{list} et {count} autres"
+    },
+    "gap": {
+      "second": "1 seconde",
+      "seconds": "{count} secondes",
+      "minute": "1 minute",
+      "minutes": "{count} minutes",
+      "join": "{minutes} et {seconds}"
+    },
+    "group": {
+      "peloton": {
+        "one": "le peloton",
+        "many": "le peloton"
+      },
+      "breakaway": {
+        "one": "l'échappée",
+        "many": "l'échappée"
+      },
+      "group": {
+        "one": "son groupe",
+        "many": "leur groupe"
+      },
+      "chasers": {
+        "one": "les premiers poursuivants",
+        "many": "les premiers poursuivants"
+      }
+    },
+    "started": {
+      "one": "{rider} attaque dans {climb} !",
+      "many": "{riders} attaquent dans {climb} !"
+    },
+    "away": {
+      "one": "{rider} a lâché {group}.",
+      "many": "{riders} ont lâché {group}."
+    },
+    "checkpoint": {
+      "first": {
+        "one": "{rider} compte {gap} d'avance sur {group}.",
+        "many": "{riders} comptent {gap} d'avance sur {group}."
+      },
+      "growing": {
+        "one": "{rider} compte maintenant {gap} d'avance sur {group} et continue de creuser l'écart.",
+        "many": "{riders} comptent maintenant {gap} d'avance sur {group} et continuent de creuser l'écart."
+      },
+      "shrinking": {
+        "one": "{rider} n'a plus que {gap} d'avance sur {group}, qui revient.",
+        "many": "{riders} n'ont plus que {gap} d'avance sur {group}, qui revient."
+      },
+      "steady": {
+        "one": "{rider} a toujours {gap} d'avance sur {group}.",
+        "many": "{riders} ont toujours {gap} d'avance sur {group}."
+      }
+    },
+    "bridged": {
+      "one": "{rider} a fait la jonction avec {group}.",
+      "many": "{riders} ont fait la jonction avec {group}."
+    },
+    "caught": {
+      "one": "C'est fini pour {rider}. Il est repris par {group}.",
+      "many": "C'est fini pour {riders}. Ils sont repris par {group}."
+    },
+    "dropped": {
+      "cracked": {
+        "one": "{rider} paie son attaque. Il est vidé et {group} le distance.",
+        "many": "{riders} paient leur attaque. Ils sont vidés et {group} les distance."
+      },
+      "out_of_strength": {
+        "one": "{rider} n'a plus rien et perd le contact avec {group}.",
+        "many": "{riders} n'ont plus rien et perdent le contact avec {group}."
+      },
+      "outpaced": {
+        "one": "{rider} ne peut pas suivre le rythme de {group}.",
+        "many": "{riders} ne peuvent pas suivre le rythme de {group}."
+      }
+    },
+    "held": {
+      "finish": {
+        "one": "{rider} tient jusqu'à la ligne, avec {gap} d'avance sur {group} !",
+        "many": "{riders} tiennent jusqu'à la ligne, avec {gap} d'avance sur {group} !"
+      },
+      "top": {
+        "one": "{rider} tient jusqu'au sommet, avec {gap} d'avance sur {group} !",
+        "many": "{riders} tiennent jusqu'au sommet, avec {gap} d'avance sur {group} !"
+      }
+    },
+    "level": {
+      "finish": {
+        "one": "{rider} ne parvient pas à sortir et arrive avec {group}.",
+        "many": "{riders} ne parviennent pas à sortir et arrivent avec {group}."
+      },
+      "top": {
+        "one": "{rider} ne parvient pas à sortir et passe le sommet avec {group}.",
+        "many": "{riders} ne parviennent pas à sortir et passent le sommet avec {group}."
+      }
+    }
+  },
   "none": "Cette étape n'a pas de film de la course. Le résultat complet est dans Résultats.",
   "error": "Le film de la course n'a pas pu être chargé. Le résultat complet est dans Résultats."
 }

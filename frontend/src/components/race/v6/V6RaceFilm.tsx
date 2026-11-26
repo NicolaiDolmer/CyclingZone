@@ -31,6 +31,7 @@ import V6StoryExtras, { type V6FilmPosition } from "./V6StoryExtras.tsx"; // #83
 import { useSpoilerStory } from "../../spoiler/spoilerStoryContext.ts"; // #7859
 import { SpoilerFinaleAhead, SpoilerStoryResultsNote } from "../../spoiler/SpoilerShield.tsx"; // #7859
 import { filmAtFinish } from "../../spoiler/spoilerShieldModel.ts"; // #7859
+import AttackStoryReportLine, { attackStoryFilmLines, isAttackStoryLine, reportLinesWithAttackStory, useAttackStory8045Enabled } from "../AttackStory8045.tsx"; // #8045
 import {
   isClimbAttackLine, v6ChapterAt, v6ClimbAttackCopyKey, v6ClimbAttackLines, v6CurrentLine, v6FilmChapters, v6FilmProfileGeometry, v6MoreAhead,
   v6NextChapter, v6PlayStep, v6ReportLines, v6VisibleLines, type V6Chapter, type V6ClimbAttackLine,
@@ -159,7 +160,13 @@ function FilmBody({ story, profile, cast, narrative, timelineVersion, ownRiders,
     timelineVersion, climbs: profile?.climbs ?? null, mine: cast.mine, ownRiderIds: ownRiders,
     effortByRider: (narrative.effortByRider ?? null) as NonNullable<Parameters<typeof v6ClimbAttackLines>[1]>["effortByRider"], profileType: profile?.profile_type ?? null,
   })), [timeTrial, narrative, timelineVersion, profile, cast, ownRiders]);
-  const lines = useMemo(() => v6ReportLines(storyLines, attackLines), [storyLines, attackLines]);
+  // #8045 (kontakt attack_story_8045): angrebets forløb fortalt på de steder, det skete. Slukket, eller
+  // uden noget at fortælle (gamle etaper), står dagens angrebslinjer.
+  const attackStoryOn = useAttackStory8045Enabled();
+  const attackStory = useMemo(() => (timeTrial || !attackStoryOn ? [] : attackStoryFilmLines(narrative.events, {
+    timelineVersion, climbs: profile?.climbs ?? null, distanceKm: D || null, mine: cast.mine,
+  })), [timeTrial, attackStoryOn, narrative, timelineVersion, profile, D, cast]);
+  const lines = useMemo(() => (attackStory.length ? reportLinesWithAttackStory(storyLines, attackStory) : v6ReportLines(storyLines, attackLines)), [storyLines, attackStory, attackLines]);
   const chapters = useMemo(() => v6FilmChapters({ distanceKm: D, climbs, sprints: profile?.sprints ?? [], lines: storyLines }), [D, climbs, profile, storyLines]);
   const frames = useMemo(() => wholeStageFrames(story), [story]);
 
@@ -312,7 +319,9 @@ function FilmBody({ story, profile, cast, narrative, timelineVersion, ownRiders,
             <p className="m-0 border-t border-cz-border py-3 text-sm text-cz-2">{t("raceFilm:report.empty")}</p>
           ) : (
             <ol className="m-0 list-none p-0">
-              {visible.map((l) => (isClimbAttackLine(l)
+              {visible.map((l) => (isAttackStoryLine(l)
+                ? <AttackStoryReportLine key={l.id} line={l} current={current?.id === l.id} cast={cast} kmLabel={t("stagePageV2.story.kmAt", { km: text.km(l.km) })} onJump={() => jump(l.km)} />
+                : isClimbAttackLine(l)
                 ? <ClimbAttackReportLine key={l.id} line={l} current={current?.id === l.id} cast={cast} text={text} onJump={() => jump(l.km)} />
                 : <ReportLine key={l.id} line={l} current={current?.id === l.id} text={text} onJump={() => jump(lineReplayKm(l, D || null))} />))}
             </ol>
