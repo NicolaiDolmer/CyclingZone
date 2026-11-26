@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.519",
+  "date": "2026-11-26",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "interface",
+      "en": {
+        "title": "Full words in training labels",
+        "body": "Training spells out times in the Danish training status."
+      },
+      "da": {
+        "title": "Fulde ord på træningssiden",
+        "body": "Træning skriver klokkeslæt i den danske træningsstatus."
+      },
+      "refs": [
+        8651
+      ]
+    }
+  ]
+},
+{
   "version": "7.518",
   "date": "2026-11-26",
   "changes": [
