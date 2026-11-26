@@ -692,7 +692,9 @@ export const VALLEY_SELECTION_7645_TUNING = freeze({
   // Jagtens fart: sekunder pr. km pr. foerende hjaelper, med et loft pr. km.
   chaseSecondsPerKmPerRider: 1.5,
   chaseMaxSecondsPerKm: 8,
-  // Forsvaret foran: sekunder pr. km pr. hjaelper, med et loft pr. km.
+  // Forsvaret foran: et hold forsvarer, naar dets bedste mand er blandt forgruppens
+  // forreste saa mange kandidater. Sekunder pr. km pr. hjaelper, med et loft pr. km.
+  holdTopRankInFront: 3,
   holdSecondsPerKmPerRider: 1,
   holdMaxSecondsPerKm: 5,
   // Hvor langt (km) en hjaelper kan foere jagt eller forsvar paa en etape.
@@ -852,34 +854,50 @@ export function valleySelectionTempo7645<T extends { dtSeconds: number; frontRid
         })
         .sort((a, b) => compareIds(a, b));
       const chasers = chaseTeams.flatMap((team) => workersIn(group, team));
-      if (chasers.length > 0) {
-        const chaseTeamIds = chaseTeams.filter((team) => chasers.some((id) => input.entrants[id]?.team_id === team));
-        let perKm = Math.min(v.chaseMaxSecondsPerKm, v.chaseSecondsPerKmPerRider * chasers.length);
-        let held = 0;
-        let holders: string[] = [];
-        if (input.variant === "team_chase_hold") {
-          // Forgruppens hold med en kandidat, som en kandidat i den jagende gruppe ville slaa.
-          const bestBehind = Math.max(...chaseTeamIds.map((team) => abilityOf(bestByTeam.get(team) as string)));
-          if (frontHolders === null) {
-            const frontTeams = [...new Set(front.rider_ids.map((id) => input.entrants[id]?.team_id).filter((x): x is string => !!x))]
-              .filter((team) => {
-                const best = bestByTeam.get(team);
-                return best !== undefined && topSet.has(best) && groupOf.get(best) === front.id && abilityOf(best) < bestBehind;
-              })
-              .sort((a, b) => compareIds(a, b));
-            frontHolders = frontTeams.flatMap((team) => workersIn(front, team));
-          }
-          holders = frontHolders;
-          held = Math.min(perKm, Math.min(v.holdMaxSecondsPerKm, v.holdSecondsPerKmPerRider * holders.length));
-          perKm -= held;
+      const chaseTeamIds = chaseTeams.filter((team) => chasers.some((id) => input.entrants[id]?.team_id === team));
+      // Forsvaret (kun "team_chase_hold"): forgruppens hold, hvis bedste mand i forgruppen
+      // er blandt dens forreste kandidater, men ville blive slaaet af en rytter i gruppen bagved.
+      let holders: string[] = [];
+      if (input.variant === "team_chase_hold") {
+        const bestBehind = Math.max(0, ...group.rider_ids.filter((id) => input.riders[id]?.status === "racing").map(abilityOf));
+        const frontRank = [...front.rider_ids].filter((id) => input.riders[id]?.status === "racing" && input.entrants[id])
+          .sort((a, b) => abilityOf(b) - abilityOf(a) || compareIds(a, b));
+        const frontTop = new Set(frontRank.slice(0, Math.max(0, v.holdTopRankInFront)));
+        const seen = new Set<string>();
+        const holdTeams: string[] = [];
+        for (const id of frontRank) {
+          const team = input.entrants[id]?.team_id;
+          if (!team || seen.has(team)) continue;
+          seen.add(team);
+          if (frontTop.has(id) && abilityOf(id) < bestBehind) holdTeams.push(team);
         }
-        const closed = Math.min(gapToAhead, perKm * lengthKm);
-        bookWork(chasers);
+        holders = holdTeams.sort((a, b) => compareIds(a, b)).flatMap((team) => workersIn(front, team));
+        if (holders.length > 0) frontHolders = [...new Set([...(frontHolders ?? []), ...holders])];
+      }
+      const chasePerKm = Math.min(v.chaseMaxSecondsPerKm, v.chaseSecondsPerKmPerRider * chasers.length);
+      const holdPerKm = Math.min(v.holdMaxSecondsPerKm, v.holdSecondsPerKmPerRider * holders.length);
+      const netPerKm = chasePerKm - holdPerKm;
+      let targetDt: number | null = null;
+      if (chasers.length > 0 && netPerKm > 0) {
+        // Jagten vinder paa gruppen foran, aldrig mere end hullet.
+        targetDt = reference.dtSeconds - Math.min(gapToAhead, netPerKm * lengthKm);
+      } else if (input.variant === "team_chase_hold" && chasers.length === 0 && holders.length === 0) {
+        // Ingen arbejder hverken foran eller bagved: hullet vokser ikke (ingen grund til at koere fra).
+        targetDt = reference.dtSeconds;
+      }
+      // Ellers (forgruppen holder dem ude, eller ingen jager i "team_chase"): gruppen koerer sit eget tempo.
+      if (chasers.length > 0) bookWork(chasers);
+      if (targetDt !== null && own.dtSeconds > targetDt) {
         out ??= new Map(tempoByGroup);
-        // Hjaelperne foerer: de saettes i gruppens front, saa tick'et tager arbejdet af dem.
-        const chasedDt = Math.min(own.dtSeconds, Math.max(reference.dtSeconds - gapToAhead, own.dtSeconds - closed));
-        out.set(group.id, { ...own, dtSeconds: chasedDt, ...(own.frontRiderIds ? { frontRiderIds: new Set(chasers) } : {}) });
-        chases.push({ groupId: group.id, teamIds: chaseTeamIds, workerIds: [...chasers].sort(compareIds), closedSeconds: round2(Math.max(0, own.dtSeconds - chasedDt)), heldSeconds: round2(held * lengthKm) });
+        out.set(group.id, { ...own, dtSeconds: targetDt, ...(own.frontRiderIds && chasers.length > 0 ? { frontRiderIds: new Set(chasers) } : {}) });
+      } else if (chasers.length > 0 && own.frontRiderIds) {
+        // Hjaelperne foerer ogsaa naar jagten ikke vinder: de saettes i gruppens front, saa tick'et tager arbejdet af dem.
+        out ??= new Map(tempoByGroup);
+        out.set(group.id, { ...own, frontRiderIds: new Set(chasers) });
+      }
+      if (chasers.length > 0 || holders.length > 0) {
+        const after = (out ?? tempoByGroup).get(group.id)?.dtSeconds ?? own.dtSeconds;
+        chases.push({ groupId: group.id, teamIds: chaseTeamIds, workerIds: [...chasers].sort(compareIds), closedSeconds: round2(Math.max(0, own.dtSeconds - after)), heldSeconds: round2(Math.max(0, holdPerKm * lengthKm)) });
       }
     }
     reference = { gap: group.gap_seconds, dtSeconds: (out ?? tempoByGroup).get(group.id)?.dtSeconds ?? own.dtSeconds, size: group.rider_ids.length };
