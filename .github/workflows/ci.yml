@@ -5,8 +5,12 @@ on:
     branches:
       - main
   pull_request:
-    # ready_for_review: kladder springer de tunge tests over (se backend-changes);
-    # naar PR'en markeres klar, koerer hele suiten paa samme HEAD (ejer 7/11).
+    # ready_for_review: paa en kladde springes HVERT job over paa job-niveau
+    # (`!github.event.pull_request.draft`, ejer 7/11 + #8802). Et oversprunget
+    # required job taeller som groent hos GitHub, men en kladde kan ikke merges,
+    # og naar PR'en markeres klar, koerer hele suiten paa samme HEAD.
+    # scripts/lib/pr-checks.mjs regner kladde-koersler foer ready_for_review som
+    # forældede, saa auto-toget ikke merger paa kladdens oversprungne checks.
     types: [opened, synchronize, reopened, ready_for_review]
   # Merge queue (4/8): required checks skal rapportere på merge-group-SHA'en,
   # ellers timer køen ud. Alle jobs her er fil-/test-baserede og kører uændret.
@@ -106,7 +110,6 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           NUMBERING_ONLY: ${{ needs.patch-notes-mode.outputs.numbering_only }}
-          PR_DRAFT: ${{ github.event.pull_request.draft }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -123,12 +126,7 @@ jobs:
             record "true" "ikke en PR, koerer altid fuldt"
             exit 0
           fi
-          # Ejer 7/11: kladde-PR'er (boelgens mellemtrin) koerer ikke backend-shards.
-          # Kladder kan ikke merges, og ready_for_review koerer hele suiten bagefter.
-          if [[ "$PR_DRAFT" == "true" ]]; then
-            record "false" "kladde-PR, tunge tests venter til ready_for_review"
-            exit 0
-          fi
+          # Kladder naar aldrig hertil: jobbet springes over paa job-niveau (#8802).
           # previous_filename med: en omdoebt eller slettet testfil kan goere
           # backend-testene roede (promisedTestFilesExist).
           FILES=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate \
@@ -150,7 +148,7 @@ jobs:
   backend-test-shard:
     name: backend-test-shard ${{ matrix.shard }}/3
     needs: backend-changes
-    if: ${{ !cancelled() && needs.backend-changes.result == 'success' && needs.backend-changes.outputs.backend == 'true' }}
+    if: ${{ !cancelled() && needs.backend-changes.result == 'success' && needs.backend-changes.outputs.backend == 'true' && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -235,7 +233,8 @@ jobs:
     needs: [backend-changes, backend-test-shard]
     # always(): jobbet skal rapportere ogsaa naar delene er sprunget over eller
     # fejlet. Et oversprunget paakraevet job taeller som groent hos GitHub, saa
-    # samle-jobbet maa aldrig selv blive sprunget over.
+    # samle-jobbet maa aldrig selv blive sprunget over - undtagen paa en kladde
+    # (#8802), der ikke kan merges og faar en fuld koersel ved ready_for_review.
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     permissions:
@@ -1295,6 +1294,13 @@ jobs:
         run: |
           node scripts/check-workflow-concurrency.mjs
           node --test scripts/check-workflow-concurrency.test.mjs
+
+      # #8802: kladde-PR'er koerer ingen tunge jobs (job-niveau draft-skip), og
+      # ready_for_review koerer dem paa samme HEAD. Guard + test.
+      - name: Workflow draft-skip guard (#8802)
+        run: |
+          node scripts/check-workflow-draft-skip.mjs
+          node --test scripts/check-workflow-draft-skip.test.mjs
 
   migration-idempotency:
     needs: patch-notes-mode
