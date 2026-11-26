@@ -1437,10 +1437,10 @@
           "Kies op een trainingsdag de sessie: Lange rit (licht), Tempo (gemiddeld), of Gemengde intervallen, Klimintervallen, Punch-intervallen, Drempel, Sprint, Kasseienstroken, Waaieroefeningen of Aanvalsherhalingen (zwaar). Op een techniekdag: Techniek, Aero of Koersinzicht.",
           "Sla op. De dag draait elke dag tot je hem wijzigt.",
           "Er is geen limiet op hoeveel renners een programma kunnen hebben: je kunt er een instellen voor je hele selectie.",
-          "Als Rotatie beschikbaar is in Programma, zet je de sessies in de gewenste volgorde. Een wedstrijd, blessure of rust door de vermoeidheidslimiet onderbreekt de reeks. Als de renner dezelfde sessie licht uitvoert, gaat de rotatie verder.",
-          "Gebruik Naar sessie om de positie van een renner te veranderen. Een kopie van dezelfde lengte behoudt zijn positie, tenzij je kiest voor Vanaf sessie 1 beginnen. Een andere lengte begint bij sessie 1.",
-          "Als de tijdvakprioriteit beschikbaar is in Weekblokken, rangschik je de sessies per dag. Je kunt één sessie per dag vastzetten. Vervallen door wedstrijden toont de sessies waarvoor geen tijdvak overbleef.",
-          "Als Alleen deze dag beschikbaar is, kies je in de dagkiezer onder Vandaag een van de komende 7 dagen en geef je een renner, meerdere renners of een hele groep alleen die dag een andere sessie. Het weekplan verandert niet, en de dag erna loopt het plan weer. Een koers wint altijd, en de rotatie wacht tot de volgende dag. Terug naar het plan haalt de keuze weg."
+          "Zet in Programma het Plantype op Rotatie en zet de sessies in de gewenste volgorde. Een wedstrijd, blessure of rust door de vermoeidheidslimiet onderbreekt de reeks. Als de renner dezelfde sessie licht uitvoert, gaat de rotatie verder.",
+          "Gebruik Naar sessie om de positie van een renner te veranderen. Een kopie van dezelfde lengte behoudt zijn positie, tenzij je kiest voor Vanaf sessie 1 beginnen. Een andere lengte begint bij sessie 1. De eigen rotatie van een renner gaat vóór de weekblokken van de groep.",
+          "Zet in Programma het Plantype op Weekblokken. Rangschik de sessies van elke dag op prioriteit en zet één sessie die dag vast. Wedstrijden krijgen de laagste prioriteit, en Vervallen door wedstrijden toont de sessies waarvoor geen tijdvak overbleef. Een vastgezette sessie blijft in haar eigen tijdvak. Staat daar een wedstrijd, dan schuift ze door naar het dichtstbijzijnde vrije tijdvak.",
+          "Als Alleen deze dag beschikbaar is, kies je in de dagkiezer onder Vandaag een van de komende 7 dagen en geef je een renner, meerdere renners of een hele groep alleen die dag een andere sessie. Het werkt met en zonder programma. Het weekplan verandert niet, en de dag erna loopt het plan weer. Een koers wint altijd, en de rotatie wacht tot de volgende dag. Je vermoeidheidsgrens beslist nog steeds, tenzij de dagkiezer al liet zien dat de grens die dag vervangt toen je koos. Terug naar het plan haalt de keuze weg."
         ]
       },
       "dayTypes": {
@@ -1693,6 +1693,10 @@
     },
     "academy": {
       "label": "Academie",
+      "pageOverview": {
+        "title": "De academiepagina",
+        "text": "De academiepagina opent met een overzicht van de instroom van deze week, je junioren- en U23-selectie, je talenten en je leeftijdsvoorkeur. Daaronder staan vier tabbladen. Instroom van deze week is waar je kandidaten binnenhaalt en tekent. Jouw talenten toont de renners die je hebt getekend uit de aanbiedingen van je eigen academie, met hun rennerstype. Renners uit jeugdveilingen en transfers staan niet in die lijst, maar tellen wel mee voor de selectielimieten. De academieboekhouding en de leeftijdsvoorkeur hebben hun eigen antwoorden in de veelgestelde vragen."
+      },
       "whatAcademy": {
         "title": "Wat is de Academie?",
         "text": "Met de Academie ontwikkel je je eigen jonge talent in plaats van gevestigde renners op de open markt te kopen. Elk seizoen ontvangt je club aan het begin van het seizoen een lichting talenten. Je beoordeelt ze, contracteert er 0-2 in je Academie en ontwikkelt ze intern. De Academie staat los van je seniorenselectie en is actief, live sinds de relaunch van seizoen 1."
@@ -2427,6 +2431,14 @@
     "academyAgeFocusFaq": {
       "q": "Hoe werkt de leeftijdsvoorkeur voor de wekelijkse jeugdinstroom?",
       "a": "Kies op het tabblad Profiel en leeftijd een leeftijd om die kans bij de wekelijkse instroom te vergroten. Andere leeftijden blijven mogelijk. Gemengd behoudt de gebruikelijke verdeling. Wijzigingen gaan na veertien dagen in."
+    },
+    "academyLedgerFaq": {
+      "q": "Wat telt de academieboekhouding mee?",
+      "a": "De boekhouding toont één seizoen per keer. Kosten en verkopen tellen dezelfde renners: iedereen die je hebt getekend uit een academieaanbieding of hebt gewonnen op een jeugdveiling. Kosten staan met een minteken, en lopende kosten hebben een eigen regel. Bij verkopen staat elke verkochte renner, waar de renner vandaan kwam en of de verkoop via een veiling of een transfer ging."
+    },
+    "weekBlocksLockFaq": {
+      "q": "Wat gebeurt er met een vastgezette sessie als een wedstrijd of blessure in de weg zit?",
+      "a": "Een wedstrijd wordt altijd in zijn vaste tijdvakken gereden, dus de vastgezette sessie schuift naar het dichtstbijzijnde vrije tijdvak van die dag, en naar het latere als twee tijdvakken even dichtbij zijn. Is de renner in dat tijdvak geblesseerd maar later die dag weer fit, dan schuift de sessie naar het eerste tijdvak waarin hij fit is en de week laat zien waar ze vandaan kwam. Een sessie die een wedstrijd heeft weggenomen wordt niet ingehaald, en een sessie wordt nooit twee keer uitgevoerd. De vermoeidheidslimiet blijft zwaarder wegen dan het vastzetten."
     },
     "academyIntakeExpiryFaq": {
       "q": "Verlopen aanbiedingen uit de Academie-instroom?",

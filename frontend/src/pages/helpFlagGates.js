@@ -63,6 +63,9 @@ const RACE_DAY_TICK_ON = Object.freeze({ flag: "training_tick_per_race_day", whe
 // Off = dagens tekst om datoens start, on = "<blok>Now"-tvillingen.
 const FATIGUE_NOW_OFF = Object.freeze({ flag: "fatigue_now_7801", when: false });
 const FATIGUE_NOW_ON = Object.freeze({ flag: "fatigue_now_7801", when: true });
+// #8549: akademisiden udgave A (overblik, fire faner, regnskab) og ugeblokkenes prioritet.
+const ACADEMY_PAGE_V2_ON = Object.freeze({ flag: "academy_page_v2_8081", when: true });
+const WEEK_PRIORITY_ON = Object.freeze({ flag: "training_week_priority", when: true });
 const AGING_V2_ON =Object.freeze({ flag: "development_v2_aging_enabled", when: true });
 
 // #6110 Udvikling 2.0 trin 6: tal + ord. potential_single_number kan ikke bruges her:
@@ -149,6 +152,8 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     hireChiefScoutEstimate: POTENTIAL_ESTIMATE_ON,
   }),
   academy: Object.freeze({
+    // #8549: oversigten over den nye akademiside findes kun med siden tændt.
+    pageOverview: ACADEMY_PAGE_V2_ON,
     dailyTrainingBoost: CURVE_B_OFF,
     dailyTrainingBoostCurveB: CURVE_B_ON,
     dailyTrainingBoostXp: XP_ON,
@@ -163,7 +168,9 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
  * loebsdags-modellen er taendt. En FAQ uden en linje her er altid synlig.
  */
 export const HELP_FAQ_FLAGS = Object.freeze({
-  academyAgeFocusFaq: Object.freeze({ flag: "academy_page_v2_8081", when: true }),
+  academyAgeFocusFaq: ACADEMY_PAGE_V2_ON,
+  academyLedgerFaq: ACADEMY_PAGE_V2_ON,
+  weekBlocksLockFaq: WEEK_PRIORITY_ON,
   raceDayIntensityFaq: RACE_DAY_TICK_OFF,
   raceDayIntensityPerRaceDayFaq: RACE_DAY_TICK_ON,
   raceDayAcademyFaq: RACE_DAY_TICK_OFF,

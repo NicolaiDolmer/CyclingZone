@@ -6,6 +6,7 @@ import type { RotationPreviewSlot } from "./r5/programR5Model.ts";
 
 export type ForecastEntry = {
   fatigue: number | null; band: ForecastBand | null; raceSlots?: number[]; pendingSlots?: number[];
+  pendingNonStarterSessions?: Partial<Record<number, string>>;
   rotationSlots?: RotationPreviewSlot[];
   nextRotationIndex?: number;
   restSlots?: number[];

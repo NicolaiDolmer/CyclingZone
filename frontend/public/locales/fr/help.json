@@ -1437,10 +1437,10 @@
           "Un jour d'entraînement, choisis la séance : Sortie longue (facile), Tempo (moyenne), ou Intervalles mixtes, Intervalles en grimpe, Intervalles de punch, Seuil, Sprint, Secteurs pavés, Exercices de bordures ou Répétitions d'attaques (dures). Un jour technique : Technique, Aéro ou Sens de la course.",
           "Enregistre. Le jour se répète chaque jour jusqu'à ce que tu le changes.",
           "Il n'y a pas de plafond au nombre de coureurs pouvant avoir un programme : tu peux en fixer un pour tout ton effectif.",
-          "Lorsque Rotation est disponible dans Programme, placez les séances dans l’ordre souhaité. Une course, une blessure ou un repos imposé par la limite de fatigue suspend la rotation. Si la même séance est effectuée avec un effort léger, la rotation avance.",
-          "Utilisez Aller à la séance pour changer la position d’un coureur. Copier une rotation de même longueur conserve sa position, sauf si vous choisissez Repartir de la séance 1. Une longueur différente le ramène à la séance 1.",
-          "Lorsque la priorité des créneaux est disponible dans les blocs hebdomadaires, classez les séances de chaque jour par priorité. Vous pouvez verrouiller une séance par jour. Séances écartées par les courses indique les séances qui n’ont pas trouvé de créneau.",
-          "Lorsque Seulement ce jour est disponible, choisis l’un des 7 prochains jours dans le sélecteur de jours d’Aujourd’hui et donne à un coureur, à plusieurs ou à tout un groupe une autre séance ce jour-là seulement. Le plan de la semaine ne change pas, et le plan reprend le lendemain. Une course gagne toujours, et la rotation attend le lendemain. Revenir au plan retire le choix."
+          "Dans Programme, réglez le Type de plan sur Rotation et placez les séances dans l’ordre souhaité. Une course, une blessure ou un repos imposé par la limite de fatigue suspend la rotation. Si la même séance est effectuée avec un effort léger, la rotation avance.",
+          "Utilisez Aller à la séance pour changer la position d’un coureur. Copier une rotation de même longueur conserve sa position, sauf si vous choisissez Repartir de la séance 1. Une longueur différente le ramène à la séance 1. La rotation propre à un coureur l’emporte sur les blocs hebdomadaires du groupe.",
+          "Dans Programme, réglez le Type de plan sur Blocs hebdomadaires. Classez les séances de chaque jour par priorité et verrouillez une séance ce jour-là. Les courses prennent la priorité la plus basse, et Séances écartées par les courses indique les séances qui n’ont pas trouvé de créneau. Une séance verrouillée reste dans son propre créneau. Si une course s’y trouve, elle passe au créneau libre le plus proche.",
+          "Lorsque Seulement ce jour est disponible, choisis l’un des 7 prochains jours dans le sélecteur de jours d’Aujourd’hui et donne à un coureur, à plusieurs ou à tout un groupe une autre séance ce jour-là seulement. Cela fonctionne avec ou sans programme. Le plan de la semaine ne change pas, et le plan reprend le lendemain. Une course gagne toujours, et la rotation attend le lendemain. Ta limite de fatigue décide toujours, sauf si le sélecteur de jours montrait déjà que la limite remplace ce jour quand tu as choisi. Revenir au plan retire le choix."
         ]
       },
       "dayTypes": {
@@ -1693,6 +1693,10 @@
     },
     "academy": {
       "label": "Académie",
+      "pageOverview": {
+        "title": "La page de l’académie",
+        "text": "La page de l’académie s’ouvre sur un aperçu du recrutement de la semaine, de vos effectifs juniors et U23, de vos talents et de votre ciblage d’âge. En dessous se trouvent quatre onglets. Recrutement de la semaine permet de faire venir et de signer des candidats. Tes talents liste les coureurs que vous avez signés à partir des offres de votre propre académie, avec leur type de coureur. Les coureurs issus des enchères de jeunes et des transferts ne figurent pas dans cette liste, mais ils comptent toujours dans les limites d’effectif. Les comptes de l’académie et le ciblage d’âge ont leurs propres réponses dans la FAQ."
+      },
       "whatAcademy": {
         "title": "Qu'est-ce que l'académie ?",
         "text": "L'académie te permet de former tes propres jeunes talents au lieu d'acheter des coureurs confirmés sur le marché libre. Chaque saison, ton club reçoit une cohorte de jeunes talents au début de la saison. Tu les passes en revue, tu en signes 0 à 2 dans ton académie, et tu les fais progresser en interne. L'académie est séparée de ton effectif senior et est active, en ligne depuis le relancement de la saison 1."
@@ -2427,6 +2431,14 @@
     "academyAgeFocusFaq": {
       "q": "Comment cibler un âge pour le recrutement de la semaine à l’académie ?",
       "a": "Dans l’onglet Profil et âge, choisissez un âge pour le rendre plus probable dans le recrutement de la semaine. Les autres âges restent possibles. Le choix mixte conserve la répartition habituelle. Les changements prennent effet après quatorze jours."
+    },
+    "academyLedgerFaq": {
+      "q": "Que comptent les comptes de l’académie ?",
+      "a": "Les comptes montrent une saison à la fois. Les dépenses et les ventes concernent les mêmes coureurs : tous ceux que vous avez signés à partir d’une offre de l’académie ou remportés lors d’une enchère de jeunes. Les dépenses sont affichées avec un signe moins, et les frais de fonctionnement ont leur propre ligne. Les ventes listent chaque coureur vendu, son origine et s’il est parti par enchère ou par transfert."
+    },
+    "weekBlocksLockFaq": {
+      "q": "Que devient une séance verrouillée quand une course ou une blessure s’y oppose ?",
+      "a": "Une course se déroule toujours dans ses créneaux fixes, donc la séance verrouillée passe au créneau libre le plus proche ce jour-là, et au plus tardif si deux sont à égale distance. Si le coureur est blessé dans ce créneau mais de nouveau apte plus tard le même jour, la séance passe au premier créneau où il est apte et la semaine indique d’où elle vient. Une séance prise par une course n’est pas rattrapée, et une séance ne se déroule jamais deux fois. La limite de fatigue l’emporte toujours sur le verrouillage."
     },
     "academyIntakeExpiryFaq": {
       "q": "Les offres de recrutement de l'académie expirent-elles ?",

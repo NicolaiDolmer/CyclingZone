@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Balance",
+      "area": "economy",
+      "en": {
+        "title": "Your balance without leading bids",
+        "body": "When you are not leading any bids, the game shows your actual balance."
+      },
+      "da": {
+        "title": "Din saldo uden førende bud",
+        "body": "Når du ikke fører nogen bud, viser spillet din faktiske saldo."
+      },
+      "refs": [8661]
+    }
+  ]
+}

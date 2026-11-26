@@ -251,7 +251,10 @@ export default function ProgramR5({
       ? { ...placement, restSlots, fieldSource: placement.fieldSource.map((source, slot) => restSlots.includes(slot) ? null : source) }
       : placement]];
   })) : {};
-  const cells = weekCells({ days: gridDays, draft, weekdays, todayWeekday, raceToday, pendingToday, lockedToday, placements });
+  const cells = weekCells({
+    days: gridDays, draft, weekdays, todayWeekday, raceToday, pendingToday, lockedToday, placements,
+    pendingNonStarterSessions: riderForecast?.pendingNonStarterSessions,
+  });
   const tonight = (subject?.kind === "rider"
     ? forecast?.riders?.[subject.id] ?? null
     : groupForecastEntry(forecast?.riders, memberIds)) as ForecastEntry | null;
@@ -1359,7 +1362,7 @@ function Row({
   dayLabel: (w: string) => string;
   onEdit: (weekday: string, slot: number, session: string) => void;
 }) {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation(["training", "races"]);
   const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   return (
     <>
@@ -1371,11 +1374,21 @@ function Row({
         const base = "relative flex min-h-[44px] items-center border-s border-t border-cz-border px-2.5 py-1.5 text-xs";
         if (cell.kind === "race") {
           return (
-            <div key={weekday} className={`${base} gap-1 bg-cz-subtle text-cz-2`} data-testid={cell.pending ? "program-r5-pending" : "program-r5-race"}>
+            <div key={weekday} className={`${base} gap-1 bg-cz-subtle text-cz-2`} data-testid="program-r5-race">
               <FlagIcon size={11} aria-hidden="true" className="shrink-0" />
-              {cell.pending ? t("dailyReceipt.status.pending") : tR5("programR5.race")}
+              {tR5("programR5.race")}
             </div>
           );
+        }
+        if (cell.kind === "nonStarter") {
+          return (
+            <div key={weekday} className={base + " text-cz-2"} data-testid="program-r5-non-starter">
+              <span className="min-w-0 break-words">{t("races:racehub.status.didNotStart")} · {sessionLabel(cell.session)}</span>
+            </div>
+          );
+        }
+        if (cell.kind === "unavailable") {
+          return <div key={weekday} className={`${base} text-cz-3`}>–</div>;
         }
         if (cell.kind === "rest") {
           return <div key={weekday} className={`${base} text-cz-2`} data-testid="program-r5-week-rest">{sessionLabel("rest")}</div>;

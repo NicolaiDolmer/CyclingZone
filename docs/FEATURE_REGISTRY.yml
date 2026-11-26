@@ -1074,6 +1074,7 @@ features:
     title_en: Academy page with tabs and age focus
     title_da: Akademisiden med faner og aldersfokus
     state: building
+    flag: academy_page_v2_8081
     ssot: docs/YOUTH_RULES.md
     epic: 8081
     verified: 2026-11-16

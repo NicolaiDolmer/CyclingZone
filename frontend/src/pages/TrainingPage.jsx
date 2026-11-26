@@ -620,7 +620,14 @@ export default function TrainingPage() {
   }, [todayRun]);
 
   // #1895 PR 1: dagens ugedag (display) + lokalt draft-state for ugerytme-panelet.
-  const todayWeekday = useMemo(() => weekdayKeyForDate(new Date()), []);
+  const forecastDate = fatigueForecast.forecast?.tickDate;
+  const todayWeekday = useMemo(() => {
+    if (forecastDate) {
+      const weekday = new Date(`${forecastDate}T00:00:00Z`).getUTCDay();
+      if (Number.isInteger(weekday)) return WEEKDAY_KEYS[(weekday + 6) % 7];
+    }
+    return weekdayKeyForDate(new Date());
+  }, [forecastDate]);
   const [weekDraft, setWeekDraft] = useState(null); // null = ikke redigeret endnu (spejler weekPlan)
   const [weekPlanMsg, setWeekPlanMsg] = useState(null);
   const activeWeekDays = weekDraft ?? weekPlan;
