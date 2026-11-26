@@ -1,5 +1,5 @@
 import { isCalendarTickAiOnly } from "./trainingCalendarTickFlag.js"; // #6110 ejer 19/11
-import { isAiTeamFrozenStateEnabled, skipsFrozenAiTeamTick } from "./aiTeamFrozenState8614.js"; // #8614
+import { readAiTeamFrozenState, reportFrozenAiWorkSkipped, skipsFrozenAiTeamTick } from "./aiTeamFrozenState8614.js"; // #8614
 import { trainingDateRpc } from "./trainingDateRpc.js";
 import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { fetchAllRows } from './supabasePagination.js';
@@ -445,8 +445,8 @@ export async function runNormalizedTrainingDateSweep({
     // #6110 ejer 19/11: kontakten for reservevejen læses én gang pr. dato, kun når et hold uden division findes.
     let calendarAiOnlyPromise = null;
     const loadCalendarAiOnly = () => (calendarAiOnlyPromise ??= isCalendarTickAiOnly(supabase));
-    let aiFrozenPromise = null; // #8614: læses én gang pr. dato, kun når et AI-hold uden arbejde nås
-    const loadAiFrozen8614 = () => (aiFrozenPromise ??= isAiTeamFrozenStateEnabled(supabase));
+    let aiFrozenPromise = null; // #8614: læses én gang pr. dato, kun når et AI-hold nås
+    const loadAiFrozen8614 = () => (aiFrozenPromise ??= readAiTeamFrozenState(supabase));
     const loadLegacyRan = () => (legacyRanPromise ??= Promise.resolve()
       .then(() => loadLegacyRuns({ supabase, tickDate: job.tickDate }))
       .catch((error) => { legacyRanPromise = null; throw error; }));
@@ -494,8 +494,12 @@ export async function runNormalizedTrainingDateSweep({
       if (workByTeam.get(team.id)?.status === 'complete' && !lateFor(workByTeam.get(team.id)).length) return;
       if (!currentIds.length && !workByTeam.has(team.id)) return;
       // #8614: med ai_team_frozen_state_8614 on træner et AI-hold ikke (ingen registrering, intet tick).
-      const registered8614 = workByTeam.has(team.id);
-      if (skipsFrozenAiTeamTick(team, { frozenOn: team.is_ai === true && !registered8614 && await loadAiFrozen8614(), registered: registered8614 })) return;
+      // #8808 (Fable 26/11): registreret arbejde afsluttes kun på en dato, der var åben ved tændingen.
+      const registered8614 = workByTeam.has(team.id), frozen8614 = team.is_ai === true ? await loadAiFrozen8614() : null;
+      if (skipsFrozenAiTeamTick(team, { frozenOn: frozen8614?.on === true, registered: registered8614, tickDate: job.tickDate, onSince: frozen8614?.onSince })) {
+        if (registered8614) reportFrozenAiWorkSkipped({ teamId: team.id, tickDate: job.tickDate, logger });
+        return;
+      }
       const divisionId = final ? (seasonDivisions.get(team.id) ?? team.league_division_id) : team.league_division_id;
       const days = workByTeam.get(team.id)?.game_days ?? context.gameDaysByDivision.get(divisionId);
       // Division-less teams use the calendar-day fallback (isLegacyCalendarTickTeam). A parked team

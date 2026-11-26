@@ -119,7 +119,7 @@ import {
 // S4 (#1176): styrt/mekaniske uheld + DNF — abandon-state (cross-invokation) +
 // persistens co-locates i raceIncidents.js (ren roll-logik + DB-loader).
 import { loadAbandonedRiderIds, persistInjuryWithdrawals } from "./raceIncidents.js";
-import { applyFrozenAiEntrantState, dropFrozenAiInjuryRows, isAiTeamFrozenStateEnabled } from "./aiTeamFrozenState8614.js"; // #8614
+import { applyFrozenAiEntrantState, dropFrozenAiInjuryRows, isAiTeamFrozenStateEnabled, refreezeAiEntrantsAfterStageStart } from "./aiTeamFrozenState8614.js"; // #8614
 // S6 (#2355): why-rapport + story-tags — ren afledning af de samme komponenter
 // (ranked[].components) der allerede persisteres til race_simulation_rider_scores.
 import { extractStageMoments } from "./raceNarrative.js";
@@ -3839,6 +3839,7 @@ export async function simulateStageByIndex({
       // A durable instant press keeps its date semantics across switch changes.
       await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants, instantOnly: true });
     }
+    await refreezeAiEntrantsAfterStageStart({ supabase, entrants }); // #8808: AI-hold fast tilstand også efter etapestarten
 
     const engineInputRecorder = dryRun ? null : createEngineInputRecorder({ raceId: race.id }); // #1857
     if (race.race_type === "stage_race") {

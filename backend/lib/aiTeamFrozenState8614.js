@@ -8,18 +8,25 @@
 // række eller en fejlet læsning er slukket, altså præcis dagens regel. Seedet "off"; ejer-only flip.
 //
 // Med kontakten on:
-//   1. Aftenopgørelsen springer AI-hold uden registreret arbejde over: ingen registrering, ingen
-//      kvittering, intet tick (trainingDateClose.js). Allerede registreret arbejde afsluttes som før,
-//      så en dato der var i gang da kontakten blev tændt, aldrig bliver hængende.
-//   2. Sæsonens sidste træningsdato kræver ingen kvittering fra et AI-hold (seasonTransitionReadiness.js).
-//   3. Løbsmotoren ser AI-ryttere med den faste træthed og form (raceRunner.js loadEntrants).
-//   4. Et styrt giver ikke en AI-rytter en skade (raceRunner.js persistIncidents).
-//   5. Ved sæsonskiftet nulstilles AI-rytternes skader og træthed ÉN gang (claim i app_config).
+//   1. Aftenopgørelsen springer AI-hold over: ingen registrering, ingen kvittering, intet tick
+//      (trainingDateClose.js). Undtagelse: arbejde registreret på en dato, der var åben da kontakten
+//      blev tændt (datoen ligger på eller før tændingsdagen, app_config.updated_at), afsluttes som før,
+//      så den dato aldrig bliver hængende. Registreret AI-arbejde på en senere dato springes over og
+//      meldes til Sentry (en sti, der stadig registrerer AI-hold, er en fejl; #8808).
+//   2. Etape-afregningen efter etapen springer AI-hold over (trainingSettleRaceSession7982.js, #8808).
+//   3. Sæsonens sidste træningsdato kræver ingen kvittering fra et AI-hold (seasonTransitionReadiness.js).
+//   4. Løbsmotoren ser AI-ryttere med den faste træthed og form (raceRunner.js loadEntrants), også
+//      efter etapestartens træthed fra datoens tidligere etaper (simulateStageByIndex, #8808).
+//   5. Et styrt giver ikke en AI-rytter en skade (raceRunner.js persistIncidents).
+//   6. Ved sæsonskiftet nulstilles AI-rytternes skader og træthed ÉN gang (claim i app_config).
+//      Fejler den, slippes claimen, og den kan genkøres med ops-kommandoen
+//      backend/scripts/ops/aiTeamFrozenReset8614.mjs (#8808).
 // Menneskehold rører ingen af grenene: hver gren kræver teams.is_ai === true.
+// En fejlet læsning af kontakten tæller som slukket, men meldes altid til Sentry (#8808).
 //
 // Hvorfor de faste tal står her: de er runtime-konstanter (hard rule 17-undtagelsen). Målingen bag
 // valget ligger privat (OneDrive, private-handoffs/8614-ai-etape-2026-11-26), ikke i repoet.
-import { readFlagStage } from "./featureStage.js";
+import { copenhagenDateString } from "./copenhagenTime.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
 
@@ -37,18 +44,109 @@ export const AI_FROZEN_RESET_STALE_CLAIM_MS = 30 * 60 * 1000;
 
 const UPSERT_CHUNK = 500;
 
+/**
+ * Læser kontakten frisk (motorens input, aldrig cachet) og hvornår den sidst blev sat.
+ * Fejl = slukket (dagens regel), men aldrig tavst: fejlen meldes til Sentry (Fable 26/11 fund 5),
+ * for med kontakten on ville en fejlet læsning ellers tavst give AI-holdene dagens regel igen.
+ * @param {any} supabase
+ * @param {{ capture?: (err: any, ctx?: any) => void }} [opts]
+ * @returns {Promise<{ on: boolean, onSince: string|null, failed?: true }>}
+ */
+export async function readAiTeamFrozenState(supabase, { capture = captureException } = {}) {
+  try {
+    const { data, error } = await supabase.from("app_config").select("value, updated_at")
+      .eq("key", AI_TEAM_FROZEN_STATE_KEY).maybeSingle();
+    if (error) throw new Error(`${AI_TEAM_FROZEN_STATE_KEY} read: ${error.message}`);
+    const on = data?.value === "on";
+    return { on, onSince: on ? (data?.updated_at ?? null) : null };
+  } catch (err) {
+    try {
+      capture(err, { tags: { flag: AI_TEAM_FROZEN_STATE_KEY, step: "read" }, fingerprint: ["ai-team-frozen-state-8614-read-failed"] });
+    } catch {
+      // catch-ok: en fejlende Sentry må aldrig vælte motoren; læsningen er allerede slukket.
+    }
+    return { on: false, onSince: null, failed: true };
+  }
+}
+
 export async function isAiTeamFrozenStateEnabled(supabase) {
-  return (await readFlagStage(supabase, AI_TEAM_FROZEN_STATE_KEY, { fresh: true })) === "on";
+  return (await readAiTeamFrozenState(supabase)).on;
 }
 
 /**
- * Aftenopgørelsen: skal holdet springes over? Kun et AI-hold, kun uden registreret arbejde
- * på datoen, og kun med kontakten on. REN.
- * @param {{is_ai?: boolean|null}|null|undefined} team
- * @param {{ frozenOn: boolean, registered: boolean }} opts
+ * Var datoen åben, da kontakten blev tændt? Ja, når datoen ligger på eller før tændingsdagen
+ * (dansk kalenderdato for app_config.updated_at). Et ukendt tidspunkt tæller som ja, så en dato
+ * aldrig hænger på en manglende tidsstempel. REN.
+ * @param {string} tickDate  YYYY-MM-DD
+ * @param {string|null|undefined} onSince
  */
-export function skipsFrozenAiTeamTick(team, { frozenOn, registered }) {
-  return frozenOn === true && team?.is_ai === true && registered !== true;
+export function wasDateOpenWhenSwitchedOn(tickDate, onSince) {
+  const at = onSince ? new Date(onSince) : null;
+  if (!at || !Number.isFinite(at.getTime()) || !tickDate) return true;
+  return String(tickDate).slice(0, 10) <= copenhagenDateString(at);
+}
+
+/**
+ * Aftenopgørelsen: skal holdet springes over? Kun et AI-hold med kontakten on. Uden registreret
+ * arbejde altid; med registreret arbejde kun, når datoen ikke var åben da kontakten blev tændt
+ * (Fable 26/11: undtagelsen gælder kun den dato). REN.
+ * @param {{is_ai?: boolean|null}|null|undefined} team
+ * @param {{ frozenOn: boolean, registered: boolean, tickDate?: string|null, onSince?: string|null }} opts
+ */
+export function skipsFrozenAiTeamTick(team, { frozenOn, registered, tickDate = null, onSince = null }) {
+  if (frozenOn !== true || team?.is_ai !== true) return false;
+  if (registered !== true) return true;
+  return !wasDateOpenWhenSwitchedOn(tickDate, onSince);
+}
+
+const reportedSkippedWork = new Set();
+/**
+ * Registreret AI-arbejde på en dato efter tændingen springes over. Det betyder, at en sti stadig
+ * registrerer AI-hold, så det meldes til Sentry, én gang pr. hold og dato pr. proces (datoen ligger
+ * åben og prøves ved hver aftenkørsel). Kaster aldrig.
+ */
+export function reportFrozenAiWorkSkipped({ teamId, tickDate, logger = console, capture = captureException }) {
+  const key = `${teamId}:${tickDate}`;
+  if (reportedSkippedWork.has(key)) return;
+  reportedSkippedWork.add(key);
+  try {
+    logger.error?.("[training-date] #8614: registered AI work after the switch was turned on is not ticked", teamId, tickDate);
+    capture(new Error("AI team has registered training work after ai_team_frozen_state_8614 was turned on (#8808)"), {
+      tags: { flag: AI_TEAM_FROZEN_STATE_KEY, step: "skip_registered_ai_work" },
+      fingerprint: ["ai-team-frozen-state-8614-registered-ai-work"], teamId, tickDate,
+    });
+  } catch {
+    // catch-ok: rapporten er best-effort; springet er allerede afgjort.
+  }
+}
+export function __resetFrozenAiReportsForTests() { reportedSkippedWork.clear(); }
+
+/**
+ * Etape-afregningen: planen uden AI-hold. REN.
+ * @param {Array<{teamId: string}>} plan
+ * @param {Array<{id: string, is_ai?: boolean|null}>} teams
+ */
+export function hasFrozenAiPlanItems(plan, teams) {
+  const ai = new Set((teams ?? []).filter((t) => t?.is_ai === true).map((t) => t.id));
+  return (plan ?? []).some((item) => ai.has(item.teamId));
+}
+export function withoutFrozenAiTeams(plan, teams) {
+  const ai = new Set((teams ?? []).filter((t) => t?.is_ai === true).map((t) => t.id));
+  return (plan ?? []).filter((item) => !ai.has(item.teamId));
+}
+
+/**
+ * Etapestarten (simulateStageByIndex): datoens tidligere etaper og stemplet træning lægges oven på
+ * startfeltet (applySameDateEnteringFatigueV2). Med kontakten on sættes AI-rytterne bagefter
+ * tilbage til den faste tilstand, så motoren også på dagens anden etape ser den (Codex P1 26/11).
+ * Kontakten læses kun med AI-ryttere i feltet. Muterer entrants.
+ * @returns {Promise<number>} antal AI-ryttere sat til den faste tilstand
+ */
+export async function refreezeAiEntrantsAfterStageStart({ supabase, entrants, isEnabled = isAiTeamFrozenStateEnabled }) {
+  const ai = (entrants ?? []).filter((e) => e?.team_is_ai === true);
+  if (!ai.length || !(await isEnabled(supabase))) return 0;
+  for (const entrant of ai) applyFrozenAiEntrantState(entrant, true);
+  return ai.length;
 }
 
 /**
@@ -144,9 +242,11 @@ async function takeResetClaim({ supabase, now }) {
  * @param {{ supabase: any, now?: Date, isEnabled?: (s: any) => Promise<boolean> }} args
  * @returns {Promise<{ ran: boolean, reason?: string, riders?: number }>}
  */
-export async function applyAiFrozenStateResetOnce({ supabase, now = new Date(), isEnabled = isAiTeamFrozenStateEnabled }) {
+export async function applyAiFrozenStateResetOnce({ supabase, now, isEnabled = isAiTeamFrozenStateEnabled }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!(await isEnabled(supabase))) return { ran: false, reason: "flag_off" };
+  // Codex P1 26/11: intet vægur-default; kalderen giver altid sit ur (sæsonskiftets tidspunkt, ops-kommandoen).
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error("Explicit valid now required");
   const claim = await takeResetClaim({ supabase, now });
   if (claim !== "claimed") return { ran: false, reason: claim === "done" ? "already_done" : "claim_held" };
   try {
@@ -163,7 +263,8 @@ export async function applyAiFrozenStateResetOnce({ supabase, now = new Date(), 
       if (error) throw new Error(`ai frozen reset rider_condition: ${error.message}`);
     }
     const { error: doneError } = await supabase.from("app_config").update({
-      value: { status: "done", claimed_at: now.toISOString(), done_at: new Date().toISOString(), riders: riderIds.length },
+      // Codex P1 26/11: kun det injicerede ur, aldrig væguret (AGENTS.md regel 16).
+      value: { status: "done", claimed_at: now.toISOString(), done_at: now.toISOString(), riders: riderIds.length },
     }).eq("key", AI_TEAM_FROZEN_RESET_CLAIM_KEY);
     if (doneError) throw new Error(`ai frozen reset claim done: ${doneError.message}`);
     return { ran: true, riders: riderIds.length };
@@ -178,11 +279,23 @@ export async function applyAiFrozenStateResetOnce({ supabase, now = new Date(), 
 }
 
 /**
+ * Status til ops-kommandoen (Fable 26/11 fund 6): kontakten og engangs-claimen. Kun læsninger.
+ * @returns {Promise<{ switchOn: boolean, switchReadFailed: boolean, claim: null | object }>}
+ */
+export async function loadAiFrozenStateResetStatus({ supabase }) {
+  const state = await readAiTeamFrozenState(supabase);
+  const { data, error } = await supabase.from("app_config").select("value")
+    .eq("key", AI_TEAM_FROZEN_RESET_CLAIM_KEY).maybeSingle();
+  if (error) throw new Error(`ai frozen reset claim read: ${error.message}`);
+  return { switchOn: state.on, switchReadFailed: state.failed === true, claim: data?.value ?? null };
+}
+
+/**
  * Sæsonskiftets fase. Kaster aldrig. Slukket kontakt giver null (ingen fase-række, samme
  * betingede fase-log som seasonStartHooks.js), så flag off er bit-identisk i fase-loggen.
  * @returns {Promise<null | {phase: string, [k: string]: any}>}
  */
-export async function runAiFrozenStateResetPhase({ supabase, now = new Date(), apply = applyAiFrozenStateResetOnce } = {}) {
+export async function runAiFrozenStateResetPhase({ supabase, now, apply = applyAiFrozenStateResetOnce } = {}) {
   try {
     const result = await apply({ supabase, now });
     if (result?.ran === false && result?.reason === "flag_off") return null;

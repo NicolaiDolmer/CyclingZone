@@ -20,6 +20,7 @@
 // AFGRAENSNING. Kun den aktive saeson, ikke saesonens sidste dato (egen sti i
 // trainingDateClose.js), kun lukkede etaper (finalize_state null, startlisten gemt, belastning i
 // bogen). Ryttere uden loeb: ingen aendring. En session med kvittering springes over.
+// AI-hold springes over med ai_team_frozen_state_8614 on (#8808, aiTeamFrozenState8614.js).
 import { readFlagStage } from "./featureStage.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { fetchAllRows } from "./supabasePagination.js";
@@ -27,6 +28,7 @@ import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { loadFinalTrainingDate } from "./seasonTransitionReadiness.js";
+import { hasFrozenAiPlanItems, isAiTeamFrozenStateEnabled, withoutFrozenAiTeams } from "./aiTeamFrozenState8614.js"; // #8808
 import {
   loadTrainingDateContext, resolveRaceSessionReadiness, resolveTrainingDateReadiness,
   trainingDateBounds, trainingDateDeadline,
@@ -110,6 +112,7 @@ export async function runRaceSessionSettlement({
   loadContext = loadTrainingDateContext,
   loadFinalDate = loadFinalTrainingDate,
   runDay = runTeamTrainingDay,
+  isAiFrozen = isAiTeamFrozenStateEnabled,
 }) {
   const summary = { ran: false, planned: 0, settled: 0, alreadyRan: 0, failed: 0, failures: [] };
   if (!(await isEnabled(supabase))) return { ...summary, skipped: "flag_off" };
@@ -132,13 +135,20 @@ export async function runRaceSessionSettlement({
     fetchAllRows(() => supabase.from("training_rider_ticks").select("rider_id,game_day")
       .eq("season_id", season.id).eq("tick_date", tickDate).in("game_day", gameDays).order("rider_id").order("game_day")),
   ]);
-  const plan = planRaceSessionSettlement({
+  let plan = planRaceSessionSettlement({
     teams: context.teams ?? [], riders: context.riders ?? [], readyByDay,
     workByTeam: new Map(workRows.map((row) => [row.team_id, row])),
     receiptKeys: new Set(receipts.map((row) => `${row.rider_id}#${row.game_day}`)),
     gameDaysByDivision: context.gameDaysByDivision ?? new Map(),
     dateEnd: trainingDateBounds(tickDate).end,
   });
+  // #8808 (Fable 26/11): med ai_team_frozen_state_8614 on traener et AI-hold ikke, heller ikke efter
+  // etapen: ingen registrering, intet tick, ingen kvittering. Kontakten laeses kun, naar planen har et AI-hold.
+  if (hasFrozenAiPlanItems(plan, context.teams) && await isAiFrozen(supabase)) {
+    const kept = withoutFrozenAiTeams(plan, context.teams);
+    summary.aiFrozenSkipped = plan.length - kept.length;
+    plan = kept;
+  }
   summary.ran = true; summary.tickDate = tickDate; summary.planned = plan.length;
   const deadlineAt = trainingDateDeadline(tickDate).toISOString();
   for (const item of plan) {
