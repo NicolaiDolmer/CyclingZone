@@ -966,3 +966,30 @@ test("#7664 rebuild in the database: first enable, half-built, finished, re-enab
     assert.equal(await shadowRows(), await legacyRows());
   });
 });
+
+test("#8215 dashboard: missing RPC keeps the same shadow payload during rollout", async () => {
+  const { tables } = poolTables({ poolSize: 50, points: (i) => i });
+  // Capture the no-RPC payload through the pre-existing reader.
+  const options = { seasonId: SEASON, leagueDivisionId: 1, source: SHADOW, now: () => NOW };
+  const expected = await readDashboardTopRiders7664(honestClient(tables), options);
+  for (const code of ["PGRST202", "42883"]) {
+    const client = honestClient(tables);
+    client.rpc = () => ({ abortSignal: async () => ({ data: null, error: { code } }) });
+    assert.deepEqual(await readDashboardTopRiders7664(client, { ...options, preferRpc: true }), expected);
+    assert.ok(client.reads.length > 0);
+  }
+});
+
+test("#8215 dashboard: RPC failure reaches the existing legacy fallback gate", async () => {
+  reset();
+  const client = honestClient({});
+  client.rpc = () => ({ abortSignal: async () => ({ data: null, error: { code: "57014", message: "fixture" } }) });
+  const captured = [];
+  const answer = await readDashboardTopRiders7664(client, {
+    seasonId: SEASON, leagueDivisionId: 1, source: SHADOW, now: () => NOW, preferRpc: true,
+    captureExceptionFn: (error) => captured.push(error),
+  });
+  assert.equal(answer, null);
+  assert.equal(captured.length, 1);
+  assert.deepEqual(client.reads, []);
+});

@@ -363,9 +363,9 @@ export const DASHBOARD_SHADOW_TIMEOUT_MS = 1500;
  * DASHBOARD_SHADOW_TIMEOUT_MS), rapporteres det een gang, og der returneres
  * null, saa forsiden bruger dagens RPC i stedet for at svare 500 eller vente.
  * @param {any} supabase
- * @param {{ seasonId: string, leagueDivisionId: number|null, source?: RankingReadSource, captureExceptionFn?: CaptureFn, now?: () => number, timeoutMs?: number }} options
+ * @param {{ seasonId: string, leagueDivisionId: number|null, source?: RankingReadSource, captureExceptionFn?: CaptureFn, now?: () => number, timeoutMs?: number, preferRpc?: boolean }} options
  */
-export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDivisionId, source, captureExceptionFn, now = Date.now, timeoutMs = DASHBOARD_SHADOW_TIMEOUT_MS }) {
+export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDivisionId, source, captureExceptionFn, now = Date.now, timeoutMs = DASHBOARD_SHADOW_TIMEOUT_MS, preferRpc = false }) {
   const controller = new AbortController();
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
@@ -383,7 +383,12 @@ export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDiv
     const chosen = source ?? await resolveRankingReadSource(supabase, { captureExceptionFn, now });
     if (chosen.source !== "shadow") return null;
     shadowStarted = true;
-    return readShadowTopRiders(supabase, { seasonId, leagueDivisionId, signal: controller.signal });
+    const options = { seasonId, leagueDivisionId, signal: controller.signal };
+    if (preferRpc) {
+      const riders = await readShadowTopRidersRpc(supabase, options);
+      if (riders !== null) return riders;
+    }
+    return readShadowTopRiders(supabase, options);
   })();
   try {
     return await Promise.race([work, timeout]);
@@ -401,6 +406,24 @@ export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDiv
   }
 }
 
+async function readShadowTopRidersRpc(supabase, { seasonId, leagueDivisionId, signal }) {
+  const { data, error } = await supabase.rpc("dashboard_rider_ranking_shadow", {
+    p_season_id: seasonId,
+    p_league_division_id: leagueDivisionId,
+  }).abortSignal(signal);
+  // The backend can deploy before the additive migration and PostgREST reload.
+  // In that window keep the same shadow source instead of changing the numbers.
+  if (error?.code === "PGRST202" || error?.code === "42883") return null;
+  if (error) throw error;
+  if (!Array.isArray(data)) throw new Error("Invalid dashboard shadow ranking response");
+  return data.map((row) => ({
+    ...row,
+    points: n(row.points),
+    stage_wins: n(row.stage_wins),
+    gc_wins: n(row.gc_wins),
+    classic_wins: n(row.classic_wins),
+  }));
+}
 async function readShadowTopRiders(supabase, { seasonId, leagueDivisionId, signal }) {
   const table = SHADOW_READ_TABLES.rider_rankings_mv;
   if (leagueDivisionId == null) {

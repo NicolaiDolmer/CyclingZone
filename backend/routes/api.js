@@ -14019,7 +14019,7 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
     if (!season) return res.json({ riders: [] });
     // #7664: kontakten taendt -> samme tabel og omfang som "Fuld rangliste"; slukket eller fejl i
     // den nye vej -> null (fejlen rapporteres til Sentry), og dagens RPC nedenfor bruges.
-    const shadowRiders = await readDashboardTopRiders7664(supabase, { seasonId: season.id, leagueDivisionId: req.team.league_division_id ?? null, captureExceptionFn: captureException });
+    const shadowRiders = await readDashboardTopRiders7664(supabase, { seasonId: season.id, leagueDivisionId: req.team.league_division_id ?? null, captureExceptionFn: captureException, preferRpc: true });
     if (shadowRiders) return res.json({ riders: shadowRiders });
 
     // Aggregeringen kører nu i Postgres via dashboard_rider_ranking-RPC'en
