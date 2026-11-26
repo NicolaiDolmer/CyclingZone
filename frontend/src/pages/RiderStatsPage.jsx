@@ -1096,7 +1096,9 @@ function RiderStats({ tab, setTab, training, trainingHistory, initialRoster, onR
     let cancelled = false;
     (async () => {
       const teamId = rider?.team_id;
-      if (!teamId) { setRoster([]); return; }
+      // #8755: rytteren er null lige efter remountet; ryd kun for en hentet
+      // rytter uden hold, ellers smides det cachede roster ud for tidligt.
+      if (!teamId) { if (rider?.id) setRoster([]); return; }
       const { data } = await supabase
         .from("riders")
         .select("id, firstname, lastname")
@@ -1106,7 +1108,7 @@ function RiderStats({ tab, setTab, training, trainingHistory, initialRoster, onR
       if (!cancelled) { setRoster(data || []); onRoster(data || []); }
     })();
     return () => { cancelled = true; };
-  }, [rider?.team_id, onRoster]);
+  }, [rider?.team_id, rider?.id, onRoster]);
 
   // #2000 stykke 3: divisions-fysiologi-snit til Fysiologi-fanens benchmarks.
   // Hentes lazily når fanen åbnes (backend cacher pr. division). Fri agent/ingen
