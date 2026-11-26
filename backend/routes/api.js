@@ -5786,7 +5786,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       supabase,
       // ANY_SQUAD: en U23-/juniorentry binder også rytterens løbsdag (#5645).
       squad: ANY_SQUAD,
-      paged: true, // #8797: holdets entries i al historik passerer 1.000 rækker
+      paged: true, // #8797 pagination-safe: paged → fetchAllPaged; holdets entries passerer 1.000 rækker
       baseQuery: () => supabase
         .from("race_entries").select("race_id, rider_id, team_id, is_auto_filled").eq("team_id", req.team.id)
         .order("race_id").order("rider_id"),

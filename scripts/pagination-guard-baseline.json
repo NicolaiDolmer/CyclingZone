@@ -1,144 +1,867 @@
 {
-  "$comment": "Kendte upaginerede selects mod deny-listede tabeller (ratchet — maa kun skrumpe). De fleste er verificeret sikre pr. 2026-08-05 (single-team/single-race-scoping, se PR-body for #3331-audittens rækketal), men ikke alle er annoteret inline endnu. Genereret af scripts/lint-pagination-guard.mjs --update-baseline. Refs #3331. Nye overtrædelser må IKKE tilføjes her — paginér med fetchAllRows, eller tilføj en \"pagination-safe: <begrundelse>\"-kommentar og fjern entryen herfra.",
+  "$comment": "Kendte upaginerede selects (ratchet — maa kun skrumpe). #8797: daekker alle tabeller undtagen SMALL_TABLE_EXCEPTIONS; fund i de nye tabeller er optaget som de stod 26/11. De fleste er verificeret sikre pr. 2026-08-05 (single-team/single-race-scoping, se PR-body for #3331-audittens rækketal), men ikke alle er annoteret inline endnu. Genereret af scripts/lint-pagination-guard.mjs --update-baseline. Refs #3331. Nye overtrædelser må IKKE tilføjes her — paginér med fetchAllRows, eller tilføj en \"pagination-safe: <begrundelse>\"-kommentar og fjern entryen herfra.",
   "files": {
+    "backend/cron.js": {
+      "teams": 1
+    },
+    "backend/lib/academyBoardGift.ts": {
+      "academy_gift_claims": 1
+    },
+    "backend/lib/academyIntake.js": {
+      "teams": 1
+    },
     "backend/lib/academyIntakeExpirySweep.js": {
       "riders": 1
     },
+    "backend/lib/academyIntakePull.js": {
+      "academy_intake": 1
+    },
+    "backend/lib/academyProspectKnowledge.ts": {
+      "academy_intake": 1
+    },
     "backend/lib/achievementEngine.js": {
-      "riders": 2
+      "rider_watchlist": 1,
+      "riders": 2,
+      "board_profiles": 1,
+      "auction_bids": 1,
+      "auctions": 1,
+      "transfer_offers": 2,
+      "races": 1,
+      "season_standings": 1,
+      "achievements": 1,
+      "manager_achievements": 1
+    },
+    "backend/lib/adminSimulateRace.js": {
+      "races": 1
     },
     "backend/lib/aiRecoverySweep.js": {
-      "riders": 1
+      "riders": 1,
+      "rider_condition": 1,
+      "rider_derived_abilities": 1
+    },
+    "backend/lib/aiTeamGenerator.js": {
+      "races": 2,
+      "teams": 3
+    },
+    "backend/lib/aluntaOverdueWatch.js": {
+      "subscriptions": 1
+    },
+    "backend/lib/aluntaPeriodRollWatch.js": {
+      "subscriptions": 1
+    },
+    "backend/lib/aluntaSubscriptionReconcile.js": {
+      "subscriptions": 1
+    },
+    "backend/lib/auctionCancellation.js": {
+      "auctions": 2,
+      "auction_bids": 1
+    },
+    "backend/lib/auctionFinalization.js": {
+      "auction_bids": 1,
+      "rider_ownership_events": 1,
+      "teams": 2,
+      "auctions": 2
+    },
+    "backend/lib/auctionTransferListPause.ts": {
+      "auctions": 1,
+      "transfer_listings": 1
+    },
+    "backend/lib/autoAccept2176.js": {
+      "auctions": 1
+    },
+    "backend/lib/availableBalance.js": {
+      "auctions": 1,
+      "auction_proxy_bids": 1
+    },
+    "backend/lib/betaAccess.js": {
+      "users": 2
     },
     "backend/lib/betaResetService.js": {
-      "riders": 1
+      "teams": 1,
+      "riders": 1,
+      "loans": 1
+    },
+    "backend/lib/boardAutoAccept.js": {
+      "teams": 1,
+      "users": 1,
+      "board_profiles": 1
     },
     "backend/lib/boardConsequences.js": {
+      "board_consequences": 3,
       "riders": 2
     },
+    "backend/lib/boardGoalContext.js": {
+      "board_plan_snapshots": 1,
+      "season_standings": 2
+    },
+    "backend/lib/boardMandateAutoAccept.js": {
+      "teams": 1,
+      "board_mandates": 2,
+      "users": 1
+    },
+    "backend/lib/boardMandateEngine.js": {
+      "board_vision_milestones": 1,
+      "team_board_members": 2
+    },
+    "backend/lib/boardMembers.js": {
+      "team_board_members": 4,
+      "board_profiles": 1,
+      "teams": 1
+    },
     "backend/lib/boardMidSeason.js": {
+      "teams": 1,
+      "season_standings": 1,
+      "board_profiles": 2,
       "riders": 1
     },
     "backend/lib/boardSequentialNegotiation.js": {
+      "teams": 1,
       "riders": 1
+    },
+    "backend/lib/comebackService.js": {
+      "teams": 1
+    },
+    "backend/lib/dailySeasonCountCheck.js": {
+      "admin_log": 1
     },
     "backend/lib/dailyTrainingEngine.js": {
-      "riders": 1
+      "training_day_runs": 4,
+      "training_condition_settlements": 1,
+      "races": 1,
+      "training_race_loads": 2,
+      "riders": 1,
+      "teams": 1,
+      "training_rider_ticks": 1,
+      "rider_derived_abilities": 1,
+      "training_plans": 1,
+      "rider_condition": 1,
+      "training_week_plans": 1
     },
-    "backend/lib/newAccountGates.js": {
-      "race_entries": 1
+    "backend/lib/deferredTransferHealSweep.js": {
+      "races": 1
+    },
+    "backend/lib/discordRaceDigestSweep.js": {
+      "users": 1,
+      "discord_race_digest_log": 1
+    },
+    "backend/lib/discordRoleSync.js": {
+      "teams": 1
+    },
+    "backend/lib/economyEngine.js": {
+      "board_consequences": 1,
+      "team_facilities": 1,
+      "team_staff": 1,
+      "team_board_members": 1,
+      "loans": 1
+    },
+    "backend/lib/emailRaceDigestSweep.js": {
+      "users": 1
+    },
+    "backend/lib/facilityRoutesHandlers.js": {
+      "team_facilities": 1,
+      "team_staff": 1
+    },
+    "backend/lib/facilityService.js": {
+      "team_staff": 3
+    },
+    "backend/lib/fairplayFlagsCron.js": {
+      "fairplay_whitelisted_pairs": 1
+    },
+    "backend/lib/feedbackInbox.js": {
+      "player_feedback": 1
+    },
+    "backend/lib/founderBadge.js": {
+      "manager_achievements": 1
+    },
+    "backend/lib/inboxPending.js": {
+      "transfer_offers": 1,
+      "swap_offers": 1
+    },
+    "backend/lib/injuryRaceDays.js": {
+      "races": 1
+    },
+    "backend/lib/loanEngine.js": {
+      "auctions": 1,
+      "auction_proxy_bids": 1,
+      "loan_config": 1,
+      "loans": 3
+    },
+    "backend/lib/marketBeta2176.ts": {
+      "teams": 1,
+      "users": 1
+    },
+    "backend/lib/marketUtils.js": {
+      "auctions": 1,
+      "teams": 1
+    },
+    "backend/lib/missedGraduateSweep.js": {
+      "academy_graduation": 1
+    },
+    "backend/lib/notificationService.js": {
+      "teams": 1,
+      "rider_watchlist": 1
+    },
+    "backend/lib/planningBulkActions7535.js": {
+      "races": 1,
+      "race_withdrawals": 1,
+      "rider_derived_abilities": 1,
+      "rider_condition": 1
+    },
+    "backend/lib/potentialEstimateWriter.js": {
+      "team_staff": 1
+    },
+    "backend/lib/prizePayoutEngine.js": {
+      "races": 1
+    },
+    "backend/lib/proRiderHistory.js": {
+      "rider_derived_ability_history": 1
+    },
+    "backend/lib/proxyBidding.js": {
+      "auctions": 1,
+      "auction_proxy_bids": 2
+    },
+    "backend/lib/pushService.js": {
+      "auctions": 1
+    },
+    "backend/lib/raceActiveGuard.js": {
+      "races": 1
     },
     "backend/lib/raceBinding.js": {
       "race_stage_schedule": 1,
       "race_entries": 1
     },
+    "backend/lib/raceDayIntentionYield.js": {
+      "race_stage_roles": 1,
+      "race_team_orders": 1
+    },
+    "backend/lib/raceDayRoleYield5950.js": {
+      "race_stage_roles": 1
+    },
+    "backend/lib/raceEngineV4Bridge.js": {
+      "race_team_orders": 1
+    },
     "backend/lib/raceEntryCleanup.js": {
       "race_entries": 1
     },
+    "backend/lib/raceEntryClears.js": {
+      "race_entry_clears": 1
+    },
     "backend/lib/raceEntryGenerator.js": {
+      "races": 2,
+      "teams": 2,
       "race_entries": 2
     },
+    "backend/lib/raceFatigue.js": {
+      "rider_condition": 2
+    },
+    "backend/lib/raceIncidents.js": {
+      "race_incidents": 1,
+      "rider_condition": 1
+    },
     "backend/lib/racePeakPlans.js": {
+      "training_day_runs": 1,
+      "rider_condition": 1,
       "race_stage_profiles": 1,
-      "race_stage_schedule": 1
+      "race_stage_schedule": 1,
+      "rider_peak_plans": 1
+    },
+    "backend/lib/raceResultsEngine.js": {
+      "races": 1,
+      "race_points": 1
     },
     "backend/lib/raceRunner.js": {
       "race_stage_profiles": 1,
       "race_stage_schedule": 1,
       "race_entries": 2,
-      "riders": 1
+      "race_withdrawals": 1,
+      "races": 1,
+      "rider_condition": 1,
+      "teams": 1,
+      "race_points": 1,
+      "race_simulation_runs": 1,
+      "riders": 1,
+      "race_incidents": 1
     },
     "backend/lib/raceSelection.js": {
       "riders": 1,
       "race_stage_profiles": 1,
-      "race_entries": 1
+      "race_entries": 1,
+      "rider_derived_abilities": 1,
+      "rider_condition": 1
     },
     "backend/lib/raceStageRolesApi.js": {
+      "race_withdrawals": 1,
+      "rider_condition": 2,
       "race_entries": 1,
-      "riders": 1
+      "riders": 1,
+      "rider_derived_abilities": 1,
+      "race_stage_roles": 1
+    },
+    "backend/lib/raceStrategy.js": {
+      "team_rider_role_rules": 1
+    },
+    "backend/lib/raceTeamOrdersApi.js": {
+      "race_stage_roles": 1
+    },
+    "backend/lib/raceWithdrawal.js": {
+      "race_withdrawals": 1
+    },
+    "backend/lib/racingTodayLookup.js": {
+      "races": 1,
+      "rider_condition": 1
+    },
+    "backend/lib/rankingRead7664.js": {
+      "teams": 1
+    },
+    "backend/lib/riderBidTimeline.js": {
+      "auction_bids": 1
+    },
+    "backend/lib/riderEligibility.js": {
+      "races": 1
+    },
+    "backend/lib/riderFatigueNow.js": {
+      "team_facilities": 1,
+      "team_staff": 1,
+      "staff_derived_abilities": 1
+    },
+    "backend/lib/riderFatigueNowCalls7801.test.js": {
+      "x": 2,
+      "a": 3,
+      "f": 2,
+      "r": 2
+    },
+    "backend/lib/riderHistory.js": {
+      "auctions": 1,
+      "transfer_offers": 1,
+      "swap_offers": 1,
+      "rider_ownership_events": 1
+    },
+    "backend/lib/riderReleaseDefer8153.js": {
+      "races": 2
     },
     "backend/lib/riderValueRefresh.js": {
       "riders": 1
     },
+    "backend/lib/saleEscrowFlow6181.js": {
+      "sale_escrows": 1
+    },
+    "backend/lib/saleEscrowView6181.js": {
+      "races": 1
+    },
+    "backend/lib/scoutAssignmentService.js": {
+      "team_staff": 1,
+      "staff_derived_abilities": 1,
+      "scout_assignments": 1,
+      "scout_actions": 1
+    },
+    "backend/lib/scoutMissionMaturation.js": {
+      "scout_actions": 1,
+      "scout_assignments": 1
+    },
     "backend/lib/scoutReportVisibility.js": {
-      "riders": 1
+      "riders": 1,
+      "academy_intake": 1
+    },
+    "backend/lib/scoutSweep.js": {
+      "scout_assignments": 1
+    },
+    "backend/lib/scoutTargetMaturation.js": {
+      "scout_actions": 1,
+      "scout_assignments": 1
+    },
+    "backend/lib/seasonAcademyIntake.js": {
+      "teams": 1
+    },
+    "backend/lib/seasonDocumentarySweep.js": {
+      "season_standings": 1,
+      "season_documentaries": 1
+    },
+    "backend/lib/seasonEndedPersonalization.js": {
+      "users": 1,
+      "board_mandates": 1
+    },
+    "backend/lib/seasonRaceDays.js": {
+      "races": 1
+    },
+    "backend/lib/seasonStandingsBootstrap.js": {
+      "teams": 1,
+      "season_standings": 1
+    },
+    "backend/lib/seasonTransition.js": {
+      "board_consequences": 1
+    },
+    "backend/lib/sponsorContractsService.js": {
+      "races": 1,
+      "season_standings": 3,
+      "teams": 1,
+      "sponsor_contracts": 1
+    },
+    "backend/lib/sponsorRaceDayIncome.js": {
+      "races": 1,
+      "sponsor_contracts": 1
     },
     "backend/lib/squadEnforcement.js": {
-      "riders": 1
+      "teams": 4,
+      "riders": 1,
+      "season_standings": 1
     },
     "backend/lib/squadRiskGuard.js": {
       "riders": 1
     },
+    "backend/lib/squadSeniorReaders.test.js": {
+      "races": 4
+    },
+    "backend/lib/staffOverviewHandlers.js": {
+      "team_staff": 1
+    },
     "backend/lib/stageRaceTransferDefer.js": {
+      "races": 1,
       "race_entries": 1,
       "riders": 1
     },
     "backend/lib/stageScheduler.js": {
-      "race_stage_schedule": 1
+      "race_stage_schedule": 1,
+      "races": 1
     },
     "backend/lib/stallWatchdog.js": {
+      "races": 2,
       "race_stage_schedule": 1
     },
+    "backend/lib/sundayIntakeTick.js": {
+      "teams": 1
+    },
+    "backend/lib/supabaseFetchRetry.test.js": {
+      "race_team_orders": 3
+    },
+    "backend/lib/supabaseRowCapAlarm.test.js": {
+      "teams": 1
+    },
     "backend/lib/teamProfileEngine.js": {
-      "riders": 2
+      "teams": 3,
+      "riders": 2,
+      "board_profiles": 1
+    },
+    "backend/lib/teamPublicProfileHandlers.js": {
+      "team_staff": 1,
+      "team_facilities": 1
+    },
+    "backend/lib/teamTransferHistory.js": {
+      "auctions": 1,
+      "transfer_offers": 1,
+      "swap_offers": 1,
+      "academy_intake": 1
+    },
+    "backend/lib/testUtils/fakeSupabase.test.js": {
+      "board_profiles": 2,
+      "teams": 2,
+      "board_plan_snapshots": 1,
+      "t": 3
+    },
+    "backend/lib/tierCalendarMaterializer.js": {
+      "race_pool": 2,
+      "races": 3
+    },
+    "backend/lib/timeLimitFatigue7715.js": {
+      "training_race_loads": 1,
+      "race_stage_timelines": 1
+    },
+    "backend/lib/trainNow.js": {
+      "races": 2,
+      "race_entry_clears": 1,
+      "rider_condition": 1,
+      "training_date_work": 1,
+      "training_week_plans": 1
+    },
+    "backend/lib/trainNowInstantCondition7737.js": {
+      "rider_condition": 2,
+      "rider_derived_abilities": 1
+    },
+    "backend/lib/trainNowPressMemory.test.js": {
+      "ok": 1,
+      "bad": 1,
+      "boom": 1
+    },
+    "backend/lib/trainNowPressReadCache7982.test.js": {
+      "rider_condition": 2
+    },
+    "backend/lib/trainNowTrin3Krav7982.test.js": {
+      "teams": 2,
+      "races": 3
+    },
+    "backend/lib/trainingDayCloseTrigger.js": {
+      "races": 2,
+      "teams": 1,
+      "training_day_runs": 1
+    },
+    "backend/lib/trainingFatigueRules.ts": {
+      "team_training_rules": 1
+    },
+    "backend/lib/trainingRaceDayTick.js": {
+      "races": 1
+    },
+    "backend/lib/trainingRaceRecovery.js": {
+      "race_simulation_runs": 2,
+      "training_condition_settlements": 1
+    },
+    "backend/lib/trainingSettleRaceSession7982.prodImage.js": {
+      "teams": 1,
+      "users": 1,
+      "training_date_work": 1
+    },
+    "backend/lib/trainingStaffContext.js": {
+      "team_facilities": 1,
+      "team_staff": 1,
+      "staff_derived_abilities": 1
+    },
+    "backend/lib/trainingSweep.js": {
+      "training_day_runs": 1
+    },
+    "backend/lib/trainingWeekForecast.js": {
+      "training_week_plans": 1
     },
     "backend/lib/transferExecution.js": {
-      "riders": 3
+      "auctions": 1,
+      "auction_proxy_bids": 1,
+      "riders": 3,
+      "transfer_offers": 2,
+      "swap_offers": 2
+    },
+    "backend/lib/upkeepPerRaceDay.ts": {
+      "races": 1
     },
     "backend/lib/wageDeductionSweep.js": {
+      "wage_daily_runs": 1,
       "riders": 1
+    },
+    "backend/lib/youthRaceOptOut.ts": {
+      "races": 1
     },
     "backend/routes/api.js": {
-      "riders": 18,
+      "auction_proxy_bids": 2,
+      "auctions": 6,
+      "riders": 17,
+      "teams": 6,
+      "rider_physiology_profiles": 1,
+      "scout_actions": 1,
+      "rider_derived_abilities": 9,
+      "training_plans": 1,
+      "rider_condition": 7,
+      "training_week_plans": 1,
       "race_stage_schedule": 2,
-      "race_entries": 5,
-      "race_stage_profiles": 2
+      "race_entries": 2,
+      "rider_peak_plans": 7,
+      "races": 19,
+      "race_withdrawals": 3,
+      "race_stage_profiles": 2,
+      "swap_offers": 5,
+      "rider_watchlist": 2,
+      "transfer_listings": 2,
+      "transfer_offers": 5,
+      "pending_race_result_rows": 1,
+      "race_points": 3,
+      "signup_attribution": 2,
+      "growth_metric_snapshots": 1,
+      "subscriptions": 1,
+      "survey_questions": 1,
+      "survey_responses": 1,
+      "survey_completions": 1,
+      "fairplay_flags": 1,
+      "loan_config": 3,
+      "team_facilities": 2,
+      "team_staff": 2,
+      "auction_bids": 1,
+      "race_pool": 5,
+      "race_point_master": 1,
+      "race_point_cascade": 1,
+      "race_point_template": 1,
+      "loans": 2,
+      "users": 1,
+      "achievements": 1,
+      "manager_achievements": 1,
+      "board_profiles": 1,
+      "team_board_members": 1,
+      "board_plan_snapshots": 1,
+      "academy_intake": 2
+    },
+    "backend/routes/rankings.5692.test.ts": {
+      "team_race_points_mv": 2
+    },
+    "backend/routes/trainingGroups.js": {
+      "training_week_plans": 1
+    },
+    "backend/routes/trainingPrograms.js": {
+      "training_week_plans": 3
+    },
+    "backend/scripts/audit-4700-double-booked-riders.js": {
+      "races": 1
+    },
+    "backend/scripts/backfillMandateForTeamsWithoutRelation.js": {
+      "teams": 1,
+      "board_relations": 1
+    },
+    "backend/scripts/backfillRaceScheduledFor.js": {
+      "races": 1
+    },
+    "backend/scripts/boardBaselineSatisfactionDryRun.js": {
+      "teams": 1,
+      "season_standings": 1,
+      "loans": 1,
+      "board_profiles": 1
+    },
+    "backend/scripts/boardFormationGoalsDryRun.js": {
+      "teams": 1,
+      "season_standings": 1
     },
     "backend/scripts/boardIdentityBackfillDryRun.js": {
+      "teams": 1,
       "riders": 1
+    },
+    "backend/scripts/boardSatisfactionHarness.js": {
+      "teams": 1,
+      "season_standings": 1
     },
     "backend/scripts/convertHillyToMountainClassics.js": {
-      "race_stage_profiles": 1
+      "races": 1,
+      "race_stage_profiles": 1,
+      "race_pool": 1
+    },
+    "backend/scripts/creditDivisionAdjustment-4376.mjs": {
+      "board_consequences": 1
+    },
+    "backend/scripts/detect-missed-graduates.js": {
+      "teams": 1
+    },
+    "backend/scripts/dev/apply-calendar-chronology.mjs": {
+      "races": 1
     },
     "backend/scripts/dev/backfillAcademyDeriveTail.js": {
-      "riders": 1
+      "riders": 1,
+      "rider_derived_abilities": 1
+    },
+    "backend/scripts/dev/bjergdageBytte5405.mjs": {
+      "race_pool": 1
     },
     "backend/scripts/dev/cleanup-ghost-race-entries.mjs": {
       "riders": 1
     },
+    "backend/scripts/dev/cleanup-ghost-tier4-races.mjs": {
+      "teams": 1,
+      "races": 1
+    },
+    "backend/scripts/dev/cleanup5903.mjs": {
+      "races": 1
+    },
+    "backend/scripts/dev/compensationIntake3576.mjs": {
+      "teams": 2,
+      "academy_intake": 2,
+      "academy_intake_ticks": 2,
+      "rider_derived_abilities": 1
+    },
     "backend/scripts/dev/diag-0c-overlap.mjs": {
+      "races": 1,
       "race_stage_schedule": 1
     },
     "backend/scripts/dev/diag-0c-season-state.mjs": {
+      "races": 1,
       "race_stage_schedule": 1
+    },
+    "backend/scripts/dev/dry-run-entry-generator-prod.mjs": {
+      "races": 1,
+      "teams": 1
+    },
+    "backend/scripts/dev/dryRunUpcomingStage.mjs": {
+      "races": 1,
+      "rider_derived_abilities": 1
+    },
+    "backend/scripts/dev/dumpRacePoolFixture.mjs": {
+      "teams": 1
+    },
+    "backend/scripts/dev/lib/motorTestportInputs.test.mjs": {
+      "races": 1
+    },
+    "backend/scripts/dev/motorBench.mjs": {
+      "rider_derived_abilities": 1
+    },
+    "backend/scripts/dev/moveRacesOffFinalMonday4131.mjs": {
+      "races": 1,
+      "teams": 1,
+      "rider_condition": 1
+    },
+    "backend/scripts/dev/prepare6061TrainingRecovery.test.mjs": {
+      "training_day_runs": 1
+    },
+    "backend/scripts/dev/regenSeason3Calendar.mjs": {
+      "races": 1
+    },
+    "backend/scripts/dev/regenerate-entries-binding-fix.mjs": {
+      "races": 1
+    },
+    "backend/scripts/dev/repair5912LostTraining.mjs": {
+      "training_date_work": 1
+    },
+    "backend/scripts/dev/repairYouthOutliers2699.mjs": {
+      "academy_intake": 1,
+      "auctions": 1,
+      "rider_derived_abilities": 1
     },
     "backend/scripts/dev/rerun-corrupt-races-dryrun.mjs": {
       "race_stage_profiles": 1,
+      "race_points": 1,
+      "teams": 2,
       "race_stage_schedule": 2,
       "race_entries": 2
     },
+    "backend/scripts/dev/reschedule-overlap.mjs": {
+      "races": 1
+    },
     "backend/scripts/dev/reset-division-3.mjs": {
+      "races": 1,
+      "teams": 1,
+      "board_profiles": 1,
       "riders": 1
     },
+    "backend/scripts/dev/run-relaunch-rehearsal.mjs": {
+      "teams": 6,
+      "manager_achievements": 2,
+      "races": 1
+    },
+    "backend/scripts/dev/s4CatalogDryRun.mjs": {
+      "teams": 1
+    },
+    "backend/scripts/dev/seasonRollover.mjs": {
+      "races": 1
+    },
+    "backend/scripts/dev/sim-calendar-chronology.mjs": {
+      "teams": 1,
+      "race_pool": 1
+    },
+    "backend/scripts/dev/sim-calendar-prestige.mjs": {
+      "teams": 1,
+      "race_pool": 1
+    },
+    "backend/scripts/dev/simulate-base-rider-depth.mjs": {
+      "races": 1,
+      "teams": 1
+    },
+    "backend/scripts/dev/simulate-overlap-fill.mjs": {
+      "races": 1,
+      "teams": 1
+    },
+    "backend/scripts/dev/snapshot-0c-population.mjs": {
+      "teams": 1,
+      "races": 1
+    },
+    "backend/scripts/dev/tenSeasonSim6110.mjs": {
+      "staff_derived_abilities": 1
+    },
+    "backend/scripts/dev/topUpAiRostersDiv1Div2.mjs": {
+      "teams": 1
+    },
+    "backend/scripts/dev/topup-starter-depth.mjs": {
+      "teams": 1
+    },
+    "backend/scripts/dev/tourDryRun.mjs": {
+      "races": 1,
+      "rider_derived_abilities": 1
+    },
     "backend/scripts/dev/verify-calendar-readmodel.mjs": {
+      "races": 1,
       "race_stage_schedule": 1,
       "race_stage_profiles": 1
     },
+    "backend/scripts/dev/verifyS5v2Taend.mjs": {
+      "schema_migrations": 1
+    },
+    "backend/scripts/dev/verifySeason3Calendar.mjs": {
+      "races": 1
+    },
     "backend/scripts/driftMonitor.js": {
-      "riders": 2
+      "riders": 2,
+      "teams": 2
+    },
+    "backend/scripts/dry-run-4860-small.js": {
+      "season_standings": 1,
+      "sponsor_contracts": 1,
+      "teams": 1
+    },
+    "backend/scripts/dryRunEntryGenerator5860.test.ts": {
+      "fixture_rows": 2
+    },
+    "backend/scripts/dryRunTierCalendarBalance.js": {
+      "teams": 1,
+      "race_pool": 1
     },
     "backend/scripts/gcAccumulationScorecard.js": {
+      "races": 1,
       "race_stage_profiles": 1
     },
+    "backend/scripts/loadtestRaceDay.test.mjs": {
+      "races": 2
+    },
+    "backend/scripts/ops/recomputeBoardConfidence7088.mjs": {
+      "board_satisfaction_events": 1
+    },
+    "backend/scripts/ops/weeklyEngineDrift2557.test.mjs": {
+      "races": 1
+    },
+    "backend/scripts/pollRiskAuctions-2026-07-26.mjs": {
+      "auctions": 1
+    },
+    "backend/scripts/proposeNextMandateDryRun.js": {
+      "board_mandates": 1
+    },
+    "backend/scripts/reconcilePoolAfterManualMove-4183.mjs": {
+      "teams": 2
+    },
+    "backend/scripts/relegationParachuteScorecard.js": {
+      "teams": 1
+    },
+    "backend/scripts/repair-4376-sponsor-division-correction.js": {
+      "board_consequences": 1
+    },
+    "backend/scripts/repair-4485-young-classification.js": {
+      "season_standings": 1
+    },
+    "backend/scripts/repair-4865-restore-bonus-goals.js": {
+      "teams": 1
+    },
     "backend/scripts/repair2251Tier4GrandTours.js": {
+      "races": 1,
       "race_stage_schedule": 1
     },
     "backend/scripts/repair2276Div4Cascade.js": {
+      "races": 3,
       "race_stage_schedule": 1,
+      "teams": 2,
+      "race_pool": 1,
       "race_entries": 1
     },
+    "backend/scripts/s3CalendarPackageScorecard.js": {
+      "teams": 1,
+      "race_pool": 1
+    },
+    "backend/scripts/seasonStartScorecard.js": {
+      "teams": 1
+    },
+    "backend/scripts/seedYouthPools.js": {
+      "teams": 1
+    },
+    "backend/scripts/simulateSeasonProduction.js": {
+      "race_points": 1
+    },
+    "backend/scripts/transferPriceBandDryRun.js": {
+      "transfer_offers": 1,
+      "swap_offers": 1,
+      "auctions": 1
+    },
     "frontend/src/components/CompareDrawer.jsx": {
+      "season_standings": 1,
+      "auctions": 1,
       "riders": 2
+    },
+    "frontend/src/components/Layout.jsx": {
+      "roadmap_items": 1,
+      "known_issues": 1
     },
     "frontend/src/components/race/CompletedRacesExplorer.jsx": {
       "race_stage_profiles": 1
@@ -146,10 +869,67 @@
     "frontend/src/components/race/StageScheduleCard.jsx": {
       "race_stage_schedule": 1
     },
+    "frontend/src/components/squad/YouthSquadTable.tsx": {
+      "transfer_listings": 1
+    },
+    "frontend/src/components/squad/youthStandingsApi.ts": {
+      "teams": 1
+    },
+    "frontend/src/data/auctionData.ts": {
+      "auctions": 1,
+      "auction_bids": 1,
+      "auction_proxy_bids": 1,
+      "rider_watchlist": 1
+    },
+    "frontend/src/data/dashboardData.ts": {
+      "races": 1,
+      "season_standings": 2,
+      "auctions": 1
+    },
+    "frontend/src/hooks/useTodayStages.js": {
+      "races": 1
+    },
+    "frontend/src/lib/availableBalance.js": {
+      "auctions": 1,
+      "auction_proxy_bids": 1
+    },
+    "frontend/src/lib/opsNotices.js": {
+      "ops_notices": 1
+    },
+    "frontend/src/lib/posthogIntegration.jsx": {
+      "teams": 1
+    },
+    "frontend/src/pages/ActivityPage.jsx": {
+      "rider_watchlist": 1
+    },
+    "frontend/src/pages/AdminWaitlistPage.jsx": {
+      "founder_supporter_waitlist": 1
+    },
+    "frontend/src/pages/AuctionHistoryPage.jsx": {
+      "auction_bids": 2,
+      "auctions": 2
+    },
+    "frontend/src/pages/FinancePage.jsx": {
+      "auctions": 1,
+      "auction_proxy_bids": 1
+    },
+    "frontend/src/pages/HallOfFamePage.jsx": {
+      "hall_of_fame": 1,
+      "teams": 1
+    },
     "frontend/src/pages/RaceDetailPage.jsx": {
-      "race_stage_schedule": 1
+      "race_stage_schedule": 1,
+      "race_incidents": 1,
+      "rider_career_events": 1
+    },
+    "frontend/src/pages/RaceHistoryPage.jsx": {
+      "races": 1
+    },
+    "frontend/src/pages/RacePointsPage.jsx": {
+      "race_points": 1
     },
     "frontend/src/pages/ResultaterPage.jsx": {
+      "races": 1,
       "race_stage_schedule": 1,
       "riders": 1
     },
@@ -157,16 +937,50 @@
       "riders": 1
     },
     "frontend/src/pages/RiderStatsPage.jsx": {
-      "riders": 2
+      "riders": 2,
+      "auctions": 1,
+      "auction_proxy_bids": 1
     },
     "frontend/src/pages/RidersPage.jsx": {
-      "riders": 1
+      "rider_watchlist": 1,
+      "auctions": 1
+    },
+    "frontend/src/pages/RoadmapPage.jsx": {
+      "known_issues": 1,
+      "roadmap_items": 1,
+      "known_issue_updates": 1,
+      "roadmap_votes": 1,
+      "known_issue_reports": 1
+    },
+    "frontend/src/pages/SeasonEndPage.jsx": {
+      "season_standings": 1,
+      "races": 1,
+      "race_points": 1
+    },
+    "frontend/src/pages/StandingsPage.jsx": {
+      "teams": 1,
+      "season_standings": 1,
+      "races": 1
+    },
+    "frontend/src/pages/SurveyPage.jsx": {
+      "survey_questions": 1
     },
     "frontend/src/pages/TeamPage.jsx": {
+      "auctions": 1,
+      "transfer_listings": 1,
       "riders": 2
     },
     "frontend/src/pages/TrainingPage.jsx": {
       "riders": 1
+    },
+    "frontend/src/pages/WatchlistPage.jsx": {
+      "rider_watchlist": 1,
+      "auctions": 1,
+      "transfer_listings": 1
+    },
+    "frontend/src/pages/admin/AdminUsersTab.jsx": {
+      "users": 1,
+      "teams": 1
     }
   }
 }
