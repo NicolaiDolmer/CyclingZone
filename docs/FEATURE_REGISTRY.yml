@@ -203,6 +203,16 @@ features:
     epic: 7715
     verified: 2026-11-07
     note: "Nøgle time_limit_fatigue_7715 uden række (off)."
+
+  - id: race-long-attack-7884
+    area: race-engine
+    title_en: Attack on a climb of your choice
+    title_da: Angrib på den stigning du vælger
+    state: building
+    ssot: docs/superpowers/specs/2026-11-12-7884-langt-angreb-design.md
+    epic: 7884
+    verified: 2026-11-26
+    note: "Nøgle long_attack_7884 uden række (off). Kun kontrakten (backend/lib/tacticAttackTrigger7884.js); motor og flade mangler."
     decision: ejer-beslutning
     decide_by: 2026-11-20
 
