@@ -2,10 +2,10 @@
 // rytter, flere eller en hel gruppe, kun på én dato i den rullende uge. Ugeplanen ændres aldrig,
 // og et løb vinder altid. Kontakten training_day_override_8592 afgøres på serveren: svarer GET
 // enabled:false, tegnes intet herfra, og dagsvælgeren er præcis som før.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import Modal from "../../ui/Modal.jsx";
-import Button from "../../ui/Button.jsx";
+import ModalBase from "../../ui/Modal.jsx";
+import ButtonBase from "../../ui/Button.jsx";
 import { CalendarIcon, UndoIcon } from "../../ui/icons/index.jsx";
 import { authHeaders } from "../../../lib/supabase";
 import { apiFetch } from "../../../lib/apiFetch.ts";
@@ -14,6 +14,16 @@ import { isDisplayCatalogV3 } from "../../../lib/training.js";
 import { overrideSessionGroups, selectedRiderIds, type DayOverride } from "./dayOverrideModel.ts";
 
 const API = "/api/training/programs/day-overrides";
+
+// Primitiverne i components/ui er .jsx uden typer (samme greb som RacePeekCard.tsx).
+const Modal = ModalBase as unknown as ComponentType<{
+  open: boolean; onClose: () => void; title?: ReactNode; description?: ReactNode; footer?: ReactNode;
+  closeLabel?: string; titleId?: string; children?: ReactNode;
+}>;
+const Button = ButtonBase as unknown as ComponentType<{
+  variant?: "primary" | "secondary" | "ghost"; size?: "sm" | "md"; loading?: boolean; disabled?: boolean;
+  iconLeft?: ReactNode; onClick?: () => void; children?: ReactNode; "data-testid"?: string;
+}>;
 
 type Rider = { id: string; firstname?: string | null; lastname?: string | null };
 type Group = { id: string; name: string; members: ReadonlyArray<{ riderId: string }> };
