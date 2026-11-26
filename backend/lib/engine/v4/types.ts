@@ -251,6 +251,8 @@ export type StageInput = {
   // #7855 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): troejejagten i etapeplanen (Hent point / Hent bjergpoint,
   // mechanics/jerseyHunt7855.ts). Udeladt = opgaverne findes ikke, som foer.
   jersey_hunt_7855?: true | null;
+  // #8189 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): flad spurt paa kuperet/boelget afgoeres af dagens haardhed (mechanics/hillyFinish8189.ts). Udeladt = som foer.
+  hilly_finish_8189?: true | null;
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
@@ -843,6 +845,8 @@ export type SegmentHookContext = {
   breakawayCurve6912?: true;
   // #7730 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.team_chase_7730): jagten afgoeres af de hold der jager. Udeladt = som foer.
   teamChase7730?: true;
+  // #8189 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.hilly_finish_8189): flad spurt paa kuperet/boelget efter dagens haardhed. Udeladt = som foer.
+  hillyFinish8189?: true;
   // #7380 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 med en etapeplan): etapeplanens aktuelle opgave pr. rytter med plan,
   // som runtimen satte den ved segmentets start (stagePlanEngine.stagePlanCurrentTasks). Udeladt = ingen plan.
   stagePlanTasks?: Readonly<Record<string, import("../../stagePlan.ts").StagePlanTask>>;

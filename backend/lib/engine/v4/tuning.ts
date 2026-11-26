@@ -1769,3 +1769,38 @@ export const BREAKAWAY_CURVE_6912_TUNING = deepFreeze({
   climbLossSecondsPerGradientKm: 2, // forventet tab pr. stignings-km pr. procent paa finalestigningen
   maxControlClosingSecondsPerKm: 25, // hoejeste lukning pr. km under styringen
 });
+
+// #8189 (KUN s5_profiles_v3 + kontakten hilly_finish_8189, SLUKKET): en flad spurt paa kuperet og
+// boelget afgoeres af hvor haard dagen var, ikke som en ren massespurt (mechanics/hillyFinish8189.ts).
+// Ejer 26/11 (#4596): boelget er en sprinterdag, men udbrud og reducerede spurter vinder en del;
+// jo haardere dagen, jo faerre rene sprintere. Dagens haardhed (0-1) laeses af de kategoriserede
+// stigninger foer maal, vaegtet efter kategori og naerhed til maal. Tre led, hver kan slukkes alene
+// (0 = leddet goer intet): jagtens interesse og lad-gaa-loftet (udbruddet), det sene angreb
+// (kuperet) og placerings-kravet (reduceret spurt). Varianterne og deres maalte effekt staar
+// privat (balance-internals/8189/, hard rule 17); ingen tal i kommentarer.
+export const HILLY_FINISH_8189_TUNING = deepFreeze({
+  profiles: ["hilly", "rolling"] as readonly ProfileType[],
+  finales: ["flat_sprint"] as readonly import("./types.ts").FinaleType[],
+  // Dagens haardhed: kategori-vaegt pr. stigning, summen mappes lineaert fra `hardnessFloor` til
+  // `hardnessFull`. En stigning laengere fra maal end `nearFinishKm` taeller mindre, ned til
+  // `farWeight` ved `farFinishKm`.
+  categoryWeight: { "4": 1, "3": 2, "2": 4, "1": 6, HC: 8 } as Readonly<Record<string, number>>,
+  hardnessFloor: 2,
+  hardnessFull: 10,
+  nearFinishKm: 20,
+  farFinishKm: 80,
+  farWeight: 0.5,
+  // (A) Udbruddet: sprinterholdenes interesse i at jage falder med haardheden; lad-gaa-loftet
+  // vokser med den. Paa boelget loeftes loftet altid (feltet giver et udbrud lidt mere), og
+  // feltet kommer oftere for sent end paa en flad dag.
+  chaseInterestCut: 0.5,
+  letGoGain: 0.5,
+  rollingLetGoScale: 2,
+  rollingLateChance: 0.2,
+  // (A) Det sene angreb paa en kuperet spurtetape: chancen vokser med haardheden.
+  lateAttackChanceAtFull: 0.3,
+  // (B) Reduceret spurt: en andel af sprint-vaegten flyttes til udholdenhed og punch i takt med
+  // haardheden. Alle vaegte >= 0, saa finale-scorens monotoni i hver evne bevares.
+  sprintShiftAtFull: 0.25,
+  shiftToDurability: 0.6,
+});
