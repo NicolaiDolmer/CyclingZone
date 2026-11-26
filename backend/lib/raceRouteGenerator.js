@@ -11,6 +11,7 @@
 
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { seasonSeedSuffix } from "./raceSeedAxis.js";
+import { scaleDistanceBand } from "./youthMiniEditions7471.js";
 // S5 (#6359): matrixen (spec §3) og pladsholder-kilderne bor i Fase 0's ordforråd.
 import { isFinishAllowed as isFinishAllowedS5, S5_PLACEHOLDER_SOURCE_PROFILE, FINISH_MATRIX as FINISH_MATRIX_S5 } from "./stageProfileTypes.js";
 
@@ -856,7 +857,8 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
   const classBand = !isStageRace && race?.race_class ? CLASS_DISTANCE_BANDS[race.race_class] : null;
   const prologueBand = isGrandTour ? GRAND_TOUR_PROLOGUE_DISTANCE_BAND : PROLOGUE_DISTANCE_BAND;
   const grandTourBand = isGrandTour ? GRAND_TOUR_DISTANCE_BANDS[bandKey] : null;
-  const [lo, hi] = isProlog ? prologueBand : (classBand ?? grandTourBand ?? DISTANCE_BANDS[bandKey] ?? DISTANCE_BANDS.flat);
+  // #7471: en ungdoms-mini-udgave koerer en kortere distance; alt andet faar baandet uaendret.
+  const [lo, hi] = scaleDistanceBand(isProlog ? prologueBand : (classBand ?? grandTourBand ?? DISTANCE_BANDS[bandKey] ?? DISTANCE_BANDS.flat), race);
   let distance_km = isTimeTrialProfile(target) ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
   if (distance_km < lo) distance_km = lo;
   if (distance_km > hi) distance_km = hi;
@@ -965,7 +967,7 @@ export function attachRoute(stage, race, isStageRace) {
   const classBand = !isStageRace && race?.race_class ? CLASS_DISTANCE_BANDS[race.race_class] : null;
   const prologueBand = isGrandTour ? GRAND_TOUR_PROLOGUE_DISTANCE_BAND : PROLOGUE_DISTANCE_BAND;
   const grandTourBand = isGrandTour ? GRAND_TOUR_DISTANCE_BANDS[pt] : null;
-  const [lo, hi] = isProlog ? prologueBand : (classBand ?? grandTourBand ?? DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat);
+  const [lo, hi] = scaleDistanceBand(isProlog ? prologueBand : (classBand ?? grandTourBand ?? DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat), race); // #7471
   let distance_km = isTimeTrialProfile(pt) ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
   if (distance_km < lo) distance_km = lo; // round5 må aldrig skyde under båndet
   if (distance_km > hi) distance_km = hi;

@@ -244,6 +244,11 @@ const cphDate = (iso) => CPH_DATE.format(new Date(iso));
 const cphTime = (iso) => CPH_TIME.format(new Date(iso)).replace(/^24:/, "00:");
 const toMin = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
 const toHHMM = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+/** Kalenderens dag 0 som dansk dato: samme regel som buildScheduleRows (real_day 0 = from + 1). */
+export function calendarDayZero(from) {
+  const [y, m, d] = CPH_DATE.format(new Date(from)).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
 const dayIndex = (fromDate, localDate) => Math.round((Date.parse(`${localDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86_400_000);
 
 /** Ungdommens etape ligger lidt efter seniorens, saa de aldrig starter paa samme minut (#6667). */
@@ -356,11 +361,12 @@ export function selectMiniEditions({ squad, anchors = [], miniCatalog = [] }) {
  * seniorudgavens + truppens forskydning, flyttet videre i 5-minutters skridt hvis det rammer
  * en senior-tid eller en anden ungdomsetape paa datoen.
  *
- * @param {{ squad: "u23"|"junior", anchors: SeniorAnchor[], miniCatalog: object[], firstDate: string,
- *   days: number, latest?: string }} args  firstDate = kalenderens dag 0 (dansk dato).
+ * @param {{ squad: "u23"|"junior", anchors: SeniorAnchor[], miniCatalog: object[], from: Date,
+ *   days: number, latest?: string }} args  from = materializerens anker (real_day 0 = dagen efter).
  */
-export function packMiniEditionCalendar({ squad, anchors = [], miniCatalog = [], firstDate, days, latest = MINI_LATEST_SLOT }) {
+export function packMiniEditionCalendar({ squad, anchors = [], miniCatalog = [], from, days, latest = MINI_LATEST_SLOT }) {
   const rules = rulesFor(squad);
+  const firstDate = calendarDayZero(from);
   const selection = selectMiniEditions({ squad, anchors, miniCatalog });
   const seniorTimes = seniorTimesByDate(anchors);
   const youthTimes = new Map();
@@ -446,4 +452,48 @@ export function seniorAnchorsFromRows({ races = [], schedule = [], externalIdByP
     });
   }
   return anchors;
+}
+
+/**
+ * Seniorens D1-ankre fra en (toerkoersels-)plan: tier-planens foerste pulje (raceRows +
+ * stageRows, materializerens form) og kataloget til external_id.
+ */
+export function seniorAnchorsFromPlan({ tierPlan, catalog = [] }) {
+  const pool = tierPlan?.pools?.[0];
+  if (!pool) return [];
+  const extById = new Map(catalog.map((c) => [c.id, c.external_id ?? null]));
+  const races = pool.raceRows.map((r) => ({ ...r, id: r.pool_race_id }));
+  const schedule = pool.stageRows.map((s) => ({ ...s, race_id: s.pool_race_id }));
+  return seniorAnchorsFromRows({ races, schedule, externalIdByPoolRace: extById });
+}
+
+/**
+ * Den eneste I/O i modulet (kun SELECT): seniorens D1 for saesonen. Bruges af ungdommens
+ * materialisering, som koerer EFTER seniorkalenderen (buildSeasonCalendar --squad).
+ */
+export async function loadSeniorMiniAnchors({ supabase, seasonId }) {
+  const { data: pools, error: pErr } = await supabase.from("league_divisions").select("id, tier, squad, retired_at")
+    .eq("tier", MINI_SOURCE_TIER).is("retired_at", null).or("squad.is.null,squad.eq.senior").order("id");
+  if (pErr) throw new Error(`#7471 senior D1 pools: ${pErr.message}`);
+  const poolId = pools?.[0]?.id;
+  if (poolId == null) return [];
+  const { data: races, error: rErr } = await supabase.from("races")
+    .select("id, pool_race_id, name, race_class, race_type, stages")
+    .eq("season_id", seasonId).eq("league_division_id", poolId).or("squad.is.null,squad.eq.senior");
+  if (rErr) throw new Error(`#7471 senior D1 races: ${rErr.message}`);
+  const raceIds = (races ?? []).map((r) => r.id);
+  const poolRaceIds = [...new Set((races ?? []).map((r) => r.pool_race_id).filter(Boolean))];
+  const schedule = [];
+  for (let i = 0; i < raceIds.length; i += 100) {
+    const { data, error } = await supabase.from("race_stage_schedule")
+      .select("race_id, stage_number, game_day, scheduled_at").in("race_id", raceIds.slice(i, i + 100));
+    if (error) throw new Error(`#7471 senior D1 schedule: ${error.message}`);
+    schedule.push(...(data ?? []));
+  }
+  const { data: pool, error: cErr } = poolRaceIds.length
+    ? await supabase.from("race_pool").select("id, external_id").in("id", poolRaceIds)
+    : { data: [], error: null };
+  if (cErr) throw new Error(`#7471 senior D1 catalog: ${cErr.message}`);
+  const externalIdByPoolRace = new Map((pool ?? []).map((c) => [c.id, c.external_id]));
+  return seniorAnchorsFromRows({ races: races ?? [], schedule, externalIdByPoolRace });
 }
