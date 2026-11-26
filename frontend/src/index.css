@@ -585,6 +585,7 @@ video {
   size-adjust: 110.88%;
 }
 
+/* UI palette source: theme/tokens.json. Regenerate with node scripts/generate-design-tokens.mjs. */
 :root {
   color-scheme: light;
 
