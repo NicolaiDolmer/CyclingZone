@@ -52,6 +52,7 @@
     "ifDropped": "S'il est lâché : {task}",
     "steps": "Niveaux d'effort",
     "toClimb": "Jusqu'à {name}",
+    "toClimbUnnamed": "Jusqu'à la catégorie {category} au km {km}",
     "toLastTen": "Jusqu'aux 10 derniers km",
     "lastTen": "10 derniers km",
     "tryBreak": "Tenter l'échappée",

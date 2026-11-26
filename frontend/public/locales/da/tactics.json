@@ -52,6 +52,7 @@
     "ifDropped": "Hvis han bliver sat: {task}",
     "steps": "Indsatstrin",
     "toClimb": "Til {name}",
+    "toClimbUnnamed": "Til kategori {category} ved km {km}",
     "toLastTen": "Til de sidste 10 km",
     "lastTen": "De sidste 10 km",
     "tryBreak": "Prøv udbruddet",
