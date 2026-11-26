@@ -55,8 +55,10 @@ BEGIN
  RETURN result;
 END;
 $fn$;
+BEGIN;
 REVOKE ALL ON FUNCTION public.training_compensation_6061_source_hashes(uuid[],uuid[],uuid[],date) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.training_compensation_6061_source_hashes(uuid[],uuid[],uuid[],date) TO service_role;
+COMMIT;
 
 -- Same signature as the 3/10 writer. The payload is the slim apply file
 -- (plans + scope + per-table hashes); raw source rows never reach the RPC.
@@ -191,5 +193,7 @@ BEGIN
  RETURN jsonb_build_object('already_applied',false,'rider_days',written,'initialized_conditions',initialized);
 END;
 $$;
+BEGIN;
 REVOKE ALL ON FUNCTION public.apply_training_compensation_6061(text,text,timestamptz) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.apply_training_compensation_6061(text,text,timestamptz) TO service_role;
+COMMIT;
