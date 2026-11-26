@@ -42,8 +42,8 @@ export function effortForDayEntry(entry, slotIndex = 0) {
   return isEffortLevel(entry.effort) ? entry.effort : null;
 }
 
-export async function isTrainingEffortLevelsEnabled(supabase) {
-  return (await readFlagStage(supabase, TRAINING_EFFORT_LEVELS_KEY, { fresh: true })) === "on";
+export async function isTrainingEffortLevelsEnabled(supabase, { strict = false } = {}) {
+  return (await readFlagStage(supabase, TRAINING_EFFORT_LEVELS_KEY, { fresh: true, strict })) === "on";
 }
 
 // ═══ SKRIVESTIERNE (PR 2) ════════════════════════════════════════════════════

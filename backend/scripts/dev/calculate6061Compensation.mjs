@@ -4,13 +4,14 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchAllRowsChunkedIn, fetchAllRows } from '../../lib/supabasePagination.js';
 import { buildRecoveryManifest, loadRecoveryInputs, parseArgs, outputDirectory } from './prepare6061TrainingRecovery.mjs';
-import { simulateRiderRepair } from './repair5912LostTraining.mjs';
+import { resolveRepairDayProgram, simulateRiderRepair } from './repair5912LostTraining.mjs';
+import { isTrainingCatalogV3EnabledForTeam } from '../../lib/trainingCatalogV3.js';
+import { isTrainingEffortLevelsEnabled } from '../../lib/trainingEffortLevels.js';
 import { isTrainingCellsEnabledForTeam } from '../../lib/trainingWeekPlanCellsFlag.js';
-import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from '../../lib/trainingPrograms.js';
+import { programSlotForRaceDay, weekDaysHaveSessions } from '../../lib/trainingPrograms.js';
 import { deriveStaffAbilities } from '../../lib/staffAbilityDerivation.js';
 import { normalizeLevelBands } from '../../lib/staffAbilityConstants.js';
 import { copenhagenDateString, copenhagenWeekdayKey } from '../../lib/copenhagenTime.js';
-import { resolveProgram } from '../../lib/dailyTraining.js';
 import { applyFatigueRules, loadTeamFatigueRules, previousDateString } from '../../lib/trainingFatigueRules.ts';
 import { createHash } from 'node:crypto';
 import {captureSourceHashes,changedSourceTables,normalizeScope,buildApplyPayload,serializeApplyPayload} from './compensation6061Source.mjs';
@@ -65,9 +66,12 @@ export async function calculateCompensation({state,fullRiders,abilityRows,season
     const weekday=copenhagenWeekdayKey(entry.tick_date);
     const plan=state.plans.filter(p=>p.rider_id===id&&p.team_id===rider.team_id).at(-1)??null;
     const weeks=state.weekPlans.filter(w=>w.team_id===rider.team_id);
-    const program=resolveProgram(plan,rider.primary_type);
-    const dayProgram=resolveDayProgram({weekday,slotIndex:programSlotForRaceDay(gameDay,work.game_days),program,hasExplicitPlan:!!(plan?.focus&&plan?.intensity),programsOn:ctx.programsOn,riderOverrideDays:weeks.find(w=>w.rider_id===id)?.days??null,teamWeekDays:weeks.find(w=>w.rider_id==null)?.days??null});
-    if(dayProgram.source==='program')program.focus=dayProgram.focus;program.intensity=dayProgram.intensity;
+    const program = resolveRepairDayProgram({
+      rider, plan, weekday, gameDay, dateGameDays: work.game_days,
+      riderOverrideDays: weeks.find((row) => row.rider_id === id)?.days ?? null,
+      teamWeekDays: weeks.find((row) => row.rider_id == null)?.days ?? null,
+      programsOn: ctx.programsOn, catalogV3: ctx.catalogV3, effortLevels: ctx.effortLevels,
+    });
     const rule=applyFatigueRules({program,rule:ctx.rulesByRider?.[id]??null,fatigueAtDateStart:Number(condition.fatigue??0),slotIndex:programSlotForRaceDay(gameDay,work.game_days),rodeStagePreviousDate:state.loads.some(l=>l.rider_id===id&&l.tick_date===previousDateString(entry.tick_date))});
     const stagedOnDate=Object.entries(stageBySlot).some(([key,st])=>key.startsWith(`${id}:${entry.season_id}:`)&&work.game_days.includes(Number(key.split(':').at(-1)))&&st.hasResult!==false);
     const boundRest=boundBySlot[`${id}:${entry.season_id}:${gameDay}`]&&!stagedOnDate&&!stage;
@@ -146,10 +150,11 @@ export async function loadCompensationInputs(supabase,opts){
   fetchAllRowsChunkedIn([...new Set(state.work.map(w=>w.season_id))],c=>supabase.from('seasons').select('id,number,status').in('id',c).order('id')),
  ]);
  const contextTeamIds=new Set([...state.work.map(w=>w.team_id),...(opts.riderDates?fullRiders.map(r=>r.team_id).filter(Boolean):[])]);
+ const effortLevels = await isTrainingEffortLevelsEnabled(supabase, { strict: true });
  const teamContexts={};for(const teamId of contextTeamIds){
   const weeks=state.weekPlans.filter(w=>w.team_id===teamId);
   const fatigueRules=await loadTeamFatigueRules(supabase,teamId);
-  teamContexts[teamId]={rulesByRider:Object.fromEntries(fullRiders.filter(r=>r.team_id===teamId).map(r=>[r.id,fatigueRules?.forRider(r.id)??null])),...await strictStaff(supabase,teamId),programsOn:weeks.some(w=>weekDaysHaveSessions(w.days))?await isTrainingCellsEnabledForTeam(supabase,teamId):false};
+  teamContexts[teamId]={catalogV3:await isTrainingCatalogV3EnabledForTeam(supabase,teamId),effortLevels,rulesByRider:Object.fromEntries(fullRiders.filter(r=>r.team_id===teamId).map(r=>[r.id,fatigueRules?.forRider(r.id)??null])),...await strictStaff(supabase,teamId),programsOn:weeks.some(w=>weekDaysHaveSessions(w.days))?await isTrainingCellsEnabledForTeam(supabase,teamId):false};
  }
  // Discover every season race independently of normalized loads and current
  // ownership/division. Immutable results/start snapshots survive transfers.

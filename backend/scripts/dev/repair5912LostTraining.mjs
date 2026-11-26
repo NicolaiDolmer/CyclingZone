@@ -28,6 +28,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveProgram, applyDailyTick } from "../../lib/dailyTraining.js";
+import { applyTrainingCatalog, v3SmartDefaultFocus } from "../../lib/trainingCatalogV3.js";
 import { raceDayProgram, RACE_DAY_FALLBACK_PROFILE } from "../../lib/raceDayYield.js";
 import { loadRaceDayStagesByRider } from "../../lib/raceDayStageLookup.js";
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "../../lib/trainingPrograms.js";
@@ -141,9 +142,25 @@ export function xpPayoutDate({ xpByDate = {}, xpFromDate = null, eligibleAfterIg
  * raekkefoelge gennem samme applyDailyTick som sweepen, oven paa hans NUVAERENDE
  * evner/fremdrift (den tilstand en apply ville skrive oven paa).
  */
+export function resolveRepairDayProgram({
+  rider, plan, weekday, gameDay, dateGameDays, riderOverrideDays, teamWeekDays,
+  programsOn = false, catalogV3 = false, effortLevels = false,
+}) {
+  const program = resolveProgram(plan, rider.primary_type);
+  const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
+  if (!hasExplicitPlan) program.focus = v3SmartDefaultFocus(program.focus, rider, { v3: catalogV3 });
+  const dayProgram = resolveDayProgram({
+    weekday, slotIndex: programSlotForRaceDay(gameDay, dateGameDays),
+    riderOverrideDays, teamWeekDays, program, hasExplicitPlan, programsOn, catalogV3, effortLevels,
+  });
+  if (dayProgram.source === "program") program.focus = dayProgram.focus;
+  program.intensity = dayProgram.intensity;
+  return program;
+}
+
 export function simulateRiderRepair({
   rider, abilityRow, days, plan = null, teamWeekDays = null, riderOverrideDays = null,
-  programsOn = false, staff = null, facilityTier = null, seasonNumber, recomputeCapsPerTick = false,
+  programsOn = false, catalogV3 = false, effortLevels = false, staff = null, facilityTier = null, seasonNumber, recomputeCapsPerTick = false,
   // #8606: the development model the engine used on each date (see developmentContextForRider in
   // calculate6061Compensation.mjs). null = the #5912/#6061 behaviour, unchanged.
   developmentContext = null,
@@ -160,7 +177,6 @@ export function simulateRiderRepair({
   const caps = buildCapsForRider(abilities, { ...rider, age }, rider.primary_type, rider.secondary_type);
   const raceDayFrame = frame !== "calendar";
   const budgetDivisor = raceDayFrame ? resolveRaceDayBudgetDivisor({ seasonNumber }) : null;
-  const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
   const totalGains = {};
   const perDay = [];
   // #8606: the rider's simulated slots per date, so a later slot sees the date's earlier gains
@@ -175,20 +191,18 @@ export function simulateRiderRepair({
       perDay.push({ key: day.key, gameDay: day.gameDay, kind: day.kind, intensity: "rest", gains: {}, progress: 0 });
       continue;
     }
-    const program = resolveProgram(plan, rider.primary_type);
-    let tickProgram = program;
+    let tickProgram;
     let hardDailyCap = TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay;
     if (day.kind === "raced_missed") {
       tickProgram = raceDayProgram(day.profileType ?? RACE_DAY_FALLBACK_PROFILE);
     } else {
-      const dayProgram = resolveDayProgram({
-        weekday, slotIndex: programSlotForRaceDay(day.gameDay, day.dateGameDays),
-        riderOverrideDays, teamWeekDays, program, hasExplicitPlan, programsOn,
+      const program = resolveRepairDayProgram({
+        rider, plan, weekday, gameDay: day.gameDay, dateGameDays: day.dateGameDays,
+        riderOverrideDays, teamWeekDays, programsOn, catalogV3, effortLevels,
       });
-      if (dayProgram.source === "program") program.focus = dayProgram.focus;
-      program.intensity = dayProgram.intensity;
       tickProgram = day.tickProgram ? { ...program, ...day.tickProgram } : program;
     }
+    applyTrainingCatalog(tickProgram, { v3: catalogV3 });
     const tickCaps = recomputeCapsPerTick ? buildCapsForRider(abilities, { ...rider, age }, rider.primary_type, rider.secondary_type) : caps;
     const tickSeedKey = raceDayFrame ? raceDaySeedKey({ seasonId: day.seasonId, gameDay: day.gameDay }) : null;
     const tickArgs = {

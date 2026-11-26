@@ -127,10 +127,17 @@ async function queryFlagValue(supabase, key) {
  *
  * @param {any} supabase  supabase-klient (eller fake med `.from`)
  * @param {string} key
- * @param {{ fresh?: boolean, now?: () => number }} [opts]
+ * @param {{ fresh?: boolean, strict?: boolean, now?: () => number }} [opts]
  *   `fresh: true` springer cachen over for dette ene opslag.
+ *   `strict: true` læser frisk og kaster ved fejl.
  */
-export async function readFlagStage(supabase, key, { fresh = false, now = Date.now } = {}) {
+export async function readFlagStage(supabase, key, { fresh = false, strict = false, now = Date.now } = {}) {
+  if (strict) {
+    if (!supabase?.from) throw new Error(`Cannot read feature flag: ${key}`);
+    const result = await queryFlagValue(supabase, key);
+    if (!result.ok) throw new Error(`Cannot read feature flag: ${key}`);
+    return result.value;
+  }
   if (!supabase?.from) return null;
 
   if (fresh || FRESH_FLAG_KEYS.has(key)) return (await queryFlagValue(supabase, key)).value;

@@ -92,14 +92,16 @@ belastningsregistrering mangler. Datoens frosne tilstand bruges hvis den findes,
 ellers nuværende tilstand eller motorens normale førstegangstilstand.
 
 Skriveforslaget kræver separat prod-go og præcis fil-hash. Det ændrer kun evner
-og brøkfremgang; nyere condition/skader bevares. Kildeændringer, allerede
-afregnede slots og tvetydige ejere afviser kompensation. Manglende neutral
+og brøkfremgang; nyere condition/skader bevares. Kildeændringer og allerede
+afregnede slots afviser kompensation. Træningen følger rytteren til hans
+nuværende hold. En rytter uden hold kræver særskilt gennemgang. Manglende neutral
 førstegangstilstand kan kun oprettes uden anvendt aktivitetshistorik; historiske
 tilstandsafregninger og rapporter opfindes ikke. En separat kompensationskvittering
 forhindrer både genanvendelse og efterfølgende normal træning af samme slot.
 Ledgeren og triggeren ligger i `database/2026-10-05-6061-compensation-ledger.sql`;
-den aktuelle writer og kilde-hashes i `database/2026-10-05-6129-compensation-slim-source.sql`.
-Begge migrationer er registreret i prod (read-only 6/10). Det oprindelige forslag
+den oprindelige slanke writer og kilde-hashes i `database/2026-10-05-6129-compensation-slim-source.sql`.
+#8606 udvider kilden med de trænings- og udviklingsindstillinger, beregningen bruger, i `database/2026-11-26-8606-compensation-model-source-hashes.sql`.
+De to første migrationer er registreret i prod (read-only 6/10). Det oprindelige forslag
 er fjernet fra proposals, fordi dets writer er erstattet og ikke må genanvendes.
 Infrastrukturen er live; en konkret kompensationskørsel kræver fortsat separat
 ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparation.

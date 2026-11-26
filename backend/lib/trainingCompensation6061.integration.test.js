@@ -16,6 +16,7 @@ before(async()=>{
  db=new PGlite();
  await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role BYPASSRLS;
  CREATE TABLE app_config(key text PRIMARY KEY,value jsonb,updated_at timestamptz);
+ CREATE TABLE private_config(key text PRIMARY KEY,value jsonb NOT NULL);
  CREATE TABLE teams(id uuid PRIMARY KEY,user_id uuid,my_result_seen_race_id uuid,onboarding_progress_dismissed_at timestamptz,balance bigint);
  CREATE TABLE users(id uuid PRIMARY KEY,role text,is_beta_tester boolean,last_seen timestamptz,last_login_date date,nps_last_prompted_at timestamptz,xp integer);
  CREATE TABLE riders(id uuid PRIMARY KEY,team_id uuid,is_retired boolean,is_academy boolean,birthdate date,potentiale numeric,primary_type text,secondary_type text,market_value bigint,updated_at timestamptz);
@@ -41,15 +42,20 @@ before(async()=>{
  CREATE TABLE race_simulation_runs(id uuid,race_id uuid,stage_number integer,entrant_snapshot jsonb,seed text);
  CREATE TABLE race_results(id uuid,race_id uuid,stage_number integer,result_type text,rider_id uuid,rank integer);
  CREATE TABLE race_entry_days(race_id uuid,rider_id uuid,season_id uuid,game_day integer,team_id uuid);
+ CREATE TABLE rider_ownership_events(id uuid PRIMARY KEY,rider_id uuid,from_team_id uuid,to_team_id uuid,occurred_at timestamptz);
+ CREATE TABLE development_curve_b_transition_members(ignited_on date,rider_id uuid,abilities jsonb);
+ ALTER TABLE teams ADD COLUMN is_ai boolean DEFAULT false, ADD COLUMN is_bank boolean DEFAULT false, ADD COLUMN is_test_account boolean DEFAULT false;
+ ALTER TABLE riders ADD COLUMN created_at timestamptz, ADD COLUMN acquired_at timestamptz;
  GRANT SELECT,UPDATE ON ALL TABLES IN SCHEMA public TO service_role;
  GRANT INSERT ON rider_condition TO service_role;`);
  const ledger=await readFile(new URL('../../database/2026-10-05-6061-compensation-ledger.sql',import.meta.url),'utf8');
  const migration=await readFile(new URL('../../database/2026-10-05-6129-compensation-slim-source.sql',import.meta.url),'utf8');
- await db.exec(ledger);await db.exec(migration);await db.exec(ledger);await db.exec(migration);
+ const forward=await readFile(new URL('../../database/2026-11-26-8606-compensation-model-source-hashes.sql',import.meta.url),'utf8');
+ await db.exec(ledger);await db.exec(migration);await db.exec(ledger);await db.exec(migration);await db.exec(forward);await db.exec(forward);
 });
 after(async()=>db?.close());
 beforeEach(async()=>{
- await db.exec(`TRUNCATE app_config,teams,users,riders,seasons,rider_derived_abilities,rider_condition,training_race_loads,training_rider_ticks,training_condition_settlements,training_day_runs,training_date_work,training_plans,training_week_plans,team_training_rules,training_groups,training_group_members,team_facilities,team_staff,staff_derived_abilities,races,race_stage_schedule,race_stage_profiles,race_simulation_runs,race_results,race_entry_days,training_compensation_receipts;
+ await db.exec(`TRUNCATE app_config,private_config,rider_ownership_events,development_curve_b_transition_members,teams,users,riders,seasons,rider_derived_abilities,rider_condition,training_race_loads,training_rider_ticks,training_condition_settlements,training_day_runs,training_date_work,training_plans,training_week_plans,team_training_rules,training_groups,training_group_members,team_facilities,team_staff,staff_derived_abilities,races,race_stage_schedule,race_stage_profiles,race_simulation_runs,race_results,race_entry_days,training_compensation_receipts;
  INSERT INTO app_config(key,value) VALUES('training_condition_per_date','"on"'),('training_tick_per_race_day','"on"');
  INSERT INTO users VALUES('${user}','manager',false,'2026-10-03T08:00:00Z','2026-10-03','2026-10-01T08:00:00Z',10);
  INSERT INTO teams VALUES('${team}','${user}',NULL,NULL,1000);
@@ -178,4 +184,44 @@ test('evening guard and closed cutoff still hold',async()=>{
  await assert.rejects(apply(await plan(),null,'2026-10-03T16:30:00Z'),/current date close/);
  await assert.rejects(apply(await plan(),null,'2026-10-02T09:00:00Z'),/Closed compensation cutoff/);
  assert.equal(await receipts(),0);
+});
+
+test('#8679 captures catalog, effort and development inputs without exposing private parameter values', async()=>{
+ const names=['development_xp_model','development_xp_from_date','development_curve_b','training_catalog_v3','training_effort_levels','ability_cap_per_date_enabled','development_curve_b_ignited_at','development_score_v2','race_day_catchup_enabled'];
+ for(const key of names){
+  const before=await hashes();
+  await db.query('INSERT INTO app_config(key,value) VALUES($1,$2::jsonb)',[key,JSON.stringify('fixture')]);
+  const after=await hashes();
+  assert.notEqual(after.app_config,before.app_config,key);
+  assert.equal(Object.values(after).some(v=>v==='fixture'),false);
+ }
+ for(const key of ['development_xp_params','development_curve_b_params']){
+  const before=await hashes();
+  await db.query('INSERT INTO private_config(key,value) VALUES($1,$2::jsonb)',[key,JSON.stringify({fixture:'private'})]);
+  const after=await hashes();
+  assert.match(after.private_config,/^[0-9a-f]{64}$/);
+  assert.notEqual(after.private_config,before.private_config,key);
+  assert.equal(after.app_config,before.app_config);
+ }
+ const before=await hashes();
+ await db.exec("INSERT INTO private_config VALUES('unrelated_fixture', '{}'::jsonb);");
+ assert.deepEqual(await hashes(),before);
+});
+
+test('#8679 binds historical eligibility, transition membership and XP receipts in the source', async()=>{
+ const cases=[
+  ['teams','UPDATE teams SET is_ai=true WHERE id=$1',[team]],
+  ['riders','UPDATE riders SET acquired_at=$1 WHERE id=$2',['2026-10-01T07:00:00Z',rid]],
+  ['rider_ownership_events','INSERT INTO rider_ownership_events VALUES(gen_random_uuid(),$1,$2,$3,$4)',[rid,other,team,NOW]],
+  ['development_curve_b_transition_members','INSERT INTO development_curve_b_transition_members VALUES($1,$2,$3::jsonb)',[THROUGH,rid,JSON.stringify(['climbing'])]],
+  ['training_rider_ticks','INSERT INTO training_rider_ticks VALUES($1,$2,1,$3,$4,$5::jsonb)',[rid,season,THROUGH,team,JSON.stringify({xp_developed:true})]],
+ ];
+ for(const [table,query,args] of cases){
+  const before=await hashes();
+  await db.query(query,args);
+  assert.notEqual((await hashes())[table],before[table],table);
+ }
+ const before=await hashes();
+ await db.exec("UPDATE training_rider_ticks SET report='{}'::jsonb");
+ assert.notEqual((await hashes()).training_rider_ticks,before.training_rider_ticks);
 });

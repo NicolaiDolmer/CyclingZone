@@ -15,6 +15,8 @@ import { DEVELOPMENT_XP_FLAG_KEY, DEVELOPMENT_XP_FROM_DATE_KEY } from '../../lib
 import { developmentModelTickArgs } from '../../lib/dailyTrainingEngine.js';
 import { XP_TEST_PARAMS, ENGINE_SCENARIOS, engineSeed, runEngine } from '../../lib/__fixtures__/developmentXpOffScenarios.js';
 import { simulateRiderRepair, xpPayoutDate } from './repair5912LostTraining.mjs';
+import { isTrainingEffortLevelsEnabled } from '../../lib/trainingEffortLevels.js';
+import { V3_TRAINING_FOCUSES } from '../../lib/trainingCatalogV3.js';
 import { workFromRiderDates, buildRecoveryManifest } from './prepare6061TrainingRecovery.mjs';
 import { calculateCompensation } from './calculate6061Compensation.mjs';
 import { buildApplyPayload, serializeApplyPayload, SOURCE_HASH_TABLES } from './compensation6061Source.mjs';
@@ -27,21 +29,33 @@ const xpOn = (fromDate) => ({ app: [[DEVELOPMENT_XP_FLAG_KEY, 'on'], [DEVELOPMEN
 const NONE = { app: [], params: undefined };
 
 // The engine fixture's rider r1 on its one training day, then the repair of that same day.
-async function engineAndRepair({ overlay, developmentContext }) {
+async function engineAndRepair({ overlay, developmentContext, catalogV3 = false, effortLevels = false, primaryType, session, effort }) {
   const state = engineSeed({ flags: ENGINE_SCENARIOS.cap.flags, raced: false, overlay, plan: 'vo2max' });
+  if (catalogV3) state.app_config.push({ key: 'training_catalog_v3', value: 'on' });
+  if (effortLevels) state.app_config.push({ key: 'training_effort_levels', value: 'on' });
+  if (primaryType) {
+    state.riders[0].primary_type = primaryType;
+    state.riders[0].secondary_type = null;
+    state.training_plans = state.training_plans.filter((entry) => entry.rider_id !== 'r1');
+  }
+  const riderOverrideDays = session ? { fri: { session, effort } } : null;
+  if (riderOverrideDays) {
+    state.app_config.push({ key: 'training_program_cells', value: 'on' });
+    state.training_week_plans = [{ team_id: 'team-a', rider_id: 'r1', days: riderOverrideDays }];
+  }
   const rider = structuredClone(state.riders[0]);
   const abilityRow = structuredClone(state.rider_derived_abilities[0]);
-  const plan = structuredClone(state.training_plans[0]);
+  const plan = structuredClone(state.training_plans.find((entry) => entry.rider_id === 'r1') ?? null);
   const condition = structuredClone(state.rider_condition[0]); // the engine updates the row in place
   const result = await runEngine(state);
   const report = result.report.riders.find((r) => r.rider_id === 'r1');
   const after = state.rider_derived_abilities.find((r) => r.rider_id === 'r1');
   const day = { key: 'k1', kind: 'free_slot', tickDate: TICK_DATE, riderId: 'r1', teamId: 'team-a', seasonId: 'season-1', gameDay: 1, dateGameDays: [1, 2, 3, 4, 5], formBefore: condition.form, fatigueBefore: condition.fatigue };
-  const repair = simulateRiderRepair({ rider, abilityRow, days: [day], plan, staff: null, facilityTier: 0, seasonNumber: 1, recomputeCapsPerTick: true, frame: 'calendar', developmentContext });
+  const repair = simulateRiderRepair({ rider, abilityRow, days: [day], plan, staff: null, facilityTier: 0, seasonNumber: 1, recomputeCapsPerTick: true, frame: 'calendar', developmentContext, catalogV3, effortLevels, programsOn: Boolean(riderOverrideDays), riderOverrideDays });
   return { report, after, repair };
 }
-function assertSameAsEngine({ report, after, repair }) {
-  assert.ok(Object.values(report.gains).some((n) => n > 0) || Object.keys(report.progress_after ?? {}).length > 0, 'the engine trained the rider');
+function assertSameAsEngine({ report, after, repair }, { expectGrowth = true } = {}) {
+  if (expectGrowth) assert.ok(Object.values(report.gains).some((n) => n > 0) || Object.keys(report.progress_after ?? {}).length > 0, 'the engine trained the rider');
   assert.deepEqual(repair.perDay[0].gains, report.gains, 'same whole points as the engine');
   assert.deepEqual(repair.patch.ability_progress, report.progress_after, 'same bar as the engine');
   for (const k of VISIBLE_ABILITIES) assert.equal(repair.patch[k] ?? repair.before[k], after[k], `same ${k} as the engine wrote`);
@@ -214,4 +228,29 @@ test('#8606 CLI: read-only arguments, the list SQL only reads', () => {
   // The owner's change 24/11: a rider no longer on the team is not excluded by the list.
   assert.doesNotMatch(LATE_RIDER_LIST_SQL, /team_now|IS DISTINCT FROM c\.team_id/);
   assert.equal(buildRecoveryManifest({ ...listInput().state }).candidates.every((c) => c.follows_rider), true);
+});
+
+const v3XpContext = { xpByDate: { [TICK_DATE]: XP }, xpFromDate: EARLIER, capPerDateOn: true };
+for (const session of Object.keys(V3_TRAINING_FOCUSES)) {
+  test(`#8679 v3 ${session}: catalog and effort match the engine`, async () => {
+    const out = await engineAndRepair({ overlay: xpOn(EARLIER), developmentContext: v3XpContext,
+      catalogV3: true, effortLevels: true, session: session === 'restitution' ? 'recovery' : session, effort: 'easy' });
+    assert.equal(out.report.focus, session, 'fixture must really select the v3 session');
+    assertSameAsEngine(out, { expectGrowth: session !== 'restitution' });
+    assert.deepEqual(roundedXp(out.repair.perDay[0].xp ?? {}), out.report.xp ?? {});
+  });
+}
+for (const primaryType of ['tt', 'gc']) {
+  test(`#8679 v3 ${primaryType}: no explicit plan matches the engine default`, async () => {
+    const out = await engineAndRepair({ overlay: xpOn(EARLIER), developmentContext: v3XpContext, catalogV3: true, primaryType });
+    assert.equal(out.report.focus, primaryType === 'tt' ? 'itt_long' : 'vo2max');
+    assertSameAsEngine(out);
+    assert.deepEqual(roundedXp(out.repair.perDay[0].xp), out.report.xp);
+  });
+}
+
+test('#8679 an effort flag read error aborts compensation without changing the engine default', async()=>{
+ const chain={from:()=>chain,select:()=>chain,eq:()=>chain,maybeSingle:async()=>({error:{message:'synthetic read failure'}})};
+ assert.equal(await isTrainingEffortLevelsEnabled(chain),false);
+ await assert.rejects(()=>isTrainingEffortLevelsEnabled(chain,{strict:true}), /training_effort_levels/);
 });
