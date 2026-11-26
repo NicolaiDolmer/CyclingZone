@@ -42,7 +42,7 @@ import { isTrainingRotationEnabled } from "../lib/trainingRotationFlag.js"; // #
 import { rotationWriteInput, rotationView } from "../lib/trainingRotationInput.js"; // #8548
 import { applyRotationWrite, rotationRevFloor } from "../lib/trainingRotation.js"; // #8548
 import { isWeekPriorityEditorEnabled, loadWeekPrioritySettled, setWeekBlockDay, weekBlockDayWrite } from "../lib/trainingWeekEditor.js";
-import { addDaysYmd, attachDayOverrides, createDayOverrideRouter, fatigueRuleMarksAhead, isDayOverrideEnabled, loadWeekDateOverrides } from "../lib/trainingDayOverride8592.js"; // #8592
+import { attachDayOverrides, createDayOverrideRouter, fatigueRuleMarksAhead, isDayOverrideEnabled, loadWeekDateOverrides } from "../lib/trainingDayOverride8592.js"; // #8592
 import { loadTeamFatigueRules } from "../lib/trainingFatigueRules.ts"; // #8819 DO-10
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 
@@ -102,10 +102,10 @@ export function createTrainingProgramsRouter({
     if (!today?.available) return new Map();
     return fatigueRuleMarksAhead({ today, rules: await loadTeamFatigueRules(supabase, req.team.id) });
   }
-  async function fatigueRuleAhead(req, date) {
+  async function fatigueRuleAhead(req) {
     const now = clock();
     const todayStr = copenhagenDateString(now);
-    if (date !== addDaysYmd(todayStr, 1) || !(await cellsOn(req))) return new Map();
+    if (!(await cellsOn(req))) return new Map();
     const seasonId = await activeSeasonId();
     const dateOverrideByRider = (await dayOverridesFor(req, now))?.get(todayStr) ?? null;
     return fatigueRuleMarksFor(req, now, await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now, dateOverrideByRider }));

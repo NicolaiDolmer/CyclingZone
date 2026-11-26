@@ -282,8 +282,8 @@ export function parseOverrideWrite(body, { today, needSession = true }) {
 const PASS = (_req, _res, next) => next();
 
 /**
- * `fatigueRuleAhead(req, date)` → Map(rider_id → markering): grænsens markering for datoen,
- * som spilleren ser den lige nu (kun i morgen har en). Serveren afgør selv, om et valg er
+ * `fatigueRuleAhead(req)` → Map(rider_id → markering): grænsens markering for i morgen,
+ * som spilleren ser den lige nu i dagsvælgeren. Serveren afgør selv, om et valg er
  * truffet efter markeringen (DO-10); klienten sender intet om det.
  */
 export function createDayOverrideRouter({
@@ -348,7 +348,8 @@ export function createDayOverrideRouter({
       const target = await targets(req, parsed);
       if (!target.ok) return res.status(target.status).json({ error: target.reason });
       // DO-10: et valg truffet, mens grænsen synligt har erstattet dagen, går forud for grænsen.
-      const marks = await fatigueRuleAhead(req, parsed.date);
+      // Kun i morgen kan have en markering (dagens prognose er morgendagens start); længere ude: aldrig.
+      const marks = parsed.date === addDaysYmd(now, 1) ? await fatigueRuleAhead(req) : new Map();
       await deleteExpiredOverrides({ supabase, teamId: req.team.id, today: now });
       const at = clock().toISOString();
       const rows = target.ids.map((riderId) => ({
