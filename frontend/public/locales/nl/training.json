@@ -509,7 +509,7 @@
     "dayTypeNote_recovery": "Vermoeidheid daalt een beetje. Een beetje groei in herstel.",
     "dayTypeNote_skill": "Lage belasting. Alleen koersinzicht, en dat bouwt langzaam op.",
     "dayTypeNote_training": "Fysieke vaardigheden, op het niveau van de sessie.",
-    "noSession_rest": "Een rustdag heeft geen sessie. Je renner traint niet en zijn vermoeidheid daalt sneller dan op elke andere dag. Welke sessie hij ook had, blijft bewaard, dus met één klik zit hij er weer op.",
+    "noSession_rest": "Een rustdag heeft geen sessie. Je renner traint niet en zijn vermoeidheid daalt sneller dan op elke andere dag. Welke sessie hij ook had, blijft bewaard, dus met één klik zit hij er weer op. Rust verlaagt de vermoeidheid, maar vorm wordt alleen opgebouwd door training met een passende belasting.",
     "noSession_recovery": "Actief herstel heeft geen sessie. Je renner trapt rustig: de vermoeidheid daalt, al minder dan op een volledige rustdag, en hij wint een beetje in herstel. Het is de enige dag die vermoeidheid verlaagt en toch iets ontwikkelt.",
     "level_easy": "Licht",
     "level_normal": "Gemiddeld",
