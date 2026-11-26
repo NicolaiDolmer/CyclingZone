@@ -26,7 +26,7 @@ import Modal from "../../ui/Modal.jsx";
 import Segmented from "../../ui/Segmented.jsx";
 import { Menu, MenuItem } from "../../ui/Menu.jsx";
 import { useDismiss } from "../../ui/useDismiss.js";
-import { CalendarIcon, CheckIcon, ChevronDownIcon, ClipboardIcon, FlagIcon, LockIcon } from "../../ui/icons/index.jsx";
+import { CalendarIcon, ChevronDownIcon, ClipboardIcon, FlagIcon, LockIcon } from "../../ui/icons/index.jsx";
 import FatigueForecast from "../FatigueForecast.tsx";
 import FatigueRuleSummary from "../FatigueRuleSummary.tsx";
 import FatigueRulePanel from "../FatigueRulePanel.tsx";
@@ -179,8 +179,16 @@ export default function ProgramWeekV2({
     setRawPlanFor(`${request.kind}:${request.id}`);
     savePlanFor(`${request.kind}:${request.id}`);
   }, [request, onRequestHandled]);
+  // Telefonens aabne dage: i dag fra start; "Ret <ugedag> i Program" aabner netop den dag.
+  const [openDays, setOpenDays] = useState<ReadonlySet<string>>(() => new Set([todayWeekday]));
+  const toggleDay = (weekday: string) => setOpenDays((prev) => {
+    const next = new Set(prev);
+    if (next.has(weekday)) next.delete(weekday); else next.add(weekday);
+    return next;
+  });
   useEffect(() => {
     if (!focusDay) return;
+    setOpenDays((prev) => new Set([...prev, focusDay.weekday]));
     dayRefs.current[focusDay.weekday]?.scrollIntoView?.({ block: "start", behavior: "smooth" });
   }, [focusDay]);
 
@@ -631,6 +639,8 @@ export default function ProgramWeekV2({
       effortDirty={(weekday, slot) => effortChanged(draft, weekday, placements[weekday]?.fieldSource[slot] ?? slot)}
       tonight={tonightEl}
       dayRef={(weekday, el) => { dayRefs.current[weekday] = el; }}
+      openDays={openDays}
+      onToggleDay={toggleDay}
       onEdit={editPass}
       onCopyDay={copyDay}
     />
@@ -763,8 +773,10 @@ export default function ProgramWeekV2({
 
 function WeekV2({
   cells, weekdays, todayWeekday, todayLocked, raceCount, editable, mobile, sessionOrder, sessionLabel, dayName,
-  effortLevels, effortFor, effortDirty, tonight, dayRef, onEdit, onCopyDay,
+  effortLevels, effortFor, effortDirty, tonight, dayRef, onEdit, onCopyDay, openDays, onToggleDay,
 }: {
+  openDays: ReadonlySet<string>;
+  onToggleDay: (weekday: string) => void;
   cells: WeekCell[][];
   weekdays: readonly string[];
   todayWeekday: string;
@@ -785,6 +797,17 @@ function WeekV2({
 }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5");
+  // En lukket dag paa telefonen: dagens sessioner paa en linje (loeb foerst).
+  const summary = (dayIndex: number) => {
+    const day = cells[dayIndex] ?? [];
+    const races = day.filter((c) => c.kind === "race").length;
+    const names: string[] = [];
+    for (const c of day) {
+      const label = c.kind === "rest" ? sessionLabel("rest") : (c.kind === "session" || c.kind === "ran") && c.session ? sessionLabel(c.session) : null;
+      if (label && !names.includes(label)) names.push(label);
+    }
+    return [...(races ? [tR5("programR5.races", { n: races })] : []), ...names].join(" · ") || tR5("programW1.noSession");
+  };
   return (
     <div
       className={mobile
@@ -795,6 +818,7 @@ function WeekV2({
       {weekdays.map((weekday, dayIndex) => {
         const isToday = weekday === todayWeekday;
         const locked = todayLocked && isToday;
+        const open = !mobile || openDays.has(weekday);
         return (
           <section
             key={weekday}
@@ -806,18 +830,25 @@ function WeekV2({
               ? "overflow-hidden rounded-cz border border-cz-border bg-cz-card"
               : `flex min-w-0 flex-col ${dayIndex > 0 ? "border-s border-cz-border" : ""}`}
           >
-            <header className="flex min-h-11 items-center gap-1 border-b border-cz-border bg-cz-subtle px-2.5 py-1.5">
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-semibold text-cz-1">{dayName(weekday)}</span>
-                {isToday && (
-                  <span className="flex items-center gap-1 text-2xs text-cz-2">
-                    {locked && <LockIcon size={10} aria-hidden="true" />}
-                    {t("weekPlan.today")}
-                    {raceCount > 0 && <span className="font-data tabular-nums">· {tR5("programR5.races", { n: raceCount })}</span>}
-                  </span>
-                )}
-              </span>
-              {editable && (
+            <header className={`flex min-h-11 items-center gap-1 bg-cz-subtle px-2.5 py-1.5 ${open ? "border-b border-cz-border" : ""}`}>
+              {/* Telefonen: hver dag foldes ud med et tryk (i dag er aaben), saa ugen ikke er 35 felter lang. */}
+              <button type="button" disabled={!mobile} aria-expanded={mobile ? open : undefined}
+                onClick={() => onToggleDay(weekday)} data-testid="program-w1-day-toggle"
+                className="flex min-w-0 flex-1 items-center gap-1.5 text-start disabled:cursor-default">
+                {mobile && <ChevronDownIcon size={13} aria-hidden="true" className={`shrink-0 text-cz-3 ${open ? "" : "-rotate-90"}`} />}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-semibold text-cz-1">{dayName(weekday)}</span>
+                  {isToday && (
+                    <span className="flex items-center gap-1 text-2xs text-cz-2">
+                      {locked && <LockIcon size={10} aria-hidden="true" />}
+                      {t("weekPlan.today")}
+                      {raceCount > 0 && <span className="font-data tabular-nums">· {tR5("programR5.races", { n: raceCount })}</span>}
+                    </span>
+                  )}
+                  {!open && <span className="block truncate text-2xs text-cz-2" data-testid="program-w1-day-summary">{summary(dayIndex)}</span>}
+                </span>
+              </button>
+              {editable && open && (
                 <CopyDayMenuV2
                   align={mobile || dayIndex < Math.ceil(weekdays.length / 2) ? "start" : "end"}
                   label={tR5("programR5.copyDay", { day: dayName(weekday) })}
@@ -829,7 +860,7 @@ function WeekV2({
                 />
               )}
             </header>
-            <ol className="flex flex-1 flex-col">
+            {open && <ol className="flex flex-1 flex-col">
               {Array.from({ length: PROGRAM_SLOTS }, (_, slot) => (
                 <PassV2
                   key={slot}
@@ -847,8 +878,8 @@ function WeekV2({
                   onEffort={(effort) => onEdit(weekday, slot, { effort })}
                 />
               ))}
-            </ol>
-            {isToday && tonight && (
+            </ol>}
+            {open && isToday && tonight && (
               <div className="flex flex-col gap-0.5 border-t border-cz-border px-2.5 py-2">
                 <span className="text-2xs text-cz-3">{t("forecast.label")}</span>
                 {tonight}
@@ -976,11 +1007,10 @@ function EffortButtons({
             disabled={!editable}
             onClick={() => { if (!active) onPick(level); }}
             data-testid={`program-w1-effort-${level}`}
-            className={`${mobile ? "min-h-11 flex-1" : "h-7 min-w-0 flex-1"} inline-flex items-center justify-center gap-0.5 truncate rounded-cz border px-1 text-2xs ${
+            className={`${mobile ? "min-h-11 flex-1" : "h-7 min-w-0 flex-1"} inline-flex items-center justify-center truncate rounded-cz border px-0.5 text-2xs ${
               active ? "border-cz-1 font-semibold text-cz-1" : "border-cz-border text-cz-2 hover:text-cz-1"
             } disabled:cursor-default disabled:opacity-60`}
           >
-            {active && <CheckIcon size={10} aria-hidden="true" className="shrink-0" />}
             {t(`dayPanel.level_${level}`)}
           </button>
         );
@@ -1069,7 +1099,7 @@ function AllRidersTable({
             <tr key={row.id} className="cursor-pointer hover:bg-cz-subtle" onClick={() => onOpen(row.id)} data-testid="program-w1-all-row">
               <th scope="row" className={`${td} text-start font-normal`}>
                 <button type="button" onClick={(e) => { e.stopPropagation(); onOpen(row.id); }}
-                  className="min-h-11 text-start font-semibold text-cz-1 hover:underline sm:min-h-0"
+                  className="text-start font-semibold text-cz-1 hover:underline"
                   aria-label={tR5("programW1.openWeek", { name: row.name })}>
                   {row.name}
                 </button>
