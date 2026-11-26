@@ -100,6 +100,7 @@ import { descentRegroupCap7644On, descentRegroupTempo6486, descentRegroupTuning7
 import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanHuntTasks7855, stagePlanHuntWindows7855, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003, #7380, #7855
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
 import { breakawayCurve6912On } from "./mechanics/breakawayCurve6912.ts"; // #6912
+import { hillyFinish8189On } from "./mechanics/hillyFinish8189.ts"; // #8189
 import { finalKmTerrainPiece7383, routeWithFinalKmBoundary7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -1148,6 +1149,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}), // #6649
       ...(breakawayCurve6912On(input) ? { breakawayCurve6912: true as const } : {}), // #6912
       ...(teamChase7730On(input) ? { teamChase7730: true as const } : {}), // #7730
+      ...(hillyFinish8189On(input) ? { hillyFinish8189: true as const } : {}), // #8189 (slukket)
       ...(stagePlan ? { stagePlanTasks: stagePlanCurrentTasks(stagePlan) } : {}), // #7380: runtimens opgave ved segmentets start
       ...(stagePlan && stagePlanHuntWindows7855(stagePlan) ? { stagePlanHuntWindows7855: stagePlanHuntWindows7855(stagePlan)! } : {}), // #7855 (slukket = udeladt)
       ...(stagePlan && stagePlanHuntTasks7855(stagePlan) ? { stagePlanHuntTasks7855: stagePlanHuntTasks7855(stagePlan)! } : {}), // #7855 valg A (slukket = udeladt)
