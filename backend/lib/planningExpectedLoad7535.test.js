@@ -119,15 +119,17 @@ function fakeSupabase(tables) {
   };
 }
 
+const RACE_ID = "6f1c2b9e-3d4a-4e5f-8a7b-9c0d1e2f3a4b";
+
 const RACE_TABLES = {
-  races: [{ id: "r", season_id: "s", status: "scheduled", stages_completed: 0, engine_rules_revision: null }],
+  races: [{ id: RACE_ID, season_id: "s", status: "scheduled", stages_completed: 0, engine_rules_revision: null }],
   riders: [{ id: "a" }, { id: "b" }],
   race_stage_profiles: STAGES,
 };
 
 test("loader: a word for each of the team's riders, no numbers in the body", async () => {
   const res = await loadExpectedLoad7535({
-    supabase: fakeSupabase(RACE_TABLES), teamId: "t", raceId: "r",
+    supabase: fakeSupabase(RACE_TABLES), teamId: "t", raceId: RACE_ID,
     deps: {
       isConditionModelV2Enabled: async () => true,
       readThresholds: async () => FAKE_THRESHOLDS,
@@ -153,10 +155,23 @@ test("loader: missing or invalid thresholds = no word, same answer as a disabled
 
 test("loader: unknown race is a 404", async () => {
   const res = await loadExpectedLoad7535({
-    supabase: fakeSupabase({ races: [] }), teamId: "t", raceId: "r",
+    supabase: fakeSupabase({ races: [] }), teamId: "t", raceId: RACE_ID,
     deps: { isConditionModelV2Enabled: async () => true, readThresholds: async () => FAKE_THRESHOLDS },
   });
   assert.equal(res.status, 404);
+});
+
+test("loader: a race id that is not a UUID is a 404 without querying races (CYCLINGZONE-BH)", async () => {
+  let raceReads = 0;
+  const supabase = { from: () => { raceReads += 1; throw new Error("must not read races"); } };
+  for (const raceId of ["wb-dender", "", "x,id.gt.0", undefined]) {
+    const res = await loadExpectedLoad7535({
+      supabase, teamId: "t", raceId,
+      deps: { isConditionModelV2Enabled: async () => true, readThresholds: async () => FAKE_THRESHOLDS },
+    });
+    assert.deepEqual(res, { status: 404, body: { error: "race_not_found" } });
+  }
+  assert.equal(raceReads, 0);
 });
 
 test("readPlanningExpectedLoadThresholds: valid row = the thresholds, missing/invalid = null with a number-free warning", async () => {
