@@ -313,6 +313,25 @@ test("fund 2: Supabase-opslaget kobler løbsfeltet til etapen på feltets løbsd
   assert.deepEqual([...new Set(tables)].sort(), ["race_results", "race_stage_profiles", "race_stage_schedule", "races"]);
 });
 
+test("fund 2: race_results pagineres på en entydig sortering, så stage- og gc-rækker ikke springes over mellem sider", async () => {
+  const sb = createFakeSupabase({ race_results: [{ id: 1, rider_id: "r1", race_id: "tour", stage_number: 3, result_type: "stage", imported_at: "2026-11-20T18:00:00Z" }] });
+  const orders = [];
+  const from = sb.from;
+  sb.from = (table) => {
+    const builder = from(table);
+    if (table !== "race_results") return builder;
+    return { select(columns) {
+      const query = builder.select(columns);
+      const order = query.order;
+      query.order = (column, opts) => { orders.push(column); return order.call(query, column, opts); };
+      return query;
+    } };
+  };
+  await supabaseModel2Io(sb).raceProfiles({ riderIds: ["r1"], slots: [{ rider_id: "r1", season_id: "s1", game_day: 12, tick_date: "2026-11-20" }] });
+  assert.ok(orders.includes("result_type"), "stage og gc med samme løb/rytter/etape skal skilles ad");
+  assert.equal(orders.at(-1), "id", "sidste sorteringsnøgle er unik");
+});
+
 // ── #8810 fund 3: et uafgjort felt er ikke afregnet ─────────────────────────
 
 test("fund 3: en dato med et uafgjort felt tæller ikke som faktisk og snævrer ikke intervallet", () => {

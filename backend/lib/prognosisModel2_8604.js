@@ -519,7 +519,7 @@ export function supabaseModel2Io(supabase) {
       const importedSince = `${isoMinusDays(firstDate, RACE_IMPORT_MARGIN_DAYS)}T00:00:00Z`;
       const results = await fetchAllRowsChunkedIn(riderIds, (chunk) => supabase.from("race_results")
         .select("rider_id, race_id, stage_number, result_type").in("result_type", ["stage", "gc"])
-        .in("rider_id", chunk).gte("imported_at", importedSince).order("race_id").order("rider_id").order("stage_number"));
+        .in("rider_id", chunk).gte("imported_at", importedSince).order("race_id").order("rider_id").order("stage_number").order("result_type").order("id"));
       const raceIds = [...new Set(results.map((row) => row.race_id).filter(Boolean))];
       if (!raceIds.length) return new Map();
       const [races, schedule, profileRows] = await Promise.all([
