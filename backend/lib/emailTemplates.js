@@ -856,8 +856,8 @@ const S6_COPY = {
       newsHeading: "The newest features in the game",
       openings: {
         active: "Season 5 ends on Saturday. Before Season 6 starts, here is what's new in the game.",
-        dormant: "It's been a few weeks since you were last in. Here is what's new, all ready before the new season starts.",
-        away: "It's been a while since you played, and the game has changed a lot. A new season is a good time to come back. Here is what's new.",
+        dormant: "A lot has happened in the game. Here is what's new, all ready for Season 6.",
+        away: "The game has changed a lot, and a new season is the best time to start. Here is what's new.",
       },
       news: [
         ["A new development system.", "The caps on abilities are gone. Your riders develop from what they train and race."],
@@ -923,8 +923,8 @@ const S6_COPY = {
       newsHeading: "De nyeste funktioner i spillet",
       openings: {
         active: "Sæson 5 slutter lørdag. Inden sæson 6 starter, kan du se, hvad der er nyt i spillet.",
-        dormant: "Det er et par uger siden, du sidst var inde. Her er det nye, og det er klar, før den nye sæson starter.",
-        away: "Det er længe siden, du har spillet, og spillet har ændret sig meget. En ny sæson er et godt tidspunkt at komme tilbage. Her er det nye.",
+        dormant: "Der er sket meget i spillet. Her er det nye, klar til sæson 6.",
+        away: "Spillet har ændret sig meget, og en ny sæson er det bedste tidspunkt at starte. Her er det nye.",
       },
       news: [
         ["Nyt udviklingssystem.", "Lofterne på evnerne er væk. Dine ryttere udvikler sig af det, de træner og kører."],
