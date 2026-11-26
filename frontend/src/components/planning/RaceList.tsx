@@ -1,17 +1,18 @@
 // #7535 · Loebslisten: kommende loeb grupperet efter uge. Ugen med dagens dato er aaben, de
 // senere uger er foldet til en linje ("Uge 46 · 7 loeb · 5 mangler"). Raekken viser navn, dato,
 // klasse, etapeantal, etape-stribe, advarsel om faelles loebsdage og klar-maerke.
+//
+// #8419 punkt 5 (ejer 26/11): 2 linjer pr. loeb. Foerste linje er navn og status, anden linje dato, klasse og
+// terraen. "Deler loebsdage med ..." og formtop-maerket staar ikke laengere paa kortet (delte loebsdage ses i
+// loebets hoved og som status "I [loeb]" ved rytteren; formtoppen i Formtop-fanen).
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDownIcon, ChevronRightIcon, Button, EmptyState, FlagIcon } from "./primitives.ts";
 import {
   groupRacesByWeek,
-  overlappingRaces,
   raceReadiness,
   raceStartDate,
-  raceDayLabelKey,
-  gameDaySpan,
   mondayOf,
   type RaceScope,
   type Readiness,
@@ -50,20 +51,15 @@ function ScopeSwitch({ scope, onScope }: { scope: RaceScope; onScope: (scope: Ra
 function RaceRow({
   race,
   readiness,
-  overlaps,
   types,
   selected,
   dates,
   onSelect,
   check = null,
   mark = null,
-  peaks = 0,
 }: {
-  /** Ryttere med formtop mod loebet (punkt 3, formtop-maerket). */
-  peaks?: number;
   race: SeasonRace;
   readiness: Readiness;
-  overlaps: SeasonRace[];
   types: string[];
   selected: boolean;
   dates: Map<number, string>;
@@ -88,30 +84,21 @@ function RaceRow({
       } ${selected ? "bg-cz-subtle" : "hover:bg-cz-subtle"}`}
     >
       <span className="min-w-0">
+        {/* Linje 1: navnet (status staar til hoejre). */}
         <span className="block truncate text-[13.5px] font-medium text-cz-1">{race.name}</span>
-        <span className="mt-0.5 block font-data text-2xs uppercase tracking-wide text-cz-3">
-          {/* Begge akser (PLANNING_CENTER_RULES §3): kalenderdatoen og loebsdagene. */}
-          {start ? `${formatShortDate(start, i18n.language)} · ` : ""}
-          {t(raceDayLabelKey(race), { day: gameDaySpan(race.gameDayStart, race.gameDayEnd), days: gameDaySpan(race.gameDayStart, race.gameDayEnd) })}
-          {cls ? ` · ${cls}` : ""}
-          {" · "}
-          {race.stages > 1 ? t("raceList.stages", { count: race.stages }) : t("raceList.oneDay")}
-        </span>
-        <span className="mt-1.5 block">
-          <StageStrip types={types} max={10} />
-        </span>
-        {overlaps.length > 0 && (
-          <span className="mt-1.5 flex items-start gap-1 text-2xs text-cz-warning">
-            <FlagIcon size={12} className="mt-px shrink-0" aria-hidden="true" />
-            <span>{t("raceList.sharesDays", { races: overlaps.map((o) => o.name).join(", ") })}</span>
+        {/* Linje 2: dato, klasse og terraen (etape-striben; et etapeloeb viser hver etapes terraen). */}
+        <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-cz-3" data-testid="planning-race-meta">
+          <span className="shrink-0 tabular-nums">
+            {[start ? formatShortDate(start, i18n.language) : null, cls || null].filter(Boolean).join(" · ")}
           </span>
-        )}
-        {peaks > 0 && (
-          // Formtop-maerket (ejervalg 16/11, punkt 3 B): hvor mange af holdets ryttere topper til loebet.
-          <span className="mt-1 block font-data text-2xs uppercase tracking-wide text-cz-2" data-testid="planning-race-peaks">
-            {t("raceList.peaks", { count: peaks })}
-          </span>
-        )}
+          {types.length > 0 && (
+            <>
+              <span aria-hidden="true">·</span>
+              <StageStrip types={types} max={race.stages > 1 ? 7 : 1} size={12} className="min-w-0 overflow-hidden" />
+            </>
+          )}
+          {race.stages > 1 && types.length === 0 && <span className="truncate">{t("raceList.stages", { count: race.stages })}</span>}
+        </span>
       </span>
       <span className="flex flex-col items-end gap-1 self-start">
         <ReadinessBadge readiness={readiness} />
@@ -139,13 +126,10 @@ function RaceRow({
 
 interface RaceListProps {
   races: SeasonRace[];
-  allRaces: SeasonRace[];
   dates: Map<number, string>;
   counts: Map<string, number>;
   withdrawn: Set<string>;
   terrain: Map<string, string[]>;
-  /** Ryttere med formtop pr. loeb (formtop-maerket). */
-  peakCounts?: Map<string, number>;
   selectedId?: string | null;
   onSelect: (id: string) => void;
   scope: RaceScope;
@@ -163,12 +147,10 @@ interface RaceListProps {
 
 export default function RaceList({
   races,
-  allRaces,
   dates,
   counts,
   withdrawn,
   terrain,
-  peakCounts,
   selectedId,
   onSelect,
   scope,
@@ -233,7 +215,7 @@ export default function RaceList({
                 onClick={() => setToggled((s) => ({ ...s, [group.monday]: !open }))}
                 className="flex min-h-11 w-full items-center justify-between gap-2 border-b border-cz-border bg-cz-subtle px-3.5 py-2 text-left sm:min-h-0"
               >
-                <span className="flex items-center gap-1.5 font-data text-2xs font-semibold uppercase tracking-wide text-cz-2">
+                <span className="flex items-center gap-1.5 font-data text-xs font-semibold text-cz-2">
                   {open ? <ChevronDownIcon size={13} aria-hidden="true" /> : <ChevronRightIcon size={13} aria-hidden="true" />}
                   {t("raceList.weekSummary", { week: group.week, count: group.races.length, missing })}
                 </span>
@@ -247,11 +229,9 @@ export default function RaceList({
                     types={terrain.get(race.id) ?? []}
                     selected={race.id === selectedId}
                     readiness={raceReadiness(race, counts.get(race.id) ?? 0, withdrawn)}
-                    overlaps={overlappingRaces(race, allRaces, withdrawn)}
                     onSelect={onSelect}
                     check={checks ? { checked: checks.checked.has(race.id), onToggle: () => checks.onToggle(race.id) } : null}
                     mark={rowMark?.(race.id)}
-                    peaks={peakCounts?.get(race.id) ?? 0}
                   />
                 ))}
             </section>

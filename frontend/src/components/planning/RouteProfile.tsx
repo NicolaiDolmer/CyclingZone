@@ -4,7 +4,12 @@
 // stigninger, naar etapen har en hoejdeserie; ellers loebssidens kompakte kort. Ingen ny tegning.
 // Aabner altid paa etape 1. "Skjul profil" folder den til etape-linjen, og valget huskes af siden for alle
 // loeb (ogsaa naeste gang siden aabnes).
-import { useEffect, useMemo, useState } from "react";
+//
+// #8419 punkt 8 (ejer 26/11, "should be available everywhere theres a stage profile"): under profilen staar
+// loebssidens finaledetaljer: terraen, afslutning og den valgte stigning (laengde, stigningsprocent og km
+// til maal), med loebssidens egne tekster. Den sidste stigning er valgt som paa loebssiden; et klik paa en
+// anden stigning i profilen viser dens tal. I et etapeloeb foelger profilen Match-vaelgerens etape.
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
@@ -19,7 +24,8 @@ import {
   hasRouteData,
 } from "./primitives.ts";
 import StageProfileV2 from "../race/stagePageV2/StageProfileV2.tsx";
-import { elevationSeries, sortedClimbs, type StageProfile } from "../race/stagePageV2/stagePageV2Model.ts";
+import { climbDetail, elevationSeries, sortedClimbs, type Climb, type ElevationSeries, type StageProfile } from "../race/stagePageV2/stagePageV2Model.ts";
+import { finaleLabelKey } from "../../lib/stageProfileConfig.js";
 import { formatNumber } from "../../lib/intl.js";
 
 interface StageProfileRow {
@@ -30,6 +36,42 @@ interface StageProfileRow {
   [key: string]: unknown;
 }
 
+const one = (v: number) => formatNumber(Math.round(v * 10) / 10, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/**
+ * Finaledetaljerne under profilen (punkt 8): terraen, afslutning og den valgte stigning med laengde,
+ * stigningsprocent og km til maal. Loebssidens egne tekster (races-navnerummet), ingen ny tegning.
+ */
+function FinaleFacts({ profile, series, climb }: { profile: StageProfile; series: ElevationSeries | null; climb: Climb | null }) {
+  const { t } = useTranslation("races");
+  const finaleKey = finaleLabelKey(profile.finale_type) as string | null;
+  const detail = climb ? climbDetail(profile, series, climb) : null;
+  const facts: Array<[string, ReactNode]> = [];
+  if (profile.profile_type) {
+    facts.push([t("stagePageV2.axes.terrain"), <TerrainTypeGlyph profileType={profile.profile_type} size={14} showLabel labelClassName="" className="gap-1.5" />]);
+  }
+  if (finaleKey) facts.push([t("stagePageV2.axes.finish"), t(`detail.${finaleKey}`)]);
+  if (climb && detail) {
+    facts.push([t("stagePageV2.climbs.length"), `${one(Number(climb.length_km))} km`]);
+    facts.push([t("stagePageV2.climbs.average"), `${one(Number(climb.avg_gradient))} %`]);
+    facts.push([t("stagePageV2.climbs.toFinish"), `${formatNumber(detail.kmToGo)} km`]);
+  }
+  if (!facts.length) return null;
+  return (
+    <div className="mt-2.5" data-testid="planning-finale-facts">
+      {climb?.name && <p className="mb-1.5 text-xs font-semibold text-cz-1">{climb.name}</p>}
+      <dl className="flex flex-wrap gap-2">
+        {facts.map(([label, value]) => (
+          <div key={label} className="flex min-w-24 flex-col rounded-cz border border-cz-border px-2.5 py-1.5">
+            <dt className="text-2xs text-cz-3">{label}</dt>
+            <dd className="m-0 font-data text-[13px] font-semibold tabular-nums text-cz-1">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 /** Den store profil for én etape (etape-fanens tegning), med den sidste stigning valgt som dér. */
 function BigProfile({ profile }: { profile: StageProfile }) {
   const series = useMemo(() => elevationSeries(profile), [profile]);
@@ -37,15 +79,11 @@ function BigProfile({ profile }: { profile: StageProfile }) {
   const [selectedClimb, setSelectedClimb] = useState(() => Math.max(0, climbs.length - 1));
   useEffect(() => setSelectedClimb(Math.max(0, climbs.length - 1)), [climbs]);
   if (!series) return null;
+  const index = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
   return (
     <div data-testid="planning-big-profile">
-      <StageProfileV2
-        profile={profile}
-        series={series}
-        climbs={climbs}
-        selectedClimb={Math.min(selectedClimb, Math.max(0, climbs.length - 1))}
-        onSelectClimb={setSelectedClimb}
-      />
+      <StageProfileV2 profile={profile} series={series} climbs={climbs} selectedClimb={index} onSelectClimb={setSelectedClimb} />
+      <FinaleFacts profile={profile} series={series} climb={climbs[index] ?? null} />
     </div>
   );
 }
@@ -153,13 +191,16 @@ export default function RouteProfile({
           ) : big ? (
             <BigProfile key={`${raceId}-${safe}`} profile={profile as StageProfile} />
           ) : hasRouteData(profile) ? (
-            <StageProfileCard
-              profile={profile}
-              stageLabel={multi ? t("profile.stageOf", { n: safe + 1, total }) : t("profile.oneDay")}
-              tier="compact"
-              asCard={false}
-              hasClassifications={hasClassifications}
-            />
+            <>
+              <StageProfileCard
+                profile={profile}
+                stageLabel={multi ? t("profile.stageOf", { n: safe + 1, total }) : t("profile.oneDay")}
+                tier="compact"
+                asCard={false}
+                hasClassifications={hasClassifications}
+              />
+              <FinaleFacts profile={profile as StageProfile} series={null} climb={sortedClimbs(profile as StageProfile).at(-1) ?? null} />
+            </>
           ) : (
             <LegacyStageProfileCard profile={profile} stageLabel={t("profile.stageOf", { n: safe + 1, total })} />
           )}

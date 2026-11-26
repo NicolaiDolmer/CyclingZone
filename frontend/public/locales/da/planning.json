@@ -5,6 +5,31 @@
     "needSquad": "{count, plural, one {# løb mangler en trup de næste 8 dage} other {# løb mangler en trup de næste 8 dage}}",
     "allReady": "Alle løb de næste 8 dage har en fuld trup"
   },
+  "mode": {
+    "label": "Vis",
+    "week": "Uge",
+    "season": "Sæson",
+    "month": "Måned"
+  },
+  "teamStrategy": "Holdstrategi",
+  "distribute": {
+    "action": "Fordel ryttere",
+    "title": "Fordel ryttere",
+    "titleOn": "Fordel ryttere · {date}",
+    "back": "Tilbage til ugen",
+    "backSeason": "Tilbage til sæsonen",
+    "unsaved": "Du har ugemte ændringer på dette løb. Vil du forlade dem og åbne dagen?"
+  },
+  "match": {
+    "label": "Match",
+    "wholeRace": "Hele løbet",
+    "stage": "Etape {n}"
+  },
+  "startlists": {
+    "unavailable": "Startlisten for dette løb kan ikke ses her endnu.",
+    "grossOnly": "Kun hold og ryttere, ingen roller",
+    "yourTeam": "Dit hold"
+  },
   "toggles": {
     "weekBoard": "Ugeoversigt",
     "raceList": "Løbsliste"
@@ -16,7 +41,9 @@
     "next": "Næste uge",
     "week": "Uge {week}",
     "empty": "Ingen løb i denne uge. Brug pilene til at finde det næste.",
-    "raceDaysShort": "LD {days}"
+    "raceDaysShort": "LD {days}",
+    "continuedFrom": "Startede ugen før",
+    "continuesNext": "Fortsætter i næste uge"
   },
   "raceList": {
     "title": "Løbsliste",
@@ -112,6 +139,17 @@
       "fatigue": "Træthed",
       "load": "Belastning",
       "rating": "Rating"
+    },
+    "helpAria": "Hvad betyder {column}?",
+    "help": {
+      "status": "Hvorfor en rytter ikke kan udtages lige nu: skadet, for gammel, i et andet løb på de samme dage eller låst af Træn nu.",
+      "role": "Rytterens opgave i løbet. Kun udtagne ryttere har en rolle.",
+      "type": "Rytterens naturlige type.",
+      "rating": "Rytterens rating i hans bedste rolle lige nu.",
+      "form": "Formen i dag. En dato under den viser, hvornår hans næste formtop er.",
+      "fatigue": "Hvor træt rytteren er. Højere er mere træt.",
+      "load": "Hvor hårdt løbet ventes at blive ved normal indsats: let, mellem eller hård.",
+      "routeMatch": "Hvor godt rytteren passer til ruten. I et etapeløb kan du vælge hele løbet eller én etape."
     }
   },
   "role": {
@@ -216,7 +254,8 @@
       "squad": "Udtag ryttere og giv dem en rolle · alle kolonner sorterer",
       "tactics": "Planen følger etapen i profilen",
       "peak": "Kryds ryttere af og anvend formtoppen på løbet"
-    }
+    },
+    "startlists": "Startlister"
   },
   "tactics": {
     "noSquad": {

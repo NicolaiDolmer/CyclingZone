@@ -5,6 +5,31 @@
     "needSquad": "{count, plural, one {# course a besoin d'une équipe dans les 8 prochains jours} other {# courses ont besoin d'une équipe dans les 8 prochains jours}}",
     "allReady": "Toutes les courses des 8 prochains jours ont une équipe complète"
   },
+  "mode": {
+    "label": "Afficher",
+    "week": "Semaine",
+    "season": "Saison",
+    "month": "Mois"
+  },
+  "teamStrategy": "Stratégie de l'équipe",
+  "distribute": {
+    "action": "Répartir les coureurs",
+    "title": "Répartir les coureurs",
+    "titleOn": "Répartir les coureurs · {date}",
+    "back": "Retour à la semaine",
+    "backSeason": "Retour à la saison",
+    "unsaved": "Vous avez des modifications non enregistrées sur cette course. Les abandonner et ouvrir la journée ?"
+  },
+  "match": {
+    "label": "Match",
+    "wholeRace": "Toute la course",
+    "stage": "Étape {n}"
+  },
+  "startlists": {
+    "unavailable": "La liste de départ de cette course n'est pas encore disponible ici.",
+    "grossOnly": "Équipes et coureurs seulement, sans rôles",
+    "yourTeam": "Votre équipe"
+  },
   "toggles": {
     "weekBoard": "Vue semaine",
     "raceList": "Liste des courses"
@@ -16,7 +41,9 @@
     "next": "Semaine suivante",
     "week": "Semaine {week}",
     "empty": "Aucune course cette semaine. Utilise les flèches pour trouver la suivante.",
-    "raceDaysShort": "JC {days}"
+    "raceDaysShort": "JC {days}",
+    "continuedFrom": "A commencé la semaine précédente",
+    "continuesNext": "Continue la semaine suivante"
   },
   "raceList": {
     "title": "Liste des courses",
@@ -112,6 +139,17 @@
       "fatigue": "Fatigue",
       "load": "Charge",
       "rating": "Note"
+    },
+    "helpAria": "Que signifie {column} ?",
+    "help": {
+      "status": "Pourquoi un coureur ne peut pas être choisi maintenant : blessé, trop âgé, dans une autre course les mêmes jours ou bloqué par Entraîner maintenant.",
+      "role": "La mission du coureur dans cette course. Seuls les coureurs choisis ont un rôle.",
+      "type": "Le type naturel du coureur.",
+      "rating": "La note du coureur dans son meilleur rôle en ce moment.",
+      "form": "La forme du jour. Une date en dessous indique son prochain pic de forme.",
+      "fatigue": "La fatigue du coureur. Plus c'est haut, plus il est fatigué.",
+      "load": "La difficulté attendue de la course avec un effort normal : légère, moyenne ou dure.",
+      "routeMatch": "À quel point le coureur convient au parcours. Dans une course par étapes, vous pouvez choisir toute la course ou une étape."
     }
   },
   "role": {
@@ -216,7 +254,8 @@
       "squad": "Choisissez des coureurs et donnez-leur un rôle · chaque colonne se trie",
       "tactics": "Le plan suit l'étape du profil",
       "peak": "Cochez des coureurs et appliquez le pic de forme à cette course"
-    }
+    },
+    "startlists": "Listes de départ"
   },
   "tactics": {
     "noSquad": {

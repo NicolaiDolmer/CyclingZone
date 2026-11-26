@@ -18,7 +18,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExt
 import type { ReactNode } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { PageHeader, Button, Segmented, EmptyState, ErrorState, SkeletonLines, PageLoader, FlagIcon, ChevronLeftIcon, buttonClass, forgetSelectionDraft } from "../components/planning/primitives.ts";
+import { PageHeader, Button, Segmented, EmptyState, ErrorState, SkeletonLines, PageLoader, FlagIcon, ChevronLeftIcon, forgetSelectionDraft } from "../components/planning/primitives.ts";
 import WeekBoard from "../components/planning/WeekBoard.tsx";
 import RaceList from "../components/planning/RaceList.tsx";
 import RaceWorkbench, { type RaceWorkbenchHandle } from "../components/planning/RaceWorkbench.tsx";
@@ -50,7 +50,6 @@ import {
   addDays,
   adjacentRace,
   normalizeMobileColumns,
-  peakCountsByRace,
   type MobileColumn,
   actionTargets,
   capToRoom,
@@ -579,7 +578,6 @@ function Workbench() {
   };
   // Formtop-board'et én gang for siden: formtop i Trup, maerket i loebslisten og Formtop-visningen.
   const peakData = usePeakBoardData(load.state === "ready");
-  const peakCounts = useMemo(() => peakCountsByRace(peakData.board?.riders), [peakData.board]);
 
   const upcomingNeed = allRaces.filter(
     (r) => !isRacePast(r) && (raceStartDate(r, dates) ?? "9999") <= addDays(today, 8) && raceReadiness(r, counts.get(r.id) ?? 0, shownWithdrawn).state === "missing",
@@ -805,12 +803,10 @@ function Workbench() {
           {listColumn && (
             <RaceList
               races={listRaces}
-              allRaces={allRaces}
               dates={dates}
               counts={counts}
               withdrawn={shownWithdrawn}
               terrain={terrain}
-              peakCounts={peakCounts}
               selectedId={selected?.id}
               onSelect={requestSelect}
               scope={scope}

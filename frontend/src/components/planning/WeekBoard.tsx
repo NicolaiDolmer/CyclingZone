@@ -2,10 +2,15 @@
 // ligger i hver sin bane, saa overlap er synligt med det samme. Hver bar viser loebets korte navn,
 // etape-striben og "x/6" valgte; klik vaelger loebet. Et gitter med 7 kolonner; paa mobil scroller
 // tidslinjen vandret inde i kortet (wireframet), saa navnene kan laeses uden at siden bliver bredere.
+//
+// #8419 (ejer 26/11): et etapeloeb er én bjaelke hen over sine dage (punkt 3); fortsaetter det ind i ugen
+// foer eller efter, viser en pil i bjaelkens ende det, saa overlap paa tvaers af ugeskiftet ikke skjules.
+// Under en dag med mere end ét loeb staar "Fordel ryttere" (punkt 4), som aabner den gamle dags-tavle.
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeftIcon, ChevronRightIcon, Button } from "./primitives.ts";
-import { layoutWeek, raceReadiness, isoWeekNumber, addDays, gameDaysOnDate, gameDaySpan, raceDayLabelKey, type SeasonRace } from "../../lib/planningWorkbench.ts";
+import { layoutWeek, raceReadiness, isoWeekNumber, addDays, gameDaysOnDate, gameDaySpan, raceDayLabelKey, raceStartDate, raceEndDate, type SeasonRace } from "../../lib/planningWorkbench.ts";
+import { canDistributeOn } from "./planningViews.ts";
 import { StageStrip, ReadinessMark, formatShortDate, formatDayHeader } from "./planningUi.tsx";
 
 interface WeekBoardProps {
@@ -20,6 +25,8 @@ interface WeekBoardProps {
   onWeekChange: (direction: -1 | 1) => void;
   canPrev: boolean;
   canNext: boolean;
+  /** "Fordel ryttere" paa en dag med flere loeb (kalenderdato). Uden den vises knappen ikke. */
+  onDistribute?: (date: string) => void;
 }
 
 export default function WeekBoard({
@@ -34,6 +41,7 @@ export default function WeekBoard({
   onWeekChange,
   canPrev,
   canNext,
+  onDistribute,
 }: WeekBoardProps) {
   const { t, i18n } = useTranslation("planning");
   const layout = useMemo(() => layoutWeek(races, dates, monday), [races, dates, monday]);
@@ -90,7 +98,7 @@ export default function WeekBoard({
             <div
               key={day}
               style={{ gridColumn: i + 1, gridRow: 1 }}
-              className="truncate border-s border-cz-border ps-1.5 font-data text-3xs uppercase tracking-wide text-cz-3"
+              className="truncate border-s border-cz-border ps-1.5 font-data text-2xs text-cz-3"
             >
               <span className="block truncate">{formatDayHeader(day, i18n.language).weekday}</span>
               <span className="block truncate tabular-nums">{formatDayHeader(day, i18n.language).day}</span>
@@ -99,7 +107,7 @@ export default function WeekBoard({
                 <span className="block truncate tabular-nums" title={t("raceList.raceDays", { days: gameDaysOnDate(dates, day) })}>
                   {/* Smal kolonne paa mobil: kun tallene; titlen siger "Loebsdage". */}
                   <span className="sm:hidden">{gameDaysOnDate(dates, day)}</span>
-                  <span className="hidden sm:inline">{t("weekBoard.raceDaysShort", { days: gameDaysOnDate(dates, day) })}</span>
+                  <span className="hidden sm:inline">{t("raceList.raceDays", { days: gameDaysOnDate(dates, day) })}</span>
                 </span>
               )}
             </div>
@@ -108,6 +116,9 @@ export default function WeekBoard({
             const readiness = raceReadiness(race, counts.get(race.id) ?? 0, withdrawn);
             const selected = race.id === selectedId;
             const types = terrain.get(race.id) ?? [];
+            // Loebet fortsaetter i ugen foer eller efter (bjaelken er klippet ved ugens kant).
+            const before = (raceStartDate(race, dates) ?? monday) < monday;
+            const after = (raceEndDate(race, dates) ?? monday) > addDays(monday, 6);
             return (
               <button
                 key={race.id}
@@ -120,6 +131,12 @@ export default function WeekBoard({
                   selected ? "border-cz-3 bg-cz-subtle" : "border-cz-border bg-cz-card hover:bg-cz-subtle"
                 }`}
               >
+                {before && (
+                  <span className="hidden text-cz-3 sm:inline-flex" title={t("weekBoard.continuedFrom")}>
+                    <ChevronLeftIcon size={12} aria-hidden="true" />
+                    <span className="sr-only">{t("weekBoard.continuedFrom")}</span>
+                  </span>
+                )}
                 <span className="hidden sm:inline-flex">
                   <ReadinessMark state={readiness.state} />
                 </span>
@@ -139,9 +156,30 @@ export default function WeekBoard({
                 >
                   {readiness.picked}/{readiness.target}
                 </span>
+                {after && (
+                  <span className="hidden text-cz-3 sm:inline-flex" title={t("weekBoard.continuesNext")}>
+                    <ChevronRightIcon size={12} aria-hidden="true" />
+                    <span className="sr-only">{t("weekBoard.continuesNext")}</span>
+                  </span>
+                )}
               </button>
             );
           })}
+          {onDistribute &&
+            layout.days.map((day, i) =>
+              canDistributeOn(day, races, dates, withdrawn) ? (
+                <button
+                  key={`distribute-${day}`}
+                  type="button"
+                  onClick={() => onDistribute(day)}
+                  style={{ gridColumn: i + 1, gridRow: layout.laneCount + 2 }}
+                  className="min-h-11 justify-self-start truncate px-1.5 text-left text-xs font-semibold text-cz-accent-t underline-offset-2 hover:underline sm:min-h-0"
+                  data-testid="planning-distribute-day"
+                >
+                  {t("distribute.action")}
+                </button>
+              ) : null,
+            )}
         </div>
         {layout.bars.length === 0 && (
           <p className="mt-3 text-[13px] text-cz-2">{t("weekBoard.empty")}</p>
