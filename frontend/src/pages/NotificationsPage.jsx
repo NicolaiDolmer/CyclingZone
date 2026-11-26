@@ -16,6 +16,7 @@ import { formatNavBadgeCount } from "../lib/navBadges.js";
 import { resolveNotificationLink, aggregateCtaKey } from "../lib/notificationLink";
 import { resolveAggregateLink } from "../components/notifications/aggregateLink.ts"; // #5417
 import { notifyUnreadChanged, subscribeUnreadSync } from "../components/notifications/unreadSync.js"; // #6473
+import { applyNotificationChanges } from "../lib/instantFeedback.ts";
 import { findSupersededUnreadIds } from "../components/notifications/supersededUnread.js"; // #6385
 import SeasonSquadPromotions from "../components/notifications/SeasonSquadPromotions.js";
 import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
@@ -417,7 +418,11 @@ export default function NotificationsPage() {
   }, []);
 
   // Mine tab
-  const [notifications, setNotifications] = useState([]);
+  const [confirmedNotifications, setNotifications] = useState([]);
+  const [pendingNotificationChanges, setPendingNotificationChanges] = useState([]);
+  const notifications = applyNotificationChanges(confirmedNotifications, pendingNotificationChanges);
+  const incomingNotifications = useRef(new Map());
+  const insertSequence = useRef(0);
   const [notifLoading, setNotifLoading] = useState(true);
   // #6473: en stille genindlaesning der blev startet FOER en mark-read/slet maa ikke
   // overskrive den nyere lokale tilstand med gamle raekker (og to stille loads kan
@@ -538,7 +543,12 @@ export default function NotificationsPage() {
       channel.on("postgres_changes", {
         event: "INSERT", schema: "public", table: "notifications",
         filter: `user_id=eq.${userId}`,
-      }, payload => setNotifications(prev => [payload.new, ...prev]))
+      }, payload => {
+        const incoming = incomingNotifications.current;
+        incoming.set(payload.new.id, { sequence: ++insertSequence.current, row: payload.new });
+        if (incoming.size > 200) incoming.delete(incoming.keys().next().value);
+        setNotifications(prev => prev.some((row) => row.id === payload.new.id) ? prev : [payload.new, ...prev].slice(0, 200));
+      })
     );
   }, [userId]);
 
@@ -553,6 +563,7 @@ export default function NotificationsPage() {
 
   async function loadNotifications({ quiet = false } = {}) {
     const gen = ++loadGen.current;
+    const startSequence = insertSequence.current;
     if (!quiet) setNotifLoading(true);
     if (!quiet) setNotifLoadError(false);
     const { data: { user } } = await supabase.auth.getUser();
@@ -570,11 +581,18 @@ export default function NotificationsPage() {
       if (!quiet) { setNotifLoadError(true); setNotifLoading(false); }
       return;
     }
-    if (quiet && gen !== loadGen.current) return; // #6473: forældet svar
+    if (gen !== loadGen.current) {
+      if (!quiet) setNotifLoading(false);
+      return;
+    }
     // #6385: ulæste bud-beskeder for afgjorte auktioner er skjult i listen men
     // talte med i badgen — læs dem stille, så tallet er sandt.
     const hiddenUnread = new Set(findSupersededUnreadIds(data || []));
-    setNotifications(data || []);
+    const arrived = [...incomingNotifications.current.values()]
+      .filter(({ sequence, row }) => sequence > startSequence && row.user_id === user.id)
+      .reverse().map(({ row }) => row);
+    const loadedIds = new Set((data ?? []).map(({ id }) => id));
+    setNotifications([...arrived.filter(({ id }) => !loadedIds.has(id)), ...(data ?? [])].slice(0, 200));
     setNotifLoadError(false);
     setNotifLoading(false);
     if (hiddenUnread.size) {
@@ -605,49 +623,49 @@ export default function NotificationsPage() {
   }
 
 
-  async function markRead(id) {
-    loadGen.current += 1; // #6473
-    const prev = notifications;
-    setNotifications(p => p.map(n => n.id === id ? { ...n, is_read: true } : n));
-    const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
-    if (error) {
-      setNotifications(prev);
-      notifyMutationFailed("notification_mark_read", error, { notificationId: id });
-      return;
+  async function changeNotifications(kind, ids, write, action, context) {
+    loadGen.current += 1;
+    const change = { kind, ids: new Set(ids) };
+    setPendingNotificationChanges((pending) => [...pending, change]);
+    try {
+      const error = await write();
+      if (error) throw error;
+      setNotifications((rows) => applyNotificationChanges(rows, [change]));
+      notifyUnreadChanged();
+      return true;
+    } catch (error) {
+      notifyMutationFailed(action, error, context);
+      return false;
+    } finally {
+      // A GET started while the mutation was in flight can still contain old
+      // rows. Keep the new base and discard only this operation's overlay.
+      loadGen.current += 1;
+      setPendingNotificationChanges((pending) => pending.filter((entry) => entry !== change));
     }
-    notifyUnreadChanged(); // #6473: nav-badgen + andre faner
+  }
+
+  async function markRead(id) {
+    return changeNotifications("read", [id], async () => {
+      const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+      return error;
+    }, "notification_mark_read", { notificationId: id });
   }
 
   async function markManyRead(ids) {
-    loadGen.current += 1; // #6473
     if (!ids?.length) return;
-    const prev = notifications;
-    const idSet = new Set(ids);
-    setNotifications(p => p.map(n => idSet.has(n.id) ? { ...n, is_read: true } : n));
-    const { error } = await supabase.from("notifications").update({ is_read: true }).in("id", ids);
-    if (error) {
-      setNotifications(prev);
-      notifyMutationFailed("notification_mark_many_read", error, { count: ids.length });
-      return;
-    }
-    notifyUnreadChanged(); // #6473
+    return changeNotifications("read", ids, async () => {
+      const { error } = await supabase.from("notifications").update({ is_read: true }).in("id", ids);
+      return error;
+    }, "notification_mark_many_read", { count: ids.length });
   }
 
   async function deleteMany(ids) {
-    loadGen.current += 1; // #6473
     if (!ids?.length) return;
-    const prev = notifications;
-    const idSet = new Set(ids);
-    setNotifications(p => p.filter(n => !idSet.has(n.id)));
-    const { error } = await supabase.from("notifications").delete().in("id", ids);
-    if (error) {
-      setNotifications(prev);
-      notifyMutationFailed("notification_delete_many", error, { count: ids.length });
-      return;
-    }
-    notifyUnreadChanged(); // #6473: ogsaa andre faner
+    return changeNotifications("delete", ids, async () => {
+      const { error } = await supabase.from("notifications").delete().in("id", ids);
+      return error;
+    }, "notification_delete_many", { count: ids.length });
   }
-
   function toggleAggregate(key) {
     setExpandedAggregates(prev => {
       const next = new Set(prev);
@@ -657,49 +675,39 @@ export default function NotificationsPage() {
   }
 
   async function markAllRead() {
-    loadGen.current += 1; // #6473
     if (!userId) return;
     setMarkingAll(true);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    // #4017: kun ULÆSTE rækker — uden is_read-filteret omskrev hvert klik samtlige
-    // notifikationer brugeren nogensinde har haft (målt: 251 klik → 92.560 rækker),
-    // og hver omskrevet række RLS-tjekkes efterfølgende én for én af Realtime.
-    const { error } = await supabase.from("notifications")
-      .update({ is_read: true }).eq("user_id", userId).eq("is_read", false);
-    if (error) await loadNotifications();
-    else notifyUnreadChanged(); // #6473: nav-badgen + andre faner
-    setMarkingAll(false);
+    try {
+      const unread = confirmedNotifications.filter(({ is_read }) => !is_read).map(({ id }) => id);
+      // #4017: write only unread rows, including ones outside the loaded page.
+      const changed = await changeNotifications("read", unread, async () => {
+        const { error } = await supabase.from("notifications")
+          .update({ is_read: true }).eq("user_id", userId).eq("is_read", false);
+        return error;
+      }, "notification_mark_all_read", { count: unread.length });
+      if (changed) await loadNotifications({ quiet: true });
+    } finally {
+      setMarkingAll(false);
+    }
   }
 
   async function deleteNotif(id) {
-    loadGen.current += 1; // #6473
-    const prev = notifications;
-    setNotifications(p => p.filter(n => n.id !== id));
-    const { error } = await supabase.from("notifications").delete().eq("id", id);
-    if (error) {
-      setNotifications(prev);
-      notifyMutationFailed("notification_delete", error, { notificationId: id });
-      return;
-    }
-    notifyUnreadChanged(); // #6473: ogsaa andre faner
+    return changeNotifications("delete", [id], async () => {
+      const { error } = await supabase.from("notifications").delete().eq("id", id);
+      return error;
+    }, "notification_delete", { notificationId: id });
   }
 
   async function deleteAllRead() {
-    loadGen.current += 1; // #6473
-    const readIds = notifications.filter(n => n.is_read).map(n => n.id);
+    const readIds = confirmedNotifications.filter((n) => n.is_read).map((n) => n.id);
     if (!readIds.length) return;
-    const prev = notifications;
-    setNotifications(p => p.filter(n => !n.is_read));
-    const { error } = await supabase.from("notifications").delete()
-      .eq("user_id", userId).eq("is_read", true);
-    if (error) {
-      setNotifications(prev);
-      notifyMutationFailed("notification_delete_all_read", error, { count: readIds.length });
-      return;
-    }
-    notifyUnreadChanged(); // #6473: ogsaa andre faner
+    const changed = await changeNotifications("delete", readIds, async () => {
+      const { error } = await supabase.from("notifications").delete()
+        .eq("user_id", userId).eq("is_read", true);
+      return error;
+    }, "notification_delete_all_read", { count: readIds.length });
+    if (changed) await loadNotifications({ quiet: true });
   }
-
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   const filteredNotifs = (() => {
@@ -776,7 +784,7 @@ export default function NotificationsPage() {
                 {markingAll ? t("actions.markingAll") : t("actions.markAllRead")}
               </Button>
             )}
-            {notifications.some(n => n.is_read) && (
+            {confirmedNotifications.some(n => n.is_read) && (
               <Button variant="danger" size="sm" onClick={deleteAllRead}>
                 {t("actions.deleteRead")}
               </Button>

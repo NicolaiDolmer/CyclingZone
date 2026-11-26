@@ -516,7 +516,7 @@ export default function TrainingPage() {
   const training = useTraining();
   const {
     enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, loading,
-    savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
+    savingIds, pendingChoices, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
     weekPlan, savingWeekPlan, setWeekPlan, clearWeekPlan,
     riderWeekPlans, savingRiderWeekPlanId, setRiderWeekPlan, clearRiderWeekPlan,
     // #4851: null naar training_score_visible er off ⇒ kolonnen findes ikke.
@@ -641,7 +641,7 @@ export default function TrainingPage() {
   );
   useReloadBlock(
     // #6839: "Kører…" venter på aftenkørslen; et reload ville afbryde opfølgningen.
-    Boolean(savingWeekPlan || savingRiderWeekPlanId || savingId || bulkApplying || running || trainNow.running),
+    Boolean(savingWeekPlan || savingRiderWeekPlanId || savingIds.size || bulkApplying || running || trainNow.running),
     RELOAD_BLOCK_REASONS.BUSY,
   );
 
@@ -1489,7 +1489,7 @@ export default function TrainingPage() {
       <ResetToTeamProgram
         visible={hasOwnProgram({ weekDays: riderWeekPlans[riderId], plan: planFor(riderId) }).any}
         locked={rowLocked({ trainedToday: runGate.trainedToday })}
-        busy={savingId === riderId || savingRiderWeekPlanId === riderId || bulkApplying}
+        busy={savingIds.has(riderId) || savingRiderWeekPlanId === riderId || bulkApplying}
         onReset={() => handleResetToTeamProgram(riderId)}
         compact={compact}
       />
@@ -1594,7 +1594,7 @@ export default function TrainingPage() {
           pacePerWeek={pacePerWeek({ gainedPoints: seasonPointsFor(riderId), daysElapsed: seasonDaysElapsed })}
           seasonPoints={seasonPointsFor(riderId)}
           onChangeDay={() => setFocusPanelRiderId(riderId)}
-          changeDisabled={savingId === riderId || bulkApplying}
+          changeDisabled={savingIds.has(riderId) || bulkApplying}
           changeLabel={t("card.changeDay")}
           score={scoreVisible ? scoreCellFor(riderId) : null}
           scoreSpark={riderScore?.spark ? [...riderScore.spark] : null}
@@ -1732,7 +1732,7 @@ export default function TrainingPage() {
             onChoose={handleOneTapChoice}
             renderReset={(riderId) => renderResetFor(riderId, true)}
             errorFor={(riderId) => (planActionError?.riderId === riderId ? planActionError.error : null)}
-            busyFor={(riderId) => savingId === riderId || bulkApplying}
+            busyFor={(riderId) => savingIds.has(riderId) || bulkApplying}
             locked={rowLocked({ trainedToday: runGate.trainedToday })}
             selectedRiderId={mobileRiderId}
             onSelectRider={(riderId) => setMobileRiderId((prev) => (prev === riderId ? null : riderId))}
@@ -2036,7 +2036,7 @@ export default function TrainingPage() {
         {canUseSmart && (
           <button
             type="button"
-            disabled={savingId === riderId || bulkApplying}
+            disabled={savingIds.has(riderId) || bulkApplying}
             onClick={() => handleDayChoice(riderId, smart)}
             className="text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50"
           >
@@ -2286,7 +2286,8 @@ export default function TrainingPage() {
         <TrainingDaySelect
           riderName={rider ? `${rider.firstname} ${rider.lastname}` : ""}
           plan={planFor(riderId)}
-          busy={savingId === riderId || bulkApplying}
+          pendingChoice={pendingChoices.get(riderId)?.choice}
+          busy={savingIds.has(riderId) || bulkApplying}
           error={planActionError && planActionError.riderId === riderId ? planActionError.error : null}
           onChoose={(choice) => handleDayChoice(riderId, choice)}
           dataTour={isFirst ? "training-focus" : undefined}
@@ -2520,7 +2521,7 @@ export default function TrainingPage() {
     settledToday: todayRowByRider, // #7947 Codex P2: koerte felter fra kvitteringen, ikke fra planen
     settledGameDays: /** @type {{ expected_game_days?: number[] | null } | null} */ (todayRun)?.expected_game_days ?? null, // #8533 Codex P2: felt = datoens loebsdag, ikke kvitteringens raekkefoelge
     racingToday, forecast: fatigueForecast.forecast, programAssigned: programs.assigned, programCatalog: programs.catalog ?? [], groups: trainingGroups.groups ?? [],
-    fatigueDays70: training.fatigueDays70, smartDefaultFocus, trainedToday: runGate.trainedToday, savingId, bulkApplying, justSaved: lingerIds,
+    fatigueDays70: training.fatigueDays70, smartDefaultFocus, trainedToday: runGate.trainedToday, savingIds, pendingChoices, bulkApplying, justSaved: lingerIds,
     planError: planActionError, runError, decisionRows: decisionCardOn ? decisionRows : null, fatigueRules: fatigueRules.data, assistantPanel, bulkMessage: bulkMsgNode,
     onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram, onClearPlan: handleClearPlan,
     onOpenPlan: openOwnPlan, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: openFatigueRule,
@@ -2709,7 +2710,7 @@ export default function TrainingPage() {
                 const age = ageForSeason(rider.birthdate, seasonYear);
                 const estimate = estimateFor(rider.id);
                 const plan = planFor(rider.id);
-                const busy = savingId === rider.id || bulkApplying;
+                const busy = savingIds.has(rider.id) || bulkApplying;
                 const hasBand = estimate && estimate.now != null && estimate.prog
                   && Number.isFinite(estimate.prog.lo) && Number.isFinite(estimate.prog.hi);
                 const estimateView = potentialViewOf(estimate); // #6110: tal + ord
@@ -2841,7 +2842,7 @@ export default function TrainingPage() {
         intensity={focusPanelRider ? planFor(focusPanelRider.id)?.intensity ?? "normal" : "normal"}
         trainability={focusPanelRider ? trainability[focusPanelRider.id] ?? null : null}
         assistantFocus={focusPanelRider ? smartDefaultFocus[focusPanelRider.id] ?? null : null}
-        saving={savingId === focusPanelRiderId}
+        saving={savingIds.has(focusPanelRiderId)}
         error={planActionError?.riderId === focusPanelRiderId ? planActionError.error : null}
         onSave={handleFocusPanelSave}
         onClear={handleFocusPanelClear}

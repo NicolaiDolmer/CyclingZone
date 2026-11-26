@@ -951,6 +951,7 @@ export default function RaceSelectionPanel({
               value={sel.luxuryHelperId}
               riders={selectedRiders.filter((r) => r.id !== sel.captainId && r.id !== sel.coCaptainId && r.id !== sel.sprintCaptainId)}
               emptyLabel={t("selection.noRole")}
+              aria-busy={saving}
               disabled={busy || fullyTrainNowLocked}
               onChange={(v) => setRole("luxuryHelperId", v)}
               hint={t("selection.luxuryHelperHint")}
@@ -1028,6 +1029,7 @@ export default function RaceSelectionPanel({
                  løb, og react-hooks/refs afviser (med rette) at sende en
                  ref-læsende funktion videre midt i en render. */
               onClick={(event) => saveBlock.guard(save)(event)}
+              aria-busy={saving}
               disabled={busy || fullyTrainNowLocked}
               {...saveBlock.blockedProps}
               className="px-4 py-2 rounded-cz bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"

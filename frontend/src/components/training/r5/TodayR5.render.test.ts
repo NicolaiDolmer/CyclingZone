@@ -68,7 +68,7 @@ function props(over: Record<string, unknown> = {}) {
     planFor: (id: string) => (id === "a" ? { focus: "sprint", intensity: "hard" } : null),
     settledToday: null, settledGameDays: null, riderWeekPlans: {}, racingToday: { c: { race: "Ronde van Preview" } },
     forecast: null, programAssigned: {}, programCatalog: [], groups: [], fatigueDays70: { b: 2 },
-    smartDefaultFocus: { a: "sprint", b: "cobbled_sectors" }, trainedToday: false, savingId: null, bulkApplying: false,
+    smartDefaultFocus: { a: "sprint", b: "cobbled_sectors" }, trainedToday: false, savingIds: new Set<string>(), pendingChoices: new Map(), bulkApplying: false,
     justSaved: new Set<string>(), planError: null, runError: null, decisionRows: [], fatigueRules: null, assistantPanel: null,
     bulkMessage: null, effortLevels: false,
     onPlan: async () => true, onBulk: async () => true, onPickSession: () => {}, onReset: async () => null, onClearPlan: async () => true,
