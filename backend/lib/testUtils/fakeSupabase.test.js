@@ -163,3 +163,20 @@ test("recorder-variant registrerer gte/lte/in-filtre uden faktisk at filtrere r�
   assert.deepEqual(data, [{ season_number: 3 }], "canned data returneres uanset gte — recorderen fanger filtret");
   assert.deepEqual(recorder, [["gte", "board_plan_snapshots", "season_number", 5]]);
 });
+
+// #8797 · fake'en afkorter som prod ved 1.000 rækker uden .range()/.limit().
+test("#8797 select uden vindue afkortes ved 1.000; .range/.limit og rowCap: Infinity gør ikke", async () => {
+  const rows = Array.from({ length: 1500 }, (_, i) => ({ id: i, team: i % 2 }));
+  const sb = createFakeSupabase({ t: rows });
+  assert.equal((await sb.from("t").select("id")).data.length, 1000);
+  assert.equal((await sb.from("t").select("id").order("id").range(1000, 1999)).data.length, 500);
+  assert.equal((await sb.from("t").select("id").limit(1200)).data.length, 1200);
+  const open = createFakeSupabase({ t: rows }, { rowCap: Infinity });
+  assert.equal((await open.from("t").select("id")).data.length, 1500);
+});
+
+test("#8797 flere .order()-kald sorterer leksikografisk", async () => {
+  const sb = createFakeSupabase({ t: [{ a: 2, b: 1 }, { a: 1, b: 2 }, { a: 1, b: 1 }] });
+  const { data } = await sb.from("t").select("a, b").order("a").order("b");
+  assert.deepEqual(data, [{ a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }]);
+});
