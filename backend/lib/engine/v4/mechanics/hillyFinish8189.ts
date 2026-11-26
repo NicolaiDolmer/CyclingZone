@@ -9,8 +9,8 @@
 // en flad dag, det sene angreb var udelukket, og placerings-kravet var ren spurt. Tre led, hvert med
 // sin egen knap i HILLY_FINISH_8189_TUNING (0 = leddet goer intet):
 //
-//   (A) udbruddet: sprinterholdenes interesse i at jage falder med haardheden, og lad-gaa-loftet
-//       vokser med den (boelget: altid lidt hoejere loft og oftere for sent ude);
+//   (A) udbruddet (kun kuperet): sprinterholdenes interesse i at jage falder med haardheden, og
+//       lad-gaa-loftet vokser med den;
 //   (A) det sene angreb paa en kuperet spurtetape (mechanics/lateAttack.ts) med en chance der
 //       vokser med haardheden;
 //   (B) reduceret spurt: en andel af sprint-vaegten flyttes til udholdenhed og punch.
@@ -83,28 +83,19 @@ function appliesOn(on: boolean | undefined, route: RouteLike): boolean {
   return on === true && hillyFinish8189Applies(route);
 }
 
+// (A) gaelder kun kuperet. Paa boelget ejer #6804 P2's aktive kontrol (flad/boelget) udbruddets
+// forspring; maalt 26/11 flyttede jagt- og lad-gaa-knapper der intet (ejer-spoergsmaal paa PR'en).
+
 /** (A) Faktor paa sprinterholdenes etapeinteresse (1 = uaendret). */
 export function hillyFinish8189ChaseScale(on: boolean | undefined, route: RouteLike): number {
-  if (!appliesOn(on, route)) return 1;
-  const t = HILLY_FINISH_8189_TUNING;
-  // Boelget: feltet kontrollerer udbruddet og henter det sent i stedet for tidligt.
-  if (route.profile_type === "rolling") return t.rollingChaseScale > 0 ? t.rollingChaseScale : 1;
-  return Math.max(0, 1 - t.chaseInterestCut * hillyFinish8189Hardness(route));
+  if (!appliesOn(on, route) || route.profile_type !== "hilly") return 1;
+  return Math.max(0, 1 - HILLY_FINISH_8189_TUNING.chaseInterestCut * hillyFinish8189Hardness(route));
 }
 
 /** (A) Faktor paa lad-gaa-loftet (1 = uaendret). */
 export function hillyFinish8189LetGoScale(on: boolean | undefined, route: RouteLike): number {
-  if (!appliesOn(on, route)) return 1;
-  const t = HILLY_FINISH_8189_TUNING;
-  if (route.profile_type === "rolling") return t.rollingLetGoScale > 0 ? t.rollingLetGoScale : 1;
-  return 1 + t.letGoGain * hillyFinish8189Hardness(route);
-}
-
-/** (A) Jagt-gulvets chance for at feltet kommer for sent (undefined = revisionens egen). Kun boelget har gulvet. */
-export function hillyFinish8189LateChance(on: boolean | undefined, route: RouteLike): number | undefined {
-  if (!appliesOn(on, route) || route.profile_type !== "rolling") return undefined;
-  const c = HILLY_FINISH_8189_TUNING.rollingLateChance;
-  return c > 0 ? c : undefined;
+  if (!appliesOn(on, route) || route.profile_type !== "hilly") return 1;
+  return 1 + HILLY_FINISH_8189_TUNING.letGoGain * hillyFinish8189Hardness(route);
 }
 
 /** (A) Chancen for det sene angreb paa en kuperet spurtetape (undefined = lateAttack.ts' egen regel). */

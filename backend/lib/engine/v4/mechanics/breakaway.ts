@@ -127,7 +127,7 @@ import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScal
 import { MANAGER_CHASE_6912_PARAM, addWork, breakawayCurve6912Applies, curveAppliesToBreak, curveChaseWork, curveClosingCapSeconds, curveControlActive, curveControlledClosing, curveFloorExtraSeconds, curveLetGoSplitKm, curvePeakSeconds, curveScaledGrowthSeconds, curveTargetSeconds, curveTopKm, curvePreFinalLift, curveUpperBoundApplies } from "./breakawayCurve6912.ts"; // #6912
 import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 import { lateAttack } from "./lateAttack.ts";
-import { hillyFinish8189ChaseScale, hillyFinish8189LateChance, hillyFinish8189LetGoScale } from "./hillyFinish8189.ts"; // #8189
+import { hillyFinish8189ChaseScale, hillyFinish8189LetGoScale } from "./hillyFinish8189.ts"; // #8189
 import { s5V3AutoChaseIntensity, s5V3ClimbChaseApplies, s5V3ClimbChaseClosing, s5V3ClimbChaseIntensity, s5V3ClimbChaseLeashSeconds, s5V3ControlledClosing, s5V3ControlTargetSeconds, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3InControlFinale, s5V3InterestedTeamIds, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale, s5V3RealisticLeadApplies, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
 import { compareIds } from "../../../compareIds.ts";
 import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts"; // #7160
@@ -1503,12 +1503,10 @@ export function chaseFloorTargetGapSeconds(
   lateRoll: number,
   /** #6441 (KUN official_times_v3): v3's lodtraekning pr. finale (oevrige finaler som foer). */
   officialTimesV3: boolean = false,
-  /** #8189 (KUN kontakten hilly_finish_8189): boelget-spurtens egen chance. Udeladt = som foer. */
-  lateChanceOverride?: number,
 ): number {
   const extra = BREAKAWAY_EXTRA_TUNING;
   const v3Chance = officialTimesV3 && route.finale_type ? BREAKAWAY_CHASE_V3_TUNING.chaseFloorLateChanceByFinale[route.finale_type] : undefined;
-  const lateChance = lateChanceOverride ?? v3Chance
+  const lateChance = v3Chance
     ?? (route.finale_type ? extra.chaseFloorLateChanceByFinale[route.finale_type] : undefined)
     ?? extra.chaseFloorLateChanceDefault;
   if (lateRoll < lateChance) return extra.chaseFloorLateTargetGapSeconds;
@@ -2474,7 +2472,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
           separationSeconds: beforeFloor,
           floorKm,
           kmToFinish: ctx.route.distance_km - (ctx.segment.to_km - floorKm),
-          targetGapSeconds: floorVerdict ? floorVerdict.targetSeconds : chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")(), chaseV3, hillyFinish8189LateChance(ctx.hillyFinish8189, ctx.route)), // #8189 (slukket = undefined)
+          targetGapSeconds: floorVerdict ? floorVerdict.targetSeconds : chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")(), chaseV3),
         })
       : 0;
     // #6912 (KUN kontakten): i jagt-gulvets vindue lukker de jagende hold selv ned mod kurvens maal,
