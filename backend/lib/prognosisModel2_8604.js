@@ -32,9 +32,15 @@ import {
 import {
   STANDARD_CAREER, expectedTopRating, standardCareerRotation, standardCareerShares,
 } from "./developmentXpExpectedTop.ts";
-import { applyTrainingCatalog, v3SmartDefaultFocus } from "./trainingCatalogV3.js";
+import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam, v3SmartDefaultFocus } from "./trainingCatalogV3.js";
 import { resolveProgram } from "./dailyTraining.js";
-import { raceDayProgram } from "./raceDayYield.js";
+import { RACE_DAY_FALLBACK_PROFILE, raceDayProgram } from "./raceDayYield.js";
+import { PROGRAM_SLOTS, programForSession, resolveDayProgram, sessionForDayEntry, weekDaysHaveSessions } from "./trainingPrograms.js";
+import { WEEKDAY_KEYS, isValidIntensity } from "./training.js";
+import { loadRotationPlans, loadRotationReceipts, rotationProgram } from "./trainingRotationProgress.js";
+import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
+import { isTrainingEffortLevelsEnabled } from "./trainingEffortLevels.js";
+import { buildRaceDayStageByRider } from "./raceDayStageLookup.js";
 import { developRiderSeasonV2, xpAgingConfig } from "./riderProgression.js";
 import { REGISTRY_ABILITY_KEYS, abilityMeta } from "./abilityRegistry.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
@@ -42,7 +48,7 @@ import { bestRoleForAbilities } from "./riderBestRoleCache.js";
 import { abilityValue } from "./weights/displayRecipes.js";
 import { publicEstimateView } from "./potentialEstimate.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
-import { copenhagenDateString, copenhagenHour } from "./copenhagenTime.js";
+import { copenhagenDateString, copenhagenHour, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
@@ -52,7 +58,8 @@ import { loadEstimateDevelopmentXp, loadEstimateTeamIds } from "./potentialEstim
 export const PROGNOSIS_MODEL2_FLAG_KEY = "prognosis_model2";
 export const PROGNOSIS_MODEL2_TABLE = "rider_prognosis_model2";
 // Hæves ved enhver ændring af beregningen: hashen ændrer sig, og alle rækker skrives om.
-export const PROGNOSIS_MODEL2_VERSION = "8604-m2-v1";
+// v2 (#8810): motorens planopløsning, etapens profil, uafgjorte felter og datoer på tværs af sæsoner.
+export const PROGNOSIS_MODEL2_VERSION = "8604-m2-v2";
 
 // Mixets længde i datoer. Ejerens 14 dage (24/11): efter så mange faktiske datoer er hele
 // mixet rytterens eget, og intervallet er så smalt, som modellen tillader.
@@ -85,10 +92,11 @@ function addShares(into, shares, weight) {
 }
 
 // Løbsgrenen: motorens XP for løbsdagens program som andel af rytterens XP på en hård dato.
-// Andelen afhænger ikke af potentiale eller alder (begge ganges på i xpPerDate), så den
-// regnes med et neutralt input.
-function raceShares(primaryType, secondaryType, params) {
-  const program = raceDayProgram(null);
+// Programmet bygges af etapens profil, som i motoren (raceDayProgram med rytterens etape);
+// en ukendt profil falder til motorens egen fallback. Andelen afhænger ikke af potentiale
+// eller alder (begge ganges på i xpPerDate), så den regnes med et neutralt input.
+function raceShares(profileType, primaryType, secondaryType, params) {
+  const program = raceDayProgram(profileType ?? RACE_DAY_FALLBACK_PROFILE);
   const out = {};
   for (const ability of VISIBLE_ABILITIES) {
     const mental = MENTAL.has(ability);
@@ -100,22 +108,37 @@ function raceShares(primaryType, secondaryType, params) {
   return out;
 }
 
-/** Ét afregnet felt som evneandele. Hvile giver intet; ukendt fokus giver kun det, kataloget kender. */
-export function slotShares(slot, { primaryType, secondaryType }, params) {
-  if (slot?.race_day === true || slot?.race_day === "true" || slot?.intensity === "race") {
-    return raceShares(primaryType, secondaryType, params);
-  }
+// Motorens mærke for et løbsfelt, hvis løb endnu ikke er afgjort: ingen udvikling på feltet.
+export const UNKNOWN_PENDING = "unknown_pending";
+
+/** Et felt, motoren endnu ikke har afregnet (dets løb mangler sit facit). */
+export function isUnsettledSlot(slot) {
+  return slot?.intensity === UNKNOWN_PENDING || slot?.status === UNKNOWN_PENDING;
+}
+
+export function isRaceSlot(slot) {
+  return slot?.race_day === true || slot?.race_day === "true" || slot?.intensity === "race";
+}
+
+/**
+ * Ét afregnet felt som evneandele. Hvile og et uafgjort felt giver intet; ukendt fokus giver
+ * kun det, kataloget kender. Et løbsfelt bruger etapens profil (`profile_type`, sat af batchen).
+ */
+export function slotShares(slot, { primaryType, secondaryType }, params, { catalogV3 = true } = {}) {
+  if (isUnsettledSlot(slot)) return {};
+  if (isRaceSlot(slot)) return raceShares(slot.profile_type ?? null, primaryType, secondaryType, params);
   if (!slot?.intensity || slot.intensity === "rest" || !slot.focus) return {};
-  const program = applyTrainingCatalog({ focus: slot.focus, intensity: slot.intensity }, { v3: true });
+  const program = applyTrainingCatalog({ focus: slot.focus, intensity: slot.intensity }, { v3: catalogV3 });
   return standardCareerShares(primaryType, secondaryType, params, program);
 }
 
 /**
- * De faktiske datoer, nyeste sidst. Én dato = alle datoens felter (unikke pr. løbsdag, så en
- * gentaget levering af samme felt aldrig tæller to gange). Kun datoer før `today`: dagens
- * dato er endnu åben.
+ * De faktiske datoer, nyeste sidst. Én dato = alle datoens felter (unikke pr. sæson og løbsdag,
+ * så en gentaget levering af samme felt aldrig tæller to gange, og datoer fra forrige sæson på
+ * holdet bevares). Kun datoer før `today`: dagens dato er endnu åben. En dato med et uafgjort
+ * felt er ikke endelig: den tæller ikke som faktisk og bliver simuleret, til motoren har afregnet.
  */
-export function observedDateEntries(slots, rider, params, { today, window = MODEL2_WINDOW_DATES } = {}) {
+export function observedDateEntries(slots, rider, params, { today, window = MODEL2_WINDOW_DATES, catalogV3 = true } = {}) {
   const bySlot = new Map();
   for (const slot of slots ?? []) {
     if (!slot?.tick_date || (today && slot.tick_date >= today)) continue;
@@ -126,28 +149,124 @@ export function observedDateEntries(slots, rider, params, { today, window = MODE
     if (!byDate.has(slot.tick_date)) byDate.set(slot.tick_date, []);
     byDate.get(slot.tick_date).push(slot);
   }
-  const dates = [...byDate.keys()].sort().slice(-window);
+  const settled = [...byDate.keys()].filter((date) => !byDate.get(date).some(isUnsettledSlot));
+  const dates = settled.sort().slice(-window);
   return dates.map((date) => {
     const daySlots = byDate.get(date);
     const entry = {};
-    for (const slot of daySlots) addShares(entry, slotShares(slot, rider, params), 1 / daySlots.length);
+    for (const slot of daySlots) addShares(entry, slotShares(slot, rider, params, { catalogV3 }), 1 / daySlots.length);
     return entry;
   });
 }
 
+// Kontakterne, motoren læser for holdet, når den opløser dagens program. Uden kontekst: det
+// katalog, der er live, og ingen programceller eller indsatsniveauer (motorens slukkede sti).
+export const DEFAULT_TRAINING_SWITCHES = Object.freeze({ programsOn: false, catalogV3: true, effortLevels: false });
+
+// Datoens andele som gennemsnittet af dens felter. Ens felter regnes én gang, så en dato med ét
+// program er præcis det programs andele.
+function dateSharesFromPrograms(programs, primaryType, secondaryType, params) {
+  const groups = new Map();
+  for (const program of programs) {
+    const key = JSON.stringify([program.focus, program.intensity, program.focusAbilities ?? null, program.focusWeights ?? null]);
+    const group = groups.get(key);
+    if (group) group.count += 1;
+    else groups.set(key, { program, count: 1 });
+  }
+  if (groups.size === 1) return standardCareerShares(primaryType, secondaryType, params, programs[0]);
+  const out = {};
+  for (const { program, count } of groups.values()) {
+    addShares(out, standardCareerShares(primaryType, secondaryType, params, program), count / programs.length);
+  }
+  return out;
+}
+
+// Ugens dage fra `startWeekday`, så de simulerede datoer følger kalenderen fra i dag.
+function weekdaysFrom(startWeekday) {
+  const start = Math.max(0, WEEKDAY_KEYS.indexOf(startWeekday));
+  return WEEKDAY_KEYS.map((_, i) => WEEKDAY_KEYS[(start + i) % WEEKDAY_KEYS.length]);
+}
+
+// Bærer ugeplanen noget for ugedagene: en intensitet eller (med programceller) en session.
+function weekDaysConfigured(days, programsOn) {
+  if (!days || typeof days !== "object") return false;
+  if (programsOn && weekDaysHaveSessions(days)) return true;
+  return WEEKDAY_KEYS.some((weekday) => isValidIntensity(days[weekday]?.intensity));
+}
+
 /**
- * Holdets plan for rytteren som datoer: en gemt plan gentages, uden plan er det assistentens
- * roterende plan for typen (samme som standardkarrieren).
+ * Ét felts program på en ugedag, opløst som i motoren (dailyTrainingEngine.js): rytterens plan
+ * (resolveProgram), assistentens fokus uden egen plan (v3SmartDefaultFocus), ugeplanens lag
+ * (resolveDayProgram: rytterens egen række, hans plan, holdets række) og holdets katalog.
  */
-export function plannedDateEntries(plan, { primaryType, secondaryType }, params) {
-  const explicit = Boolean(plan?.focus && plan?.intensity);
-  if (!explicit) {
+function weekdaySlotProgram({ weekday, slotIndex, plan, primaryType, secondaryType, riderDays, teamDays, switches }) {
+  const program = resolveProgram(plan, primaryType);
+  const hasExplicitPlan = Boolean(plan?.focus && plan?.intensity);
+  if (!hasExplicitPlan) {
+    program.focus = v3SmartDefaultFocus(program.focus, { primary_type: primaryType, secondary_type: secondaryType }, { v3: switches.catalogV3 });
+  }
+  const day = resolveDayProgram({
+    weekday, slotIndex, riderOverrideDays: riderDays ?? null, teamWeekDays: teamDays ?? null, program, hasExplicitPlan,
+    programsOn: switches.programsOn, catalogV3: switches.catalogV3, effortLevels: switches.effortLevels,
+  });
+  if (day.source === "program") program.focus = day.focus;
+  program.intensity = day.intensity;
+  return program;
+}
+
+/**
+ * Holdets plan for rytteren som datoer, opløst med motorens egen planopløsning:
+ *   - en rotation (training_week_plans, plan_kind 'rotation'): passene i rækkefølge fra rytterens
+ *     plads (rotationProgram), et pas pr. felt, så hvert pas tæller lige meget over en hel omgang;
+ *   - ellers ugeplanen (rytterens egen række, hans gemte plan, holdets række) dag for dag og felt
+ *     for felt via resolveDayProgram;
+ *   - uden nogen plan er det assistentens roterende plan for typen (samme som standardkarrieren).
+ * `context`: { riderDays, teamDays, switches, rotation, rotationReceipts, startWeekday }.
+ */
+export function plannedDateEntries(plan, { primaryType, secondaryType }, params, context = {}) {
+  const switches = { ...DEFAULT_TRAINING_SWITCHES, ...(context.switches ?? {}) };
+  const { riderDays = null, teamDays = null, rotation = null, rotationReceipts = null } = context;
+  const hasExplicitPlan = Boolean(plan?.focus && plan?.intensity);
+  const weekdays = weekdaysFrom(context.startWeekday);
+  const slotProgram = (weekday, slotIndex) => weekdaySlotProgram({
+    weekday, slotIndex, plan, primaryType, secondaryType, riderDays, teamDays, switches,
+  });
+  const finish = (program) => applyTrainingCatalog(program, { v3: switches.catalogV3 });
+
+  if (rotation) {
+    const first = rotationProgram({
+      rotation, receipts: rotationReceipts ?? [], dateReceipts: [], previousFocus: resolveProgram(plan, primaryType).focus,
+      catalogV3: switches.catalogV3, effortLevels: switches.effortLevels,
+    });
+    if (first) {
+      const length = rotation.passes.length;
+      return Array.from({ length }, (_, d) => {
+        const weekday = weekdays[d % weekdays.length];
+        const programs = Array.from({ length: PROGRAM_SLOTS }, (_, slotIndex) => {
+          const fallback = slotProgram(weekday, slotIndex);
+          const pass = rotation.passes[(first.index + d * PROGRAM_SLOTS + slotIndex) % length];
+          const chosen = programForSession(pass.session, fallback.focus, {
+            catalogV3: switches.catalogV3, effortLevels: switches.effortLevels, effort: pass.effort,
+          });
+          // Som motoren: et pas, der ikke kan køres, efterlader dagens program.
+          return finish(chosen?.ok ? { ...fallback, focus: chosen.focus, intensity: chosen.intensity } : fallback);
+        });
+        return dateSharesFromPrograms(programs, primaryType, secondaryType, params);
+      });
+    }
+  }
+
+  const configured = hasExplicitPlan || weekDaysConfigured(riderDays, switches.programsOn) || weekDaysConfigured(teamDays, switches.programsOn);
+  if (!configured) {
     return standardCareerRotation(primaryType).map((program) => standardCareerShares(primaryType, secondaryType, params, program));
   }
-  const base = resolveProgram(plan, primaryType);
-  const focus = v3SmartDefaultFocus(base.focus, { primary_type: primaryType, secondary_type: secondaryType }, { v3: true });
-  const program = applyTrainingCatalog({ focus, intensity: base.intensity }, { v3: true });
-  return [standardCareerShares(primaryType, secondaryType, params, program)];
+  const dates = weekdays.map((weekday) => dateSharesFromPrograms(
+    Array.from({ length: PROGRAM_SLOTS }, (_, slotIndex) => finish(slotProgram(weekday, slotIndex))),
+    primaryType, secondaryType, params,
+  ));
+  // En plan, der er ens alle ugens dage, er én dato (samme mix som en gentaget plan).
+  const keys = new Set(dates.map((entry) => JSON.stringify(entry)));
+  return keys.size === 1 ? [dates[0]] : dates;
 }
 
 /**
@@ -302,6 +421,37 @@ function isoMinusDays(isoDate, days) {
   return new Date(Date.parse(`${isoDate}T00:00:00Z`) - days * DAY_MS).toISOString().slice(0, 10);
 }
 
+export const raceSlotKey = (riderId, seasonId, gameDay) => `${riderId}:${seasonId}:${Number(gameDay)}`;
+
+/**
+ * Ren sammenkobling: (rytter, sæson, løbsdag) → etapens profil. Pr. sæson og løbsdag samme regel
+ * som motorens buildRaceDayStageByRider: etaperesultater og endagsløbets GC, aldrig tour-GC.
+ */
+export function raceProfilesBySlot({ races = [], schedule = [], results = [], profileRows = [] }) {
+  const raceById = new Map(races.map((race) => [race.id, race]));
+  const single = new Set(races.filter((race) => race.race_type === "single").map((race) => race.id));
+  const counted = results.filter((row) => row.result_type === "stage" || (row.result_type === "gc" && single.has(row.race_id)));
+  const groups = new Map();
+  for (const row of schedule) {
+    const seasonId = raceById.get(row.race_id)?.season_id;
+    if (!seasonId) continue;
+    const key = `${seasonId}:${Number(row.game_day)}`;
+    if (!groups.has(key)) groups.set(key, { seasonId, gameDay: Number(row.game_day), rows: [] });
+    groups.get(key).rows.push(row);
+  }
+  const out = new Map();
+  for (const { seasonId, gameDay, rows } of groups.values()) {
+    const raceIds = new Set(rows.map((row) => row.race_id));
+    const stages = buildRaceDayStageByRider({
+      scheduleRows: rows,
+      resultRows: counted.filter((row) => raceIds.has(row.race_id)),
+      profileRows: profileRows.filter((row) => raceIds.has(row.race_id)),
+    });
+    for (const [riderId, stage] of stages) out.set(raceSlotKey(riderId, seasonId, gameDay), stage.profileType ?? RACE_DAY_FALLBACK_PROFILE);
+  }
+  return out;
+}
+
 /** Standard-I/O mod Supabase. Testene giver deres egen. */
 export function supabaseModel2Io(supabase) {
   return {
@@ -320,11 +470,58 @@ export function supabaseModel2Io(supabase) {
       .select(ABILITY_COLUMNS).in("rider_id", chunk).order("rider_id")),
     plans: (teamId, seasonId) => fetchAllRows(() => supabase.from("training_plans")
       .select("rider_id, focus, intensity").eq("team_id", teamId).eq("season_id", seasonId).order("rider_id")),
+    // Sæsonen nu og den før: vinduet kan gå hen over sæsonskiftet.
+    async seasonIds(season) {
+      const number = Number(season.number);
+      const { data, error } = await supabase.from("seasons").select("id, number").in("number", [number - 1, number]);
+      if (error) throw new Error(`seasons: ${error.message}`);
+      return [...new Set([season.id, ...(data ?? []).map((row) => row.id)])];
+    },
     // Kun de felter mixet bruger, ikke hele rapporten (indekset team_id, season_id, tick_date).
-    slots: (teamId, seasonId, since, today) => fetchAllRows(() => supabase.from("training_rider_ticks")
-      .select("rider_id, season_id, game_day, tick_date, focus:report->>focus, intensity:report->>intensity, race_day:report->>race_day")
-      .eq("team_id", teamId).eq("season_id", seasonId).gte("tick_date", since).lt("tick_date", today)
-      .order("rider_id").order("game_day")),
+    // Holdets kvitteringer på tværs af sæsonerne i vinduet: samme hold, så forrige sæsons datoer bevares.
+    slots: (teamId, seasonIds, since, today) => fetchAllRows(() => supabase.from("training_rider_ticks")
+      .select("rider_id, season_id, game_day, tick_date, focus:report->>focus, intensity:report->>intensity, race_day:report->>race_day, status:report->>status")
+      .eq("team_id", teamId).in("season_id", seasonIds).gte("tick_date", since).lt("tick_date", today)
+      .order("rider_id").order("tick_date").order("game_day")),
+    // Samme rækker som motoren læser: holdets række (rider_id NULL) og rytternes egne.
+    weekPlans: (teamId) => fetchAllRows(() => supabase.from("training_week_plans")
+      .select("rider_id, days, plan_kind").eq("team_id", teamId).order("rider_id")),
+    // Samme kontakter som motoren, læst for holdet. Programceller kun, når en række bærer sessioner.
+    async trainingSwitches(teamId, weekRows) {
+      const [programsOn, catalogV3, effortLevels] = await Promise.all([
+        weekRows.some((row) => weekDaysHaveSessions(row.days)) ? isTrainingCellsEnabledForTeam(supabase, teamId) : false,
+        isTrainingCatalogV3EnabledForTeam(supabase, teamId),
+        isTrainingEffortLevelsEnabled(supabase),
+      ]);
+      return { programsOn, catalogV3, effortLevels };
+    },
+    // Rotationerne og rytternes plads i dem, med motorens egne indlæsere.
+    async rotations({ teamId, weekRows, riderIds, plans, today }) {
+      const byRider = await loadRotationPlans({ supabase, teamId, weekRows, riderIds, plans });
+      const receipts = await loadRotationReceipts({ supabase, teamId, tickDate: today, rotationByRider: byRider });
+      return { byRider, receipts };
+    },
+    // Etapens profil for hvert løbsfelt: samme sammenkobling som motorens løbsdagsopslag
+    // (race_results ⋈ race_stage_schedule på løbsdagen, scopet til feltets sæson).
+    async raceProfiles({ riderIds, slots }) {
+      const seasonIds = [...new Set(slots.map((slot) => slot.season_id).filter(Boolean))];
+      const gameDays = [...new Set(slots.map((slot) => Number(slot.game_day)).filter(Number.isFinite))];
+      if (!seasonIds.length || !gameDays.length || !riderIds.length) return new Map();
+      const races = await fetchAllRows(() => supabase.from("races")
+        .select("id, season_id, race_type").in("season_id", seasonIds).order("id"));
+      if (!races.length) return new Map();
+      const schedule = await fetchAllRowsChunkedIn(races.map((race) => race.id), (chunk) => supabase.from("race_stage_schedule")
+        .select("race_id, stage_number, game_day").in("race_id", chunk).in("game_day", gameDays).order("race_id").order("stage_number"));
+      const raceIdsOnDays = [...new Set(schedule.map((row) => row.race_id))];
+      if (!raceIdsOnDays.length) return new Map();
+      const results = await fetchAllRowsChunkedIn(raceIdsOnDays, (chunk) => supabase.from("race_results")
+        .select("rider_id, race_id, stage_number, result_type").in("result_type", ["stage", "gc"])
+        .in("race_id", chunk).in("rider_id", riderIds).order("race_id").order("rider_id").order("stage_number"));
+      const ridden = [...new Set(results.map((row) => row.race_id))];
+      const profileRows = ridden.length ? await fetchAllRowsChunkedIn(ridden, (chunk) => supabase.from("race_stage_profiles")
+        .select("race_id, stage_number, profile_type").in("race_id", chunk).order("race_id").order("stage_number")) : [];
+      return raceProfilesBySlot({ races, schedule, results, profileRows });
+    },
     published: (teamId) => fetchAllRows(() => supabase.from(PROGNOSIS_MODEL2_TABLE)
       .select("rider_id, input_hash").eq("team_id", teamId).order("rider_id")),
     async upsert(rows) {
@@ -354,17 +551,31 @@ export async function prepareTeamModel2({ io, teamId, season, params, today, now
   if (!onlyMissing) await io.remove(teamId, gone);
   if (!wanted.length) return counts;
   const ids = wanted.map((rider) => rider.id);
-  const [estimates, abilityRows, plans, slots] = await Promise.all([
+  const seasonIds = await io.seasonIds(season);
+  const [estimates, abilityRows, plans, slots, weekRows] = await Promise.all([
     io.estimates(teamId), io.abilities(ids), io.plans(teamId, season.id),
-    io.slots(teamId, season.id, isoMinusDays(today, MODEL2_LOOKBACK_DAYS), today),
+    io.slots(teamId, seasonIds, isoMinusDays(today, MODEL2_LOOKBACK_DAYS), today),
+    io.weekPlans(teamId),
+  ]);
+  const wantedIds = new Set(ids);
+  const ownSlots = slots.filter((slot) => wantedIds.has(slot.rider_id));
+  const raceSlots = ownSlots.filter((slot) => isRaceSlot(slot) && !isUnsettledSlot(slot));
+  const [switches, rotations, profiles] = await Promise.all([
+    io.trainingSwitches(teamId, weekRows),
+    io.rotations({ teamId, weekRows, riderIds: ids, plans, today }),
+    raceSlots.length ? io.raceProfiles({ riderIds: [...new Set(raceSlots.map((slot) => slot.rider_id))], slots: raceSlots }) : new Map(),
   ]);
   const estimateBy = new Map(estimates.map((row) => [row.rider_id, row]));
   const abilitiesBy = new Map(abilityRows.map((row) => [row.rider_id, row]));
   const planBy = new Map(plans.map((row) => [row.rider_id, row]));
+  const teamDays = weekRows.find((row) => row.rider_id == null)?.days ?? null;
+  const riderDaysBy = new Map(weekRows.filter((row) => row.rider_id != null).map((row) => [row.rider_id, row.days]));
+  const startWeekday = copenhagenWeekdayKey(today);
   const slotsBy = new Map();
-  for (const slot of slots) {
+  for (const slot of ownSlots) {
+    const withProfile = isRaceSlot(slot) ? { ...slot, profile_type: profiles.get(raceSlotKey(slot.rider_id, slot.season_id, slot.game_day)) ?? null } : slot;
     if (!slotsBy.has(slot.rider_id)) slotsBy.set(slot.rider_id, []);
-    slotsBy.get(slot.rider_id).push(slot);
+    slotsBy.get(slot.rider_id).push(withProfile);
   }
   const paramsVersion = privateConfigHash(params);
   const rows = [];
@@ -375,22 +586,21 @@ export async function prepareTeamModel2({ io, teamId, season, params, today, now
     const ratingNow = abilities ? ratingOf(abilities, types.primaryType, types.secondaryType) : null;
     const view = publicEstimateView(estimateBy.get(rider.id), { currentRating: ratingNow ?? rider.best_role_rating });
     if (!abilities || age == null || view.hidden) { counts.skipped += 1; continue; }
-    const observedSlots = slotsBy.get(rider.id) ?? [];
     const plan = planBy.get(rider.id) ?? null;
     const visible = Object.fromEntries(VISIBLE_ABILITIES.map((ability) => [ability, abilities[ability] ?? null]));
+    // Hashen dækker præcis det, beregningen bruger: de opløste datoer, ikke de rå rækker.
+    const observed = observedDateEntries(slotsBy.get(rider.id) ?? [], types, params, { today, catalogV3: switches.catalogV3 });
+    const planned = plannedDateEntries(plan, types, params, {
+      riderDays: riderDaysBy.get(rider.id) ?? null, teamDays, switches, startWeekday,
+      rotation: rotations.byRider.get(rider.id) ?? null, rotationReceipts: rotations.receipts.get(rider.id) ?? null,
+    });
     const hash = inputHash([
       PROGNOSIS_MODEL2_VERSION, paramsVersion, rider.id, teamId, age, types, view.value, visible,
-      abilities.ability_progress ?? null, plan ? [plan.focus, plan.intensity] : null,
-      observedSlots.map((slot) => [slot.season_id, slot.game_day, slot.tick_date, slot.focus, slot.intensity, slot.race_day]),
+      abilities.ability_progress ?? null, observed, planned,
     ]);
     if (published.get(rider.id) === hash) { counts.unchanged += 1; continue; }
     const riderInput = { id: rider.id, abilities: visible, bars: abilities.ability_progress ?? null, age, ...types };
-    const result = computeModel2Prognosis({
-      rider: riderInput,
-      estimate: view.value,
-      observed: observedDateEntries(observedSlots, types, params, { today }),
-      planned: plannedDateEntries(plan, types, params),
-    }, params);
+    const result = computeModel2Prognosis({ rider: riderInput, estimate: view.value, observed, planned }, params);
     // En rytters karriere er ren CPU: giv event-loopet fri mellem rytterne, så batchen aldrig
     // holder anmodninger hen.
     await new Promise((resolve) => setImmediate(resolve));

@@ -6,9 +6,9 @@ import { validateDevelopmentXpParams } from "./developmentXp.ts";
 import { expectedCareer, expectedTopRating, standardCareerRotation, standardCareerShares } from "./developmentXpExpectedTop.ts";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import {
-  MODEL2_BAND_HALF_FULL, MODEL2_BAND_HALF_START, MODEL2_WINDOW_DATES, PROGNOSIS_MODEL2_TABLE,
+  DEFAULT_TRAINING_SWITCHES, MODEL2_BAND_HALF_FULL, MODEL2_BAND_HALF_START, MODEL2_WINDOW_DATES, PROGNOSIS_MODEL2_TABLE,
   bandHalfWidth, blendMix, calibrateEarningProxy, computeModel2Prognosis, model2View, observedDateEntries,
-  plannedDateEntries, prepareTeamModel2, runPrognosisModel2Batch, simulateMixCareer, slotShares,
+  plannedDateEntries, prepareTeamModel2, raceProfilesBySlot, raceSlotKey, runPrognosisModel2Batch, simulateMixCareer, slotShares,
 } from "./prognosisModel2_8604.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
@@ -154,17 +154,30 @@ test("visningen klemmer tallet ind mellem ratingen nu og skønnet nu", () => {
 
 // ── Batchen ─────────────────────────────────────────────────────────────────
 
-function memoryIo({ riders, estimates, abilities = [], plans = [], slots = [] }) {
+function memoryIo({
+  riders, estimates, abilities = [], plans = [], slots = [], weekRows = [], switches = DEFAULT_TRAINING_SWITCHES,
+  rotations = new Map(), rotationReceipts = new Map(), profiles = new Map(), seasonIds = ["s1"],
+}) {
   const table = new Map();
+  const calls = { slots: [], raceProfiles: [] };
   return {
     table,
+    calls,
     activeSeason: async () => ({ id: "s1", number: 1 }),
     teamIds: async () => ["t1"],
     riders: async () => riders,
     estimates: async () => estimates,
     abilities: async (ids) => abilities.filter((row) => ids.includes(row.rider_id)),
     plans: async () => plans,
-    slots: async () => slots,
+    seasonIds: async () => seasonIds,
+    slots: async (teamId, ids, since, today) => {
+      calls.slots.push({ teamId, seasonIds: ids, since, today });
+      return slots.filter((slot) => ids.includes(slot.season_id));
+    },
+    weekPlans: async () => weekRows,
+    trainingSwitches: async () => switches,
+    rotations: async () => ({ byRider: rotations, receipts: rotationReceipts }),
+    raceProfiles: async (args) => { calls.raceProfiles.push(args); return profiles; },
     published: async (teamId) => [...table.values()].filter((row) => row.team_id === teamId),
     upsert: async (rows) => { for (const row of rows) table.set(`${row.rider_id}:${row.team_id}`, row); },
     remove: async (teamId, ids) => { for (const id of ids) table.delete(`${id}:${teamId}`); },
