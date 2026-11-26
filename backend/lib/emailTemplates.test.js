@@ -901,15 +901,24 @@ for (const edition of ["before-start", "started"]) {
           // Hero: hosted PNG with an absolute URL, real alt text, and the file exists.
           const hero = mail.html.match(/<img class="cz-hero" src="([^"]+)" alt="([^"]+)"/);
           assert.ok(hero, "hero image");
-          assert.equal(hero[1], `https://cyclingzone.org/email/s6/s6-hero-${language}.png`);
+          assert.equal(hero[1], `https://cyclingzone.org/email/s6/s6-hero-${language}-v2.png`);
           assert.ok(hero[2].length > 60);
-          assert.ok(existsSync(new URL(`s6-hero-${language}.png`, S6_HERO_FILES)));
+          assert.ok(existsSync(new URL(`s6-hero-${language}-v2.png`, S6_HERO_FILES)));
           for (const img of mail.html.match(/<img\b[^>]*>/g)) assert.match(img, /\salt="[^"]+"/);
 
           // Personal fields: team name in the greeting and the team line with the division.
           assert.match(mail.html, /(Hi|Hej) Hold A,/);
-          assert.match(mail.html, /Hold A (starts|starter|rides|kører) (Season|sæson) 6 i?n? ?Division 2\./);
-          assert.match(mail.text, /Division 2/);
+          if (edition === "before-start") {
+            // #8396 ejer 26/11: the S6 division is unknown before the switch, so mail 1 names none.
+            assert.ok(!mail.html.includes("Division 2"), "before-start names no division");
+            assert.ok(!mail.text.includes("Division 2"), "before-start text names no division");
+            assert.match(mail.html, /<h2[^>]*>(What&#39;s new in the game|De nyeste funktioner i spillet)<\/h2>/);
+            assert.match(mail.text, /(udviklingssystem|development system)/);
+            assert.match(mail.text, /(Planlægning|Planning)\./);
+          } else {
+            assert.match(mail.html, /Hold A (starts|starter|rides|kører) (Season|sæson) 6 i?n? ?Division 2\./);
+            assert.match(mail.text, /Division 2/);
+          }
 
           // One primary button, 16px label, tall enough to tap (44px or more).
           const buttons = mail.html.match(/<a class="cz-btn"[^>]*>/g) ?? [];
@@ -918,8 +927,8 @@ for (const edition of ["before-start", "started"]) {
           assert.match(buttons[0], /font-size:16px;line-height:20px/);
           assert.match(mail.html, /class="cz-body"[^>]*font-size:16px;/);
 
-          // List: three news items before the start, three steps once it is underway.
-          assert.equal((mail.html.match(/<li\b/g) ?? []).length, 3);
+          // List: four news items before the start (#8396 ejer 26/11), three steps once it is underway.
+          assert.equal((mail.html.match(/<li\b/g) ?? []).length, isStart ? 3 : 4);
           assert.match(mail.html, isStart ? /<ol\b/ : /<ul\b/);
 
           // Links: the deep-linked CTA, the roadmap vote and the unsubscribe, all with UTM.
@@ -937,8 +946,8 @@ for (const edition of ["before-start", "started"]) {
             assert.equal(cta.pathname, "/planning");
             assert.equal(cta.searchParams.get("tab"), "calendar");
           } else {
-            assert.equal(cta.pathname, "/training");
-            assert.equal(cta.searchParams.get("tab"), "today");
+            // #8396 ejer 26/11: "Gør holdet klar til sæson 6" åbner forsiden.
+            assert.equal(cta.pathname, "/dashboard");
           }
           assert.equal(roadmap.pathname, "/roadmap");
           assert.equal(roadmap.searchParams.get("tab"), "vote");
@@ -971,7 +980,7 @@ test("S6 drafts give every audience its own opening per edition and language", a
   for (const edition of S6_EDITIONS) {
     for (const language of ["en", "da"]) {
       const texts = S6_AUDIENCES.map(
-        (audience) => buildS6SeasonEmail({ edition, audience, language, unsubscribeUrl: S6_UNSUB }).text.split("\n\n")[3]
+        (audience) => buildS6SeasonEmail({ edition, audience, language, unsubscribeUrl: S6_UNSUB }).text.split("\n\n")[edition === "before-start" ? 2 : 3]
       );
       assert.equal(new Set(texts).size, S6_AUDIENCES.length, `${edition}/${language}`);
     }
@@ -981,13 +990,14 @@ test("S6 drafts give every audience its own opening per edition and language", a
 test("S6 drafts fall back to neutral wording without a team or division", async () => {
   const { buildS6SeasonEmail } = await import("./emailTemplates.js");
   const cases = [
-    [{ language: "en" }, /Hi,/, /Here&#39;s what&#39;s new for your team\./],
-    [{ language: "da" }, /Hej,/, /Her er det nye for dit hold\./],
-    [{ language: "en", teamName: "Hold B" }, /Hi Hold B,/, /Here&#39;s what&#39;s new for Hold B\./],
-    [{ language: "da", teamName: "  ", divisionName: "Division 3" }, /Hej,/, /Dit hold starter sæson 6 i Division 3\./],
+    // #8396 ejer 26/11: only the started edition has a team line; mail 1 (before-start) has none.
+    [{ language: "en" }, /Hi,/, /Here&#39;s how to get your team racing\./],
+    [{ language: "da" }, /Hej,/, /Sådan kommer dit hold til start\./],
+    [{ language: "en", teamName: "Hold B" }, /Hi Hold B,/, /Here&#39;s how to get Hold B racing\./],
+    [{ language: "da", teamName: "  ", divisionName: "Division 3" }, /Hej,/, /Dit hold kører sæson 6 i Division 3\./],
   ];
   for (const [input, greeting, teamLine] of cases) {
-    const mail = buildS6SeasonEmail({ edition: "before-start", audience: "active", unsubscribeUrl: S6_UNSUB, ...input });
+    const mail = buildS6SeasonEmail({ edition: "started", audience: "active", unsubscribeUrl: S6_UNSUB, ...input });
     assert.match(mail.html, greeting);
     assert.match(mail.html, teamLine);
     assert.doesNotMatch(mail.html + mail.text, /undefined|null/);
