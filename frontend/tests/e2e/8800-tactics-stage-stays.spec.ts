@@ -1,8 +1,8 @@
 // #8800: Taktik-fanen under løbssiden v6 skal blive på den etape manageren valgte.
-// Live i en grand tour: etape 16 valgt i etapestriben viste etape 14's rute og
-// hoppede tilbage. Specen dækker valget efter indlæsning, efter Gem og efter et
-// nyt valg i striben (ændret stage-prop).
-import type { Page } from "@playwright/test";
+// Live i en grand tour: Taktik åbnet for etape 16 viste først etape 16 og sprang så
+// tilbage til løbets næste åbne etape (14), da holdets roller var hentet. Specen
+// dækker valget efter indlæsning, efter Gem og efter et nyt valg i striben.
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./e2e-base.js";
 import { evidenceShotPath, installNetworkMocks, json, login, raceResultsRoute, stabilizePage } from "./fixtures.js";
 
@@ -20,13 +20,15 @@ const riders = [
 const stageNumbers = Array.from({ length: STAGES }, (_, i) => i + 1);
 const scheduledAt = (n: number) => new Date(NOW.getTime() + (n - RIDDEN) * 24 * 3600 * 1000).toISOString();
 
-async function openTactics(page: Page, search: string) {
+async function openRace(page: Page, search: string, { slowRoles = false } = {}) {
   const race = {
     id: RACE_ID, name: "E2E Vuelta", race_type: "stage_race", race_class: "GrandTour",
     stages: STAGES, stages_completed: RIDDEN, edition_year: 2026, status: "active",
     engine_rules_revision: "s5_profiles_v3", season: { id: "season-e2e", number: 1 },
   };
   const saved: number[] = [];
+  let releaseRoles = () => {};
+  const rolesGate = slowRoles ? new Promise<void>((resolve) => { releaseRoles = resolve; }) : Promise.resolve();
   await stabilizePage(page);
   await installNetworkMocks(page);
   await page.clock.setFixedTime(NOW);
@@ -41,9 +43,11 @@ async function openTactics(page: Page, search: string) {
   await page.route("**/rest/v1/race_stage_schedule**", (route) => json(route, stageNumbers.map((stage_number) => ({
     race_id: RACE_ID, stage_number, scheduled_at: scheduledAt(stage_number),
   }))));
-  await page.route("**/api/races/" + RACE_ID + "/stage-roles", (route) => json(route, {
-    enabled: true, intention_enabled: true, stages_completed: RIDDEN, stage_count: STAGES, riders, overrides: [],
-  }));
+  await page.route("**/api/races/" + RACE_ID + "/stage-roles", async (route) => {
+    // Rollerne lander efter første tegning, som i prod: det var dér etapen sprang.
+    await rolesGate;
+    return json(route, { enabled: true, intention_enabled: true, stages_completed: RIDDEN, stage_count: STAGES, riders, overrides: [] });
+  });
   await page.route("**/api/races/" + RACE_ID + "/team-orders**", (route) => {
     if (route.request().method() === "PUT") {
       saved.push(Number(new URL(route.request().url()).pathname.split("/").pop()));
@@ -55,46 +59,74 @@ async function openTactics(page: Page, search: string) {
       orders: [],
     });
   });
+  const width = (page.viewportSize()?.width ?? 1280) < 768 ? 390 : 1440;
+  if (shots) await page.setViewportSize({ width, height: 900 });
   await login(page);
   await page.goto("/races/" + RACE_ID + search);
   const root = page.locator('[data-race-page-version="v6"]');
-  const panel = root.getByTestId("race-tactics-tab");
-  await expect(panel).toBeVisible({ timeout: 15_000 });
-  return { root, panel, saved };
+  return { root, panel: root.getByTestId("race-tactics-tab"), strip: root.locator("[data-race-strip]"), saved, width, releaseRoles };
 }
 
-const saveButton = (panel: import("@playwright/test").Locator, n: number) =>
+const saveButton = (panel: Locator, n: number) =>
   panel.getByRole("button", { name: "Gem etape " + n, exact: true }).filter({ visible: true });
 
-test("#8800: etape 16 valgt i striben bliver valgt efter indlæsning, Gem og et nyt valg", async ({ page }) => {
-  const { root, panel, saved } = await openTactics(page, "?stage=16&tab=tactics");
-  const strip = root.locator("[data-race-strip]");
-  await strip.locator('[data-stage="16"]').click();
-  await expect(strip.locator('[data-stage="16"]')).toHaveAttribute("aria-current", "true");
-  await expect(saveButton(panel, 16)).toBeVisible();
-  // Lad alle forsinkede hentninger (flag, revision, gemte planer) lande: valget står stadig.
+async function expectOnStage(page: Page, panel: Locator, strip: Locator, n: number) {
+  await expect(saveButton(panel, n)).toBeVisible({ timeout: 15_000 });
   await page.waitForLoadState("networkidle");
-  await expect(saveButton(panel, 16)).toBeVisible();
-  await expect(strip.locator('[data-stage="16"]')).toHaveAttribute("aria-current", "true");
-  if (shots) await page.screenshot({ path: evidenceShotPath(`pr-screens/8800/${shotTag}-${page.viewportSize()?.width}.png`), scale: "css" });
+  await expect(saveButton(panel, n)).toBeVisible();
+  await expect(strip.locator(`[data-stage="${n}"]`)).toHaveAttribute("aria-current", "true");
+}
 
-  await saveButton(panel, 16).click();
-  await expect.poll(() => saved.at(-1)).toBe(16);
-  await page.waitForLoadState("networkidle");
-  await expect(saveButton(panel, 16)).toBeVisible();
-  await expect(strip.locator('[data-stage="16"]')).toHaveAttribute("aria-current", "true");
+// Paa telefonen ligger indsatsen i rytterens ark (#8386); paa computeren i raekken.
+async function makeDraftDirty(page: Page, panel: Locator, width: number) {
+  if (width === 390) {
+    await panel.locator("[data-tactics-phone-rider=r1] button[aria-haspopup=dialog]").click();
+    const sheet = page.getByTestId("tactics-phone-rider-sheet");
+    await sheet.getByRole("group", { name: /Indsats for/ }).getByRole("button", { name: /^Hård/ }).click();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    return;
+  }
+  const row = panel.locator("[data-tactics-rider=r1]").filter({ visible: true });
+  await row.getByRole("group", { name: /Indsats for/ }).getByRole("button", { name: /^Hård/ }).click();
+}
 
-  await strip.locator('[data-stage="17"]').click();
-  await expect(saveButton(panel, 17)).toBeVisible();
-  await strip.locator('[data-stage="16"]').click();
-  await expect(saveButton(panel, 16)).toBeVisible();
-  await page.waitForLoadState("networkidle");
-  await expect(saveButton(panel, 16)).toBeVisible();
+test("#8800: Taktik åbnet for etape 16 bliver på 16, også når holdets roller lander bagefter", async ({ page }) => {
+  const { panel, strip, releaseRoles } = await openRace(page, "?stage=16&tab=tactics", { slowRoles: true });
+  await expect(strip.locator('[data-stage="16"]')).toHaveAttribute("aria-current", "true", { timeout: 15_000 });
+  releaseRoles();
+  if (shots) {
+    await expect(panel.getByRole("button", { name: /^Gem etape \d+$/ }).filter({ visible: true })).toBeVisible({ timeout: 15_000 });
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await page.screenshot({ path: evidenceShotPath(`pr-screens/8800/${shotTag}-${page.viewportSize()?.width}.png`), scale: "css" });
+  }
+  await expectOnStage(page, panel, strip, 16);
 });
 
-test("#8800: Taktik åbnet fra etape 16 viser etape 16 (ikke næste åbne etape)", async ({ page }) => {
-  const { root, panel } = await openTactics(page, "?stage=16&tab=tactics");
-  await page.waitForLoadState("networkidle");
-  await expect(saveButton(panel, 16)).toBeVisible();
-  await expect(root.locator('[data-race-strip] [data-stage="16"]')).toHaveAttribute("aria-current", "true");
+test("#8800: fra Etape-fanen for etape 16 åbner Taktik-fanen etape 16", async ({ page }) => {
+  const { root, panel, strip } = await openRace(page, "?stage=16&tab=stage");
+  await root.getByRole("tab", { name: "Taktik" }).click();
+  await expectOnStage(page, panel, strip, 16);
+});
+
+test("#8800: etape 16 valgt i striben holder efter Gem og efter et nyt valg", async ({ page }) => {
+  const { panel, strip, saved, width } = await openRace(page, "?tab=tactics");
+  await strip.locator('[data-stage="16"]').click();
+  await expectOnStage(page, panel, strip, 16);
+
+  await makeDraftDirty(page, panel, width);
+  await saveButton(panel, 16).click();
+  await expect.poll(() => saved.at(-1)).toBe(16);
+  await expectOnStage(page, panel, strip, 16);
+
+  await strip.locator('[data-stage="17"]').click();
+  await expectOnStage(page, panel, strip, 17);
+  await strip.locator('[data-stage="16"]').click();
+  await expectOnStage(page, panel, strip, 16);
+});
+
+test("#8800: uden valgt etape åbner Taktik stadig løbets næste åbne etape", async ({ page }) => {
+  const { panel, strip } = await openRace(page, "?tab=tactics");
+  await expectOnStage(page, panel, strip, RIDDEN + 1);
 });
