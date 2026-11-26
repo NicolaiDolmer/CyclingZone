@@ -1079,6 +1079,9 @@ træningskørsel). Tallene og den præcise model står aldrig i repoet (hard rul
   holdtempo, hvor den selv er en hjælpe-evne); fri eller ukendt rolle får gennemsnittet af de to
   basis-dage, evne for evne. Det samlede udbytte er det samme for alle roller. Off = modellen ovenfor,
   bit-identisk. En fejlet læsning af underkontakten kaster på dato-afregningens strikte sti, ellers off.
+  Hjælpe-evnerne under underkontakten indeholder ikke tempo (ejer 4/11 + 20/11: tempo er evnen til
+  mellemlange stigninger, ikke til at føre feltet); en hjælper får kun tempo, når etapen selv træner det.
+  Hovedflagets fordeling med underkontakten slukket er uændret.
 - **Under Udviklingsscore B (#7584):** tillægget regnes pr. evne i tick'ets faktiske enhed, også for
   off-fokus-evnerne (lederskab, aggression, hjælperens støtte-evner), så det stadig er ens i alt for
   alle roller. Med scoren slukket er regningen uændret.
