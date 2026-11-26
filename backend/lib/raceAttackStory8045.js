@@ -47,6 +47,7 @@ function placeTime(e) {
 
 /** Den sidste stigning (højeste top-km) og dens fod. null uden stigninger. */
 export function lastClimb8045(climbs, distanceKm) {
+  /** @type {{ crest: number, foot: number, name: string | null } | null} */
   let best = null;
   for (const c of Array.isArray(climbs) ? climbs : []) {
     const crest = num(c?.crest_km);
@@ -112,6 +113,7 @@ class Road {
   }
 
   largest() {
+    /** @type {string | null} */
     let best = null;
     let bestSize = -1;
     for (const g of this.alive) {
@@ -154,7 +156,9 @@ function compareMoves(a, b) {
 
 /** Hændelserne i motorens rækkefølge: pr. segmentgrænse, og inden i den efter det tidspunkt, de skete. */
 function chronological(events) {
+  /** @type {{ km: number, items: any[] }[]} */
   const buckets = [];
+  /** @type {{ km: number, items: any[] } | null} */
   let current = null;
   for (const e of events) {
     const km = num(e?.km);
@@ -198,6 +202,10 @@ function labelOf(road, groupId) {
 /**
  * Angrebets forløb for den sidste stigning, som hændelser i den rækkefølge de skete.
  * Tom liste uden v2-log, uden stigning eller uden angreb.
+ *
+ * @param {any[] | null | undefined} events  race_stage_timelines.events
+ * @param {{ timelineVersion?: number | null, climbs?: any[] | null, distanceKm?: number | null }} [opts]
+ * @returns {any[]}
  */
 export function attackStory8045(events, { timelineVersion = null, climbs = null, distanceKm = null } = {}) {
   if (!Array.isArray(events) || !events.length) return [];
@@ -436,7 +444,7 @@ export function attackStory8045(events, { timelineVersion = null, climbs = null,
   }
 
   ordered.forEach((e) => {
-    const bucketKm = num(e.km);
+    const bucketKm = num(e.km) ?? 0;
     if (!settled && bucketKm > topKm + EPS_KM) settleTop();
     const at = placeKm(e) ?? bucketKm;
     if (!settled) startIfDue(at);
@@ -458,6 +466,10 @@ const PHASE_ORDER = ["started", "away", "checkpoint", "bridged", "caught", "drop
 /**
  * Filmens linjer: hændelser, der skete på samme sted, samme tid og med samme udfald,
  * bliver én linje med flere navne (fx tre ryttere, der kører fra feltet sammen).
+ */
+/**
+ * @param {any[] | null | undefined} entries
+ * @returns {any[]}
  */
 export function attackStoryLines8045(entries) {
   const lines = [];
