@@ -217,6 +217,14 @@ test('DENY_TABLES includes the tables named in #3331', () => {
   }
 });
 
+test('#8180: training_day_runs is deny-listed; a multi-team read must page', () => {
+  assert.ok(DENY_TABLES.includes('training_day_runs'));
+  const single = `const { data } = await supabase.from("training_day_runs").select("team_id, tick_date, report").in("team_id", slice).gte("tick_date", a).lt("tick_date", b);`;
+  assert.equal(scan(single, 'x.js').length, 1);
+  const paged = `const rows = await fetchAllRows(() => supabase.from("training_day_runs").select("team_id, tick_date, report").in("team_id", slice).order("team_id").order("id"));`;
+  assert.equal(scan(paged, 'x.js').length, 0);
+});
+
 // --- baseline-ratchet ------------------------------------------------------
 
 test('compareAgainstBaseline: a finding exactly matching the baseline count is NOT a new violation', () => {
