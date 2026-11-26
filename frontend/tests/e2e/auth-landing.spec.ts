@@ -262,3 +262,29 @@ test("a direct finance link keeps its page available while dashboard copy is pen
     release();
   }
 });
+
+test("dashboard starts loading data while its translations are pending", async ({ page }) => {
+  await page.addInitScript(
+    ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
+    { key, session },
+  );
+  let requestedCopy = false;
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/locales/*/dashboard.json*", async (route) => {
+    requestedCopy = true;
+    await pending;
+    await route.fallback();
+  });
+  const dataRequested = page.waitForRequest("**/api/dashboard/recent-results*", { timeout: 7000 });
+  try {
+    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
+    await expect.poll(() => requestedCopy).toBe(true);
+    await dataRequested;
+    await expect(page.getByRole("heading", { name: "E2E Racing", exact: true })).toHaveCount(0);
+  } finally {
+    release();
+    await dataRequested.catch(() => {});
+  }
+  await expect(page.getByRole("heading", { name: "E2E Racing", exact: true })).toBeVisible();
+});

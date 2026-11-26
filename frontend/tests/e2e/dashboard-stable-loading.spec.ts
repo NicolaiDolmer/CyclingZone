@@ -620,7 +620,9 @@ test('#8022 optional presence cannot extend the total mount budget or suppress l
   });
   await page.goto('/dashboard');
   try {
-    await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible({ timeout: 2500 });
+    const heading = page.getByRole('heading', { name: 'E2E Racing', exact: true });
+    // Sample throughout the same deadline, including after Playwright's last default poll.
+    await expect.poll(() => heading.isVisible(), { timeout: 2500, intervals: [75] }).toBe(true);
     await expect(page.getByTestId('season-signup-card')).toHaveCount(0);
     release();
     await expect(page.getByTestId('season-signup-card')).toBeVisible();
