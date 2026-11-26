@@ -328,6 +328,7 @@ test("run: test mode sends one mail per audience and language to the one address
       return { status: "sent" };
     },
     sleep: noSleep,
+    now: NOW,
   });
   assert.equal(result.sent, 6);
   assert.equal(result.failed, 0);
@@ -336,6 +337,21 @@ test("run: test mode sends one mail per audience and language to the one address
 });
 
 test("run: test mode needs an address and unknown modes are refused", async () => {
-  await assert.rejects(runS6Mail({ mode: "test", testTo: "", sendTestEmail: forbidden("sendTestEmail") }), /needs one address/);
-  await assert.rejects(runS6Mail({ mode: "send" }), /unknown mode/);
+  await assert.rejects(runS6Mail({ mode: "test", testTo: "", sendTestEmail: forbidden("sendTestEmail"), now: NOW }), /needs one address/);
+  await assert.rejects(runS6Mail({ mode: "send", now: NOW }), /unknown mode/);
+});
+
+test("segment: a rerun never mails a second account that shares an already contacted address (Codex P2, #8767)", () => {
+  const firstRun = select({
+    teams: [team(), team({ id: "team-2", user_id: "user-2" })],
+    users: [user(), user({ id: "user-2", email: " A@Example.com " })],
+  });
+  assert.equal(firstRun.length, 1);
+  const contacted = firstRun[0].userId;
+  const rerun = select({
+    teams: [team(), team({ id: "team-2", user_id: "user-2" })],
+    users: [user(), user({ id: "user-2", email: " A@Example.com " })],
+    emailLogRows: [{ user_id: contacted, dedupe_key: s6MailDedupeKey(EDITION, contacted), status: "sent" }],
+  });
+  assert.equal(rerun.length, 0);
 });

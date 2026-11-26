@@ -137,6 +137,15 @@ export function selectS6MailCandidates({
 
   const seenUsers = new Set();
   const seenAddresses = new Set();
+  // Codex P2 (#8767): a rerun must not mail a second account that shares an
+  // address with someone already contacted in this edition. Seed the address
+  // set from already-contacted users before picking new candidates.
+  for (const row of emailLogRows) {
+    if (!row?.user_id || !ALREADY_CONTACTED_STATUSES.has(row.status)) continue;
+    if (row.dedupe_key !== s6MailDedupeKey(edition, row.user_id)) continue;
+    const contacted = userById.get(row.user_id);
+    if (contacted?.email) seenAddresses.add(String(contacted.email).trim().toLowerCase());
+  }
   const candidates = [];
   for (const team of teams) {
     if (!isS6HumanTeam(team) || !team.user_id) continue;
