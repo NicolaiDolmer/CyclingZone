@@ -264,5 +264,27 @@
     "autoNote": "L’assistant sélectionne ton équipe pour {races} au départ. Les coureurs ne sont connus qu’à ce moment-là.",
     "aheadNote": "Les jours à venir montrent le plan. Un changement s'applique à chaque {weekday}.",
     "editInProgram": "Modifier le {weekday} dans Programme"
+  },
+  "dayOverride": {
+    "replacedRest": "Ton choix pour {weekday} ne s'applique pas : le coureur se repose (blessure ou jour de repos d'une course à étapes).",
+    "action": "Seulement {day}",
+    "title": "Seulement {day}",
+    "description": "Choisis une autre séance pour cette date. Le plan de la semaine ne change pas, et le plan reprend le lendemain.",
+    "groups": "Groupes",
+    "riders": "Coureurs",
+    "selected": "{n} sélectionnés",
+    "selectAll": "Tout sélectionner",
+    "clear": "Tout retirer",
+    "session": "Séance",
+    "save": "Enregistrer pour {day}",
+    "cancel": "Annuler",
+    "raceWins": "Une course passe toujours en premier. Les coureurs qui courent ce jour-là gardent la course.",
+    "only": "Seulement {day}",
+    "back": "Revenir au plan",
+    "replaced": "Ton choix pour {weekday} a été remplacé par la course.",
+    "replacedSome": "La course passe en premier dans ses créneaux. Ton choix vaut pour le reste de la journée.",
+    "programRequired": "Seulement ce jour fonctionne quand l'équipe a un programme. Mets-en un dans Programme.",
+    "error": "Le choix n'a pas été enregistré. Réessaie.",
+    "dot": "A un choix pour ce jour seulement"
   }
 }

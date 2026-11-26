@@ -264,5 +264,27 @@
     "autoNote": "The assistant picks your team for {races} at race start. Who rides is known then.",
     "aheadNote": "Days ahead show the plan. A change applies to every {weekday}.",
     "editInProgram": "Edit {weekday} in Program"
+  },
+  "dayOverride": {
+    "replacedRest": "Your choice for {weekday} does not apply: the rider rests (injury or a rest day in a stage race).",
+    "action": "Only {day}",
+    "title": "Only {day}",
+    "description": "Pick another session for this date. The week plan does not change, and the plan runs again the day after.",
+    "groups": "Groups",
+    "riders": "Riders",
+    "selected": "{n} selected",
+    "selectAll": "Select all",
+    "clear": "Clear",
+    "session": "Session",
+    "save": "Save for {day}",
+    "cancel": "Cancel",
+    "raceWins": "A race always comes first. Riders who race that day keep the race.",
+    "only": "Only {day}",
+    "back": "Back to the plan",
+    "replaced": "Your choice for {weekday} was replaced by the race.",
+    "replacedSome": "The race comes first in its fields. Your choice applies to the rest of the day.",
+    "programRequired": "Only this day works when the team has a program. Set one in Program.",
+    "error": "The choice was not saved. Try again.",
+    "dot": "Has a choice for this day only"
   }
 }

@@ -191,7 +191,8 @@ function stripJoin(list) {
 // days[0].today er dagens GET /forecast-svar uændret (UGE-1); days[1..7].riders er
 // { raceSlots, restSlots } pr. rytter.
 // loadToday: dagens svar, som GET /forecast giver det (routen sender sin egen gate med, UGE-1).
-export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new Date(), loadToday = () => loadTeamFatigueForecast({ supabase, team, seasonId, now }) }) {
+// dayOverrides (#8592): Map(dato → Map(rytter → valg)); på en dato med valg venter rotationen (DO-3).
+export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new Date(), loadToday = () => loadTeamFatigueForecast({ supabase, team, seasonId, now }), dayOverrides = null }) {
   const tickDate = copenhagenDateString(now);
   const base = { tickDate, days: [] };
   if (!seasonId) return { ...base, available: false, reason: "no_active_season" };
@@ -311,6 +312,7 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
       injuredOn: (id, gameDay) => isInjuredOnRaceDay({ condition: conditionByRider.get(id), seasonId, gameDay, tickDate: date }),
     });
     for (const [id, rotation] of rotations) {
+      if (dayOverrides?.get(date)?.has(id)) continue; // #8592
       const previousDays = gameDaysByDate.get(dates[i - 1]) ?? [];
       const rodeStagePreviousDate = plannedStages.some((stage) => stage.rider_id === id && previousDays.includes(stage.game_day))
         || (i === 1 && (today.riders?.[id]?.raceSlots?.length ?? 0) > 0);

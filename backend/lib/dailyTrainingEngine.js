@@ -40,6 +40,7 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 import { isTrainingWeekPriorityEnabledForTeam, loadPlannedStageDaysByRider, weekPrioritySourceSlot, winningWeekEntry } from "./trainingWeekPriority.js"; // #8549
 import { loadRotationPlans, loadRotationReceipts, rotationProgram, stampRotation } from "./trainingRotationProgress.js";
+import { loadEngineDateOverrides, overrideProgram, overrideStamp } from "./trainingDayOverride8592.js"; // #8592
 // #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
 import { isTrainingEffortLevelsEnabled, executedEffortForScore } from "./trainingEffortLevels.js"; // #7947
@@ -1340,6 +1341,7 @@ export async function runTeamTrainingDay({
   let weekPriorityOn = false; // #8549: kun med programceller OG en plan med plan_kind 'week'
   let plannedStageDaysByRider = {}; // #8549: { riderId: [game_day] } datoens planlagte etaper
   let rotationByRider = null, rotationReceiptsByRider = null;
+  let dateOverrideByRider = null; // #8592
   let effortLevelsOn = false; // #7947
   let fatigueRules = null, stageYesterdayRiderIds = new Set();
   let trainingFacilityTier, trainingStaff, teamMedicalBonus = 0, illnessHistoryByRider = new Map();
@@ -1541,6 +1543,8 @@ export async function runTeamTrainingDay({
     });
     rotationReceiptsByRider = await loadRotationReceipts({ supabase, teamId, tickDate, rotationByRider, dateReceipts });
   }
+  // #8592: "Kun denne dag". Kun med programceller; ellers intet opslag (DO-8).
+  dateOverrideByRider = await loadEngineDateOverrides({ supabase, teamId, tickDate, gate: programsOn });
   },
   async () => {
   // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
@@ -1617,6 +1621,7 @@ export async function runTeamTrainingDay({
     effortLevelsOn, // #7947
     weekPriorityOn, plannedStageDaysByRider, // #8549
     rotationByRider, rotationReceiptsByRider,
+    dateOverrideByRider, // #8592
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
     teamMedicalBonus, illnessOn, illnessHistoryByRider,
     // #7982 (afregning efter etapen): marks the race session's receipts (race_session_7982).
@@ -1827,6 +1832,7 @@ export function computeTrainingDayTick(input) {
     effortLevelsOn = false, // #7947
     weekPriorityOn = false, plannedStageDaysByRider = {}, // #8549
     rotationByRider = null, rotationReceiptsByRider = null,
+    dateOverrideByRider = null, // #8592
   } = input;
   const settlingRiderIds = new Set();
   const abilityByRider = new Map((abilityRows ?? []).map((a) => [a.rider_id, a]));
@@ -1920,8 +1926,10 @@ export function computeTrainingDayTick(input) {
     // field, so the placement and the stamp agree and no pass runs twice. A known non-starter
     // has no planned stages at all (fund E: loadPlannedStageDaysByRider uses the start field release).
     const stageFieldTrains = !injuredToday && !rodeToday && !raceLoadToday && !unknownSlot && (!boundToday || stageDateFree);
-    const rotation = rotationByRider?.get(rider.id);
-    const weekPriority = weekPriorityOn && !rotation
+    // #8592 (DO-3/DO-4): datoens valg vinder over rotationen (den venter) og ugeblokken.
+    const dateOverride = dateOverrideByRider?.get(rider.id) ?? null;
+    const rotation = dateOverride ? undefined : rotationByRider?.get(rider.id);
+    const weekPriority = weekPriorityOn && !rotation && !dateOverride
       ? weekPrioritySourceSlot({
         winning: winningWeekEntry({ weekday, riderRow: riderWeekRowByRider.get(rider.id) ?? null, teamRow: teamWeekRow, hasExplicitPlan }),
         programSlot,
@@ -1963,6 +1971,9 @@ export function computeTrainingDayTick(input) {
       previousFocus: program.focus, catalogV3: catalogV3On, effortLevels: effortLevelsOn,
     }) : null;
     if (rotationChoice && !rodeToday && !raceLoadToday) Object.assign(program, rotationChoice.program);
+    const dateOverrideProgram = dateOverride && !rodeToday && !raceLoadToday
+      ? overrideProgram({ override: dateOverride, previousFocus: program.focus, catalogV3: catalogV3On, effortLevels: effortLevelsOn }) : null;
+    if (dateOverrideProgram) Object.assign(program, dateOverrideProgram); // #8592 DO-1
     // #4854: reglen vurderes paa traethed ved DATOENS START og retter aldrig planen.
     // #7801: med kontakten paa trætheden lige nu (aabningen plus datoens koerte etaper).
     const fatigueRuleResult = fatigueRules ? applyFatigueRules({
@@ -2589,6 +2600,9 @@ export function computeTrainingDayTick(input) {
       ...(weekPriority.applied && weekPriority.sourceSlot != null && !rodeToday && !raceLoadToday
         && !unknownSlot && !injuredToday && !boundRestToday ? { source_slot: weekPriority.sourceSlot } : {}),
       ...(rotationReceipt ? { rotation: rotationReceipt } : {}),
+      // #8592: markeringen af datoens valg i feltet (fx "race", saa skaermen kan sige, at loebet vandt).
+      ...(dateOverride ? { date_override: overrideStamp({ override: dateOverride, raced: racedToday || rodeToday || !!raceLoadToday,
+        boundRest: boundRestToday, injured: injuredToday, unknown: unknownSlot, fatigueRule: fatigueRuleResult?.stamp, applied: !!dateOverrideProgram }) } : {}),
       // #4854: kun naar holdet har regler; stemplet kun naar programmet faktisk koertes.
       ...(fatigueRuleResult ? {
         fatigue_rule: fatigueRuleResult.stamp && !raceLoadToday && !unknownSlot && !injuredToday && !racedToday && !boundRestToday

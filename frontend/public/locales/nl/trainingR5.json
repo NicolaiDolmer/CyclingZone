@@ -264,5 +264,27 @@
     "autoNote": "De assistent kiest je ploeg voor {races} bij de start. Wie rijdt, zie je dan pas.",
     "aheadNote": "De komende dagen tonen het plan. Een wijziging geldt voor elke {weekday}.",
     "editInProgram": "Wijzig {weekday} in Programma"
+  },
+  "dayOverride": {
+    "replacedRest": "Je keuze voor {weekday} geldt niet: de renner rust (blessure of rustdag in een etappekoers).",
+    "action": "Alleen {day}",
+    "title": "Alleen {day}",
+    "description": "Kies een andere sessie voor deze datum. Het weekplan verandert niet, en de dag erna loopt het plan weer.",
+    "groups": "Groepen",
+    "riders": "Renners",
+    "selected": "{n} gekozen",
+    "selectAll": "Alles kiezen",
+    "clear": "Alles wissen",
+    "session": "Sessie",
+    "save": "Opslaan voor {day}",
+    "cancel": "Annuleren",
+    "raceWins": "Een koers gaat altijd voor. Renners die die dag koersen, houden de koers.",
+    "only": "Alleen {day}",
+    "back": "Terug naar het plan",
+    "replaced": "Je keuze voor {weekday} is vervangen door de koers.",
+    "replacedSome": "De koers gaat voor in zijn velden. Je keuze geldt voor de rest van de dag.",
+    "programRequired": "Alleen deze dag werkt als de ploeg een programma heeft. Zet er een in Programma.",
+    "error": "De keuze is niet opgeslagen. Probeer opnieuw.",
+    "dot": "Heeft een keuze alleen voor deze dag"
   }
 }

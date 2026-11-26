@@ -264,5 +264,27 @@
     "autoNote": "El asistente elige tu equipo para {races} al inicio de la carrera. Quién corre se sabe entonces.",
     "aheadNote": "Los próximos días muestran el plan. Un cambio se aplica a cada {weekday}.",
     "editInProgram": "Editar el {weekday} en Programa"
+  },
+  "dayOverride": {
+    "replacedRest": "Tu elección para el {weekday} no se aplica: el corredor descansa (lesión o día de descanso en una vuelta).",
+    "action": "Solo {day}",
+    "title": "Solo {day}",
+    "description": "Elige otra sesión para esta fecha. El plan semanal no cambia y el plan vuelve a aplicarse al día siguiente.",
+    "groups": "Grupos",
+    "riders": "Corredores",
+    "selected": "{n} seleccionados",
+    "selectAll": "Seleccionar todos",
+    "clear": "Quitar todos",
+    "session": "Sesión",
+    "save": "Guardar para {day}",
+    "cancel": "Cancelar",
+    "raceWins": "Una carrera siempre va primero. Los corredores que corren ese día mantienen la carrera.",
+    "only": "Solo {day}",
+    "back": "Volver al plan",
+    "replaced": "Tu elección para el {weekday} fue sustituida por la carrera.",
+    "replacedSome": "La carrera va primero en sus franjas. Tu elección se aplica al resto del día.",
+    "programRequired": "Solo este día funciona cuando el equipo tiene un programa. Ponlo en Programa.",
+    "error": "La elección no se guardó. Inténtalo de nuevo.",
+    "dot": "Tiene una elección solo para este día"
   }
 }
