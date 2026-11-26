@@ -55,7 +55,8 @@ test('loadBuildStop læser CZ_BUILD_STOP_FILE, og repoets egen fil er gyldig', (
   writeFileSync(file, JSON.stringify({ active: false, since: '2026-10-29', finishList: [], cleanupList: [], brandList: [] }));
   assert.equal(loadBuildStop(file).active, false);
   const repo = loadBuildStop(new URL('./build-stop.json', import.meta.url));
-  assert.equal(repo.active, true);
+  // Ejer 25/11: byggestoppet er slukket; listerne bevares som historik.
+  assert.equal(repo.active, false);
   assert.ok(repo.finishList.length > 0, 'fase 1-listen skal stå i repoets build-stop.json');
 });
 
