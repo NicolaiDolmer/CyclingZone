@@ -55,6 +55,7 @@ import RiderAbilityColumns from "../components/rider/profile/RiderAbilityColumns
 import RiderTypeRadar from "../components/rider/profile/RiderTypeRadar.jsx";
 import RiderOverviewPhysiology from "../components/rider/profile/RiderOverviewPhysiology.jsx";
 import RiderPhysiologyTab from "../components/rider/profile/RiderPhysiologyTab.jsx";
+import I18nReadyGate from "../components/I18nReadyGate.jsx";
 import RiderTrainingTab from "../components/rider/profile/RiderTrainingTab.jsx";
 import RiderDevelopmentTab from "../components/rider/profile/RiderDevelopmentTab.jsx";
 import RiderAbilityHistoryPro from "../components/rider/profile/RiderAbilityHistoryPro.jsx";
@@ -2238,14 +2239,16 @@ export default function RiderStatsPage() {
       {tab === "history" && <RiderHistoryTab events={history} bidTimeline={bidTimeline} />}
 
       {tab === "training" && (
-        <RiderTrainingTab
-          rider={rider}
-          training={training}
-          trainingHistory={trainingHistory}
-          progress={overviewProgress}
-          viewer={isMyRider ? "own" : "scouting"}
-          isRetired={isRetired}
-        />
+        <I18nReadyGate ns="training">
+          <RiderTrainingTab
+            rider={rider}
+            training={training}
+            trainingHistory={trainingHistory}
+            progress={overviewProgress}
+            viewer={isMyRider ? "own" : "scouting"}
+            isRetired={isRetired}
+          />
+        </I18nReadyGate>
       )}
 
       {/* #2000 stykke 5 — Udvikling: registreret rating-udvikling pr. type +

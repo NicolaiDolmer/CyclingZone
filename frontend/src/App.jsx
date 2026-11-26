@@ -307,9 +307,9 @@ export default function App({ initialSession = undefined }) {
           {/* App-flader: pathless protected layout-route — URL'erne (/dashboard, /riders ...)
               er uændrede, men "/" er ikke længere forælder, så landing kan eje roden. */}
           <Route element={
-            <ProtectedRoute session={session}><I18nReadyGate ns={["dashboard", "training"]}><Layout /></I18nReadyGate></ProtectedRoute>
+            <ProtectedRoute session={session}><Layout /></ProtectedRoute>
           }>
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="dashboard" element={<I18nReadyGate ns="dashboard"><DashboardPage /></I18nReadyGate>} />
             <Route path="riders" element={<RidersPage />} />
             <Route path="riders/:id" element={<RiderStatsPage />} />
             {/* #3104 etape C: personale-oversigten er en fane i Klub nu (~400
@@ -425,7 +425,7 @@ export default function App({ initialSession = undefined }) {
             <Route path="admin/sprint-metrics" element={<Navigate to="/admin/growth?tab=sprint" replace />} />
             <Route path="admin/attribution" element={<Navigate to="/admin/growth?tab=attribution" replace />} />
             <Route path="admin/retention" element={<Navigate to="/admin/growth?tab=retention" replace />} />
-            <Route path="training" element={<TrainingPage />} />
+            <Route path="training" element={<I18nReadyGate ns="training"><TrainingPage /></I18nReadyGate>} />
             <Route path="planner" element={<PlannerLegacyRedirect />} />
             <Route path="academy" element={<AcademyPage />} />
             <Route path="academy/graduation" element={<Navigate to="/academy" replace />} />

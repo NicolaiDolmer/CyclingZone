@@ -193,5 +193,72 @@ test("login defers training and dashboard translations until game routes need th
   expect(await dashboardBundleLoaded()).toEqual({ dashboard: false, training: false });
   await login(page);
   await expect(page.getByRole("heading", { name: "E2E Racing", exact: true })).toBeVisible();
-  expect(await dashboardBundleLoaded()).toEqual({ dashboard: true, training: true });
+  expect((await dashboardBundleLoaded()).dashboard).toBe(true);
+  await page.goto("/training");
+  await expect.poll(async () => (await dashboardBundleLoaded()).training).toBe(true);
+});
+
+for (const { namespace, pathname, rateLimited } of [
+  { namespace: "dashboard", pathname: "/dashboard", rateLimited: true },
+  { namespace: "training", pathname: "/training", rateLimited: false },
+]) {
+  test(`the menu can leave ${pathname} while its translations fail`, async ({ page }) => {
+    await page.addInitScript(
+      ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
+      { key, session },
+    );
+    let requested = false;
+    let failed = false;
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    await page.route(`**/locales/*/${namespace}.json*`, async (route) => {
+      if (new URL(route.request().url()).pathname.includes("/da/")) {
+        requested = true;
+        await pending;
+      } else {
+        failed = true;
+      }
+      if (rateLimited) await route.fulfill({ status: 429, headers: { "Retry-After": "60" } });
+      else await route.abort("failed");
+    });
+
+    try {
+      await page.goto(pathname, { waitUntil: "domcontentloaded" });
+      await expect.poll(() => requested && failed).toBe(true);
+      const mobileMenu = page.getByRole("button", { name: /^Åbn menu/ });
+      const teamLink = page.locator('a[href="/team"]:visible').first();
+      const clubhouse = page.getByRole("button", { name: /^Klubhus$/i });
+      await expect(mobileMenu.or(clubhouse).or(teamLink).first()).toBeVisible();
+      if (await mobileMenu.isVisible()) await mobileMenu.click();
+      if (!(await teamLink.isVisible()) && await clubhouse.isVisible()) await clubhouse.click();
+      await teamLink.click();
+      await expect(page).toHaveURL(/\/team$/);
+      await expect(page.getByRole("heading", { name: "E2E Racing", exact: true }).first()).toBeVisible();
+    } finally {
+      release();
+    }
+  });
+}
+
+test("a direct finance link keeps its page available while dashboard copy is pending", async ({ page }) => {
+  await page.addInitScript(
+    ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
+    { key, session },
+  );
+  let requested = false;
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/locales/*/dashboard.json*", async (route) => {
+    requested = true;
+    await pending;
+    await route.fallback();
+  });
+  try {
+    await page.goto("/finance", { waitUntil: "domcontentloaded" });
+    await expect.poll(() => requested).toBe(true);
+    await expect(page.getByRole("heading", { name: /^Finanser$/i }).first()).toBeVisible();
+    await expect(page.getByText("dashboard:cards", { exact: false })).toHaveCount(0);
+  } finally {
+    release();
+  }
 });

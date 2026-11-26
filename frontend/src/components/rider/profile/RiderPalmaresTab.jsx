@@ -18,6 +18,7 @@ import { groupRiderRaces } from "../../../lib/riderResultsTab.js";
 import { buildTrophyCase, careerTotals, seasonHonours } from "../../../lib/riderPalmares.js";
 import { formatNumber } from "../../../lib/intl.js";
 import { supabase } from "../../../lib/supabase.js";
+import I18nReadyGate from "../../I18nReadyGate.jsx";
 import CareerFirstMomentRow from "../../CareerFirstMomentRow.jsx";
 import { isHiddenYouthCareerEvent } from "../../../lib/youthClassification.ts";
 
@@ -148,9 +149,11 @@ export default function RiderPalmaresTab({ riderId, seasonRows, loadFailed = fal
           <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-3">
             {t("profile.palmares.careerFirstsTitle")}
           </h3>
-          {careerEvents.map((event) => (
-            <CareerFirstMomentRow key={event.id} event={event} t={t} />
-          ))}
+          <I18nReadyGate ns="dashboard">
+            {careerEvents.map((event) => (
+              <CareerFirstMomentRow key={event.id} event={event} t={t} />
+            ))}
+          </I18nReadyGate>
         </div>
       )}
 
