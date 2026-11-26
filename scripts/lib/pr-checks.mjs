@@ -146,13 +146,15 @@ export function readLatestPrChecks({ repo, number, headSha, json, requiredOnly =
 
   // #8802: paa en kladde springes jobs over (skipped = groent hos GitHub). Lige
   // efter `gh pr ready` er kladdens pull_request-koersel stadig den nyeste, til
-  // ready_for_review-koerslen er oprettet. Et required check fra en koersel der
-  // er aeldre end seneste ready_for_review, er derfor forældet: pending, aldrig groent.
-  const prRequired = filteredRequired.some(row => runFor(row)?.event === 'pull_request');
-  const readyAt = prRequired ? latestReadyAt(json, repo, number) : null;
-  const stale = (run) => Boolean(readyAt && run?.event === 'pull_request' && run.created_at < readyAt);
+  // ready_for_review-koerslen er oprettet. Et oversprunget required check fra en
+  // koersel der er aeldre end seneste ready_for_review, er derfor forældet:
+  // pending, aldrig groent. Et check der faktisk koerte (pass/fail, fx gitleaks
+  // paa kladden), maalte samme HEAD og staar ved magt.
+  const draftSkipped = (row) => row.bucket === 'skipping' && runFor(row)?.event === 'pull_request';
+  const readyAt = filteredRequired.some(draftSkipped) ? latestReadyAt(json, repo, number) : null;
+  const stale = (row) => Boolean(readyAt && draftSkipped(row) && runFor(row).created_at < readyAt);
   const current = readyAt
-    ? filteredRequired.map(row => (stale(runFor(row)) ? { name: row.name, bucket: 'pending' } : row))
+    ? filteredRequired.map(row => (stale(row) ? { name: row.name, bucket: 'pending' } : row))
     : filteredRequired;
   return { required: current, all: filteredAll ?? current };
 }

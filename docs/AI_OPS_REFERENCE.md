@@ -92,6 +92,17 @@ Omdøb aldrig `frontend-smoke`-jobbet: navnet er en kontrakt med branch protecti
 
 **Natbølger:** der er ét serielt e2e-slot pr. maskine, og orkestratoren ejer det — parallelle workers kører aldrig fuld lokal suite samtidig.
 
+### Kladde-PR'er kører ingen tung CI ([#8802](https://github.com/NicolaiDolmer/CyclingZone/issues/8802), ejer 26/11)
+
+Målt 26/11: 130 kørsler i kø, hver lane-push startede 15-20 workflows, og main's CI efter en merge ventede bag dem. Nu:
+
+- **Kladde = ingen tunge jobs.** Hvert job i et `pull_request`-workflow har `!github.event.pull_request.draft` i sin `if` (job-niveau, aldrig workflow-niveau). Et oversprunget job er "skipped", som GitHub regner som grønt for et required check; et workflow der slet ikke starter, efterlader checket som "expected" og blokerer køen. Kladder kan ikke merges.
+- **Klar = hele suiten på samme HEAD.** Alle workflows har `ready_for_review` i `pull_request.types`, så `gh pr ready <N>` starter alt. Concurrency (`cancel-in-progress` pr. PR, #7582) annullerer en kørende kladde-kørsel.
+- **Undtaget (kører også på kladder):** `registry-freshness` (sekunder), `actionlint` (kun ved workflow-ændringer), `gitleaks` (offentligt repo: en lækket nøgle fanges ved første push) og `review-gate.yml` (røres ikke). Listen står i `DRAFT_ALLOWED` i [`scripts/check-workflow-draft-skip.mjs`](../scripts/check-workflow-draft-skip.mjs) med grund; nye undtagelser skal være under 1 minut og give besked, preflight ikke giver lokalt.
+- **Auto-toget merger aldrig på kladdens skipped:** lige efter `gh pr ready` er kladdens kørsel den nyeste, til ready-kørslen er oprettet. [`scripts/lib/pr-checks.mjs`](../scripts/lib/pr-checks.mjs) slår PR'ens seneste `ready_for_review` op og gør et oversprunget required check fra en ældre `pull_request`-kørsel `pending` (merge-autotrain og merge-queue.ps1 bruger begge den). Et check der faktisk kørte på kladden (fx `gitleaks`), målte samme HEAD og står ved magt. Tørt gennemløb mod en rigtig kladde-PR med et syntetisk ready-event: alle 29 required checks blev `pending`.
+- **Vagten:** `node scripts/check-workflow-draft-skip.mjs` (preflight + `ops-script-tests`) fejler, hvis et PR-workflow mangler `ready_for_review` eller har et job der kan køre på en kladde. Et job der kun `needs` et oversprunget job, arver skip; et job med `always()`/`!cancelled()` gør ikke og skal selv have draft-betingelsen.
+- **Lanerne verificerer stadig lokalt** (preflight + `verify-lock.ps1`): CI er gaten, når PR'en er klar, ikke lanens feedback undervejs.
+
 ---
 
 ## Supabase security-advisors — 7-dages regel

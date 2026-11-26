@@ -101,12 +101,22 @@ test('the latest PR-bound target review gate wins even when an older green rerun
 // er kladdens koersel den nyeste, indtil ready_for_review-koerslen er oprettet.
 const ready = (at) => ({event:'ready_for_review', created_at:at});
 
-test('a draft run older than the latest ready_for_review never counts as green', () => {
+test('a skipped check from a draft run older than the latest ready_for_review never counts as green', () => {
   const skipped = job(11,1,'backend-tests','skipping');
-  const passed = job(11,2,'frontend-build','pass');
-  const result = read([skipped,passed], [skipped,passed], [run(11)], [ready('2026-11-24T11:15:00Z')]);
-  assert.deepEqual(result.required, [{name:'backend-tests',bucket:'pending'},{name:'frontend-build',bucket:'pending'}]);
-  assert.deepEqual(result.all, [skipped,passed]);
+  const ranOnDraft = job(11,2,'gitleaks','pass');
+  const result = read([skipped,ranOnDraft], [skipped,ranOnDraft], [run(11)], [ready('2026-11-24T11:15:00Z')]);
+  assert.deepEqual(result.required, [{name:'backend-tests',bucket:'pending'},ranOnDraft]);
+  assert.deepEqual(result.all, [skipped,ranOnDraft]);
+});
+
+test('without a skipped required check the PR events are never fetched', () => {
+  const check = job(11,1,'backend-tests','pass');
+  const result = readLatestPrChecks({repo, number:42, headSha:head, json(args) {
+    if (args[0] === 'pr') return [check];
+    assert.doesNotMatch(args.at(-1), EVENTS_RE);
+    return [{workflow_runs:[run(11)]}];
+  }});
+  assert.deepEqual(result.required, [check]);
 });
 
 test('the ready_for_review run itself counts once it exists', () => {
@@ -118,7 +128,7 @@ test('the ready_for_review run itself counts once it exists', () => {
 });
 
 test('only the latest ready_for_review matters, and a PR that was never a draft is unaffected', () => {
-  const check = job(12,1,'backend-tests','pass');
+  const check = job(12,1,'backend-tests','skipping');
   const runs = [run(12,{created_at:'2026-11-24T11:20:00Z'})];
   assert.deepEqual(read([check],[check],runs,[ready('2026-11-24T11:00:00Z'),{event:'convert_to_draft',created_at:'2026-11-24T11:05:00Z'}]).required, [check]);
   assert.deepEqual(read([check],[check],runs,[ready('2026-11-24T11:00:00Z'),ready('2026-11-24T11:30:00Z')]).required, [{name:'backend-tests',bucket:'pending'}]);
@@ -126,14 +136,14 @@ test('only the latest ready_for_review matters, and a PR that was never a draft 
 });
 
 test('push runs and non-Actions checks are never marked stale by ready_for_review', () => {
-  const pushCheck = job(13,1,'gitleaks','pass');
+  const pushCheck = job(13,1,'gitleaks','skipping');
   const external = {name:'vercel',bucket:'pass',link:'https://vercel.example/check'};
   const result = read([pushCheck,external],[pushCheck,external],[run(13,{event:'push'})],[ready('2026-11-24T11:15:00Z')]);
   assert.deepEqual(result.required, [pushCheck,external]);
 });
 
 test('an unreadable PR event response fails closed', () => {
-  const check = job(11,1,'backend-tests','pass');
+  const check = job(11,1,'backend-tests','skipping');
   assert.throws(() => readLatestPrChecks({repo, number:42, headSha:head, json(args) {
     if (args[0] === 'pr') return [check];
     if (EVENTS_RE.test(args.at(-1))) return [{message:'rate limited'}];
