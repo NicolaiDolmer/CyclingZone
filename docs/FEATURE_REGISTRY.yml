@@ -203,6 +203,8 @@ features:
     epic: 7715
     verified: 2026-11-07
     note: "Nøgle time_limit_fatigue_7715 uden række (off)."
+    decision: ejer-beslutning
+    decide_by: 2026-11-20
 
   - id: race-long-attack-7884
     area: race-engine
@@ -213,8 +215,8 @@ features:
     epic: 7884
     verified: 2026-11-26
     note: "Nøgle long_attack_7884 uden række (off). Kun kontrakten (backend/lib/tacticAttackTrigger7884.js); motor og flade mangler."
-    decision: ejer-beslutning
-    decide_by: 2026-11-20
+    decision: goer-faerdigt
+    decide_by: 2026-11-30
 
   - id: race-official-times-v1
     area: race-engine
