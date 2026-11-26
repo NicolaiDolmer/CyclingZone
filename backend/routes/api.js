@@ -7609,7 +7609,8 @@ router.get("/auctions", requireAuth, async (req, res) => {
   const { status = "active" } = req.query;
 
   // schema-columns-ok: riders.best_role/best_role_rating tilføjet af database/2026-09-22-5443-best-role-data.sql (#5487, applied); snapshottet er ældre (#4142)
-  const { data, error } = await supabase
+  // #8797: status=completed passerer 1.000 auktioner → paginér (id som unik andennøgle).
+  const { data, error } = await fetchAllPaged(() => supabase
     .from("auctions")
     .select(`
       id, starting_price, current_price, calculated_end, actual_end,
@@ -7621,7 +7622,7 @@ router.get("/auctions", requireAuth, async (req, res) => {
       current_bidder:current_bidder_id(id, name)
     `)
     .eq("status", status)
-    .order("calculated_end", { ascending: true });
+    .order("calculated_end", { ascending: true }).order("id"));
 
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
@@ -13888,20 +13889,21 @@ router.get("/races", requireAuth, cached({ namespace: "races", ttlMs: CACHE_TTL.
 
     // #5517: løbslisten er seniorernes — ungdomsløb får deres egen flade
     // ("Youth races", spec §7), ikke en plads i denne liste (squads.withSeniorSquadScope).
-    const { data, error } = await withSeniorSquadScope((senior) => {
+    // #8797: uden sæsonfilter passerer listen 1.000 løb → paginér (id som unik andennøgle).
+    const { data, error } = await withSeniorSquadScope((senior) => fetchAllPaged(() => {
       let query = senior(supabase
         .from("races")
         .select(
           "id, name, race_type, race_class, stages, status, edition_year, pool_race:pool_race_id(date_text), season:season_id(id, number, status)"
         ))
-        .order("name", { ascending: true });
+        .order("name", { ascending: true }).order("id");
 
       if (seasonId) query = query.eq("season_id", seasonId);
       if (raceClass) query = query.eq("race_class", raceClass);
       if (status) query = query.eq("status", status);
       if (q) query = query.ilike("name", `%${q}%`);
       return query;
-    });
+    }));
     if (error) return res.status(500).json({ error: error.message });
     res.json(data || []);
   } catch (e) {

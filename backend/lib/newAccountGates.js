@@ -23,6 +23,8 @@
 // transfer, or bid that would otherwise be allowed — same philosophy as the
 // other runtime flags in this codebase (see featureStage.js).
 
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 
@@ -144,21 +146,23 @@ export function evaluateTransferCooldown({ cooldownHours, cooldownAmount, amount
 // seasonRaceDays.countDistinctRaceDays, but scoped to one team's own
 // experience rather than a whole season's calendar).
 export async function getTeamRaceDaysRun(supabase, teamId) {
-  const { data: entries, error } = await supabase
+  // #8797: et holds entries i al historik passerer 1.000 rækker → paginér; race-id'erne
+  // chunkes (URL-længde) og pagineres. Kaster ved fejl som før.
+  const entries = await fetchAllRows(() => supabase
     .from("race_entries")
     .select("race_id")
-    .eq("team_id", teamId);
-  if (error) throw error;
+    .eq("team_id", teamId)
+    .order("race_id").order("rider_id"));
 
   const raceIds = [...new Set((entries || []).map((e) => e.race_id).filter(Boolean))];
   if (raceIds.length === 0) return 0;
 
-  const { data: races, error: racesError } = await supabase
+  const races = await fetchAllRowsChunkedIn(raceIds, (chunk) => supabase
     .from("races")
     .select("game_day_start, status")
-    .in("id", raceIds)
-    .eq("status", "completed");
-  if (racesError) throw racesError;
+    .in("id", chunk)
+    .eq("status", "completed")
+    .order("id"));
 
   const days = new Set();
   for (const race of races || []) {

@@ -10,6 +10,7 @@ import {
   saveFiltersToSession,
 } from "../lib/ridersUrlState";
 import { supabase } from "../lib/supabase";
+import { loadRiderNationalities } from "../lib/riderNationalities.js";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
 import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";
@@ -328,12 +329,8 @@ export default function RidersPage() {
   }, []);
 
   useEffect(() => {
-    supabase.from("riders").select("nationality_code").eq("is_retired", false).neq("nationality_code", null)
-      .then(({ data }) => {
-        if (!data) return;
-        const codes = [...new Set(data.map(r => r.nationality_code))].sort();
-        setNationalities(codes);
-      });
+    // #8797: distinct i databasen (viewet), ikke over afkortede rytterrækker.
+    loadRiderNationalities(supabase).then((codes) => { if (codes.length) setNationalities(codes); });
   }, []);
 
   // #3012: læs { error } fra begge writes. Var tidligere en tavs fejl — UI'et
