@@ -1,0 +1,11 @@
+{
+ "source": "3665d081e3282564a964496b58bc3126f9c2c085",
+ "note": "#8592 DO-8: fingeraftryk fra merge-basen (kontakten findes ikke). Genereres aldrig med den nye kode.",
+ "fingerprints": {
+  "celler": "fa88390b3469c26ddc67",
+  "celler_etape": "007ec88f15f099866765",
+  "ugeblok": "8d09609b05917dd5a9ec",
+  "rotation": "4f4768ae2298e8ab2b52",
+  "tryk": "3b79cf64ca23747bd6a0"
+ }
+}
