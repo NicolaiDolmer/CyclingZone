@@ -38,7 +38,8 @@ test("#7412 VAGT: hver saeson med et loebsdagsmaal har et vindue og en heltals-t
     const dates = SEASON_RACE_DATES[n];
     assert.ok(Number.isInteger(dates) && dates > 0, `saeson ${n}: SEASON_RACE_DATES mangler (calendarStartDate.js)`);
     const density = SEASON_RACE_DAY_TARGET[n] / dates;
-    assert.ok(Number.isInteger(density) && density >= 1, `saeson ${n}: ${SEASON_RACE_DAY_TARGET[n]}/${dates} er ikke et helt antal loebsdage pr. dato`);
+    // #5841: S6 (140/27) er ikke et heltal; varigheden rundes op i injuryEndGameDay.
+    assert.ok(Number.isFinite(density) && density >= 1, `saeson ${n}: ${SEASON_RACE_DAY_TARGET[n]}/${dates} giver under een loebsdag pr. dato`);
     assert.notEqual(injuryEndGameDay({ gameDay: 0, days: 1, seasonNumber: n }), null, `saeson ${n}: skader faar ingen loebsdag`);
   }
 });
