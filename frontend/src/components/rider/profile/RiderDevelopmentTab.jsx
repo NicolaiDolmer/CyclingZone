@@ -46,6 +46,7 @@ import { copenhagenDayKey } from "../../../lib/raceCentre.js";
 import { dayXpByAbility, riderXpBars, withXpLines } from "../../../lib/xpAbilityLine.ts"; // #8540
 import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityReceiptRow.jsx";
 import { useState } from "react";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 const DATA_FONT = '"Inter Tight", "Inter Tight Fallback", system-ui, sans-serif';
 
@@ -345,7 +346,7 @@ function AbilityXpCard({ rider, xpBars, seasonGainsByAbility, trainingHistory, t
           <div key={group[0].key} className="flex flex-col gap-[13px] min-w-0">
             {group.map((cat) => (
               <div key={cat.key} className="min-w-0">
-                <span className="font-mono text-3xs font-bold uppercase tracking-widest text-cz-3">
+                <span className={`font-mono text-3xs font-bold uppercase tracking-widest text-cz-3 ${SENTENCE_CASE}`}>
                   {t(`stats.categories.${cat.key}`)}
                 </span>
                 <div className="mt-[5px]">
@@ -369,7 +370,7 @@ function ReadingCard({ viewer, growth, primaryLabel, t }) {
   const key = `profile.development.reading.${viewer === "own" ? "own" : "scouting"}.${rising ? "rising" : "flat"}`;
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-      <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+      <span className={`font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t ${SENTENCE_CASE}`}>
         {t("profile.development.reading.title")}
       </span>
       <p className="mt-[7px] mb-0 text-[12.5px] text-cz-2 leading-[1.55]">

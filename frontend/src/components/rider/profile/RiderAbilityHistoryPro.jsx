@@ -38,6 +38,7 @@ import { AbilityRow, SeasonAxis } from "../../pro/AbilityHistoryRows.tsx";
 import { ProUpsellSection } from "../../pro/ProUpsell.tsx";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import { Button, Section, SectionHeader, EmptyState, ErrorState, ChartLineIcon } from "../../ui";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -125,7 +126,7 @@ export default function RiderAbilityHistoryPro({ riderId, myTeamId }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5">
           {ABILITY_CATEGORIES.map((cat) => (
             <div key={cat.key}>
-              <div className="font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-3 mt-3 mb-0.5">
+              <div className={`font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-3 mt-3 mb-0.5 ${SENTENCE_CASE}`}>
                 {tRider(`stats.categories.${cat.key}`, cat.key)}
               </div>
               {cat.keys.map((key) => (

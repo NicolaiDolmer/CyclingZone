@@ -24,7 +24,15 @@ import RacePauseInfoBar from "./RacePauseInfoBar.tsx";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
-import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
+import {
+  MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon,
+  // #8816: ét stroke-ikon pr. menupunkt (navIconFor nedenfor)
+  BikeIcon, InboxIcon, MessageIcon, TeamIcon, JerseyIcon, StopwatchIcon, CoinIcon, StarIcon,
+  ClipboardIcon, BriefcaseIcon, EyeIcon, FlagIcon, CalendarIcon, SearchIcon, GavelIcon,
+  ExchangeIcon, TagIcon, HeartIcon, PlayIcon, PodiumIcon, TrophyIcon, ChartLineIcon, UserIcon,
+  SettingsIcon, CrownIcon, InfoIcon, BookOpenIcon, RoadIcon, RocketIcon, EditIcon, LockIcon,
+  ArrowUpIcon, AlertTriangleIcon, CheckIcon, RefreshIcon,
+} from "./ui/icons";
 import Skeleton from "./ui/Skeleton";
 import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
 import { facilitiesNavItem } from "../lib/facilitiesNavVisibility";
@@ -57,6 +65,7 @@ import { loadFeatureFlagStages, isBetaStage } from "../lib/featureStage.ts"; // 
 import BetaBadge from "./ui/BetaBadge.tsx"; // #5404
 import { SENTENCE_CASE_FLAG_KEY, isSentenceCaseOn, applySentenceCase } from "../lib/sentenceCaseFlag.ts"; // #8725
 import { SENTENCE_CASE } from "./ui/sentenceCase.ts"; // #8725
+import { isGroupOpen, readOpenGroups, writeOpenGroups } from "../lib/navOpenGroups.ts"; // #8816
 import { useAppBadge } from "../pwa/appBadge.ts"; // #6584
 
 const API = import.meta.env.VITE_API_URL;
@@ -103,6 +112,65 @@ const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/tea
 const FULL_BLEED_PREFIXES = ["/races/", "/riders/", "/teams/", "/managers/", "/staff/", "/board/meeting"];
 function isFullBleedRoute(pathname) {
   return FULL_BLEED_PREFIXES.some(p => pathname.startsWith(p));
+}
+
+// #8816 (TASTE v2, ejer 26/11): stroke-ikoner fra spillets eget sæt i stedet for
+// prikker, ét pr. punkt (P7). Alle går gennem IconBase, så stregen er den samme.
+// Slås op på ruten, så punkterne fra lib/*NavVisibility ikke skal kende ikonerne.
+// Vises kun bag kontakten sentence_case_8725; slukket står prikken som før.
+const NAV_ICONS = {
+  "/dashboard": BikeIcon,
+  "/notifications": InboxIcon,
+  "/forum": MessageIcon,
+  "/team": TeamIcon,
+  "/training": StopwatchIcon,
+  "/finance": CoinIcon,
+  "/academy": StarIcon,
+  "/board": ClipboardIcon,
+  "/sponsors": BriefcaseIcon,
+  "/scouting": EyeIcon,
+  "/klub": FlagIcon,
+  "/planning": CalendarIcon,
+  "/riders": SearchIcon,
+  "/auctions": GavelIcon,
+  "/transfers": ExchangeIcon,
+  "/transfers?tab=market": TagIcon,
+  "/watchlist": HeartIcon,
+  "/race-centre": PlayIcon,
+  "/resultater": PodiumIcon,
+  "/standings": TrophyIcon,
+  "/seasons": ChartLineIcon,
+  "/profile": SettingsIcon,
+  "/pro": CrownIcon,
+  "/help": InfoIcon,
+  "/rules": BookOpenIcon,
+  "/roadmap": RoadIcon,
+  "/patch-notes": RocketIcon,
+  "/admin": LockIcon,
+  "/admin/growth": ArrowUpIcon,
+  "/admin/fairplay": AlertTriangleIcon,
+  "/admin/value-transition": RefreshIcon,
+  "/admin/value-preview": EyeIcon,
+};
+// #8816 hierarki A (ejer 26/11, fast regel i TASTE P5 for overskrifter i menuer):
+// gruppenavnet har punkternes størrelse (15 px), halvfed, dæmpet farve (sidebar-2,
+// over 4,5:1 på den navy menu i både lys og mørk), og ekstra luft ovenover.
+// Kun bag kontakten; slukket gælder de gamle klasser foran.
+const NAV_ITEM_TYPE_8816 = "sentence:text-[15px]";
+const NAV_GROUP_HEADER_8816 = "sentence:pt-6 sentence:pb-1.5";
+const NAV_GROUP_LABEL_8816 = "sentence:text-[15px] sentence:leading-5 sentence:font-semibold";
+function navIconFor(to) {
+  if (NAV_ICONS[to]) return NAV_ICONS[to];
+  if (to.startsWith("/managers/")) return UserIcon;
+  if (to.startsWith("/admin/surveys/")) return CheckIcon;
+  if (YOUTH_SQUAD_PATHS.includes(to)) return JerseyIcon;
+  return null;
+}
+// Ikonet som element (ikke en komponent slået op under render). Skjult indtil
+// kontakten sætter data-sentence-case; arver tekstens farve (guld når aktiv).
+function navIconElement(to) {
+  const Icon = navIconFor(to);
+  return Icon ? <Icon size={16} className="hidden sentence:block shrink-0" /> : null;
 }
 
 // #3104 etape A: Min Managerprofil flyttet hertil fra Klubhus. Den lå midt i
@@ -200,7 +268,7 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         // UI'et. Sponsor-forhandlingen laa paa Board-fladen; den har nu sin egen
         // side ved siden af Board — kontrakten for adskillelsen er BOARD_RULES.md §5.
         { to: "/sponsors",       label: t("nav.item.sponsors") },
-        ...scoutingNavItem(scoutSystemEnabled, t),                     // 689
+        // #8816 (ejer 26/11): Spejder flyttet til Marked, ruten er uændret.
         ...facilitiesNavItem(facilitiesEnabled, t),                    // 612
         // #3104 etape C: Personale (~400 sessions) er en fane i Klub nu
         // (/klub?tab=staff) — eget nav-punkt udgik, Klubhus 10 → 9 punkter.
@@ -238,6 +306,8 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         { to: "/transfers",    label: t("nav.item.transfers"), excludeQuery: "tab=market", badge: true },
         { to: "/transfers?tab=market", label: t("nav.item.transferList") },
         { to: "/watchlist",    label: t("nav.item.watchlist") },
+        // #8816 (ejer 26/11): Spejder bor ved markedet, hvor rytterne findes; kom fra Klubhus.
+        ...scoutingNavItem(scoutSystemEnabled, t),
         // #3104 etape C: Min Aktivitet (<245 sessions) er en fane i Indbakken nu
         // (/notifications?tab=activity) — eget nav-punkt udgik.
       ],
@@ -333,6 +403,7 @@ function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClic
   // Farve alene må ikke bære forskellen gul/rød (P8 + skærmlæsere): den
   // presserende tilstand har sin egen sr-only-tekst.
   const dotText = dotTone === "urgent" ? (dotLabelUrgent || dotLabel) : dotLabel;
+  const icon = navIconElement(to); // #8816
   // #3102: Link, ikke NavLink. NavLink beregner selv aktiv-tilstand på et rent
   // prefix-match og sætter aria-current="page" ud fra DEN — den kender hverken
   // excludeQuery eller excludePaths. Med tre nav-items under /races-prefixet
@@ -341,15 +412,17 @@ function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClic
   // isActive her, så Link + vores eget aria-current er den ene sandhed.
   return (
     <Link to={to} onClick={onClick} title={title} aria-current={isActive ? "page" : undefined}
-      className={`group relative flex items-center justify-between mx-2 px-3 py-2 rounded-cz text-[13px] transition-all duration-150
+      className={`group relative flex items-center justify-between mx-2 px-3 py-2 rounded-cz text-[13px] ${NAV_ITEM_TYPE_8816} transition-all duration-150
         ${isActive
           ? "bg-cz-accent/12 text-cz-accent font-medium cursor-default"
           : "text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover"}`}>
       <span className="flex items-center gap-2.5 min-w-0">
-        {/* #481 PR-2: gold bullet — active = solid gold, inactive = muted (lights up on hover). Decorative. */}
+        {/* #481 PR-2: gold bullet — active = solid gold, inactive = muted (lights up on hover). Decorative.
+            #8816: bag kontakten afløses prikken af punktets stroke-ikon i tekstens farve. */}
         <span aria-hidden="true"
-          className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors duration-150
+          className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors duration-150 ${icon ? "sentence:hidden" : ""}
             ${isActive ? "bg-cz-accent" : "bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2"}`} />
+        {icon}
         <span className="truncate">{label}</span>
         {/* #5404: "Beta" naar siden bag punktet ligger bag et flag i stadiet
             beta for denne viewer — se lib/featureStage.ts. */}
@@ -379,7 +452,7 @@ function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClic
   );
 }
 
-function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones, logoutLabel, loginLabel, isAnonymous, onOpenFeedback, contactLabel }) {
+function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, activeGroupKey, lockActiveGroup, signOut, location, badgeCounts, dotFlags, dotTones, logoutLabel, loginLabel, isAnonymous, onOpenFeedback, contactLabel }) {
   const { t } = useTranslation(["common", "finance"]);
   const { isPro, isFounder } = useSubscription(team?.id);
   return (
@@ -451,18 +524,31 @@ function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineC
       {/* Nav groups */}
       <nav className="flex-1 overflow-x-hidden overflow-y-auto py-2">
         {navGroups.map(group => {
-          const isOpen = openGroups[group.key];
+          // #8816: bag kontakten er gruppen med den aktive side altid åben og kan
+          // ikke foldes sammen; de andre følger spillerens eget valg.
+          const lockedOpen = lockActiveGroup && group.key === activeGroupKey;
+          const isOpen = isGroupOpen(group.key, openGroups, activeGroupKey, lockActiveGroup);
           return (
             <div key={group.key} className="mb-1">
               {/* Section label — clearly a label, not a link */}
-              <button
-                onClick={() => toggleGroup(group.key)}
-                className="w-full flex items-center justify-between px-4 pt-4 pb-1 group">
-                <span className={`text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2 group-hover:text-cz-sidebar-1 transition-colors ${SENTENCE_CASE}`}>
-                  {group.label}
-                </span>
-                <ChevronDownIcon aria-hidden="true" className={`w-3 h-3 text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`} />
-              </button>
+              {lockedOpen ? (
+                <div className={`w-full flex items-center justify-between px-4 pt-4 pb-1 ${NAV_GROUP_HEADER_8816}`}>
+                  <span className={`text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2 ${SENTENCE_CASE} ${NAV_GROUP_LABEL_8816}`}>
+                    {group.label}
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  aria-expanded={Boolean(isOpen)}
+                  onClick={() => toggleGroup(group.key)}
+                  className={`w-full flex items-center justify-between px-4 pt-4 pb-1 group ${NAV_GROUP_HEADER_8816}`}>
+                  <span className={`text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2 group-hover:text-cz-sidebar-1 transition-colors ${SENTENCE_CASE} ${NAV_GROUP_LABEL_8816}`}>
+                    {group.label}
+                  </span>
+                  <ChevronDownIcon aria-hidden="true" className={`w-3 h-3 sentence:w-4 sentence:h-4 text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                </button>
+              )}
 
               {isOpen && (
                 <div className="py-0.5">
@@ -477,8 +563,8 @@ function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineC
 
         {/* Bottom nav items */}
         <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
-        <div className="px-4 pt-4 pb-1">
-          <span className={`text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2 ${SENTENCE_CASE}`}>
+        <div className={`px-4 pt-4 pb-1 ${NAV_GROUP_HEADER_8816}`}>
+          <span className={`text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2 ${SENTENCE_CASE} ${NAV_GROUP_LABEL_8816}`}>
             {t("nav.group.accountHelp")}
           </span>
         </div>
@@ -493,10 +579,11 @@ function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineC
           <button
             type="button"
             onClick={() => { onNav?.(); onOpenFeedback?.(); }}
-            className="group relative flex w-full items-center px-3 py-2 rounded-cz text-[13px] text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover transition-all duration-150"
+            className={`group relative flex w-full items-center px-3 py-2 rounded-cz text-[13px] ${NAV_ITEM_TYPE_8816} text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover transition-all duration-150`}
           >
             <span className="flex items-center gap-2.5 min-w-0">
-              <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0 bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2 transition-colors duration-150" />
+              <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0 bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2 transition-colors duration-150 sentence:hidden" />
+              <EditIcon size={16} className="hidden sentence:block shrink-0" />
               <span className="truncate">{contactLabel}</span>
             </span>
           </button>
@@ -633,6 +720,9 @@ export default function Layout() {
   }
 
   useEffect(() => {
+    // #8816: bag kontakten holdes den aktive gruppe åben i render (isGroupOpen),
+    // så spillerens gemte valg for grupperne ikke overskrives ved navigation.
+    if (sentenceCaseOn) return;
     const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta);
     if (isAdmin) groups.push(buildAdminGroup(t, isOwner));
     // #3104: /managers/-fallbacken der åbnede Klubhus er udgået sammen med
@@ -640,7 +730,13 @@ export default function Layout() {
     // foldbar gruppe, så der er ingen gruppe at åbne for den rute længere.
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
-  }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta]);
+  }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta, sentenceCaseOn]);
+
+  // #8816: når kontakten er tændt, starter grupperne fra spillerens eget valg på
+  // denne enhed (lib/navOpenGroups.ts). Slukket = den gamle adfærd uden lager.
+  useEffect(() => {
+    if (sentenceCaseOn) setOpenGroups(readOpenGroups());
+  }, [sentenceCaseOn]);
 
   // #7009: mobilmenuen lukker KUN ved navigation. Før lå lukningen i effekten ovenfor,
   // så den også lukkede, når sprog, admin-status eller feature-flag landede asynkront
@@ -955,7 +1051,11 @@ export default function Layout() {
     navigate("/login");
   }
 
-  function toggleGroup(key) { setOpenGroups(prev => ({ ...prev, [key]: !prev[key] })); }
+  function toggleGroup(key) {
+    const next = { ...openGroups, [key]: !openGroups[key] };
+    setOpenGroups(next);
+    if (sentenceCaseOn) writeOpenGroups(next); // #8816: valget huskes kun bag kontakten
+  }
 
   function handleSetupComplete(updatedTeam) {
     setTeam(updatedTeam);
@@ -965,6 +1065,7 @@ export default function Layout() {
   const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta);
   const navGroups = isAdmin ? [...baseGroups, buildAdminGroup(t, isOwner)] : baseGroups;
   const bottomItems = buildBottomItems(t, team);
+  const activeGroupKey = navGroups.find(g => g.items.some(i => pathMatchesNavItem(location, i)))?.key ?? null; // #8816
 
   const needsSetup = teamLoaded && !team?.manager_name;
   // #3811: ulæst-prik-flag pr. `to` — samme recipe som badgeCounts ovenfor.
@@ -984,6 +1085,7 @@ export default function Layout() {
   const dotTones = { "/planning": selectionReminder.tone };
   const sidebarProps = {
     navigate, team, balance, marketBalance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones,
+    activeGroupKey, lockActiveGroup: sentenceCaseOn, // #8816
     logoutLabel: t("nav.item.logout"),
     loginLabel: t("landing:nav.login"),
     isAnonymous: !session,

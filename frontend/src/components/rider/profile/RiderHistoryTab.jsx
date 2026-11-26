@@ -16,6 +16,7 @@ import { formatDate, formatNumber } from "../../../lib/intl.js";
 import TeamLink from "../../TeamLink";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import { ExchangeIcon } from "../../ui/icons/index.jsx";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 // #6728: på mobil to linjer pr. række: dato, type og beløb øverst, hele
 // hændelsen under i fuld bredde. Før klippede den smalle hændelseskolonne
@@ -140,7 +141,7 @@ export default function RiderHistoryTab({ events, bidTimeline }) {
     );
   }
 
-  const th = "font-mono text-3xs font-semibold uppercase tracking-wider text-cz-3";
+  const th = `font-mono text-3xs font-semibold uppercase tracking-wider text-cz-3 ${SENTENCE_CASE}`;
   return (
     <div data-testid="rider-transfer-history" className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className={`${GRID} py-2 border-b border-cz-border`}>
@@ -156,7 +157,7 @@ export default function RiderHistoryTab({ events, bidTimeline }) {
             <span className="font-mono tabular-nums text-2xs text-cz-3 whitespace-nowrap">
               {row.date ? formatDate(row.date, null, { day: "2-digit", month: "2-digit", year: "2-digit" }) : t("history.fallbackDash")}
             </span>
-            <span className={`inline-flex justify-self-start font-mono text-3xs font-bold uppercase tracking-[0.04em] px-1.5 py-[2px] rounded bg-cz-subtle border border-cz-border whitespace-nowrap ${CHIP_TONE[row.kind] ?? "text-cz-2"}`}>
+            <span className={`inline-flex justify-self-start font-mono text-3xs font-bold uppercase tracking-[0.04em] px-1.5 py-[2px] rounded bg-cz-subtle border border-cz-border whitespace-nowrap ${CHIP_TONE[row.kind] ?? "text-cz-2"} ${SENTENCE_CASE}`}>
               {chipLabel(row.kind, row, t)}
             </span>
             <span className={`text-[12.5px] leading-snug min-w-0 break-words ${EVENT_CELL}`}>

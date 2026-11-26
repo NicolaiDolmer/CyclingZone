@@ -14,6 +14,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import TeamLink from "../../TeamLink";
 import { ChevronLeftIcon, ChevronRightIcon } from "../../ui/icons/index.jsx";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 // Kort navn: "F. Efternavn" (matcher prototypens ‹ L. Mørk / S. Beck ›).
 function shortName(rider) {
@@ -72,7 +73,7 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamId, teamNam
               {index} / {total}
             </span>
           )}
-          <span className="hidden md:inline text-cz-3 text-3xs uppercase tracking-[0.12em] font-semibold shrink-0">
+          <span className={`hidden md:inline text-cz-3 text-3xs uppercase tracking-[0.12em] font-semibold shrink-0 ${SENTENCE_CASE}`}>
             {t("profile.switcher.hint")}
           </span>
         </div>

@@ -18,6 +18,7 @@
 import { useTranslation } from "react-i18next";
 import { riderBestRole, riderTypeRating } from "../../../lib/riderRating.js";
 import { ChevronRightIcon } from "../../ui/icons";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 // Spektrum-orden (flade spurtere → klatrere) så beslægtede typer ligger ved siden af
 // hinanden og polygonen får en aflæselig form. Nøgler = RIDER_TYPE_KEYS (SSOT).
@@ -220,7 +221,7 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
           overall-potentialet her ville implicere et per-type loft vi ikke har.
           Overall-potentialet står i hero'en. */}
       <div className="mt-3 pt-3 border-t border-cz-border flex items-center gap-2.5 flex-wrap">
-        <span className="font-mono text-3xs font-bold uppercase tracking-widest text-cz-3">
+        <span className={`font-mono text-3xs font-bold uppercase tracking-widest text-cz-3 ${SENTENCE_CASE}`}>
           {/* #5435: guld-aksen er anlægget — "Natural role". */}
           {tTypes("natural.roleLabel")}
         </span>

@@ -11,6 +11,7 @@
 
 import { useTranslation } from "react-i18next";
 import TrainingScoreSparkline, { type TrainingScorePoint } from "../../training/TrainingScoreSparkline.tsx";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 // Dagens stoerste bidrag op/ned, som motoren skriver dem
 // (backend/lib/trainingScore.js: `{ key, points, direction }`).
@@ -54,7 +55,7 @@ export default function RiderTrainingScoreCard({ score, t }: {
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]" data-testid="rider-training-score-card">
-      <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+      <span className={`font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t ${SENTENCE_CASE}`}>
         {t("profile.training.score.title")}
       </span>
 

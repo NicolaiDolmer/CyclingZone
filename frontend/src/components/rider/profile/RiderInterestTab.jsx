@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 import TeamLink from "../../TeamLink";
 import { StarIcon, EyeIcon, SearchIcon, SkeletonLines } from "../../ui";
 import { formatDate, formatNumber } from "../../../lib/intl.js";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 function TrendSub({ pct, t }) {
   // #6935: null = for få besøgende til en ærlig trend (backend-minimum) → "—".
@@ -140,7 +141,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-[13px]">
         {statDefs.map((s) => (
           <div key={s.key} className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-            <span className="inline-flex items-center gap-1.5 font-mono text-3xs font-semibold uppercase tracking-widest text-cz-3">
+            <span className={`inline-flex items-center gap-1.5 font-mono text-3xs font-semibold uppercase tracking-widest text-cz-3 ${SENTENCE_CASE}`}>
               <s.icon size={14} aria-hidden="true" />
               {t(`profile.interest.stats.${s.key}`)}
             </span>
@@ -183,7 +184,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
 
       <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
         <div className="px-[17px] py-2.5 border-b border-cz-border">
-          <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
+          <span className={`font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 ${SENTENCE_CASE}`}>
             {t("profile.interest.feed.title")}
           </span>
         </div>

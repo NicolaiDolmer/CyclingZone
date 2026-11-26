@@ -25,6 +25,7 @@ import PotentialEstimate, { CertaintyMeter, PotentialLabel, PrognosisValue } fro
 import { potentialViewOf, prognosisViewOf } from "../../../lib/potentialEstimateDisplay";
 import I18nReadyGate from "../../I18nReadyGate";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -50,7 +51,7 @@ function SectionCard({ children }) {
 
 function Eyebrow({ children }) {
   return (
-    <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+    <span className={`font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t ${SENTENCE_CASE}`}>
       {children}
     </span>
   );
@@ -129,7 +130,7 @@ function TypeRow({ typeKey, now, prog, label }) {
 function PrimaryTypeRow({ typeKey, now, prog, label, roleLabel, progressionLabel, extra = null }) {
   return (
     <div data-type={typeKey} data-prog={prog ?? undefined} className="border-b border-cz-border pb-3.5 mb-3.5">
-      <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
+      <span className={`font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 ${SENTENCE_CASE}`}>
         {roleLabel}
       </span>
       <div className="flex items-center gap-3 mt-1.5">
@@ -144,7 +145,7 @@ function PrimaryTypeRow({ typeKey, now, prog, label, roleLabel, progressionLabel
         </span>
         {prog != null && (
           <span className="ms-auto text-right">
-            <span className="block font-mono text-3xs uppercase tracking-[0.12em] text-cz-3">
+            <span className={`block font-mono text-3xs uppercase tracking-[0.12em] text-cz-3 ${SENTENCE_CASE}`}>
               {progressionLabel}
             </span>
             <span className="block font-mono tabular-nums text-[15px] text-cz-1 mt-0.5">
@@ -211,7 +212,7 @@ function RolePrognosis({ types, primaryKey, secondaryKey, children = /** @type {
         />
       )}
       {primaryRow && secondaryRows.length > 0 && (
-        <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 mb-2">
+        <span className={`block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 mb-2 ${SENTENCE_CASE}`}>
           {t("profile.scouting.otherRolesNaturalLabel")}
         </span>
       )}
@@ -301,7 +302,7 @@ function EstimateCard({ view, report, canLookAgain, scoutAction, t }) {
   return (
     <SectionCard>
       <div data-testid="scouting-estimate-card">
-        <div className="mb-2 font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
+        <div className={`mb-2 font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 ${SENTENCE_CASE}`}>
           <PotentialLabel />
         </div>
         <PotentialEstimate view={view} size="report" />
@@ -607,7 +608,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
                 // afspejler spejderens præcision. Titlen siger nu forskellen højt.
                 <span
                   title={t(`profile.scouting.confidenceTitle_${verdict.confidence}`)}
-                  className={`text-3xs font-mono font-bold uppercase tracking-[0.08em] px-2 py-0.5 rounded-cz border ${CONFIDENCE_STYLE[verdict.confidence] ?? CONFIDENCE_STYLE.medium}`}
+                  className={`text-3xs font-mono font-bold uppercase tracking-[0.08em] px-2 py-0.5 rounded-cz border ${CONFIDENCE_STYLE[verdict.confidence] ?? CONFIDENCE_STYLE.medium} ${SENTENCE_CASE}`}
                 >
                   {t(`profile.scouting.confidence_${verdict.confidence}`)}
                 </span>
@@ -615,7 +616,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
             </div>
           </div>
           <div className="text-right">
-            <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
+            <span className={`block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 ${SENTENCE_CASE}`}>
               {t("profile.scouting.potentialLabel")}
             </span>
             {/* #2454/#3746: potentialet står i RATING-point, samme enhed som
