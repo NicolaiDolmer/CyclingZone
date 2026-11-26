@@ -860,12 +860,13 @@ const S6_COPY = {
         away: "It's been a while since you played, and the game has changed a lot. A new season is a good time to come back. Here is what's new.",
       },
       news: [
-        ["Training and development.", "A completely new development system, and the caps on abilities are gone. Every rider has one potential from 1 to 99. The Training page has programs, groups and a day picker on the Today tab that shows the coming days with races and training."],
+        ["A new development system.", "The caps on abilities are gone. Your riders develop from what they train and race."],
+        ["A new academy page.", "Your young talents, their progress and the academy's accounts in one place."],
         ["Planning.", "Try the new planning page with the week overview, the race list and a month calendar in one place."],
         ["The race page.", "Watch the race film and read the results for a ridden stage in one place."],
       ],
       deadline: "The first race is on Monday 30 November. Set your training and your team before then.",
-      cta: "Set your training for Season 6",
+      cta: "Get your team ready for Season 6",
     },
     started: {
       subjects: { a: "Season 6 is underway", b: "Pick your team for Season 6" },
@@ -926,12 +927,13 @@ const S6_COPY = {
         away: "Det er længe siden, du har spillet, og spillet har ændret sig meget. En ny sæson er et godt tidspunkt at komme tilbage. Her er det nye.",
       },
       news: [
-        ["Træning og udvikling.", "Et helt nyt udviklingssystem, og lofterne på evnerne er væk. Hver rytter har ét potentiale fra 1 til 99. Træningssiden har programmer, grupper og en dagsvælger under I dag, der viser de kommende dage med løb og træning."],
+        ["Nyt udviklingssystem.", "Lofterne på evnerne er væk. Dine ryttere udvikler sig af det, de træner og kører."],
+        ["Ny akademiside.", "Dine unge talenter, deres fremgang og akademiets regnskab samme sted."],
         ["Planlægning.", "Prøv den nye planlægningsside med ugeoversigt, løbsliste og månedskalender samme sted."],
         ["Løbssiden.", "Se løbsfilmen og resultaterne for en kørt etape samme sted."],
       ],
       deadline: "Første løb køres mandag den 30. november. Sæt træning og hold inden da.",
-      cta: "Sæt træningen for sæson 6",
+      cta: "Gør holdet klar til sæson 6",
     },
     started: {
       subjects: { a: "Sæson 6 er i gang", b: "Udtag dit hold til sæson 6" },
@@ -964,7 +966,7 @@ const S6_COPY = {
 // Each mail's primary action, as a deep link into the app. Login sends the
 // player back to the same path afterwards.
 const S6_CTA_PATH = {
-  "before-start": "/training?tab=today",
+  "before-start": "/dashboard",
   started: "/planning?tab=calendar",
 };
 

@@ -928,7 +928,7 @@ for (const edition of ["before-start", "started"]) {
           assert.match(mail.html, /class="cz-body"[^>]*font-size:16px;/);
 
           // List: four news items before the start (#8396 ejer 26/11), three steps once it is underway.
-          assert.equal((mail.html.match(/<li\b/g) ?? []).length, 3);
+          assert.equal((mail.html.match(/<li\b/g) ?? []).length, isStart ? 3 : 4);
           assert.match(mail.html, isStart ? /<ol\b/ : /<ul\b/);
 
           // Links: the deep-linked CTA, the roadmap vote and the unsubscribe, all with UTM.
@@ -946,8 +946,8 @@ for (const edition of ["before-start", "started"]) {
             assert.equal(cta.pathname, "/planning");
             assert.equal(cta.searchParams.get("tab"), "calendar");
           } else {
-            assert.equal(cta.pathname, "/training");
-            assert.equal(cta.searchParams.get("tab"), "today");
+            // #8396 ejer 26/11: "Gør holdet klar til sæson 6" åbner forsiden.
+            assert.equal(cta.pathname, "/dashboard");
           }
           assert.equal(roadmap.pathname, "/roadmap");
           assert.equal(roadmap.searchParams.get("tab"), "vote");
