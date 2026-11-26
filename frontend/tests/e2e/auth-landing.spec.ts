@@ -182,7 +182,7 @@ test("login defers training and dashboard translations until game routes need th
   await page.goto("/login");
   await expect(page.getByPlaceholder("din@email.dk")).toBeVisible();
   const dashboardBundleLoaded = () => page.evaluate(() => {
-    const i18n = (window as Window & {
+    const i18n = (window as unknown as Window & {
       __i18n: { hasResourceBundle: (language: string, namespace: string) => boolean };
     }).__i18n;
     return {
