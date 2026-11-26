@@ -161,9 +161,11 @@ export function contractOnAcquirePatch(rider, currentSeasonNumber) {
     );
   }
   if (rider && rider.salary != null && rider.contract_end_season != null) return {};
+  const term = cappedContractTerm(currentSeasonNumber, CONTRACT.DEFAULT_ACQUIRE_LENGTH);
   return {
     salary: computeFrozenSalary(rider),
-    ...cappedContractTerm(currentSeasonNumber, CONTRACT.DEFAULT_ACQUIRE_LENGTH),
+    contract_length: term.contract_length,
+    contract_end_season: term.contract_end_season,
   };
 }
 

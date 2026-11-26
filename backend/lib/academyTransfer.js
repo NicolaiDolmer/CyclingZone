@@ -292,7 +292,7 @@ export async function demote(supabase, {
   const hasContract = hasCompleteContract(rider);
   const newSalary = resolveDemoteSalary(rider);
   // #7138: en ny akademi-aftale følger det fælles loft (indeværende + 1).
-  const newTerm = hasContract ? null : cappedContractTerm(seasonNumber, ACADEMY.CONTRACT_LENGTH);
+  const newTerm = cappedContractTerm(seasonNumber, ACADEMY.CONTRACT_LENGTH);
   const contractLength = hasContract ? rider.contract_length : newTerm.contract_length;
   const contractEnd = hasContract ? rider.contract_end_season : newTerm.contract_end_season;
 
