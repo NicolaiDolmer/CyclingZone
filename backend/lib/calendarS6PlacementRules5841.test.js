@@ -31,18 +31,17 @@ test("#5841: reglerne gaelder kun fra S6 - S5, S3 og ukendt saeson er uroerte", 
   assert.ok(r.monumentMinGapDays > 2 && r.monumentMinSpreadDays > 14, "S6 er strammere end de gamle tal");
   assert.equal(r.lastMonumentAfterGrandTours, true);
   assert.equal(r.seasonEndsWithOneDayRace, true);
-  assert.equal(r.stageRaceEndsByGrandTourStart, true);
+  assert.equal("stageRaceEndsByGrandTourStart" in r, false, "R20 er udgaaet (ejer 26/11 aften, #8830)");
   assert.deepEqual(r.multiRaceShareBand, TIER_MULTI_RACE_DAY_SHARE_BAND[1]);
   assert.equal(calendarPlacementRulesForSeason(6, null).multiRaceShareBand, null);
 });
 
-test("#5841: overlap-baandet er et interval pr. niveau, ungdom under senior", () => {
-  for (const b of [...Object.values(TIER_MULTI_RACE_DAY_SHARE_BAND), ...Object.values(SQUAD_MULTI_RACE_DAY_SHARE_BAND)]) {
+test("#5841: overlap-baandet er et interval pr. seniorniveau; ungdom har intet overlap i S6 (#8830)", () => {
+  for (const b of Object.values(TIER_MULTI_RACE_DAY_SHARE_BAND)) {
     assert.ok(b.min > 0 && b.min < b.max && b.max < 1);
   }
   assert.ok(TIER_MULTI_RACE_DAY_SHARE_BAND[3].max < TIER_MULTI_RACE_DAY_SHARE_BAND[1].min);
-  assert.ok(SQUAD_MULTI_RACE_DAY_SHARE_BAND.u23.max <= TIER_MULTI_RACE_DAY_SHARE_BAND[3].min);
-  assert.ok(SQUAD_MULTI_RACE_DAY_SHARE_BAND.junior.max <= SQUAD_MULTI_RACE_DAY_SHARE_BAND.u23.min);
+  for (const b of Object.values(SQUAD_MULTI_RACE_DAY_SHARE_BAND)) assert.deepEqual({ ...b }, { min: 0, max: 0 });
 });
 
 test("#5841: S6-data - 140 loebsdage paa det laaste vindue 30/11-26/12, skader rundes op", () => {
@@ -85,7 +84,7 @@ test("#5841: monument-afstand, -spredning, raekkefoelge og Lombardiet efter sids
     .some((b) => b.includes("virkelige rækkefølge")));
 });
 
-test("#5841: saesonen slutter med endagsloeb, og et etapeloeb slutter senest naar GT'en starter", () => {
+test("#5841/#8830: saesonen slutter med endagsloeb; et etapeloeb maa gerne overlappe en GT (R20 udgaaet)", () => {
   const raceRows = [sr("gt", 21), sr("sr", 3), one("c")];
   const gt = Array.from({ length: 21 }, (_, i) => st("gt", 5 + i, day(2 + Math.floor(i / 4))));
   const lovlig = [st("sr", 3, day(1)), st("sr", 4, day(1)), st("sr", 5, day(2)), ...gt, st("c", 26, day(8))];
@@ -95,8 +94,8 @@ test("#5841: saesonen slutter med endagsloeb, og et etapeloeb slutter senest naa
   );
   const ulovlig = [st("sr", 6, day(2)), st("sr", 7, day(2)), st("sr", 8, day(3)), ...gt, st("c", 24, day(8))];
   const brud = detectSeasonPlacementRuleViolations({ tier: 2, rules: { ...rules6(), multiRaceShareBand: null }, raceRows, stageRows: ulovlig });
-  assert.ok(brud.some((b) => b.includes("slutter efter GT'ens start")), brud.join("\n"));
-  assert.ok(brud.some((b) => b.includes("sæsonen skal slutte med endagsløb")));
+  assert.equal(brud.some((b) => b.includes("GT'ens start")), false, "et etapeloeb der koerer ind i GT'en er lovligt");
+  assert.ok(brud.some((b) => b.includes("sæsonen skal slutte med endagsløb")), brud.join("\n"));
 });
 
 test("#5841: overlap-baandet doemmer baade gulv og loft", () => {

@@ -260,7 +260,8 @@ function raceFootprint(race, spineMinStages) {
 //   R18 de monumenter der i virkeligheden ligger efter den sidste Grand Tour (Lombardiet
 //       efter Vueltaen), ligger ogsaa efter alle GT'er i kalenderen
 //   R19 saesonens sidste loebsdag med loeb baerer kun endagsloeb (Vueltaen er aldrig sidst)
-//   R20 et andet etapeloeb der overlapper en GT, slutter senest paa GT'ens foerste loebsdag
+//   R20 UDGAAET (ejer 26/11 aften, #8830): Grand Tours maa gerne overlappe andre loeb;
+//       kun monumenterne maa aldrig ligge i en GT (R9)
 //   R21 andelen af loebsdage med 2+ samtidige loeb ligger i niveauets baand (gulv OG loft)
 //   R22 SKELET: GT-starter og monumenter er laast til de datoer layoutContiguous' skelet
 //       valgte (`gtStartPins`, `monumentPins`). Det er soegningens svar paa hvorfor R9 ikke
@@ -353,9 +354,7 @@ function solveContiguousStarts({
   const monPins = mr && pr?.monumentPins?.length ? pr.monumentPins : null;
   const monEfterGt = mr && pr ? Math.max(0, Number(pr.monumentsAfterGts) || 0) : 0;
   const endagSidst = Boolean(pr?.endWithOneDay);
-  const r20 = Boolean(pr?.stageRaceEndsByGtStart) && gtIdx.length > 0;
   const baand = pr?.shareBand ?? null;
-  const etapeIkkeGt = items.map((it) => it.fp.length > 1 && !it.gt);
   // Mindste antal datoer en GT fylder (R7's loft pr. dato) - til skelettets fremadsyn.
   const gtMinDatoer = items.map((it) => (it.gt ? Math.ceil(lenOf(it.race) / MAX_GT_STAGES_PER_DAY) : 0));
 
@@ -454,6 +453,10 @@ function solveContiguousStarts({
     const loads = [];
     for (let load = hi; load >= lo; load--) loads.push(load);
     if (letFoerst) loads.reverse();
+    // #8830: koerer en GT under baandets midte, faar GT'en en makker foer den koerer alene
+    // (to loeb pr. loebsdag foerst). Ellers bliver GT-ugerne til loebsdage med eet loeb.
+    // Kun med baand (fra S6) og en aktiv GT; ellers er raekkefoelgen uaendret.
+    else if (baand != null && gtAktiv) loads.sort((a, b) => (a === 1) - (b === 1) || a - b);
     for (const load of loads) {
       const nye = load - carriedStages;
       if (nye < 0) continue;
@@ -483,13 +486,8 @@ function solveContiguousStarts({
                 const p = naesteMon < monPins.length ? monPins[naesteMon] : null;
                 if (p != null && p >= dato && p <= dato + gtMinDatoer[k] - 2) continue;
               }
-              if (r20) {
-                if (acc.some((x) => etapeIkkeGt[x])) continue;                      // R20
-                if (aktive.some((a) => etapeIkkeGt[a.i] && a.off !== items[a.i].fp.length - 1)) continue;
-              }
             }
           }
-          if (r20 && etapeIkkeGt[k] && (gtAktiv || acc.some((x) => items[x].gt))) continue; // R20
           if (mr && items[k].mon) {
             // R9: `gtAktiv` er praecis "en GT's loebsdags-spaend daekker denne loebsdag" -
             // en GT paa hviledag bliver liggende i `aktive` med fodaftryk 0, og gaten
@@ -926,7 +924,7 @@ export function enumeratePlacementSkeletons({
 export const SKELETON_SOLVE_MAX_STEPS = 150000;
 // Hoejst saa mange skeletter proeves, de mest virkelighedsnaere foerst.
 export const SKELETON_TRY_LIMIT = 60;
-// ...og for de strammere trin (med overlap-baand og/eller R20) kun de forreste.
+// ...og for det strammere trin (med overlap-baandet) kun de forreste.
 export const SKELETON_STRICT_TRY_LIMIT = 12;
 
 function layoutContiguous({
@@ -1024,17 +1022,14 @@ function layoutContiguous({
     const fuldt = {
       monumentsAfterGts,
       endWithOneDay: Boolean(placementRules.seasonEndsWithOneDayRace),
-      stageRaceEndsByGtStart: Boolean(placementRules.stageRaceEndsByGrandTourStart) && gts.length > 0,
       shareBand: placementRules.multiRaceShareBand ?? null,
     };
-    // Stigen inden for S6-reglerne: alt foerst; derefter uden overlap-baandet, uden R20 og
-    // uden begge. Monument-reglerne, R18 og R19 slippes aldrig her - de er de regler ejeren
+    // Stigen inden for S6-reglerne: alt foerst; derefter uden overlap-baandet. Monument-
+    // reglerne, R18 og R19 slippes aldrig her - de er de regler ejeren
     // bad om at faa bevist umulige, ikke slaekket (#5841 punkt 2). Det der slippes, doemmes
     // af gaten bagefter og stopper --apply; `solveAttempts` viser hvilket trin der holdt.
     const varianter = [fuldt];
     if (fuldt.shareBand) varianter.push({ ...fuldt, shareBand: null });
-    if (fuldt.stageRaceEndsByGtStart) varianter.push({ ...fuldt, stageRaceEndsByGtStart: false });
-    if (fuldt.shareBand && fuldt.stageRaceEndsByGtStart) varianter.push({ ...fuldt, shareBand: null, stageRaceEndsByGtStart: false });
     ydre: for (const [vi, regelSaet] of varianter.entries()) {
       const sidsteVariant = vi === varianter.length - 1;
       // Kun den sidste variant faar hele skelet-listen og begge R16-trin; de strammere
@@ -1053,7 +1048,7 @@ function layoutContiguous({
           });
           forsoeg.push({
             rules: Boolean(s6MonRegler), gtStartRule: r15Aktiv, typeGapRule: typeGap, placementRules: true,
-            shareBand: Boolean(regelSaet.shareBand), stageRaceEndsByGtStart: regelSaet.stageRaceEndsByGtStart,
+            shareBand: Boolean(regelSaet.shareBand),
             skeleton: sk.gtStartPins.length || sk.monumentPins.length ? { gt: sk.gtStartPins, mon: sk.monumentPins } : null,
             ok: Boolean(loest), steps: stats.steps ?? loest?.steps ?? null, exhausted: Boolean(stats.exhausted),
           });

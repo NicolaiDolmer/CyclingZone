@@ -400,21 +400,8 @@ export function detectSeasonPlacementRuleViolations({
     }
   }
 
-  // §3: et andet etapeloeb der overlapper en GT, slutter senest paa GT'ens foerste loebsdag.
-  if (rules.stageRaceEndsByGrandTourStart && gts.length) {
-    const gtIds = new Set(gts.map((g) => g.pool_race_id));
-    for (const r of raceRows) {
-      if (r.race_type === "single" || gtIds.has(r.pool_race_id)) continue;
-      const s = spans.get(r.pool_race_id);
-      if (!s) continue;
-      for (const g of gts) {
-        const gs = spans.get(g.pool_race_id);
-        if (s.first <= gs.last && s.last >= gs.first && s.last > gs.first) {
-          brud.push(`tier ${tier}: etapeløbet «${navn(r)}» (løbsdag ${s.first}-${s.last}) overlapper «${navn(g)}» (løbsdag ${gs.first}-${gs.last}) og slutter efter GT'ens start (§3/#5841)`);
-        }
-      }
-    }
-  }
+  // §3: Grand Tours maa gerne overlappe andre loeb (ejer 26/11 aften, #8830). Kun
+  // monumenterne maa aldrig ligge i en GT; det doemmer detectMonumentsInsideGrandTours.
 
   // §1: overlap-baandet - gulv OG loft.
   const band = rules.multiRaceShareBand;

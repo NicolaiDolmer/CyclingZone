@@ -98,8 +98,6 @@ export const MONUMENT_MIN_CALENDAR_SPREAD_DAYS = 14;
 //       Grand Tours (Lombardiet efter Vueltaen) ligger ogsaa efter den i kalenderen.
 //   seasonEndsWithOneDayRace  §2: saesonens sidste loebsdag med loeb baerer kun endagsloeb,
 //       saa en Grand Tour (Vueltaen) aldrig er sidste loeb.
-//   stageRaceEndsByGrandTourStart  §3: et andet etapeloeb der overlapper en Grand Tour,
-//       slutter senest paa GT'ens foerste loebsdag.
 //   multiRaceShareBand  §1: andelen af loebsdage (med loeb) der har 2+ samtidige loeb, som
 //       gulv OG loft pr. niveau.
 export const CALENDAR_PLACEMENT_RULES_FIRST_SEASON = 6;
@@ -112,11 +110,12 @@ export const TIER_MULTI_RACE_DAY_SHARE_BAND = Object.freeze({
   3: Object.freeze({ min: 0.35, max: 0.45 }),
   4: Object.freeze({ min: 0.35, max: 0.45 }),
 });
-// Ungdommens baand staar her, saa hele reglen har EEN kilde. Ungdomskalenderen bygges af
-// sit eget spor (#7471); her er kun tallene.
+// Ungdommens baand staar her, saa hele reglen har EEN kilde. Ejer 26/11 aften (#8830):
+// ungdom faar INTET overlap i S6 (aldrig to ungdomsloeb samtidig paa samme niveau);
+// ungdoms-overlap venter til 2027.
 export const SQUAD_MULTI_RACE_DAY_SHARE_BAND = Object.freeze({
-  u23: Object.freeze({ min: 0.25, max: 0.35 }),
-  junior: Object.freeze({ min: 0.15, max: 0.25 }),
+  u23: Object.freeze({ min: 0, max: 0 }),
+  junior: Object.freeze({ min: 0, max: 0 }),
 });
 
 /**
@@ -135,7 +134,6 @@ export function calendarPlacementRulesForSeason(seasonNumber, tier = null) {
     monumentMinSpreadDays: MONUMENT_MIN_CALENDAR_SPREAD_DAYS_FROM_S6,
     lastMonumentAfterGrandTours: true,
     seasonEndsWithOneDayRace: true,
-    stageRaceEndsByGrandTourStart: true,
     multiRaceShareBand: tier == null ? null : (TIER_MULTI_RACE_DAY_SHARE_BAND[tier] ?? null),
   });
 }
