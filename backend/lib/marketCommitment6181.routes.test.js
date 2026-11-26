@@ -152,7 +152,7 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
     recordIdentityEvent(){}, awardXP:async()=>{}, notifyTeamOwnerBuilt:async()=>{},notifyTeamOwner:async()=>{},
     notifyOutbid:async()=>{},transferNotif,
     applyLeaderShiftExtension:async()=>({extensionApplied:false,newEnd:null}),
-    getActiveSeasonNumber:async()=>5,fetchSeasonTransitionBoundary:async()=>null,
+    getActiveSeasonNumber:async()=>5,resolveContractSeasonNumber:async()=>5,fetchSeasonTransitionBoundary:async()=>null,
     calculateRiderMarketValue:()=>100,calculateAuctionEnd:()=>new FixedDate('2026-11-09T15:00:00Z'),
     getAuctionSeasonBoundaryIssue:()=>null,FREE_AGENT_MIN_DURATION_HOURS:12,
     fetchOwnProxiesByAuctionId:async()=>new Map(),
