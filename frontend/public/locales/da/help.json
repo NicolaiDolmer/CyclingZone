@@ -2447,6 +2447,10 @@
       "q": "Hvad betyder dagsformen i løbsreferatet?",
       "a": "Efter en etape kan referatet sige, hvordan dagen gik for dine egne ryttere, der kom i mål. En rytter kan have en rigtig god dag, en god dag eller en dårlig dag, og en dårlig dag får sin årsag: træthed, manglende form, sygdom eller vejret. Ordene beskriver kun den dagsform, løbet allerede havde givet ham, så de ændrer aldrig resultatet. Du ser dem kun for dine egne ryttere, ikke for andre holds ryttere. En enkeltstart har intet referat, så sætningerne står under ruten dér."
     },
+    "attackStoryFaq": {
+      "q": "Hvordan fortæller løbsfilmen et angreb på den sidste stigning?",
+      "a": "Når en rytter angriber på den sidste stigning, følger løbsfilmen angrebet, mens det sker. Først selve angrebet, dér hvor løbet lader ham gå. Så øjeblikket, hvor han kører fra gruppen, han angreb fra. Tager løbet en tidsmåling, mens han er væk, ser du forspringet dér, og om det vokser eller skrumper. Til sidst kommer udfaldet, dér hvor det sker: han bliver hentet, han bliver sat, fordi han er træt eller ikke kan følge tempoet, eller han holder til toppen eller målet med det forspring, han faktisk havde. Hver linje står på det sted og den løbstid, hvor det skete, og ingen linje fortæller noget, før det er sket. Er gruppen, han angreb fra, gået i stykker ved toppen, måles forspringet til de nærmeste forfølgere bag ham."
+    },
     "whyButtonFaq": {
       "q": "Hvad fortæller Hvorfor?-knappen ved mine ryttere?",
       "a": "Efter en etape giver Hvorfor? ved dine ryttere én kort sætning om, hvad der afgjorde rytterens resultat, altid i ord og aldrig i tal. Den siger kun det, løbet faktisk viser. På landevejen er det, hvor han mistede kontakten, eller hvad der gik godt. På en enkeltstart er det styrt eller defekt, hvordan dagen gik, vejret, når det gav ham en dårlig dag, og om ruten passede ham. Forklarer intet i løbet resultatet, står der det i stedet for et gæt."

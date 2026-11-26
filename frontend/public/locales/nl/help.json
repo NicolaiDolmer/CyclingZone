@@ -2447,6 +2447,10 @@
       "q": "Wat betekent de dagvormregel in het koersverslag?",
       "a": "Na een etappe kan het koersverslag vertellen hoe de dag verliep voor je eigen renners die finishten. Een renner kan een heel goede dag, een goede dag of een slechte dag hebben, en een slechte dag komt met een reden: vermoeidheid, slechte vorm, ziekte of het weer. De woorden beschrijven alleen de dagvorm die de koers hem al had gegeven, dus ze veranderen nooit de uitslag. Je ziet ze alleen voor je eigen renners, niet voor andere ploegen. Een tijdrit heeft geen verslag, dus daar staan de zinnen onder het parcours."
     },
+    "attackStoryFaq": {
+      "q": "Hoe vertelt de koersfilm een aanval op de laatste klim?",
+      "a": "Als een renner aanvalt op de laatste klim, volgt de koersfilm de aanval terwijl die gebeurt. Eerst de aanval zelf, op het punt waar de koers hem laat gaan. Dan het moment waarop hij wegrijdt uit de groep waaruit hij aanviel. Neemt de koers een tijdmeting terwijl hij weg is, dan zie je daar de voorsprong en of die groeit of slinkt. Als laatste komt de afloop, op het punt waar die gebeurt: hij wordt ingelopen, hij moet lossen omdat hij leeg is of het tempo niet kan volgen, of hij houdt stand tot de top of de streep met de voorsprong die hij echt had. Elke regel staat op de plek en de koerstijd waar het gebeurde, en geen regel vertelt iets voordat het gebeurd is. Is de groep waaruit hij aanviel bij de top uit elkaar gevallen, dan wordt de voorsprong gemeten op de eerste achtervolgers achter hem."
+    },
     "whyButtonFaq": {
       "q": "Wat vertelt de knop Waarom? bij mijn renners?",
       "a": "Na een etappe geeft Waarom? bij je renners één korte zin over wat de uitslag van die renner bepaalde, altijd in woorden en nooit in cijfers. Hij zegt alleen wat de koers echt laat zien. Op de weg is dat waar hij de aansluiting verloor of wat goed ging. In een tijdrit is dat een valpartij of materiaalpech, hoe zijn dag verliep, het weer als dat hem een slechte dag bezorgde en of het parcours hem lag. Verklaart niets in de koers de uitslag, dan zegt hij dat in plaats van te gokken."
