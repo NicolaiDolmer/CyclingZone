@@ -18,11 +18,10 @@ test("compare potential row renders an accent tint, not a transparent/no-op back
 
   // Locale- and icon-independent anchor for the Potential row. (#1639 swapped the
   // ◆ glyph for a StarIcon SVG, so we key off a stable data-testid, not the marker.)
-  const potentialRow = page.getByTestId("compare-potential-row");
+  const potentialRow = page.locator('[data-testid="compare-potential-row"]:visible').first();
   await expect(potentialRow).toBeVisible();
 
-  const styles = await page.evaluate(() => {
-    const potentialRow = document.querySelector('[data-testid="compare-potential-row"]');
+  const styles = await potentialRow.evaluate(potentialRow => {
     const container = potentialRow?.parentElement;
     // First grid row that is NOT the potential row = a regular stat row (transparent).
     const statRow = container
@@ -40,4 +39,28 @@ test("compare potential row renders an accent tint, not a transparent/no-op back
   // Regular stat rows stay transparent — confirms the tint is the row's own, the
   // highlight reads as distinct, and we didn't accidentally tint the whole table.
   expect(["rgba(0, 0, 0, 0)", "transparent"]).toContain(styles.statBg);
+});
+
+test("#7925 stacks rider comparisons without horizontal overflow at 390px", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "mobile comparison layout");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.setFixedTime(new Date("2026-11-25T12:00:00Z"));
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await login(page);
+  await page.goto("/compare?ids=rider-1,rider-2");
+
+  const riders = page.getByTestId("compare-mobile-stack").getByTestId("compare-rider-card");
+  await expect(riders).toHaveCount(2);
+  await expect(riders.nth(0)).toBeVisible();
+  await expect(riders.nth(1)).toBeVisible();
+  const first = await riders.nth(0).boundingBox();
+  const second = await riders.nth(1).boundingBox();
+  expect(first).not.toBeNull();
+  expect(second).not.toBeNull();
+  expect(second.y).toBeGreaterThan(first.y + first.height);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(await page.getByTestId("compare-mobile-stack").evaluate(node => node.scrollWidth - node.clientWidth)).toBe(0);
+  await riders.nth(1).getByRole("button", { name: /fjern fra sammenligning|remove from comparison/i }).click();
+  await expect(riders).toHaveCount(1);
 });
