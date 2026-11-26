@@ -182,7 +182,7 @@ test("kontrakt: én rute i v6 bygget på Etape-fanens profil, ingen ny tekst", (
   const route = read("./V6Route.tsx");
   const panel = read("./V6RouteProfile.tsx");
   assert.match(route, /from "\.\.\/stagePageV2\/StageProfileV2\.tsx"/);
-  assert.match(route, /<GradientLegend \/>/);
+  assert.match(route, /<GradientLegend profile=\{profile\} \/>/); // #8259: forklaringen viser brosten/grus
   assert.match(route, /climbText=\{false\}/);
   assert.match(panel, /<V6Route profile=\{profile\} \/>/);
   assert.doesNotMatch(panel, /StageProfileGraph/);
