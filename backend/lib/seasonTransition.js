@@ -1,6 +1,7 @@
 import { isAcademyEnabled } from "./academyFlag.js";
 import { promoteSeasonSquads, loadSquadPromotionNotices } from "./seasonSquadPromotion.js";
 import { assessFinalTrainingDateSettlement } from './seasonTransitionReadiness.js';
+import { runAiFrozenStateResetPhase } from './aiTeamFrozenState8614.js'; // #8614
 /**
  * Slice 08 — Sæson-transition orchestrator
  * =========================================
@@ -1464,6 +1465,9 @@ export async function transitionToNextSeason({
     toSeasonId: plan.to_season.id,
   })));
   // ─── slut #2910 + #2911 ────────────────────────────────────────────────────
+  // #8614: AI-ryttere nulstilles ÉN gang (claim) efter de øvrige nulstillinger. Slukket = ingen fase-række.
+  const aiFrozenReset8614 = await (deps.runAiFrozenStateResetPhase ?? runAiFrozenStateResetPhase)({ supabase, now: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso) });
+  if (aiFrozenReset8614) log.push(aiFrozenReset8614);
 
   // #1704 · Per-division-kalender (forever). Gated bag auto_calendar_enabled (fail-safe OFF):
   // uden flaget sker INTET, så en buggy auto-kalender aldrig spammer en live sæson

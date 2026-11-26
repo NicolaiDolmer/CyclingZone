@@ -50,6 +50,7 @@ import { loadProtectedSeniorRiderIds } from "./seasonSquadPromotion.js";
 import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { isTrainingDateTeam, loadTrainingDateTeams, trainingDateBounds } from './trainingDateReadiness.js';
 import { isCalendarTickAiOnly } from './trainingCalendarTickFlag.js'; // #6110 ejer 19/11
+import { isAiTeamFrozenStateEnabled } from './aiTeamFrozenState8614.js'; // #8614
 
 import { FIRST_PROMOTION_RELEGATION_SEASON } from "./economyConstants.js";
 import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
@@ -442,7 +443,10 @@ export async function assessFinalTrainingDateSettlement({ supabase, season, now 
   // (det står i work ovenfor). Kontakten læses kun, når sådan et hold findes; slukket = som før.
   const humanNoDivision = team => !team.league_division_id && team.is_ai !== true;
   const aiOnly = candidateTeams.some(humanNoDivision) ? await isCalendarTickAiOnly(supabase) : false;
-  const missingTeams = aiOnly ? candidateTeams.filter(team => !humanNoDivision(team)) : candidateTeams;
+  const missingBefore8614 = aiOnly ? candidateTeams.filter(team => !humanNoDivision(team)) : candidateTeams;
+  // #8614: med ai_team_frozen_state_8614 on træner et AI-hold ikke, så det skal ikke have en kvittering.
+  const aiFrozen = missingBefore8614.some(team => team.is_ai === true) ? await isAiTeamFrozenStateEnabled(supabase) : false;
+  const missingTeams = aiFrozen ? missingBefore8614.filter(team => team.is_ai !== true) : missingBefore8614;
 
   // Division-less teams use a calendar-day report rather than training_date_work.
   // A reservation (including writing) is never proof. This legacy key has no
