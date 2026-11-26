@@ -4,6 +4,7 @@
 //   - Loebets faner: Trup · Taktik · Formtop · Startlister (punkt 6).
 //   - Match pr. etape i et etapeloeb (punkt 7): "Hele loebet" eller én etape.
 //   - "Fordel ryttere" kun paa dage med mere end ét loeb (punkt 4), og dagens nummer i den gamle dags-tavle.
+//   - #8811: et skift vaek fra Saeson eller dags-tavlen med en ugemt kladde spoerger foerst.
 import { WORKBENCH_VIEWS, isRacePast, type WorkbenchView, type SeasonRace } from "../../lib/planningWorkbench.ts";
 
 export const PLANNING_MODES = ["week", "season", "month"] as const;
@@ -23,6 +24,45 @@ export type PlanningView = WorkbenchView | "startlists";
 
 export function isPlanningView(value: unknown): value is PlanningView {
   return typeof value === "string" && (PLANNING_VIEWS as readonly string[]).includes(value);
+}
+
+// ── Ugemte kladder ved skift af visning (#8811, Codex P1 paa #8790) ─────────
+
+/**
+ * Den flade der staar fremme, naar Uge ikke vises, og som kan have sin egen ugemte kladde: Saeson
+ * (udtagelsesmatrixen) eller dags-tavlen ("Fordel ryttere"). Maaned har ingen kladde. Uge er altid
+ * monteret (skjult), saa et ugemt loeb overlever ethvert skift og aldrig spoerges om her.
+ */
+export type EmbeddedSurface = "season" | "distribute" | null;
+
+export function embeddedSurface(mode: PlanningMode, distributing: boolean): EmbeddedSurface {
+  if (distributing) return "distribute";
+  return mode === "season" ? "season" : null;
+}
+
+/**
+ * Et skift fra Saeson eller dags-tavlen til en anden visning afmonterer fladen, og dens ugemte kladde
+ * forsvinder med den. Svaret er noeglen (races-navnerummet) til det spoergsmaal spilleren skal bekraefte
+ * foerst, eller null, naar skiftet kan ske straks. Samme spoergsmaal som fladerne selv stiller.
+ */
+export function leaveConfirmKey(
+  from: EmbeddedSurface,
+  to: EmbeddedSurface,
+  dirty: { season: boolean; board: boolean },
+): "matrix.leaveUnsaved" | "racehub.leaveUnsaved" | null {
+  if (from === to) return null;
+  if (from === "season" && dirty.season) return "matrix.leaveUnsaved";
+  if (from === "distribute" && dirty.board) return "racehub.leaveUnsaved";
+  return null;
+}
+
+/** Adressen for en visning: ?mode= (Uge er standard) uden dags-tavlens og den gamle saesonvisnings parametre. */
+export function paramsForMode(prev: URLSearchParams, next: PlanningMode): URLSearchParams {
+  const p = new URLSearchParams(prev);
+  if (next === "week") p.delete("mode");
+  else p.set("mode", next);
+  for (const key of ["day", "returnView", "scope", "pool", "season", "view"]) p.delete(key);
+  return p;
 }
 
 /** Match-vaelgeren: hele loebet eller en etape (0-baseret indeks i etape-profilerne). */

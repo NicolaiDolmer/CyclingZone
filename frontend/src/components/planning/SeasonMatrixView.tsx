@@ -8,7 +8,7 @@
 // Ingen nye endpoints: matrixen henter GET /api/races/selection/season og deler loeb og ryttere med
 // Rutematch (onData); Form og saesonvaelgeren bruger Formplan-fanens board (usePlanner). Matrixen
 // forbliver monteret paa tvaers af linserne, saa en ugemt kladde ikke forsvinder ved et linseskift.
-// Siden (#8419) monterer komponenten under "Saeson" og giver onOpenRace.
+// Siden (#8419) monterer komponenten under "Saeson" og giver onOpenRace og onDirtyChange (#8811).
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as ui from "../ui/index.js";
@@ -106,7 +106,14 @@ function safeLocalStorage(): Storage | null {
   }
 }
 
-export default function SeasonMatrixView({ onOpenRace }: { onOpenRace?: (raceId: string) => void }) {
+export default function SeasonMatrixView({
+  onOpenRace,
+  onDirtyChange,
+}: {
+  onOpenRace?: (raceId: string) => void;
+  /** #8811: matrixens ugemte kladde meldes til siden, saa et skift af visning kan spoerge foerst. */
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const { t } = useTranslation(["races", "planner", "common"]);
   const [lens, setLens] = useState<SeasonLens>(() => readStoredLens(safeLocalStorage()));
   const [problemsOnly, setProblemsOnly] = useState(false);
@@ -131,6 +138,13 @@ export default function SeasonMatrixView({ onOpenRace }: { onOpenRace?: (raceId:
     setSnapshot(undefined);
     setSeasonChoice(activeNumber != null && number === activeNumber ? null : number);
   }
+
+  // Siden ejer skiftet vaek fra Saeson (#8811): den faar kladdens tilstand, og en afmonteret visning
+  // har ingen kladde tilbage.
+  useEffect(() => {
+    onDirtyChange?.(matrixDirty);
+  }, [matrixDirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   const onData = useCallback((next: MatrixSnapshot) => setSnapshot(next), []);
   const readOnly = snapshot?.state === "ready" && snapshot.readOnly;

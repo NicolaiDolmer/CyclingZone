@@ -12,8 +12,12 @@
 //
 // #8419 (ejerens beslutninger 26/11): sidehovedet har én vaelger Uge · Saeson · Maaned (?mode=) og et stille
 // link til Holdstrategi. Uge er loebslisten, ugestriben og loebet; ugestriben og loebslisten slaas til og fra
-// med to smaa knapper ved vaelgeren (huskes pr. spiller). Saeson er den gamle udtagelsesmatrix uaendret,
-// Maaned den eksisterende kalender. "Fordel ryttere" (?day=) aabner den gamle dags-tavle uaendret.
+// med to smaa knapper ved vaelgeren (huskes pr. spiller). Saeson er udtagelsesmatrixen med fire linser
+// (#8781, SeasonMatrixView), Maaned den eksisterende kalender. "Fordel ryttere" (?day=) aabner den gamle
+// dags-tavle uaendret.
+//
+// #8811 (Codex P1): Saeson-matrixen og dags-tavlen melder deres ugemte kladde op hertil. Et skift af
+// visning, "Tilbage til ugen" og et loeb aabnet fra Saeson spoerger foerst, ellers forsvandt kladden tavst.
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
@@ -32,7 +36,18 @@ import { useSelectionReminder, refreshSelectionReminder } from "../hooks/useSele
 import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import I18nReadyGateBase from "../components/I18nReadyGate.jsx";
-import { boardDayFor, isPlanningView, planningModeFrom, PLANNING_MODES, type PlanningMode, type PlanningView } from "../components/planning/planningViews.ts";
+import {
+  boardDayFor,
+  embeddedSurface,
+  isPlanningView,
+  leaveConfirmKey,
+  paramsForMode,
+  planningModeFrom,
+  PLANNING_MODES,
+  type EmbeddedSurface,
+  type PlanningMode,
+  type PlanningView,
+} from "../components/planning/planningViews.ts";
 import { seasonReferenceYear } from "../lib/riderAge.js";
 import {
   loadSeasonOverview,
@@ -132,10 +147,10 @@ function useNarrow() {
   return useSyncExternalStore(subscribeNarrow, readNarrow, () => false);
 }
 
-// #8419: Saeson, Maaned og "Fordel ryttere" er de gamle flader uaendret, hentet foerst naar de vises.
+// #8419: Saeson (fire linser, #8781), Maaned og "Fordel ryttere" hentes foerst, naar de vises.
 type AnyComponent = (props: any) => any;
 const I18nReadyGate: AnyComponent = I18nReadyGateBase as any;
-const SeasonView: AnyComponent = lazyWithRetry(() => import("../components/racehub/SeasonView.jsx")) as any;
+const SeasonMatrixView: AnyComponent = lazyWithRetry(() => import("../components/planning/SeasonMatrixView.tsx")) as any;
 const CalendarPage: AnyComponent = lazyWithRetry(() => import("./CalendarPage.jsx")) as any;
 const RaceHubBoard: AnyComponent = lazyWithRetry(() => import("../components/racehub/RaceHubBoard.jsx")) as any;
 
@@ -360,14 +375,16 @@ function Workbench() {
     return mondayOf(start ?? today);
   }, [weekMonday, selected, dates, today]);
 
+  // `toWeek`: et loeb aabnet fra Saeson skifter til Uge i SAMME adresse-opdatering (to kald i samme
+  // omgang ville overskrive hinanden).
   const selectRace = useCallback(
-    (id: string) => {
+    (id: string, { toWeek = false }: { toWeek?: boolean } = {}) => {
       userPicked.current = true;
       setCloseAsk(false);
       setSheetOpen(true);
       setSearchParams(
         (prev) => {
-          const next = new URLSearchParams(prev);
+          const next = toWeek ? paramsForMode(prev, "week") : new URLSearchParams(prev);
           next.set("race", id);
           return next;
         },
@@ -383,8 +400,10 @@ function Workbench() {
   // Et klik paa et andet loeb med ugemte aendringer aabner bjaelken i stedet for at miste dem. Mens et
   // skrivekald koerer, saettes skiftet i koe (svaret skal lande paa den flade, der sendte det).
   const selectedId = selected?.id ?? null;
+  // `toWeek` (loeb aabnet fra Saeson): kun "go" skifter visning sammen med loebet; ellers skifter
+  // kalderen selv til Uge, hvor bjaelken for ugemte aendringer eller koeen tager over.
   const requestSelect = useCallback(
-    (id: string) => {
+    (id: string, { toWeek = false }: { toWeek?: boolean } = {}) => {
       const step = raceSwitchStep({
         same: id === selectedId,
         writing: gate.current(),
@@ -394,7 +413,8 @@ function Workbench() {
       setSheetOpen(true);
       if (step === "queue") setQueuedId(id);
       else if (step === "ask") setPendingId(id);
-      else if (step === "go") selectRace(id);
+      else if (step === "go") selectRace(id, { toWeek });
+      return step;
     },
     [selectedId, gate, dirty, selectRace],
   );
@@ -596,19 +616,30 @@ function Workbench() {
   // matrixens egne parametre hoerer kun til dem og ryddes ved hvert skift.
   const changeMode = useCallback(
     (next: PlanningMode) => {
-      setSearchParams(
-        (prev) => {
-          const p = new URLSearchParams(prev);
-          if (next === "week") p.delete("mode");
-          else p.set("mode", next);
-          for (const key of ["day", "returnView", "scope", "pool", "season", "view"]) p.delete(key);
-          return p;
-        },
-        { replace: true },
-      );
+      setSearchParams((prev) => paramsForMode(prev, next), { replace: true });
     },
     [setSearchParams],
   );
+
+  // #8811 (Codex P1 paa #8790): Saeson-matrixen og dags-tavlen melder deres ugemte kladde hertil. Et skift,
+  // der afmonterer fladen, spoerger foerst med fladens eget spoergsmaal; siger spilleren nej, sker intet.
+  const [seasonDirty, setSeasonDirty] = useState(false);
+  const [boardDirty, setBoardDirty] = useState(false);
+  const surface = embeddedSurface(mode, distributing);
+  const confirmLeave = (to: EmbeddedSurface) => {
+    const key = leaveConfirmKey(surface, to, { season: seasonDirty, board: boardDirty });
+    return !key || window.confirm(tr(key));
+  };
+  const requestMode = (next: PlanningMode) => {
+    if (!confirmLeave(embeddedSurface(next, false))) return;
+    changeMode(next);
+  };
+  // Et loeb aabnet fra Saeson: til Uge med loebet valgt. Har det aabne loeb i Uge selv en ugemt trup,
+  // staar bjaelken (Bliv her / Kassér / Gem og aabn) klar i Uge i stedet for at kassere den.
+  const openRaceFromSeason = (id: string) => {
+    if (!confirmLeave(null)) return;
+    if (requestSelect(id, { toWeek: true }) !== "go") changeMode("week");
+  };
   // "Fordel ryttere" paa en dag med flere loeb: den gamle dags-tavle for den dag. Med en ugemt trup eller
   // taktik paa det aabne loeb spoerges spilleren foerst (samme spoergsmaal som den gamle tavle stiller).
   const openDistribute = useCallback(
@@ -630,7 +661,7 @@ function Workbench() {
   );
   const closeDistribute = () => {
     const back: PlanningMode = searchParams.get("returnView") === "season" ? "season" : mode;
-    changeMode(back);
+    requestMode(back);
   };
 
   const actions = (
@@ -638,7 +669,7 @@ function Workbench() {
       <Segmented
         label={t("mode.label")}
         value={distributing ? null : mode}
-        onChange={(next: PlanningMode) => changeMode(next)}
+        onChange={(next: PlanningMode) => requestMode(next)}
         options={PLANNING_MODES.map((m) => ({ value: m, label: t(`mode.${m}`) }))}
       />
       {/* Punkt 2: i Uge kan ugestriben og loebslisten slaas til og fra; valget huskes pr. spiller. */}
@@ -883,14 +914,14 @@ function Workbench() {
           </h2>
         </div>
         <Suspense fallback={loader}>
-          <RaceHubBoard />
+          <RaceHubBoard onDirtyChange={setBoardDirty} />
         </Suspense>
       </section>
     );
   } else if (mode === "season") {
     other = (
       <Suspense fallback={loader}>
-        <SeasonView onSwitchView={(next: string) => changeMode(next === "season" ? "season" : "week")} />
+        <SeasonMatrixView onOpenRace={openRaceFromSeason} onDirtyChange={setSeasonDirty} />
       </Suspense>
     );
   } else if (mode === "month") {
