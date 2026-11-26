@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CERTAINTIES, certaintyStep } from "../../lib/potentialEstimateDisplay";
 import type { Certainty, PotentialView, PrognosisView } from "../../lib/potentialEstimateDisplay";
+import { SENTENCE_CASE } from "../ui/sentenceCase.ts"; // #8816
 
 // #6110 Udvikling 2.0 (spec §3.4, §3.6): potentialet som ét skønnet tal + ét ord for,
 // hvor sikkert skønnet er, og de to tomme tilstande. Komponenten er ren visning:
@@ -61,7 +62,7 @@ export function CertaintyMeter({ certainty }: { certainty: Certainty }) {
           <span key={word} className={`h-1 rounded-cz ${index < step ? "bg-cz-1" : "bg-cz-subtle"}`} />
         ))}
       </div>
-      <div className="mt-1.5 grid grid-cols-3 gap-1 font-data text-3xs uppercase tracking-[.08em] text-cz-3" aria-hidden="true">
+      <div className={`mt-1.5 grid grid-cols-3 gap-1 font-data text-3xs uppercase tracking-[.08em] text-cz-3 ${SENTENCE_CASE}`} aria-hidden="true">
         {CERTAINTIES.map((word, index) => (
           <span key={word} className={index === 1 ? "text-center" : index === 2 ? "text-right" : ""}>
             {t(`rider:potentialEstimate.certainty.${word}`)}

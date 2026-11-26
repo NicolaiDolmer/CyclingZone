@@ -48,6 +48,7 @@ import EffortPickerR5, { HardRiskLine } from "../../training/r5/EffortPickerR5.t
 import {
   effortOfLevel, planEffort, showsInjuryRisk, writeForLevel, writeForTrainingAtLevel,
 } from "../../training/r5/todayR5Model.ts"; // #8541
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 const LOG_DAYS = 7;
 
@@ -170,7 +171,7 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError, levelsOn = fa
             {focus ? tTraining(`dayPanel.dayType_${dayType}`) : t("profile.training.emptyFocus")}
           </span>
           {focus && session && (
-            <span className="mt-0.5 block font-mono text-3xs uppercase tracking-[0.06em] text-cz-3">
+            <span className={`mt-0.5 block font-mono text-3xs uppercase tracking-[0.06em] text-cz-3 ${SENTENCE_CASE}`}>
               {tTraining(`dayPanel.session_${session}`)}
             </span>
           )}
@@ -364,7 +365,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
           {tTraining("receipt.title")}
         </h3>
         {seasonStart && seasonState !== SEASON_RECEIPT_UNKNOWN && (
-          <span className="font-data text-3xs uppercase tracking-[.08em] text-cz-3">
+          <span className={`font-data text-3xs uppercase tracking-[.08em] text-cz-3 ${SENTENCE_CASE}`}>
             {/* #4293: overskriften sagde "Siden 28. aug" om en dato i FREMTIDEN.
                 Er sæsonen ikke begyndt, siger badgen hvornår den gør. Kender vi
                 ikke tilstanden, lover badgen ingen periode overhovedet. */}
@@ -376,7 +377,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-x-[18px] gap-y-[13px]">
         {ABILITY_CATEGORIES.map((cat) => (
           <div key={cat.key} className="min-w-0">
-            <span className="font-mono text-3xs font-bold uppercase tracking-widest text-cz-3">
+            <span className={`font-mono text-3xs font-bold uppercase tracking-widest text-cz-3 ${SENTENCE_CASE}`}>
               {t(`stats.categories.${cat.key}`)}
             </span>
             <div className="mt-[5px]">
@@ -488,7 +489,7 @@ function TrendCard({ riderId, runs, t, xp = false }) {
   ];
   return (
     <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-border rounded-cz py-[15px] px-[17px]">
-      <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+      <span className={`font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t ${SENTENCE_CASE}`}>
         {t("profile.training.trend.title")}
       </span>
       <div className={`grid ${xp ? "grid-cols-2" : "grid-cols-3"} gap-2 mt-2.5`}>

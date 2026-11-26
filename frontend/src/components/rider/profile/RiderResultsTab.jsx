@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import RaceLink from "../../RaceLink.jsx";
 import { groupRiderRaces, racesForSeason, riderResultTotals, seasonsInRaces } from "../../../lib/riderResultsTab.js";
 import { formatDate, formatNumber } from "../../../lib/intl.js";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 // Mobil: Løb | Plac | Point | Præmie. Desktop: + Dato, Klasse, Terræn.
 const GRID = "grid grid-cols-[minmax(0,1fr)_36px_40px_64px] sm:grid-cols-[80px_minmax(0,1fr)_78px_86px_48px_52px_96px] gap-2.5 px-4 items-center";
@@ -100,7 +101,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
     // Suffiks-konvention som resten af appen (formatCz/Historik): "1.490 CZ$".
     { key: "prize", value: `${formatNumber(totals.prize)} CZ$`, tone: "text-cz-success" },
   ];
-  const th = "font-mono text-3xs font-semibold uppercase tracking-wider text-cz-3";
+  const th = `font-mono text-3xs font-semibold uppercase tracking-wider text-cz-3 ${SENTENCE_CASE}`;
 
   return (
     <div className="flex flex-col gap-[13px]">
@@ -130,7 +131,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
           {totalDefs.map((d) => (
             <div key={d.key}>
               <div className={`font-mono tabular-nums text-xl font-bold ${d.tone ?? "text-cz-1"}`}>{d.value}</div>
-              <div className="text-3xs text-cz-3 uppercase tracking-wider">{t(`profile.results.totals.${d.key}`)}</div>
+              <div className={`text-3xs text-cz-3 uppercase tracking-wider ${SENTENCE_CASE}`}>{t(`profile.results.totals.${d.key}`)}</div>
             </div>
           ))}
         </div>

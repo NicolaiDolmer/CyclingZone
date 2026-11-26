@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
+import { SENTENCE_CASE } from "../ui/sentenceCase.ts"; // #8816
 
 // Ryttertype-badge (#49) — viser en rytters primær + sekundær type (top-2).
 // Læser de persisterede riders.primary_type/secondary_type-kolonner (beregnet
@@ -39,7 +40,7 @@ export default function RiderTypeBadge({ primaryType, secondaryType, size = "sm"
   // Synlig etiket kun i detalje-størrelsen (se header-kommentaren).
   const naturalTag = size === "md" ? (
     <span
-      className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3"
+      className={`font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 ${SENTENCE_CASE}`}
       data-testid="rider-type-natural-label"
     >
       {t("natural.label")}

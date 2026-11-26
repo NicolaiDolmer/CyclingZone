@@ -1,4 +1,5 @@
 import { ChevronDownIcon } from "./icons/index.jsx";
+import { SENTENCE_CASE } from "./sentenceCase.ts";
 
 // #3914 — delt fold-primitiv (etapesiden #3859/#3914-kontrakt, ejer-godkendt
 // 18/8). <details>-baseret (samme browser-native tilgængelighed som
@@ -18,7 +19,7 @@ export default function CollapsibleSection({ title, defaultOpen = false, meta = 
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 sm:px-5 py-4 select-none">
         <span className="text-[15px] font-semibold text-cz-1">{title}</span>
         <span className="flex items-center gap-2 shrink-0">
-          {meta && <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">{meta}</span>}
+          {meta && <span className={`font-data text-2xs uppercase tracking-[.08em] text-cz-3 ${SENTENCE_CASE}`}>{meta}</span>}
           <ChevronDownIcon size={16} className="text-cz-3 transition-transform duration-150 group-open:rotate-180" aria-hidden="true" />
         </span>
       </summary>

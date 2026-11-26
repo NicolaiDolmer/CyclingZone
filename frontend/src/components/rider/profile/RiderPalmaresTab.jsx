@@ -20,6 +20,7 @@ import { formatNumber } from "../../../lib/intl.js";
 import { supabase } from "../../../lib/supabase.js";
 import CareerFirstMomentRow from "../../CareerFirstMomentRow.jsx";
 import { isHiddenYouthCareerEvent } from "../../../lib/youthClassification.ts";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 // #3398 (Maiden Win Engine) — permanent palmarès-spor: en "first" skal kunne
 // genfindes på rytterens egen profil, ikke kun dashboardet/løbssiden i det
@@ -137,7 +138,7 @@ export default function RiderPalmaresTab({ riderId, seasonRows, loadFailed = fal
     { key: "points", value: formatNumber(totals.points) },
     { key: "prize", value: `${formatNumber(totals.prize)} CZ$`, tone: "text-cz-success" },
   ];
-  const tileLabel = "text-3xs text-cz-3 uppercase tracking-wider";
+  const tileLabel = `text-3xs text-cz-3 uppercase tracking-wider ${SENTENCE_CASE}`;
 
   return (
     <div className="flex flex-col gap-[13px]">

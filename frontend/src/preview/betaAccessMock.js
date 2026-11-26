@@ -121,6 +121,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "development_xp_model", // #6110 Hjaelp XP-tvillingerne (binaert, off)
   "training_page_r5", // #7947 I dag-fanen R5 (binaert, off; ?trainingR5=1 viser den)
   "training_effort_levels", // #8570 Hjaelp Let/Mellem/Haard (binaert, off)
+  "sentence_case_8725", // #8725 (off; ?sentenceCase=on paa preview)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
@@ -207,6 +208,19 @@ export function previewTrainingR5Enabled() {
 }
 previewTrainingR5Enabled();
 
+// #8725: små labels i sentence case er OFF på preview (som i prod); ?sentenceCase=on viser dem, ?sentenceCase=off slukker.
+function previewSentenceCaseEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("sentenceCase");
+    if (param === "on") localStorage.setItem("cz_mock_sentence_case", "1");
+    if (param === "off") localStorage.setItem("cz_mock_sentence_case", "0");
+    return localStorage.getItem("cz_mock_sentence_case") === "1";
+  } catch {
+    return false;
+  }
+}
+previewSentenceCaseEnabled();
+
 // #7778: visningsvalg på brugeren (GET/PUT /api/me/ui-prefs), i hukommelsen.
 let uiPrefs = {};
 
@@ -219,6 +233,7 @@ function playerFlags() {
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
     if (key === "training_train_now_bonus") return [key, previewTrainNowBonusEnabled()];
     if (key === "training_page_r5") return [key, previewTrainingR5Enabled()];
+    if (key === "sentence_case_8725") return [key, previewSentenceCaseEnabled()];
     // #8540: ?xp=1 taender XP-kontakten paa preview, saa profilens Udvikling-fane kan ses med XP-linjer.
     if (key === "development_xp_model" && previewXpLinesActive()) return [key, true];
     if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];

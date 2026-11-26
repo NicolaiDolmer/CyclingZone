@@ -16,6 +16,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { criticalPower, powerDurationCurve, cogganZones, WATT_PROFILE_KEYS } from "../../../lib/physiologyModel.js";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 const DATA_FONT = '"Inter Tight", "Inter Tight Fallback", system-ui, sans-serif';
 
@@ -70,7 +71,7 @@ function HeadlineCard({ label, big, unit, sub, riderVal, meanVal, divLabel }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-3xs font-semibold uppercase tracking-widest text-cz-3">{label}</span>
+        <span className={`font-mono text-3xs font-semibold uppercase tracking-widest text-cz-3 ${SENTENCE_CASE}`}>{label}</span>
         <DeltaTag pct={deltaPct(riderVal, meanVal)} />
       </div>
       <div className="flex items-baseline gap-1.5 mt-[7px] mb-[3px]">
@@ -132,11 +133,11 @@ function CriticalPowerCard({ cp, lang, t }) {
       <div className="flex gap-[18px] flex-wrap">
         <div>
           <div className="font-mono tabular-nums text-xl font-bold text-cz-1">{fmtW(cp.cpWatts, lang)} <span className="text-2xs font-normal text-cz-3">W</span></div>
-          <div className="text-3xs text-cz-3 uppercase tracking-wider">{t("profile.physio.cp.cp")}</div>
+          <div className={`text-3xs text-cz-3 uppercase tracking-wider ${SENTENCE_CASE}`}>{t("profile.physio.cp.cp")}</div>
         </div>
         <div>
           <div className="font-mono tabular-nums text-xl font-bold text-cz-1">{fmtWkg(cp.wPrimeKj)} <span className="text-2xs font-normal text-cz-3">kJ</span></div>
-          <div className="text-3xs text-cz-3 uppercase tracking-wider">{t("profile.physio.cp.wprime")}</div>
+          <div className={`text-3xs text-cz-3 uppercase tracking-wider ${SENTENCE_CASE}`}>{t("profile.physio.cp.wprime")}</div>
         </div>
       </div>
       <p className="mt-2 text-2xs text-cz-2 leading-snug">{t("profile.physio.cp.read")}</p>

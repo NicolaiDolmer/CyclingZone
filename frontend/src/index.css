@@ -286,6 +286,9 @@ video {
    longer leaves the hover state behind. That is a behaviour change on phones;
    v3's plain :hover is kept until someone decides otherwise on purpose. */
 @custom-variant hover (&:hover);
+/* #8725: beta-kontakten sentence_case_8725 sætter data-sentence-case på <html>;
+   `sentence:` slår kittets små versal-labels fra (lib/sentenceCaseFlag.ts). */
+@custom-variant sentence (&:is([data-sentence-case] *));
 
 /* `inline`: utilities get the VALUE, not var(--token). Required because the
    project's own :root tokens reuse Tailwind's namespaces (--radius-sm = 5px,

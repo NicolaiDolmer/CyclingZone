@@ -43,6 +43,7 @@ import { riderReputationBand, riderReputationProgress, riderReputationValue } fr
 import { formatNumber } from "../../../lib/intl.js";
 import { squadBadgeKey } from "../../../lib/squadBadge.ts";
 import { AlertTriangleIcon, CategoryTag, HeroStats, StarIcon, ChevronRightIcon, Portal } from "../../ui";
+import { SENTENCE_CASE } from "../../ui/sentenceCase.ts"; // #8816
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
 const DIVISION_CHIP = "rgb(96 165 250)";
@@ -125,7 +126,7 @@ function ReputationEventList({ events = [], open, onClose, dialogRef, position }
     <Portal>
       <div ref={dialogRef} id="rider-reputation-details" role="dialog" aria-modal="true" aria-labelledby="rider-reputation-dialog-title" onKeyDown={handleDialogKeyDown} style={position ? { top: position.top, left: position.left, maxHeight: position.maxHeight } : undefined} className="fixed bottom-[76px] left-4 right-4 z-overlay max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:bottom-auto sm:left-auto sm:right-auto sm:w-[320px] sm:z-dropdown">
         <div className="flex items-center justify-between gap-3 mb-2">
-          <p id="rider-reputation-dialog-title" className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">{t("profile.reputation.whyTitle")}</p>
+          <p id="rider-reputation-dialog-title" className={`font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 ${SENTENCE_CASE}`}>{t("profile.reputation.whyTitle")}</p>
           <button ref={closeButtonRef} type="button" onClick={onClose} className="text-xs text-cz-3 underline underline-offset-2">{t("profile.reputation.close")}</button>
         </div>
         {rows.length ? (
@@ -139,7 +140,7 @@ function ReputationEventList({ events = [], open, onClose, dialogRef, position }
                 <li key={`${event.dedupe_key || event.event_kind || "event"}-${index}`} className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 text-xs">
                   <span className="font-data tabular-nums text-cz-1">+{formatNumber(Number(event.form_points || 0), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
                   <span className="min-w-0 truncate text-cz-2">{label}</span>
-                  <span className="col-start-2 min-w-0 truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">{raceName}</span>
+                  <span className={`col-start-2 min-w-0 truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3 ${SENTENCE_CASE}`}>{raceName}</span>
                 </li>
               );
             })}
@@ -322,7 +323,7 @@ export default function RiderProfileHero({
             <span aria-hidden="true" className="font-display text-[26px] sm:text-[30px] leading-none text-cz-2">
               {(rider.firstname?.[0] ?? "")}{(rider.lastname?.[0] ?? "")}
             </span>
-            <span className="font-data text-3xs uppercase tracking-[.14em] text-cz-3">{t("profile.hero.photoFallback")}</span>
+            <span className={`font-data text-3xs uppercase tracking-[.14em] text-cz-3 ${SENTENCE_CASE}`}>{t("profile.hero.photoFallback")}</span>
           </div>
           <div className="min-w-0">
             {/* Navnet øverst (ejer-feedback: sidens vigtigste ord først; tags er metadata) */}
@@ -337,7 +338,7 @@ export default function RiderProfileHero({
                 : <CategoryTag>{typeLabel}</CategoryTag>}
               {divisionLabel && (
                 <span
-                  className="text-3xs uppercase font-bold tracking-wide px-2 py-0.5 rounded-cz-pill text-white"
+                  className={`text-3xs uppercase font-bold tracking-wide px-2 py-0.5 rounded-cz-pill text-white ${SENTENCE_CASE}`}
                   style={{ backgroundColor: DIVISION_CHIP }}
                 >
                   {divisionLabel}
@@ -345,7 +346,7 @@ export default function RiderProfileHero({
               )}
               {squadKey && <CategoryTag>{t(`header.${squadKey}`)}</CategoryTag>}
               {isU23 && <CategoryTag>{t("header.u23")}</CategoryTag>}
-              <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 inline-flex items-center gap-1.5">
+              <span className={`font-data text-2xs uppercase tracking-[.08em] text-cz-3 inline-flex items-center gap-1.5 ${SENTENCE_CASE}`}>
                 <Flag code={rider.nationality_code} />
                 {age != null && <span>{t("header.ageYears", { age })}</span>}
                 {rider.height != null && <span>{t("header.heightCm", { height: rider.height })}</span>}
@@ -368,7 +369,7 @@ export default function RiderProfileHero({
               <p className="text-cz-2 text-sm font-semibold mt-2 inline-flex items-center gap-1.5">
                 <TeamLink id={rider.team?.id} className="hover:text-cz-accent-t transition-colors">{teamName}</TeamLink>
                 {isAiTeam && (
-                  <span className="text-3xs uppercase font-bold tracking-wide bg-cz-subtle text-cz-3 border border-cz-border px-1 py-0.5 rounded-cz">
+                  <span className={`text-3xs uppercase font-bold tracking-wide bg-cz-subtle text-cz-3 border border-cz-border px-1 py-0.5 rounded-cz ${SENTENCE_CASE}`}>
                     {t("profile.hero.aiTag")}
                   </span>
                 )}

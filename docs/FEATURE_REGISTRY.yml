@@ -566,6 +566,18 @@ features:
     roadmap_en: "Rider card: the small icon next to every rider name opens his card with abilities, value, contract and how he is doing in the race."
     roadmap_da: "Rytterkort: det lille ikon ved hvert rytternavn åbner rytterens kort med evner, værdi, kontrakt og hvordan han klarer sig i løbet."
 
+  - id: sentence-case-labels
+    area: squad
+    title_en: Small labels in sentence case
+    title_da: Små labels uden versaler
+    state: building
+    ssot: docs/design/TASTE.md
+    epic: 8725
+    verified: 2026-11-26
+    decision: ejer-beslutning
+    decide_by: 2026-12-10
+    note: "Kontakt sentence_case_8725 (seedet off, migration 2026-11-26) i kittet og menuen; ejeren afgør tyngde/størrelse på før/efter-billederne før beta."
+
   - id: race-library-v2
     area: stats
     title_en: Calendar race card and race history library
