@@ -69,15 +69,28 @@ export function potentialViewOf(source: unknown): PotentialView | null {
 // #8523 (spec 2026-11-20 §5): den samlede prognose for egne ryttere, "fortsætter du
 // den nuværende fart, ender du omkring her ved toppen". Serveren regner den; feltet
 // findes kun for egne ryttere med tændt flag.
+// #8604 Model 2 (kontakten prognosis_model2): samme ene tal, mærket model 2, og et afrundet
+// interval, som kun Udvikling viser. Uden kontakten findes de to felter ikke.
+export type PrognosisBand = { lo: number; hi: number };
 export type PrognosisView =
-  | { hidden: false; value: number }
+  | { hidden: false; value: number; model?: 2; band?: PrognosisBand }
   | { hidden: true; reason: "noEstimate" | "pastPeak" };
+
+function bandOf(raw: unknown, value: number): PrognosisBand | null {
+  const band = raw as { lo?: unknown; hi?: unknown } | null | undefined;
+  if (!band || !finite(band.lo) || !finite(band.hi) || band.lo > value || band.hi < value) return null;
+  return { lo: band.lo, hi: band.hi };
+}
 
 /** Læser `prognosisView`. null = feltet mangler (andres rytter eller slukket flag). */
 export function prognosisViewOf(source: unknown): PrognosisView | null {
   const raw = (source as { prognosisView?: unknown } | null | undefined)?.prognosisView;
   if (!raw || typeof raw !== "object") return null;
   const view = raw as Record<string, unknown>;
+  if (view.hidden === false && finite(view.value) && view.model === 2) {
+    const band = bandOf(view.band, view.value);
+    return { hidden: false, value: view.value, model: 2, ...(band ? { band } : {}) };
+  }
   if (view.hidden === false && finite(view.value)) return { hidden: false, value: view.value };
   if (view.hidden === true && (view.reason === "noEstimate" || view.reason === "pastPeak")) {
     return { hidden: true, reason: view.reason };

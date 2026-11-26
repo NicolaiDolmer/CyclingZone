@@ -293,6 +293,19 @@ function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projectio
     ...(prognosisView
       ? [{ label: t("riders:potentialNumber.prognosis"), value: <PrognosisValue view={prognosisView} />, cls: "font-normal" }]
       : []),
+    // #8604 Model 2: intervallet hører kun til i Udvikling og snævrer ind med flere trænede dage.
+    ...(prognosisView && !prognosisView.hidden && prognosisView.band && prognosisView.band.lo < prognosisView.band.hi
+      ? [{
+        id: "prognosis-band",
+        label: t("riders:potentialNumber.prognosisBand"),
+        value: (
+          <span title={t("riders:potentialNumber.prognosisBandTitle")} data-testid="prognosis-band">
+            {t("riders:potentialNumber.prognosisBandValue", { lo: prognosisView.band.lo, hi: prognosisView.band.hi })}
+          </span>
+        ),
+        cls: "font-normal text-cz-2",
+      }]
+      : []),
   ];
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">

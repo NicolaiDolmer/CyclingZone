@@ -95,9 +95,28 @@ const OWN_IDS = new Set([
   ...(PREVIEW_YOUTH_RIDERS as Array<{ id: string }>).map((rider) => rider.id),
 ]);
 
+// #8604: ?prognosisModel=2 viser Model 2 (mærket og intervallet), =1 går tilbage. Huskes
+// som de andre preview-kontakter. Standard er den nuværende model, så snapshots står.
+const MODEL_KEY = "cz_mock_prognosis_model";
+function previewModel2(): boolean {
+  try {
+    const param = new URLSearchParams(window.location.search).get("prognosisModel");
+    if (param === "2") localStorage.setItem(MODEL_KEY, "2");
+    if (param === "1") localStorage.removeItem(MODEL_KEY);
+    return localStorage.getItem(MODEL_KEY) === "2";
+  } catch {
+    return false;
+  }
+}
+previewModel2();
+
 // Opdigtet prognose: lidt under skønnet, så tallet ikke ligner skønnet selv.
 function prognosisFor(view: PotentialView): PrognosisView {
-  return view.hidden ? { hidden: true, reason: "noEstimate" } : { hidden: false, value: Math.max(0, view.value - 4) };
+  if (view.hidden) return { hidden: true, reason: "noEstimate" };
+  const value = Math.max(0, view.value - 4);
+  return previewModel2()
+    ? { hidden: false, value, model: 2, band: { lo: Math.max(0, value - 3), hi: Math.min(view.value, value + 3) } }
+    : { hidden: false, value };
 }
 
 export function previewEstimate(id: string, seed?: SeedEstimate) {
