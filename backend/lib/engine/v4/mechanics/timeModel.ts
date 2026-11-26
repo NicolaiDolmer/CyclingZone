@@ -690,15 +690,15 @@ export const VALLEY_SELECTION_7645_TUNING = freeze({
   // Hoejst saa mange hjaelpere pr. hold foerer jagten eller forsvaret.
   maxWorkersPerTeam: 4,
   // Jagtens fart: sekunder pr. km pr. foerende hjaelper, med et loft pr. km.
-  chaseSecondsPerKmPerRider: 1.5,
-  chaseMaxSecondsPerKm: 8,
+  chaseSecondsPerKmPerRider: 1,
+  chaseMaxSecondsPerKm: 5,
   // Forsvaret foran: et hold forsvarer, naar dets bedste mand er blandt forgruppens
   // forreste saa mange kandidater. Sekunder pr. km pr. hjaelper, med et loft pr. km.
-  holdTopRankInFront: 3,
+  holdTopRankInFront: 5,
   holdSecondsPerKmPerRider: 1,
   holdMaxSecondsPerKm: 5,
   // Hvor langt (km) en hjaelper kan foere jagt eller forsvar paa en etape.
-  workerBudgetKm: 15,
+  workerBudgetKm: 10,
 });
 
 export type ValleySelection7645Tuning = typeof VALLEY_SELECTION_7645_TUNING;
