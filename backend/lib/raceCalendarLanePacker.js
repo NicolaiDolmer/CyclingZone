@@ -453,10 +453,6 @@ function solveContiguousStarts({
     const loads = [];
     for (let load = hi; load >= lo; load--) loads.push(load);
     if (letFoerst) loads.reverse();
-    // #8830: koerer en GT under baandets midte, faar GT'en en makker foer den koerer alene
-    // (to loeb pr. loebsdag foerst). Ellers bliver GT-ugerne til loebsdage med eet loeb.
-    // Kun med baand (fra S6) og en aktiv GT; ellers er raekkefoelgen uaendret.
-    else if (baand != null && gtAktiv) loads.sort((a, b) => (a === 1) - (b === 1) || a - b);
     for (const load of loads) {
       const nye = load - carriedStages;
       if (nye < 0) continue;

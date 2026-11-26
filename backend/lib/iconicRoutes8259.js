@@ -1,15 +1,17 @@
 // backend/lib/iconicRoutes8259.js
 // #8259 (ejer 26/11 paa #5841, punkt 7): "det er voldsomt vigtigt, at ikoniske loeb forbliver
 // ikoniske". Monumenterne har allerede en fast, haandlavet rute (race_pool.authored_route,
-// #6857). Denne fil er FORSLAGET til de naeste: de kendte endagsklassikere i alle fire
-// seniordivisioner, hver med de afgoerende stykker (stigninger, mure, brosten- og
-// grussektorer) og en afslutning der ligner det rigtige loeb.
+// #6857). Denne fil er de naeste: de kendte endagsklassikere i alle fire seniordivisioner,
+// hver med de afgoerende stykker (stigninger, mure, brosten- og grussektorer) og en
+// afslutning der ligner det rigtige loeb.
 //
-// STATUS: FORSLAG. Intet her laeses af generatoren eller skrives til databasen. Ejeren ser
-// listen og profilerne i PR'en og vaelger; foerst derefter skrives de valgte ruter som en
-// idempotent migration (applies post-merge, #2642), og generatorens monument-vagt udvides
-// til de valgte loeb. Navnene paa stigninger og sektorer er spillets egne varianter, samme
-// konvention som monumenternes ruter.
+// STATUS: GODKENDT (ejer 26/11 aften, #8830): alle ruter her er faste fra S6. Migrationen
+// database/2026-11-26-8830-iconic-routes.sql skriver dem i race_pool.authored_route
+// (genereret af backend/scripts/dev/generateIconicRoutesSql8830.mjs; testen holder SQL og
+// fil ens). Ungdomsudgaverne (#7471) koerer samme rute skaleret som monumenterne.
+// Generatorens vagt for haandlavede ruter tillader monumenterne og netop disse loeb
+// (isFixedIconicRouteRace). Navnene paa stigninger og sektorer er spillets egne varianter,
+// samme konvention som monumenternes ruter.
 //
 // Formen er authored_route (raceIdentityTypes.validateAuthoredRoute) uden afledte felter:
 // hoejdemeterne regnes af ruten med generatorens egen formel, og finale-rampen for mur,
@@ -17,6 +19,7 @@
 // hver rute gennem den rigtige generator og benchmark-gatens etape-tjek.
 
 import { elevationGainS5 } from "./raceRouteGenerator.js";
+import { parseMiniEditionExternalId } from "./youthMiniEditions7471.js";
 
 /** @typedef {{ name: string, category: string, crest_km: number, length_km: number, avg_gradient: number, summit_finish: boolean }} AuthoredClimb */
 
@@ -403,7 +406,22 @@ export const ICONIC_ROUTE_PROPOSALS_8259 = Object.freeze([
   },
 ]);
 
-/** Forslagene som race_identity-seedens form (database/seed/race_identity.json), til migrationen efter ejerens valg. */
+/** De faste ruters race_pool-noegler (seniorens external_id). */
+export const ICONIC_ROUTE_EXTERNAL_IDS_8259 = Object.freeze(new Set(ICONIC_ROUTE_PROPOSALS_8259.map((p) => p.external_id)));
+
+/**
+ * #8830: maa loebet koere en haandlavet rute ud over monumenterne? Ja for de faste ruter
+ * her og for deres ungdomsudgaver (U23/junior har seniorens noegle bag et praefiks).
+ * @param {{ external_id?: string | null } | null | undefined} race
+ */
+export function isFixedIconicRouteRace(race) {
+  const id = race?.external_id;
+  if (id == null) return false;
+  const senior = parseMiniEditionExternalId(id)?.seniorExternalId ?? String(id);
+  return ICONIC_ROUTE_EXTERNAL_IDS_8259.has(senior);
+}
+
+/** Ruterne som race_identity-seedens form (database/seed/race_identity.json), til migrationen. */
 export function iconicRouteSeedEntries8259(externalIds = ICONIC_ROUTE_PROPOSALS_8259.map((p) => p.external_id)) {
   const wanted = new Set(externalIds);
   return ICONIC_ROUTE_PROPOSALS_8259.filter((p) => wanted.has(p.external_id))

@@ -29,6 +29,7 @@ import { buildElevationProfile, elevationSeedKey } from "./routeElevationProfile
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 import { isAscendingOrder, REAL_STAGE_RACES, positionBucket, coarseClassOf } from "./stageOrderVariationGate.js";
 import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders, canonicalFinaleType, isFinishAllowed, roadFinishWeightsFor } from "./stageProfileTypes.js";
+import { isFixedIconicRouteRace } from "./iconicRoutes8259.js";
 // #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
 // afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
 import { FINALE_CLASS_BY_TYPE, FINALE_CLASSES, OVERALL_FINALE_BAND, TERRAIN_FINALE_BANDS } from "./stageFinaleMetrics.js";
@@ -1561,13 +1562,18 @@ export function orderGrandTourS5(rng, types) {
   const pool = types.slice();
   const take = (/** @type {string} */ t) => { const i = pool.indexOf(t); if (i === -1) return null; pool.splice(i, 1); return t; };
   const slots = new Array(n).fill(null);
-  const firstThirdEnd = Math.floor(n / 3); // indeks < firstThirdEnd = første tredjedel
-  const lastThirdStart = n - Math.floor(n / 3); // indeks >= lastThirdStart = sidste tredjedel
+  // #8830: en mini-GT (ungdom, #7471) er kortere end en rigtig GT. Tredjedelene rundes op,
+  // og den sene enkeltstart er sidste etape, saa kongeetapen kan ligge naestsidst i sidste
+  // tredjedel. Samme regel i benchmark-gatens checkGrandTour. Rigtige GT'er er uroerte.
+  const mini = n < GRAND_TOUR_MIN_STAGES;
+  const third = mini ? Math.ceil(n / 3) : Math.floor(n / 3);
+  const firstThirdEnd = third; // indeks < firstThirdEnd = første tredjedel
+  const lastThirdStart = n - third; // indeks >= lastThirdStart = sidste tredjedel
   const roll = rng(); // altid forbrugt
   const ttCount = pool.filter(isTimeTrial).length;
 
   if (ttCount >= 1) slots[0] = take("ttt") ?? take("itt");
-  const ittLast = ttCount >= 2 && roll >= GT_FLAT_FINISH_CHANCE;
+  const ittLast = ttCount >= 2 && (mini || roll >= GT_FLAT_FINISH_CHANCE);
   if (n >= 2) slots[n - 1] = ittLast ? take("itt") : (take("flat") ?? take("rolling") ?? null);
 
   const lateTt = pool.find(isTimeTrial);
@@ -2024,8 +2030,8 @@ function authoredFinishRamp(r, race) {
  */
 function buildAuthoredSingle(race) {
   // #6857 (Codex P2): fail-closed i generatoren selv (databasen har ingen constraint): en
-  // håndskreven rute gælder kun et endags-monument.
-  if (race?.race_type !== "single" || race?.race_class !== "Monuments") {
+  // håndskreven rute gælder kun et endags-monument og (#8830) de faste ikoniske ruter.
+  if (race?.race_type !== "single" || (race?.race_class !== "Monuments" && !isFixedIconicRouteRace(race))) {
     throw new TypeError(`authored_route requires a single-day Monuments race, got ${race?.race_type ?? "?"} / ${race?.race_class ?? "?"} (${race?.name ?? race?.id}, #6857)`);
   }
   const r = race.authored_route;

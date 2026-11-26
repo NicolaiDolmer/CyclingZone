@@ -363,7 +363,9 @@ export function checkGrandTour(race) {
 
   // Ugestrukturen. Tredjedele som generatoren: foerste = indeks < floor(n/3), sidste =
   // indeks >= n - floor(n/3).
-  const third = Math.floor(n / 3);
+  // #8830: en mini-GT (ungdom, kortere end GRAND_TOUR_MIN_STAGES) rundes op, samme regel
+  // som generatorens orderGrandTourS5. Rigtige GT'er doemmes uaendret.
+  const third = n < GRAND_TOUR_MIN_STAGES ? Math.ceil(n / 3) : Math.floor(n / 3);
   const firstThirdEnd = third;
   const lastThirdStart = n - third;
   const week = [];

@@ -23,6 +23,8 @@
 // mini-praefikset, og kun ungdomstrupperne laeser dem.
 
 import { createHash } from "node:crypto";
+// #8830 (ejer 26/11 aften): ungdommens overlap-baand har EEN kilde (S6: intet overlap).
+import { SQUAD_MULTI_RACE_DAY_SHARE_BAND } from "./calendarTierCaps.js";
 
 export const MINI_SQUADS = Object.freeze(["u23", "junior"]);
 
@@ -46,11 +48,11 @@ const PRESTIGE = Object.freeze({
 export const MINI_EDITION_RULES = Object.freeze({
   u23: Object.freeze({
     label: "U23", externalPrefix: "u23-mini-", gtStages: 7, monuments: 5, targetRaceDays: 40,
-    distanceScale: 0.75, stageRaceDivisor: 2, minStageRaceStages: 3, overlapShare: Object.freeze({ min: 0.25, max: 0.35 }),
+    distanceScale: 0.75, stageRaceDivisor: 2, minStageRaceStages: 3, overlapShare: SQUAD_MULTI_RACE_DAY_SHARE_BAND.u23,
   }),
   junior: Object.freeze({
     label: "Junior", externalPrefix: "jun-mini-", gtStages: 4, monuments: 5, targetRaceDays: 28,
-    distanceScale: 0.6, stageRaceDivisor: 3, minStageRaceStages: 3, overlapShare: Object.freeze({ min: 0.15, max: 0.25 }),
+    distanceScale: 0.6, stageRaceDivisor: 3, minStageRaceStages: 3, overlapShare: SQUAD_MULTI_RACE_DAY_SHARE_BAND.junior,
   }),
 });
 
@@ -206,12 +208,13 @@ function archetypeType(archetype) {
 
 /**
  * Hvilke ryttertyper et loeb er et maal for. Et etapeloeb har et samlet klassement og er
- * derfor ogsaa et allround-maal; en Grand Tour er klatrernes og allroundernes loeb.
+ * derfor ogsaa et allround-maal; en Grand Tour er klatrernes og allroundernes loeb, og med
+ * sine to enkeltstarter (ogsaa mini-GT'en, #8830) et maal for enkeltstartsrytterne.
  * Loebets type kommer foerst fra identiteten (#6857), ellers fra terraenet.
  */
 export function riderTypeGoalsFor(row) {
   const goals = new Set();
-  if (isGrandTourRow(row)) { goals.add("klatrer"); goals.add("allround"); return goals; }
+  if (isGrandTourRow(row)) { goals.add("klatrer"); goals.add("allround"); goals.add("enkeltstart"); return goals; }
   const own = IDENTITY_TO_TYPE[row?.race_identity_type] ?? archetypeType(row?.terrain_archetype);
   if (own) goals.add(own);
   if (row?.race_type === "stage_race") goals.add("allround");
@@ -407,6 +410,7 @@ export function packMiniEditionCalendar({ squad, anchors = [], miniCatalog = [],
   for (const p of placements) for (const st of p.stagesPlaced) { delete st.localDate; delete st.minute; }
 
   if (selection.gtCount < 3) violations.push(`${squad}: ${selection.gtCount} of 3 mini Grand Tours (senior D1 has fewer GTs or a mini row is missing) (#7471)`);
+  if (selection.overlapShare > rules.overlapShare.max + 1e-9) violations.push(`${squad}: ${(100 * selection.overlapShare).toFixed(1)} % of race days have two youth races at once, above ${(100 * rules.overlapShare.max).toFixed(0)} % (#8830)`);
   if (selection.monumentCount < rules.monuments) violations.push(`${squad}: ${selection.monumentCount} of ${rules.monuments} mini monuments (#7471)`);
   for (const t of RIDER_TYPES) {
     if (selection.coverage[t] < MIN_GOALS_PER_RIDER_TYPE) violations.push(`${squad}: rider type ${t} has ${selection.coverage[t]} goal(s), below ${MIN_GOALS_PER_RIDER_TYPE} (#7471)`);
