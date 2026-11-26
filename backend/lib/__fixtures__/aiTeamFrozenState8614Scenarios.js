@@ -4,8 +4,11 @@
 // en frossen kopi af merge-base-koden (#7587). Scenariet faar sweep-funktionen udefra, saa samme
 // input kan koeres mod baade base og ny kode. Ingen balance-tal; kun hvem der registreres og tickes.
 
-/** En Supabase-fake der kun svarer paa app_config-opslag (kontakterne). */
-export function flagClient(values = {}) {
+/**
+ * En Supabase-fake der kun svarer paa app_config-opslag (kontakterne). `updatedAt` (#8808) giver
+ * en noegle sin updated_at; uden den svarer fake'en som foer (kun value).
+ */
+export function flagClient(values = {}, updatedAt = {}) {
   const reads = [];
   return {
     reads,
@@ -17,7 +20,8 @@ export function flagClient(values = {}) {
         async maybeSingle() {
           reads.push(`${table}:${key}`);
           if (table !== "app_config") return { data: null, error: { message: `unexpected table ${table}` } };
-          return { data: key in values ? { value: values[key] } : null, error: null };
+          if (!(key in values)) return { data: null, error: null };
+          return { data: key in updatedAt ? { value: values[key], updated_at: updatedAt[key] } : { value: values[key] }, error: null };
         },
       };
       return chain;
@@ -34,9 +38,9 @@ const DAYS = [5, 6, 7, 8, 9];
  * Returnerer hvem der blev registreret og tickede (uden klient-objekter), saa resultatet kan
  * sammenlignes bit for bit.
  */
-export async function runSweepScenario({ runNormalizedTrainingDateSweep, resetCache, flags }) {
+export async function runSweepScenario({ runNormalizedTrainingDateSweep, resetCache, flags, updatedAt = {}, logger = undefined }) {
   resetCache?.();
-  const supabase = flagClient(flags);
+  const supabase = flagClient(flags, updatedAt);
   const workRows = [{ team_id: "a3", game_days: DAYS, expected_rider_ids: ["a3r"], status: "pending", opening_conditions: { a3r: { fatigue: 0, form: 50 } } }];
   const context = {
     teams: [
@@ -57,6 +61,7 @@ export async function runSweepScenario({ runNormalizedTrainingDateSweep, resetCa
   const ticks = [];
   const summary = await runNormalizedTrainingDateSweep({
     supabase,
+    ...(logger ? { logger } : {}),
     now: new Date("2026-11-20T21:00:00Z"),
     elapsedClock: () => 0,
     loadIndex: async () => ({ today: "2026-11-20", jobs: [{ tickDate: "2026-11-20", season: { id: "s", number: 6 } }] }),
