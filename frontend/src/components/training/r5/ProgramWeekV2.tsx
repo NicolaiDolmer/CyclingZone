@@ -49,7 +49,7 @@ import {
 } from "./programR5Model.ts";
 import {
   PLAN_FOR_ALL, PLAN_FOR_STORE, PROGRAM_EFFORTS, allRidersRows, copyDayIntoDraftV2, daysFromToday, draftStepsV2,
-  effortChanged, planForSubject, resolvePlanFor, setDraftPass, shownEffort, type DraftV2, type ProgramEffort,
+  effortChanged, planForSubject, resolvePlanFor, setDraftPass, shownEffort, withDraftEfforts, type DraftV2, type ProgramEffort,
 } from "./programWeekV2Model.ts";
 import { ProgramAssignmentConfirmation } from "./ProgramR5.tsx";
 import RotationEditor, { type RotationPreviewDay } from "./RotationEditor.tsx";
@@ -337,11 +337,15 @@ export default function ProgramWeekV2({
       }}
     />
   ) : null;
-  const weekBlockEditor = weekPriority && editable && days ? (
+  // #8813: rettede indsatser i kladden laegges ind i ugeblokken, saa de flyttes med passene og
+  // bevares, naar et flyt/laas rydder dagens felt-kladde nedenfor.
+  const blockDays = days ? Object.fromEntries(Object.entries(days).map(([day, entry]) => [day, withDraftEfforts(entry, draft, day)])) as ProgramWeekDays : days;
+  const blockChanges = Object.fromEntries(Object.entries(weekDayDrafts).map(([day, block]) => [day, withDraftEfforts(block, draft, day)]));
+  const weekBlockEditor = weekPriority && editable && blockDays ? (
     <WeekBlockEditor
       key={sKey}
-      dayKeys={weekdays} today={todayWeekday} closed={todayLocked} days={days}
-      draft={sessionDraft} changes={weekDayDrafts} disabled={busy}
+      dayKeys={weekdays} today={todayWeekday} closed={todayLocked} days={blockDays}
+      draft={sessionDraft} changes={blockChanges} disabled={busy}
       dayLabel={dayName} sessionLabel={sessionLabel}
       racesFor={racesFor} placements={placements}
       onChange={(day, block) => {
@@ -858,7 +862,8 @@ function WeekV2({
               </button>
               {editable && open && (
                 <CopyDayMenuV2
-                  align={mobile || dayIndex < Math.ceil(weekdays.length / 2) ? "start" : "end"}
+                  // #8813: paa telefonen sidder knappen i kortets hoejre kant; menuen aabner indad.
+                  align={!mobile && dayIndex < Math.ceil(weekdays.length / 2) ? "start" : "end"}
                   label={tR5("programR5.copyDay", { day: dayName(weekday) })}
                   options={[
                     { value: "all", label: tR5("programR5.copyAll") },

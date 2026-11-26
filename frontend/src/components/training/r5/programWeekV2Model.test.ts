@@ -3,8 +3,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   PLAN_FOR_ALL, allRidersRows, copyDayIntoDraftV2, daysFromToday, defaultEffort, draftStepsV2, effortChanged,
-  passSession, planForSubject, resolvePlanFor, savedEffort, setDraftPass, shownEffort, type DraftV2,
+  passSession, planForSubject, resolvePlanFor, savedEffort, setDraftPass, shownEffort, withDraftEfforts, type DraftV2,
 } from "./programWeekV2Model.ts";
+import { moveWeekBlock } from "./programR5Model.ts";
 import { trainingW1V2On } from "./trainingW1V2Flag.ts";
 import type { ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
 
@@ -84,6 +85,47 @@ test("kopier en dag tager sessioner og rettede indsatser med", () => {
   // Uden kontakten kopieres kun sessionerne.
   const plain = copyDayIntoDraftV2(d, days, "mon", ["tue"], false);
   assert.equal(effortChanged(plain, "tue", 1), false);
+});
+
+// #8813 (Codex paa #8780): en kildes standardindsats kopieres som det niveau dagen viser, ikke som
+// null, saa maaldagens egen dagsindsats ikke overtager den ved gemning.
+test("kopier en dag tager den viste indsats med, ogsaa en standardindsats", () => {
+  const base = defaultEffort("tempo")!;
+  const dayLevel = base === "hard" ? "easy" : "hard";
+  const days = { ...week("tempo"), tue: { session: "tempo", effort: dayLevel } } as ProgramWeekDays;
+  assert.equal(shownEffort(days, {}, "mon", 0), base);
+  assert.equal(shownEffort(days, {}, "tue", 0), dayLevel);
+  const copied = copyDayIntoDraftV2({}, days, "mon", ["tue"], true);
+  // Visning og gemt vaerdi er ens: tirsdag viser mandagens niveau og sender det eksplicit.
+  assert.equal(shownEffort(days, copied, "tue", 0), base);
+  const tue = draftStepsV2(copied, W, true).filter((s) => s.weekday === "tue");
+  assert.equal(tue.length, 5);
+  assert.ok(tue.every((s) => s.effort === base), "hvert pas sendes med kildens niveau");
+  // Har maaldagen allerede samme niveau, er kopien ingen rettelse.
+  assert.deepEqual(copyDayIntoDraftV2({}, week("tempo"), "mon", ["tue"], true), {});
+});
+
+test("null i kladden foelger dagens indsats, som API'et", () => {
+  const days = week("tempo", { effort: defaultEffort("tempo") === "hard" ? "easy" : "hard" });
+  const d: DraftV2 = { "mon:0": { session: "sprint", effort: null } };
+  assert.equal(shownEffort(days, d, "mon", 0), days.mon.effort);
+});
+
+// #8813 (Codex paa #8780): ugeprioritet rydder dagens felt-kladde; indsatserne skal med i blokken.
+test("withDraftEfforts: rettede indsatser laegges ind i dagens feltindsatser", () => {
+  const entry = { slots: ["tempo", "sprint", "tempo", "tempo", "tempo"], lockSlot: null, slotEfforts: [null, "easy", null, null, null] as Array<"easy" | "normal" | "hard" | null> };
+  assert.equal(withDraftEfforts(entry, {}, "mon"), entry, "ingen rettelser = dagen uaendret");
+  assert.equal(withDraftEfforts(entry, { "mon:0": "sprint" }, "mon"), entry, "en ren sessionsrettelse flytter ingen indsats");
+  const merged = withDraftEfforts(entry, { "mon:3": { session: "tempo", effort: "hard" }, "tue:0": { session: "tempo", effort: "easy" } }, "mon");
+  assert.deepEqual(merged.slotEfforts, [null, "easy", null, "hard", null]);
+  assert.deepEqual(merged.slots, entry.slots);
+  // Flyttes passet, flytter indsatsen med (moveWeekBlock), og laasen bevarer den.
+  const moved = moveWeekBlock(merged, 3, 0);
+  assert.deepEqual(moved.slotEfforts, ["hard", null, "easy", null, null]);
+  assert.deepEqual({ ...merged, lockSlot: 3 }.slotEfforts, merged.slotEfforts);
+  // En dag uden gemte feltindsatser faar et fuldt array.
+  const fresh = withDraftEfforts({ session: "tempo" } as { session: string; slotEfforts?: null }, { "wed:2": { session: "tempo", effort: "easy" } }, "wed");
+  assert.deepEqual(fresh.slotEfforts, [null, null, "easy", null, null]);
 });
 
 test("Plan for: gemt valg, ellers foerste gruppe, ellers Alle ryttere", () => {

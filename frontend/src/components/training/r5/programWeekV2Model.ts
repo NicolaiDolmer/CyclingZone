@@ -46,20 +46,27 @@ export function savedEffort(days: ProgramWeekDays | null | undefined, weekday: s
   return isEffort(entry?.effort) ? entry!.effort as ProgramEffort : null;
 }
 
+/** Dagens egen indsats (den et felt uden egen indsats foelger), ellers null. */
+function dayEffort(days: ProgramWeekDays | null | undefined, weekday: string): ProgramEffort | null {
+  const effort = dayEntry(days, weekday)?.effort;
+  return isEffort(effort) ? effort : null;
+}
+
 /** Sessionens eget niveau (det motoren koerer, naar ingen indsats er valgt). */
 export function defaultEffort(session: string | null | undefined): ProgramEffort | null {
   return levelOfEffort(effortOf(session)) as ProgramEffort | null;
 }
 
 /**
- * Indsatsen der vises under passet. null = "Ingen indsats" (hvile, aktiv restitution, tomt felt).
- * En rettet indsats i kladden vinder; null i kladden betyder "foelg sessionens standard".
+ * Indsatsen der vises under passet (= den der gemmes). null = "Ingen indsats" (hvile, aktiv
+ * restitution, tomt felt). En rettet indsats i kladden vinder. null i kladden betyder det samme
+ * som i API'et (setProgramCell): feltet foelger dagens indsats, ellers sessionens standard.
  */
 export function shownEffort(days: ProgramWeekDays | null | undefined, draft: DraftV2, weekday: string, slot: number): ProgramEffort | null {
   const session = passSession(days, draft, weekday, slot);
   if (!session || isWholeDaySession(session)) return null;
   const edit = editOf(draft, weekday, slot);
-  const effort = edit && edit.effort !== undefined ? edit.effort : savedEffort(days, weekday, slot);
+  const effort = edit && edit.effort !== undefined ? edit.effort ?? dayEffort(days, weekday) : savedEffort(days, weekday, slot);
   return effort ?? defaultEffort(session);
 }
 
@@ -89,13 +96,18 @@ export function setDraftPass(
   const sameSession = cellSession(days, weekday, slot) === session;
   // En hel dag kender ingen indsats; en indsats der er den gemte, er ingen rettelse.
   const keepEffort = effortEdit !== undefined && !isWholeDaySession(session)
-    && (effortEdit ?? defaultEffort(session)) !== (savedEffort(days, weekday, slot) ?? defaultEffort(session));
+    && (effortEdit ?? dayEffort(days, weekday) ?? defaultEffort(session))
+      !== (savedEffort(days, weekday, slot) ?? defaultEffort(session));
   if (sameSession && !keepEffort) delete next[key];
   else next[key] = keepEffort ? { session, effort: effortEdit } : session;
   return next;
 }
 
-/** "Kopier en dag": kildens felter (og rettede indsatser) til maaldagene. */
+/**
+ * "Kopier en dag": kildens felter til maaldagene, med den indsats kildedagen VISER (#8813).
+ * En kildes standardindsats kopieres som et konkret niveau, saa maaldagens egen dagsindsats
+ * ikke overtager den ved gemning (null ville foelge maaldagen, ikke kilden).
+ */
 export function copyDayIntoDraftV2(
   draft: DraftV2,
   days: ProgramWeekDays | null | undefined,
@@ -108,16 +120,34 @@ export function copyDayIntoDraftV2(
     for (let slot = 0; slot < PROGRAM_SLOTS; slot += 1) {
       const session = passSession(days, draft, from, slot);
       if (!session) continue;
-      const effort = effortLevels && !isWholeDaySession(session)
-        ? (() => {
-          const edit = editOf(draft, from, slot);
-          return edit && edit.effort !== undefined ? edit.effort : savedEffort(days, from, slot);
-        })()
-        : undefined;
-      next = setDraftPass(next, days, target, slot, { session, ...(effort === undefined ? {} : { effort }) });
+      const effort = effortLevels && !isWholeDaySession(session) ? shownEffort(days, draft, from, slot) : null;
+      next = setDraftPass(next, days, target, slot, { session, ...(effort ? { effort } : {}) });
     }
   }
   return next;
+}
+
+/**
+ * Ugeprioritet (flyt/laas pas): dagens feltindsatser med kladdens rettede indsatser lagt paa,
+ * saa de flyttes med passene i ugeblokken og ikke tabes, naar dagens felt-kladde ryddes (#8813).
+ * Uden rettede indsatser paa dagen returneres dagen uaendret.
+ */
+export function withDraftEfforts<T extends { slotEfforts?: ReadonlyArray<ProgramEffort | null> | null }>(
+  entry: T,
+  draft: DraftV2,
+  weekday: string,
+): T & { slotEfforts?: Array<ProgramEffort | null> } {
+  let edited = false;
+  const slotEfforts = Array.from({ length: PROGRAM_SLOTS }, (_, slot) => {
+    const edit = editOf(draft, weekday, slot);
+    if (edit && edit.effort !== undefined && !isWholeDaySession(edit.session)) {
+      edited = true;
+      return edit.effort;
+    }
+    const own = Array.isArray(entry.slotEfforts) ? entry.slotEfforts[slot] : null;
+    return isEffort(own) ? own : null;
+  });
+  return edited ? { ...entry, slotEfforts } : entry as T & { slotEfforts?: Array<ProgramEffort | null> };
 }
 
 export type DraftStepV2 = { weekday: string; slotIndex: number; session: string; effort?: ProgramEffort | null };
