@@ -13,6 +13,7 @@ import {
   s6MailPrefsAllow,
   s6MailTestMatrix,
   selectS6MailCandidates,
+  splitS6MailHoldout,
 } from "./s6MailCampaign.js";
 import { buildS6SeasonEmail, s6AudienceForDaysAway } from "./emailTemplates.js";
 
@@ -354,4 +355,108 @@ test("segment: a rerun never mails a second account that shares an already conta
     emailLogRows: [{ user_id: contacted, dedupe_key: s6MailDedupeKey(EDITION, contacted), status: "sent" }],
   });
   assert.equal(rerun.length, 0);
+});
+
+// ── #8807 control group (holdout) ───────────────────────────────────────
+
+// Twelve managers across every audience and language, one of them muted on
+// re-read and one whose send fails, so every branch of the run loop is hit.
+function goldenInputs() {
+  const teams = [];
+  const users = [];
+  const ages = [1, 5, 20, 40, 90, null];
+  for (let i = 1; i <= 12; i += 1) {
+    teams.push(team({ id: `team-${i}`, user_id: `user-${i}`, name: `Hold ${i}` }));
+    users.push(
+      user({
+        id: `user-${i}`,
+        email: `m${i}@example.com`,
+        language: i % 2 ? "en" : "da",
+        last_seen: ages[i % ages.length] === null ? null : daysAgo(ages[i % ages.length]),
+      })
+    );
+  }
+  return { teams, users, emailLogRows: [] };
+}
+
+async function recordRun(runFn, mode, extra = {}) {
+  const calls = [];
+  const result = await runFn({
+    mode,
+    loadInputs: async () => goldenInputs(),
+    readSendEnabled: async () => {
+      calls.push(["readSendEnabled"]);
+      return true;
+    },
+    readFreshUser: async (id) => {
+      calls.push(["readFreshUser", id]);
+      const fresh = goldenInputs().users.find((u) => u.id === id);
+      return id === "user-4" ? { ...fresh, email_prefs: { s6_season: false } } : fresh;
+    },
+    sendEmail: async (candidate, key) => {
+      calls.push(["sendEmail", key, candidate.audience, candidate.language, candidate.teamId, candidate.email]);
+      return { status: candidate.userId === "user-7" ? "failed" : "sent" };
+    },
+    sleep: async (ms) => calls.push(["sleep", ms]),
+    now: NOW,
+    ...extra,
+  });
+  return { result, calls };
+}
+
+test("holdout off is bit-identical to the frozen pre-#8807 sender (dry-run and execute)", async () => {
+  const frozen = await import("./s6MailCampaign8807.golden.mjs");
+  for (const mode of ["dry_run", "execute"]) {
+    const before = await recordRun(frozen.runS6Mail, mode);
+    for (const extra of [{}, { holdoutFraction: 0 }, { holdoutFraction: "0" }, { holdoutFraction: null }]) {
+      const after = await recordRun(runS6Mail, mode, extra);
+      assert.deepEqual(after.result, before.result, `${mode} ${JSON.stringify(extra)}`);
+      assert.deepEqual(after.calls, before.calls, `${mode} ${JSON.stringify(extra)}`);
+    }
+  }
+  assert.deepEqual(
+    selectS6MailCandidates({ ...goldenInputs(), now: NOW }),
+    frozen.selectS6MailCandidates({ ...goldenInputs(), now: NOW })
+  );
+});
+
+test("holdout: share 0 returns the same list untouched", () => {
+  const list = select();
+  const { send, holdout } = splitS6MailHoldout(list, 0);
+  assert.equal(send, list);
+  assert.deepEqual(holdout, []);
+});
+
+test("holdout: held-out managers are counted, never mailed, and the split is stable across reruns", async () => {
+  const first = await recordRun(runS6Mail, "execute", { holdoutFraction: 0.5 });
+  const second = await recordRun(runS6Mail, "execute", { holdoutFraction: 0.5 });
+  assert.deepEqual(first.calls, second.calls, "same input, same control group");
+  const all = selectS6MailCandidates({ ...goldenInputs(), now: NOW });
+  const { send, holdout } = splitS6MailHoldout(all, 0.5);
+  assert.ok(holdout.length > 0 && send.length > 0, "the fixture has both arms at 0.5");
+  const mailed = first.calls.filter((c) => c[0] === "sendEmail").map((c) => c[1]);
+  for (const c of holdout) assert.equal(mailed.includes(s6MailDedupeKey(EDITION, c.userId)), false, c.userId);
+  assert.equal(first.result.total, send.length);
+  assert.equal(first.result.holdoutTotal, holdout.length);
+  assert.equal(first.result.holdoutFraction, 0.5);
+  const holdoutCells = Object.values(first.result.holdoutDistribution).flatMap((row) => Object.values(row));
+  assert.equal(holdoutCells.reduce((a, b) => a + b, 0), holdout.length);
+  assert.equal(JSON.stringify(first.result).includes("@"), false, "the report holds no addresses");
+});
+
+test("holdout: a larger share keeps every manager a smaller share held out", () => {
+  const all = selectS6MailCandidates({ ...goldenInputs(), now: NOW });
+  const small = new Set(splitS6MailHoldout(all, 0.2).holdout.map((c) => c.userId));
+  const large = new Set(splitS6MailHoldout(all, 0.5).holdout.map((c) => c.userId));
+  for (const id of small) assert.ok(large.has(id), id);
+});
+
+test("holdout: an out-of-range share is refused before anything is read", async () => {
+  for (const bad of [-0.1, 0.6, 10, "ti", Number.NaN]) {
+    await assert.rejects(
+      runS6Mail({ mode: "dry_run", holdoutFraction: bad, loadInputs: forbidden("loadInputs"), now: NOW }),
+      /holdout share/,
+      String(bad)
+    );
+  }
 });

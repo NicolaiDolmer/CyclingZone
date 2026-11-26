@@ -35,6 +35,7 @@
 // default is a pure read-only report. A test send goes to one given address
 // only and never writes email_log.
 
+import { normalizeHoldoutFraction, splitHoldout } from "./emailHoldout.js";
 import { isEmailTypeEnabled } from "./emailPrefs.js";
 import { daysSinceLastSeen } from "./managerActivity.js";
 import { S6_AUDIENCES, s6AudienceForDaysAway } from "./emailTemplates.js";
@@ -173,6 +174,15 @@ export function selectS6MailCandidates({
   return candidates;
 }
 
+/**
+ * #8807: the control group. Salted by the campaign, not the edition, so mail 2
+ * keeps mail 1's control group (emailHoldout.js). Share 0 returns the list
+ * untouched.
+ */
+export function splitS6MailHoldout(candidates, holdoutFraction = 0) {
+  return splitHoldout(candidates, { salt: S6_MAIL_EMAIL_KIND, fraction: holdoutFraction });
+}
+
 /** Report counts per audience and language. Numbers only, never addresses. */
 export function s6MailDistribution(candidates) {
   const counts = {};
@@ -217,10 +227,12 @@ export function s6MailTestMatrix() {
  * @param {number} [deps.rateLimitMs]
  * @param {Date} [deps.now]
  * @param {(line: string) => void} [deps.log]
+ * @param {number} [deps.holdoutFraction] #8807 control group share, default 0 (off)
  */
 export async function runS6Mail({
   mode,
   edition = S6_MAIL_DEFAULT_EDITION,
+  holdoutFraction = 0,
   loadInputs,
   testTo,
   sendTestEmail,
@@ -234,6 +246,7 @@ export async function runS6Mail({
 }) {
   assertEdition(edition);
   if (!["dry_run", "test", "execute"].includes(mode)) throw new Error(`runS6Mail: unknown mode ${mode}`);
+  const holdoutShare = normalizeHoldoutFraction(holdoutFraction);
 
   if (mode === "test") {
     if (!testTo || !String(testTo).includes("@")) throw new Error("runS6Mail: test mode needs one address");
@@ -256,15 +269,21 @@ export async function runS6Mail({
   }
 
   const inputs = await loadInputs();
-  const candidates = selectS6MailCandidates({ ...inputs, edition, now });
+  // #8807: held-out candidates are dropped here and only counted. At share 0
+  // nothing changes and the result has no holdout keys at all.
+  const { send: candidates, holdout } = splitS6MailHoldout(selectS6MailCandidates({ ...inputs, edition, now }), holdoutShare);
   const distribution = s6MailDistribution(candidates);
+  const holdoutReport =
+    holdoutShare > 0
+      ? { holdoutFraction: holdoutShare, holdoutTotal: holdout.length, holdoutDistribution: s6MailDistribution(holdout) }
+      : {};
 
   if (mode === "dry_run") {
-    return { mode, edition, total: candidates.length, distribution };
+    return { mode, edition, total: candidates.length, distribution, ...holdoutReport };
   }
 
   if ((await readSendEnabled()) !== true) {
-    return { mode, edition, refused: true, total: candidates.length, distribution };
+    return { mode, edition, refused: true, total: candidates.length, distribution, ...holdoutReport };
   }
 
   let sent = 0;
@@ -296,5 +315,5 @@ export async function runS6Mail({
     }
     await sleep(rateLimitMs);
   }
-  return { mode, edition, refused: false, total: candidates.length, distribution, sent, skipped, failed };
+  return { mode, edition, refused: false, total: candidates.length, distribution, sent, skipped, failed, ...holdoutReport };
 }
