@@ -2086,6 +2086,8 @@ function buildAuthoredSingle(race) {
 // first = etape 1, last = sidste etape, ellers etapens relative placering i tredjedele.
 export const A2_FLAT_POSITION_WEIGHTS = Object.freeze({ first: 9, early: 7, middle: 8, late: 8, last: 3 });
 /** Etapetyper en flad etape må erstatte (ejer 24/10: "på en bakket/kuperet etape"). */
+/** #8830 (ejer 26/11): kun etapeløb med mindst så mange etaper skal have en flad etape (§7e). */
+export const A2_MIN_STAGES_FOR_FLAT = 6;
 export const A2_REPLACEABLE_TYPES = Object.freeze(["rolling", "hilly"]);
 
 /**
@@ -2181,6 +2183,10 @@ export function buildA2FlatStage(race, stageNumber, { generatorVersion = S5_GENE
  * @param {any} race @param {any[]} stages
  */
 export function ensureFlatStageS5(race, stages) {
+  // #8830 (ejer 26/11, §7e ændret fra S6): et etapeløb på 5 etaper eller færre behøver ingen
+  // flad etape; 6+ har stadig mindst én. chooseA2FlatStage er uændret, så S5-scriptet
+  // s5FlatStageA2_2757.js (der arbejder på S5's skrevne ruter) dømmer som før.
+  if ((stages?.length ?? 0) < A2_MIN_STAGES_FOR_FLAT) return stages;
   const { stageNumber } = chooseA2FlatStage(race, stages);
   if (stageNumber == null) return stages;
   return stages.map((s) => (s.stage_number === stageNumber

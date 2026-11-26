@@ -50,6 +50,7 @@ import {
   chooseA2FlatStage,
   buildA2FlatStage,
   ensureFlatStageS5,
+  A2_MIN_STAGES_FOR_FLAT,
   chooseStageOrderVariation,
   applyStageOrder,
   varyStageOrderS5,
@@ -1778,6 +1779,8 @@ test("#2757 A2 property: hvert S5-etapeløb får én rigtig flad etape; alt ande
     assert.equal(after.length, before.length, where);
     const diff = after.map((p, i) => (JSON.stringify(p) === JSON.stringify(before[i]) ? null : i)).filter((i) => i !== null);
     if (before.some((p) => p.profile_type === "flat")) { assert.deepEqual(diff, [], `${where}: løb med flad etape røres ikke`); continue; }
+    // #8830 (§7e ændret 26/11): 5 etaper eller færre behøver ingen flad etape.
+    if (before.length < A2_MIN_STAGES_FOR_FLAT) { assert.deepEqual(diff, [], `${where}: kort etapeløb røres ikke`); continue; }
     const { stageNumber, candidates } = chooseA2FlatStage(race, before);
     if (stageNumber == null) { assert.deepEqual(diff, [], where); assert.deepEqual(candidates, [], where); continue; }
     swapped += 1;
