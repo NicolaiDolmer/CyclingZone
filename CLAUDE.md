@@ -42,9 +42,9 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-hits:
 
 ## Close-out (per session)
 
-1. **Issue:** `gh issue comment N --body "..."` eller `gh issue close N --reason completed` hvis verificeret. Claude/Codex lukker selv, når det er merget, tændt og set virke i prod med bevis på issuet (ejer 25/11, `GITHUB_WORKFLOW.md`).
+1. **Issue:** `gh issue comment N --body "..."` eller `gh issue close N --reason completed` hvis verificeret. Claude/Codex lukker selv med prod-bevis (`GITHUB_WORKFLOW.md`).
 2. **NOW.md:** opdatér ved hvert merge; budget **maks ~1.200 tok** (#1275). Trim gamle blokke direkte (historik = git-log + issues); opret IKKE `docs/archive/NOW-*.md` (#684/#750). **Obligatorisk:** opdatér **🎯 Next action** + nulstil **🤖 Working agent** til "Ingen aktiv session" (#558/#559).
-3. **MASTERPLAN.md:** opdatér hvis den prioriterede kø ændrede sig (budget ≤3.000 tok, #7631; rækkefølgen er ejer-godkendt — spørg før omprioritering). **FEATURE_REGISTRY.yml:** opdatér ved flag-flip, feature-luk eller ny kernefunktion, og kør `node scripts/generate-feature-status.mjs` (FEATURE_STATUS.md er genereret, aldrig håndredigeret).
+3. **MASTERPLAN.md:** opdatér hvis den prioriterede kø ændrede sig (budget ≤4.500 tok, #8718; rækkefølgen er ejer-godkendt — spørg før omprioritering). **FEATURE_REGISTRY.yml:** opdatér ved flag-flip, feature-luk eller ny kernefunktion, og kør `node scripts/generate-feature-status.mjs` (FEATURE_STATUS.md er genereret, aldrig håndredigeret).
 4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke). Samme rutine for `help.json` (en+da) ved ny/ændret spilmekanik (#1171).
 5. **Postmortem:** ved bugfix → `.claude/learnings/<dato>-<slug>.md`.
 6. **Token-hygiejne (obligatorisk):** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` — den `exit 1`'er hvis MEMORY.md/NOW.md/docs er over budget. Demotér nye lav-frekvens-HOT-entries til `MEMORY_REFERENCE.md` FØR du lukker.
