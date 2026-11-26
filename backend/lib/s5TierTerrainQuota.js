@@ -52,7 +52,7 @@ const MOUNTAIN_FAMILY_TYPES = Object.freeze(new Set(["mountain", "high_mountain"
 
 // #8259 (ejer 26/11, punkt 5 på #5841): færre flade og flere kuperede etaper end K-B-målet,
 // så afslutningsmålene kan nås. Kun de to kategorier flyttes; summen er uændret.
-export const S5_QUOTA_KB_TARGET = Object.freeze({ ...ACTIVE_TARGET, flat: ACTIVE_TARGET.flat - 5, hilly: ACTIVE_TARGET.hilly + 5 });
+export const S5_QUOTA_KB_TARGET = Object.freeze({ ...ACTIVE_TARGET, flat: ACTIVE_TARGET.flat - 2, hilly: ACTIVE_TARGET.hilly + 2 });
 
 // Margin til §5's gulve og rolling-loftet: én etape, så en regel ikke står på kanten.
 export const S5_QUOTA_FAMILY_MARGIN = 1;
