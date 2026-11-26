@@ -75,7 +75,7 @@ The incremental TanStack Query migration is specified in [FRONTEND_DATA_RULES.md
 /races                → RacesPage (hub: tabs Kalender · Bibliotek · Point & præmier · Indberét · Godkend [admin]; ?tab= styrer initial tab)
 /resultater           → ResultaterPage
 /rider-rankings       → RiderRankingsPage
-/race-archive         → redirect → /races?tab=library
+/race-archive         → redirect → /resultater?tab=archive
 /race-archive/:raceSlug → RaceHistoryPage
 /race-points          → RacePointsPage (alias for /races?tab=points)
 /admin                → AdminLayout (tabs: season · economy · users · data · system — pages/admin/*)
