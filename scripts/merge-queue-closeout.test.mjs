@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import {
-  parseIssueRefs, isBehindSwitch, shouldFlip, runCloseOut, buildNowLine, markerFor, commentBody, copenhagenDate, validTrain, main,
+  parseIssueRefs, isBehindSwitch, shouldFlip, runCloseOut, buildNowLine, markerFor, commentBody, copenhagenDate, validTrain, main, prInternality,
 } from './merge-queue-closeout.mjs';
 
 const SHA_A = 'a'.repeat(40);
@@ -13,7 +13,7 @@ const SHA_C = 'c'.repeat(40);
 const NOW = new Date('2026-11-04T12:00:00Z');
 
 // Fake gh med tilstand: kommentarer og labels pr. issue. Logger hvert kald.
-function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {}, openPrs = [] } = {}) {
+function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {}, openPrs = [], titles = {} } = {}) {
   const calls = [];
   const state = { comments: structuredClone(comments), labels: structuredClone(labels) };
   const gh = (args) => {
@@ -21,8 +21,9 @@ function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {}, openPrs = [] 
     const key = args.slice(0, 2).join(' ');
     if (fail[key]) return { status: 1, stdout: '' };
     if (args[0] === 'pr' && args[1] === 'view') {
+      // #8793: uden angivne filer er PR'en spillervendt, som i de aeldre tests.
       const pr = prs[args[2]];
-      return pr ? { status: 0, stdout: JSON.stringify(pr) } : { status: 1, stdout: '' };
+      return pr ? { status: 0, stdout: JSON.stringify({ files: [{ path: 'frontend/src/App.jsx' }], ...pr }) } : { status: 1, stdout: '' };
     }
     if (args[0] === 'pr' && args[1] === 'list') return { status: 0, stdout: JSON.stringify(openPrs) };
     if (args[0] === 'api' && args.includes('PATCH')) {
@@ -46,7 +47,7 @@ function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {}, openPrs = [] 
     }
     if (args[0] === 'issue' && args[1] === 'view') {
       if (fail[`labels ${args[2]}`]) return { status: 1, stdout: '' };
-      return { status: 0, stdout: JSON.stringify({ labels: (state.labels[args[2]] ?? []).map((name) => ({ name })) }) };
+      return { status: 0, stdout: JSON.stringify({ title: titles[args[2]] ?? '', labels: (state.labels[args[2]] ?? []).map((name) => ({ name })) }) };
     }
     if (args[0] === 'issue' && args[1] === 'edit') {
       const issue = args[2];
@@ -646,4 +647,94 @@ function Measure-Wait([string]$target, [string]$job, [string]$head='${SHA_A}', [
     failed: { ok: false, reads: 1 },
     wrong: { ok: false, reads: 1 },
   });
+});
+
+// ---------------------------------------------------------------- #8793 docs-PR på spillervendt issue
+
+// De falske lukninger fundet 26/11: en Refs-PR der kun rørte interne stier, på et type:feature-issue.
+const FALSE_CLOSES = [
+  { issue: 8045, pr: 8122, title: '[løbsfilm/motor] Angrebets forløb fortalt kronologisk', files: ['docs/superpowers/specs/2026-11-12-8045-angrebsforloeb-design.md'] },
+  { issue: 7892, pr: 7894, title: '[træning] Træthedsprognose to uger frem', files: ['docs/MASTERPLAN.md', 'docs/investigations/2026-11-07-roadmap-omprioritering-forslag.md'] },
+  { issue: 8568, pr: 8569, title: '[perf] Gør appens første indlæsning lettere', files: ['frontend/bundle-budget.json', 'scripts/build-stop.json'] },
+];
+const pathsOf = (files) => files.map((path) => ({ path }));
+
+for (const f of FALSE_CLOSES) {
+  test(`#${f.issue}: a Refs PR that only touches internal paths never flips the feature issue (#8793)`, () => {
+    const { gh, calls, state } = fakeGh({
+      prs: { [f.pr]: { title: `docs: x (Refs #${f.issue})`, body: `Refs #${f.issue}`, files: pathsOf(f.files) } },
+      labels: { [f.issue]: ['claude:todo', 'type:feature'] },
+      titles: { [f.issue]: f.title },
+    });
+    const res = runCloseOut({ train: [{ number: f.pr, sha: SHA_A }], gh, now: NOW });
+    assert.deepEqual(res.errors, []);
+    assert.deepEqual(res.flips, []);
+    assert.deepEqual(state.labels[f.issue], ['claude:todo', 'type:feature'], 'labelen flippes ikke');
+    assert.equal(calls.filter((a) => a[0] === 'issue' && a[1] === 'edit').length, 0);
+    assert.ok(calls.every((a) => !(a[0] === 'issue' && a[1] === 'close')), 'issuet forbliver åbent');
+    assert.match(state.comments[f.issue][0], /kun interne stier .*spillervendt; labels er ikke ændret/);
+    assert.match(state.comments[f.issue][0], /Verificeret:/, 'SHA-kommentaren skrives stadig');
+  });
+}
+
+test('#8793: an internal PR still flips an internal issue, and a player-facing PR still flips a feature issue', () => {
+  const { gh, state } = fakeGh({
+    prs: {
+      100: { title: 'ci: x', body: 'Refs #1', files: pathsOf(['scripts/a.mjs']) },
+      101: { title: 'docs: x', body: 'Refs #2', files: pathsOf(['docs/a.md']) },
+      102: { title: 'feat: x', body: 'Refs #3', files: pathsOf(['docs/a.md', 'frontend/src/pages/A.jsx']) },
+    },
+    labels: { 1: ['claude:todo', 'cat:ai-ops'], 2: ['claude:todo'], 3: ['claude:todo', 'type:feature'] },
+    titles: { 2: '[ops] noget internt' },
+  });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }, { number: 101, sha: SHA_B }, { number: 102, sha: SHA_C }], gh, now: NOW });
+  assert.deepEqual(res.errors, []);
+  assert.deepEqual(res.flips, [1, 2, 3]);
+  assert.deepEqual(state.labels[3], ['type:feature', 'claude:done']);
+});
+
+test('#8793: an issue without internal labels or prefix counts as player-facing (i tvivl = spillervendt)', () => {
+  const { gh, state } = fakeGh({ prs: { 100: { title: 'docs: x', body: 'Refs #1', files: pathsOf(['docs/a.md']) } }, labels: { 1: ['claude:todo', 'type:bug'] } });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW });
+  assert.deepEqual(res.flips, []);
+  assert.deepEqual(state.labels[1], ['claude:todo', 'type:bug']);
+});
+
+test('#8793: Closes still flips (GitHub closes the issue anyway), and unknown files or issue hold the flip', () => {
+  const closes = fakeGh({ prs: { 100: { title: 'docs: x', body: 'Closes #1', files: pathsOf(['docs/a.md']) } }, labels: { 1: ['claude:todo', 'type:feature'] } });
+  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: closes.gh, now: NOW }).flips, [1]);
+
+  const many = Array.from({ length: 100 }, (_, i) => `docs/f${i}.md`);
+  const full = fakeGh({ prs: { 100: { title: 'docs: x', body: 'Refs #1', files: pathsOf(many) } }, labels: { 1: ['claude:todo', 'type:feature'] } });
+  const resFull = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: full.gh, now: NOW });
+  assert.deepEqual(resFull.flips, []);
+  assert.match(full.state.comments[1][0], /filliste kunne ikke afgøres/);
+
+  const unread = fakeGh({ prs: { 100: { title: 'docs: x', body: 'Refs #1', files: pathsOf(['docs/a.md']) } }, labels: { 1: ['claude:todo'] }, fail: { 'labels 1': true } });
+  const resUnread = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: unread.gh, now: NOW });
+  assert.deepEqual(resUnread.flips, []);
+  assert.match(resUnread.errors.join('\n'), /#8793-tjekket; intet flip/);
+});
+
+test('#8793: a rerun after the hold is idempotent, and the comment is renewed if the hold changes', () => {
+  const setup = { prs: { 8122: { title: 'docs: x', body: 'Refs #8045', files: pathsOf(['docs/a.md']) } }, labels: { 8045: ['claude:todo', 'type:feature'] } };
+  const first = fakeGh(setup);
+  runCloseOut({ train: [{ number: 8122, sha: SHA_A }], gh: first.gh, now: NOW });
+  const again = fakeGh({ ...setup, comments: first.state.comments, labels: first.state.labels });
+  const rerun = runCloseOut({ train: [{ number: 8122, sha: SHA_A }], gh: again.gh, now: NOW });
+  assert.deepEqual(writes(again.calls), []);
+  assert.deepEqual(rerun.skippedComments, [{ issue: 8045, pr: 8122 }]);
+  // Issuet omklassificeres til internt: kommentaren fornyes, og labelen flippes nu.
+  const relabeled = fakeGh({ ...setup, comments: first.state.comments, labels: { 8045: ['claude:todo', 'type:docs'] } });
+  const res = runCloseOut({ train: [{ number: 8122, sha: SHA_A }], gh: relabeled.gh, now: NOW });
+  assert.deepEqual(res.updatedComments, [{ issue: 8045, pr: 8122 }]);
+  assert.deepEqual(res.flips, [8045]);
+});
+
+test('prInternality: only a complete, non-empty internal file list is internal', () => {
+  assert.equal(prInternality(pathsOf(['docs/a.md', 'scripts/b.mjs'])), true);
+  assert.equal(prInternality(pathsOf(['docs/a.md', 'backend/lib/x.js'])), false);
+  assert.equal(prInternality([]), 'unknown');
+  assert.equal(prInternality(undefined), 'unknown');
+  assert.equal(prInternality(pathsOf(Array.from({ length: 100 }, (_, i) => `docs/${i}.md`))), 'unknown');
 });

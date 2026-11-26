@@ -12,6 +12,9 @@
 //      kun kommentaren.
 //      #8222: en Refs-flip sker desuden kun, naar ingen ANDRE aabne PR'er refererer
 //      issuet (soegning via gh pr list; fejl/fuld side = ingen flip). Kommentaren siger hvorfor.
+//      #8793: en PR der kun roerer interne stier (docs, scripts, CI, tests) flipper aldrig
+//      et Refs-issue, der ikke selv er internt (lib/til-doers.mjs isInternalIssue). Ukendt
+//      filliste eller issue der ikke kan laeses = ingen flip.
 //   3. EEN samlet NOW-linje pr. tog, UDSKREVET (ikke committet). Valg + grund:
 //      koeen koerer typisk i et delt checkout, hvor sessionen kan have egne
 //      ucommittede NOW-rettelser; et auto-commit ville enten feje dem med eller
@@ -45,6 +48,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { numberPendingOnMain } from './patch-notes-number.mjs';
+import { isInternalChange, isInternalIssue } from './lib/til-doers.mjs';
 
 export const DEFAULT_REPO = 'NicolaiDolmer/CyclingZone';
 export const MARKER_PREFIX = 'merge-queue-closeout:v1';
@@ -126,16 +130,26 @@ function kindLabel(kind) {
   return kind === 'closes' ? 'lukker issuet (`Closes`)' : 'refererer issuet (`Refs`)';
 }
 
+// #8793: tekst der kun staar i en kommentar, hvor en intern PR holdt et spillervendt issue tilbage.
+const DOCS_HOLD_RE = /kun interne stier|filliste kunne ikke afgøres|issuet kunne ikke læses/;
+const DOCS_HOLD_TEXT = {
+  internal: 'rører kun interne stier (docs, scripts, CI, tests), og issuet er spillervendt',
+  unknown: "PR'ens filliste kunne ikke afgøres, og issuet er spillervendt",
+  'issue-unknown': 'issuet kunne ikke læses, så det kan ikke afgøres, om PR\'en er spillervendt levering',
+};
+
 // phase: 'verified' (efter toget, default) eller 'merged' (straks efter merget).
 // #8222: openPrs = numre paa andre AABNE PR'er der refererer issuet; 'unknown' = soegningen fejlede/var ufuldstaendig.
-export function commentBody({ pr, issue, sha, kind, deployVerified = true, phase = 'verified', behindSwitch = false, heldByOther = false, openPrs = [] }) {
+// #8793: docsHold = false eller en noegle i DOCS_HOLD_TEXT (intern PR paa et spillervendt Refs-issue).
+export function commentBody({ pr, issue, sha, kind, deployVerified = true, phase = 'verified', behindSwitch = false, heldByOther = false, openPrs = [], docsHold = false }) {
   const head = `${markerFor(pr, issue)}\nMerget via merge-køen: PR #${pr} som \`${shortSha(sha)}\` (${sha}).`;
   const openHold = openPrs === 'unknown' || (Array.isArray(openPrs) && openPrs.length > 0);
-  const flips = shouldFlip(kind, behindSwitch || heldByOther) && !openHold;
+  const flips = shouldFlip(kind, behindSwitch || heldByOther) && !openHold && !docsHold;
   const openText = openPrs === 'unknown'
     ? `PR'en ${kindLabel(kind)}; åbne PR'er på issuet kunne ikke afgøres, så labels er ikke ændret.`
     : `PR'en ${kindLabel(kind)}; issuet har stadig åbne PR'er (${(openPrs || []).map((n) => `#${n}`).join(', ')}), så labels er ikke ændret.`;
-  const holdText = openHold ? openText : heldByOther
+  const docsText = `PR'en ${kindLabel(kind)}, men ${DOCS_HOLD_TEXT[docsHold] ?? DOCS_HOLD_TEXT.internal}; labels er ikke ændret.`;
+  const holdText = docsHold ? docsText : openHold ? openText : heldByOther
     ? `PR'en ${kindLabel(kind)}; en anden PR på issuet ligger bag slukket kontakt, så labels er ikke ændret.`
     : `PR'en ${kindLabel(kind)} og ligger bag slukket kontakt; labels er ikke ændret.`;
   if (phase === 'merged') {
@@ -208,8 +222,9 @@ export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deploy
     let refs = [];
     let title = '';
     let behindSwitch = false;
+    let internalPr = 'unknown';
     try {
-      const view = gh(['pr', 'view', String(entry.number), '--repo', repo, '--json', 'body,title']);
+      const view = gh(['pr', 'view', String(entry.number), '--repo', repo, '--json', 'body,title,files']);
       const parsed = view.status === 0 ? parseJson(view.stdout) : undefined;
       if (!parsed || typeof parsed !== 'object') {
         result.errors.push(`PR #${entry.number}: body kunne ikke laeses`);
@@ -217,12 +232,13 @@ export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deploy
         title = String(parsed.title ?? '');
         refs = parseIssueRefs(parsed.body, entry.number);
         behindSwitch = isBehindSwitch(parsed.title, parsed.body);
+        internalPr = prInternality(parsed.files);
       }
     } catch (err) {
       result.errors.push(`PR #${entry.number}: ${err?.message ?? err}`);
     }
-    result.prs.push({ number: entry.number, sha: entry.sha, title, refs, behindSwitch });
-    loaded.push({ entry, refs, behindSwitch });
+    result.prs.push({ number: entry.number, sha: entry.sha, title, refs, behindSwitch, internalPr });
+    loaded.push({ entry, refs, behindSwitch, internalPr });
   }
   // Undtagelsen gælder pr. ISSUE, ikke pr. PR: en samle-PR (fx patch notes) der Refs'er et
   // issue, som en anden PR i toget holder bag slukket kontakt, må ikke flippe det.
@@ -231,10 +247,10 @@ export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deploy
     if (behindSwitch) for (const ref of refs) if (ref.kind === 'refs') heldInTrain.add(ref.issue);
   }
   const trainNumbers = new Set(train.map((e) => e.number));
-  for (const { entry, refs, behindSwitch } of loaded) {
+  for (const { entry, refs, behindSwitch, internalPr } of loaded) {
     if (!refs.length) say(`close-out PR #${entry.number}: ingen Refs/Closes-issues i PR-body.`);
     for (const ref of refs) {
-      try { closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch, heldInTrain, trainNumbers, gh, result, say }); }
+      try { closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch, internalPr, heldInTrain, trainNumbers, gh, result, say }); }
       catch (err) { result.errors.push(`#${ref.issue}: ${err?.message ?? err}`); }
     }
   }
@@ -245,6 +261,32 @@ export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deploy
 // En tidligere PR på issuet har skrevet, at den ligger bag slukket kontakt (kun egen-PR-teksten, ikke hold-teksten).
 function heldByEarlierPr(comments, issue) {
   return (comments ?? []).some((c) => c.body.includes(`${MARKER_PREFIX} pr=`) && c.body.includes(` issue=${issue} -->`) && c.body.includes('og ligger bag slukket kontakt'));
+}
+
+// #8793: gh pr view --json files giver hoejst de foerste 100 filer, saa en fuld side
+// kan skjule en spillervendt fil. true = kun interne stier, false = spillervendt, 'unknown' = kan ikke afgoeres.
+const PR_FILES_LIMIT = 100;
+export function prInternality(files) {
+  if (!Array.isArray(files) || files.length === 0 || files.length >= PR_FILES_LIMIT) return 'unknown';
+  return isInternalChange(files.map((f) => String(f?.path ?? ''))) ? true : false;
+}
+
+// #8793: holder en intern (eller ukendt) PR et Refs-issue tilbage? false = ingen hold.
+// Laeser issuet (labels + titel); det genbruges til label-flippet, saa der kun laeses een gang.
+function docsHoldFor(gh, repo, issue, internalPr) {
+  if (internalPr === false) return { hold: false, view: null };
+  const view = readIssue(gh, repo, issue);
+  if (!view) return { hold: 'issue-unknown', view: null };
+  if (isInternalIssue(view)) return { hold: false, view };
+  return { hold: internalPr === true ? 'internal' : 'unknown', view };
+}
+
+// { labels: [{name}], title } eller null.
+function readIssue(gh, repo, issue) {
+  const res = gh(['issue', 'view', String(issue), '--repo', repo, '--json', 'labels,title']);
+  const parsed = res.status === 0 ? parseJson(res.stdout) : undefined;
+  if (!parsed || !Array.isArray(parsed.labels)) return null;
+  return parsed;
 }
 
 const OPEN_PR_LIMIT = 100;
@@ -265,7 +307,7 @@ export function findOtherOpenPrs(gh, repo, issue, excluded = new Set()) {
   return hits.sort((a, b) => a - b);
 }
 
-function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch = false, heldInTrain = new Set(), trainNumbers = new Set(), gh, result, say }) {
+function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch = false, internalPr = false, heldInTrain = new Set(), trainNumbers = new Set(), gh, result, say }) {
   const pr = entry.number;
   const issue = ref.issue;
   const marker = markerFor(pr, issue);
@@ -273,14 +315,18 @@ function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behind
   const existing = comments?.find((c) => c.body.includes(marker));
   // Verificeret = sidste tilstand; 'merged' maa heller aldrig skrive oven i en afventende kommentar.
   const heldByOther = ref.kind === 'refs' && !behindSwitch && (heldInTrain.has(issue) || heldByEarlierPr(comments, issue));
+  const refsMayFlip = phase === 'verified' && ref.kind === 'refs' && !behindSwitch && !heldByOther;
+  // #8793: en docs-/scripts-PR er ikke levering paa et spillervendt issue. Closes er undtaget:
+  // GitHub lukker issuet alligevel, og et lukket issue maa ikke staa som todo.
+  const docs = refsMayFlip ? docsHoldFor(gh, repo, issue, internalPr) : { hold: false, view: null };
+  const docsHold = docs.hold;
   // #8222: Refs flipper kun uden andre aabne PR'er paa issuet. Closes er undtaget: GitHub lukker issuet alligevel.
-  const openPrs = phase === 'verified' && ref.kind === 'refs' && !behindSwitch && !heldByOther
-    ? findOtherOpenPrs(gh, repo, issue, trainNumbers)
-    : [];
+  const openPrs = refsMayFlip && !docsHold ? findOtherOpenPrs(gh, repo, issue, trainNumbers) : [];
   // #8222: en verificeret kommentar fornyes, naar aabne-PR-udfaldet har aendret sig siden (genkoersel/recovery).
   const openHold = openPrs === 'unknown' || openPrs.length > 0;
-  const upToDate = existing && (phase === 'merged' || (isVerifiedComment(existing.body) && OPEN_HOLD_RE.test(existing.body) === openHold));
-  const body = entry.sha ? commentBody({ pr, issue, sha: entry.sha, kind: ref.kind, deployVerified, phase, behindSwitch, heldByOther, openPrs }) : null;
+  const upToDate = existing && (phase === 'merged' || (isVerifiedComment(existing.body)
+    && OPEN_HOLD_RE.test(existing.body) === openHold && DOCS_HOLD_RE.test(existing.body) === Boolean(docsHold)));
+  const body = entry.sha ? commentBody({ pr, issue, sha: entry.sha, kind: ref.kind, deployVerified, phase, behindSwitch, heldByOther, openPrs, docsHold }) : null;
   if (comments === null) {
     result.errors.push(`#${issue}: kommentarer kunne ikke laeses; SHA-kommentar springes over (ingen dublet-risiko)`);
   } else if (upToDate) {
@@ -306,6 +352,11 @@ function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behind
     say(`close-out #${issue}: ${heldByOther ? `en anden PR på issuet (ikke PR #${pr})` : `PR #${pr}`} ligger bag slukket kontakt; claude:todo beholdes.`);
     return;
   }
+  if (docsHold) {
+    if (docsHold === 'issue-unknown') result.errors.push(`#${issue}: issuet kunne ikke laeses til #8793-tjekket; intet flip`);
+    say(`close-out #${issue}: PR #${pr} ${DOCS_HOLD_TEXT[docsHold]}; claude:todo beholdes.`);
+    return;
+  }
   if (openPrs === 'unknown') {
     result.errors.push(`#${issue}: åbne PR'er kunne ikke afgøres; intet flip`);
     say(`close-out #${issue}: åbne PR'er kunne ikke afgøres; claude:todo beholdes.`);
@@ -315,9 +366,8 @@ function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behind
     say(`close-out #${issue}: issuet har andre åbne PR'er (${openPrs.map((n) => `#${n}`).join(', ')}); claude:todo beholdes.`);
     return;
   }
-  const view = gh(['issue', 'view', String(issue), '--repo', repo, '--json', 'labels']);
-  const parsed = view.status === 0 ? parseJson(view.stdout) : undefined;
-  if (!parsed || !Array.isArray(parsed.labels)) { result.errors.push(`#${issue}: labels kunne ikke laeses; intet flip`); return; }
+  const parsed = docs.view ?? readIssue(gh, repo, issue);
+  if (!parsed) { result.errors.push(`#${issue}: labels kunne ikke laeses; intet flip`); return; }
   const names = parsed.labels.map((l) => String(l?.name ?? ''));
   if (!names.includes('claude:todo')) {
     say(`close-out #${issue}: intet claude:todo at flippe${names.includes('claude:done') ? ' (allerede claude:done)' : ''}.`);
