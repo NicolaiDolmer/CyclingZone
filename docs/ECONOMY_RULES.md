@@ -95,10 +95,20 @@ Migration: `database/2026-09-22-5443-best-role-data.sql`, nullable kolonner uden
 | Fri agent (visning) | Samme formel, kun UI-estimat, ryttere uden hold har `salary = NULL` i DB | `marketUtils.resolveRiderSalary` + frontend `marketValues.js` (parity-test `salaryRateParity.test.js`) |
 | Akademi/ungdom | **Samme `computeFrozenSalary`-formel som senior** siden #3989 (verificeret: `academyIntake.js`, `academyTransfer.js` importerer `computeFrozenSalary`, ikke `ACADEMY.SALARY_RATE`) | — |
 
-Ved auktionsfinalisering uden en aktiv sæson mellem afslutning og næste start
-regnes en ny kontrakts udløb fra den kommende sæson, eller senest afsluttede
-sæson + 1 (#5847). En eksisterende kontrakt arves uændret. Finanspostens
-`season_id` er stadig kun den faktisk aktive sæson og kan være NULL i pausen.
+**Fælles kontraktloft (#7138, ejer 23/10 + 26/11, valg A).** Enhver ny kontrakt løber
+højst til udgangen af indeværende sæson + 1 (`maxAllowedContractEndSeason`, gulv S6),
+uanset vej: starttrup, ungdomsauktion, akademioptag og -nedrykning, køb, bytte,
+auto-køb, admin-flyt og seed (`cappedContractTerm` i `contractSeed.js`). Hver vej beder om
+sin egen længde, men slutsæsonen klippes til loftet, og `contract_length` følger med.
+Forlængelse har samme loft (#7187). Eksisterende kontrakter røres ikke og arves uændret.
+
+**Sæsonpausen (#5847, #7138 ejer 26/11).** Når den forrige sæson er afsluttet og den
+næste ikke er startet, tæller den **kommende** sæson som indeværende for kontrakter og
+fyringsgebyr: aktiv → første `upcoming` → seneste `completed` + 1
+(`resolveContractSeasonNumber`; ved kortvarigt to aktive sæsoner tages den nyeste).
+Gælder auktion, handel, bytte, akademi, trupflyt, auto-køb, admin-flyt, starttrup,
+forlængelse og fyringsgebyr; aldrig sæson 1. Finanspostens `season_id` er stadig kun
+den faktisk aktive sæson og kan være NULL i pausen.
 
 **Lønnen venter på sin egen nøgle (#5443 ejer-beslutning 2, 20/9 aften).** Ordret: *"Løn skal ikke følge værdi, løn skal følge potentielle resultater + omdømme + evner og den slags ting."* Det er allerede designet sådan — lønnen er en andel af CPV, ikke af `market_value` — men CPV regnes af **samme modelkæde** som prisen. En tænding af v5 ville derfor flytte fremtidige lønkrav midt i kontraktforlængelserne ved sæsonskiftet. Derfor har løngrundlaget sin egen app_config-nøgle, `rider_production_value_model`, seedet `v4`: prisen kan gå på v5, mens lønkravene står stille, indtil ejeren selv flipper den anden nøgle. Løbende kontrakter er under alle omstændigheder frosne ved signering (#1309) — nøglen styrer kun grundlaget for **nye** kontrakter. Vagt: `valuationWageModelSplit.test.js` (med pris=v5 og løn=v4 er CPV bit-identisk over en fixture-population). Omdømme i lønnen er eget design (#1099), ikke en del af dette.
 
