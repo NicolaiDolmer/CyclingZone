@@ -153,7 +153,10 @@ test("W1 v2: the copy-day menu opens inside the day card", async ({ page }, test
   await monday.getByTestId("program-w1-copy-day").click();
   const menu = page.getByRole("menu");
   await expect(menu).toBeVisible();
-  const card = (await monday.boundingBox())!;
+  // Telefonen: inden for dagens kort (det klipper). Computeren: inden for ugens gitter (dagens
+  // kolonne er smallere end menuen, som derfor laegger sig ind over nabodagen).
+  const clip = testInfo.project.name.startsWith("mobile") ? monday : page.getByTestId("program-w1-week");
+  const card = (await clip.boundingBox())!;
   const box = (await menu.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(card.x - 1);
   expect(box.x + box.width).toBeLessThanOrEqual(card.x + card.width + 1);
