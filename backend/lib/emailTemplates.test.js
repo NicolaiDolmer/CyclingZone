@@ -901,9 +901,9 @@ for (const edition of ["before-start", "started"]) {
           // Hero: hosted PNG with an absolute URL, real alt text, and the file exists.
           const hero = mail.html.match(/<img class="cz-hero" src="([^"]+)" alt="([^"]+)"/);
           assert.ok(hero, "hero image");
-          assert.equal(hero[1], `https://cyclingzone.org/email/s6/s6-hero-${language}.png`);
+          assert.equal(hero[1], `https://cyclingzone.org/email/s6/s6-hero-${language}-v2.png`);
           assert.ok(hero[2].length > 60);
-          assert.ok(existsSync(new URL(`s6-hero-${language}.png`, S6_HERO_FILES)));
+          assert.ok(existsSync(new URL(`s6-hero-${language}-v2.png`, S6_HERO_FILES)));
           for (const img of mail.html.match(/<img\b[^>]*>/g)) assert.match(img, /\salt="[^"]+"/);
 
           // Personal fields: team name in the greeting and the team line with the division.

@@ -974,7 +974,8 @@ function s6ButtonHtml(url, label) {
 // The hero sits on a navy cell: with images off, the alt text is set in light
 // type on that navy, so the top of the mail still reads as a caption.
 function s6HeroHtml(lang, alt) {
-  const src = `${S6_ASSET_BASE}/s6-hero-${lang}.png`;
+  // #8396: versionerede filnavne, saa mailproxyer ikke viser et gammelt cachet billede (EMAIL_STACK §5.7).
+  const src = `${S6_ASSET_BASE}/s6-hero-${lang}-v2.png`;
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
       <tr>
         <td class="cz-band" bgcolor="${NAVY}" style="background:${NAVY};background-color:${NAVY};border-radius:${RADIUS};line-height:0;font-size:0;">
