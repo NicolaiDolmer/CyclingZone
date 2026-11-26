@@ -853,7 +853,7 @@ const S6_COPY = {
       // #8396 ejer 26/11: the division for Season 6 is only known after the
       // switch (promotion and relegation), so mail 1 names no division.
       teamLine: null,
-      newsHeading: "The newest features in the game",
+      newsHeading: "What's new in the game",
       openings: {
         active: "Season 5 ends on Saturday. Before Season 6 starts, here is what's new in the game.",
         dormant: "A lot has happened in the game. Here is what's new, all ready for Season 6.",
