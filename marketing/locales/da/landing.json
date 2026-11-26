@@ -12,7 +12,7 @@
     "ctaDiscord": "Kom med på Discord",
     "micro": "Gratis at spille. CZ Pro er et valgfrit abonnement.",
     "caption": "Dit hold i Cycling Zone",
-    "imageAlt": "Rytterprofil og en rytters træningslinje for i dag i Cycling Zone"
+    "imageAlt": "Trup og rytterevner i Cycling Zone"
   },
   "race": {
     "title": "Planlæg dit løb.",
@@ -20,7 +20,7 @@
     "scenario": "En bjergetape. Hvem kører du for?",
     "beforeCaption": "Før løbet: ruten og holdets plan.",
     "afterCaption": "Efter løbet: dine ryttere i resultatlisten.",
-    "beforeAlt": "Profil for en bjergetape i Cycling Zone og kaptajnens valg af indsats på fanen Taktik",
+    "beforeAlt": "Etapeprofil på taktikfanen i Cycling Zone",
     "afterAlt": "De tre første ryttere i målrækkefølgen på resultatfanen i Cycling Zone med sluttider og point"
   },
   "develop": {

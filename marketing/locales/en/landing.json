@@ -12,7 +12,7 @@
     "ctaDiscord": "Join the Discord",
     "micro": "Free to play. Optional CZ Pro subscription.",
     "caption": "Your team in Cycling Zone",
-    "imageAlt": "Cycling Zone rider profile and a rider's training row for today"
+    "imageAlt": "Roster and rider abilities in Cycling Zone"
   },
   "race": {
     "title": "Plan your race.",
@@ -20,7 +20,7 @@
     "scenario": "A mountain stage. Who will you ride for?",
     "beforeCaption": "Before the race: the route and your team's plan.",
     "afterCaption": "After the race: your riders in the results.",
-    "beforeAlt": "Cycling Zone mountain stage profile and the captain's effort options on the Tactics tab",
+    "beforeAlt": "Stage profile on the Cycling Zone tactics tab",
     "afterAlt": "First three finishers on the Cycling Zone stage results tab, with finish times and points"
   },
   "develop": {

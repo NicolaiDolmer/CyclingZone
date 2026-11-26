@@ -37,18 +37,18 @@ const PATHS = {
   privacy: { en: `${APP}/privacy-policy`, da: `${APP}/privatlivspolitik` },
 } as const;
 
-// Billedernes egne mål (2x-udsnit), så browseren reserverer pladsen (ingen CLS).
+// Billedernes egne mål, så browseren reserverer pladsen (ingen CLS).
 // Hvert sprog har sine egne billeder, så /da viser spillet på dansk.
 const SHOTS = {
   en: {
-    team: { d: ["/landing/team-desktop-v2.webp", 1120, 510], m: ["/landing/team-mobile-v2.webp", 780, 781] },
-    plan: { d: ["/landing/plan-desktop-v2.webp", 1120, 665], m: ["/landing/plan-mobile-v2.webp", 780, 784] },
-    result: { d: ["/landing/result-desktop-v2.webp", 1120, 344], m: ["/landing/result-mobile-v2.webp", 780, 550] },
+    team: { d: ["/landing/team-desktop-v2.webp", 1120, 740], m: ["/landing/team-mobile-v2.webp", 390, 550] },
+    plan: { d: ["/landing/plan-desktop-v2.webp", 1120, 740], m: ["/landing/plan-mobile-v2.webp", 390, 550] },
+    result: { d: ["/landing/result-desktop-v2.webp", 1120, 740], m: ["/landing/result-mobile-v2.webp", 390, 550] },
   },
   da: {
-    team: { d: ["/landing/team-desktop-da-v2.webp", 1120, 510], m: ["/landing/team-mobile-da-v2.webp", 780, 807] },
-    plan: { d: ["/landing/plan-desktop-da-v2.webp", 1120, 665], m: ["/landing/plan-mobile-da-v2.webp", 780, 784] },
-    result: { d: ["/landing/result-desktop-da-v2.webp", 1120, 304], m: ["/landing/result-mobile-da-v2.webp", 780, 550] },
+    team: { d: ["/landing/team-desktop-da-v2.webp", 1120, 740], m: ["/landing/team-mobile-da-v2.webp", 390, 550] },
+    plan: { d: ["/landing/plan-desktop-da-v2.webp", 1120, 740], m: ["/landing/plan-mobile-da-v2.webp", 390, 550] },
+    result: { d: ["/landing/result-desktop-da-v2.webp", 1120, 740], m: ["/landing/result-mobile-da-v2.webp", 390, 550] },
   },
 } as const;
 
