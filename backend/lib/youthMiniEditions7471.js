@@ -482,14 +482,17 @@ export function seniorAnchorsFromPlan({ tierPlan, catalog = [] }) {
  * materialisering, som koerer EFTER seniorkalenderen (buildSeasonCalendar --squad).
  */
 export async function loadSeniorMiniAnchors({ supabase, seasonId }) {
-  const { data: pools, error: pErr } = await supabase.from("league_divisions").select("id, tier, squad, retired_at")
-    .eq("tier", MINI_SOURCE_TIER).is("retired_at", null).or("squad.is.null,squad.eq.senior").order("id");
+  // #5517: senior-scopet gaar gennem withSeniorSquadScope (dynamisk import, se nedenfor).
+  const { withSeniorSquadScope } = await import("./squads.js");
+  const { data: pools, error: pErr } = await withSeniorSquadScope((senior) =>
+    senior(supabase.from("league_divisions").select("id, tier, squad, retired_at"))
+      .eq("tier", MINI_SOURCE_TIER).is("retired_at", null).order("id"));
   if (pErr) throw new Error(`#7471 senior D1 pools: ${pErr.message}`);
   const poolId = pools?.[0]?.id;
   if (poolId == null) return [];
-  const { data: races, error: rErr } = await supabase.from("races")
-    .select("id, pool_race_id, name, race_class, race_type, stages")
-    .eq("season_id", seasonId).eq("league_division_id", poolId).or("squad.is.null,squad.eq.senior");
+  const { data: races, error: rErr } = await withSeniorSquadScope((senior) =>
+    senior(supabase.from("races").select("id, pool_race_id, name, race_class, race_type, stages"))
+      .eq("season_id", seasonId).eq("league_division_id", poolId));
   if (rErr) throw new Error(`#7471 senior D1 races: ${rErr.message}`);
   const raceIds = (races ?? []).map((r) => r.id);
   const poolRaceIds = [...new Set((races ?? []).map((r) => r.pool_race_id).filter(Boolean))];

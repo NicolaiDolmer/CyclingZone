@@ -1332,7 +1332,9 @@ Et etapeløb uden flad etape giver sprinteren ingen dag at vinde pointtrøjen p�
 
 **Ungdommens mini-udgaver ([#7471](https://github.com/NicolaiDolmer/CyclingZone/issues/7471)).** U23 og junior kører mini-udgaver af D1's løb med navnet *"Seniornavn U23/Junior"*: mini-GT'er på 7 (U23) og 4 (junior) etaper, etapeløb afkortet (aldrig under 3), monumenter som endagsløb. Mål: U23 ~40, junior ~28 løbsdage. Intet overlap i S6. Det gamle ungdomskatalog pensioneres blødt (`retired_at`, intet slettes) af `database/2026-11-26-8830-retire-old-youth-catalog.sql`, kun når niveauets mini-udgaver findes.
 
-**Målt 26/11 (offline, S6 30/11-26/12, 140, frø 1-5).** Se PR [#8836](https://github.com/NicolaiDolmer/CyclingZone/pull/8836) for tabellen pr. division og niveau. Divisionen er en stikprøve af katalogets løb (samme løb = samme rute i alle divisioner), så en division kan ligge et point fra båndet, uden at vægtene er forkerte.
+**Tolerance ±2 point (ejer 26/11).** Divisionen er en stikprøve af katalogets løb (samme løb = samme rute i alle divisioner), så en division kan ligge et point fra båndet, uden at vægtene er forkerte. Målene og toleransen er data (`S6_FINISH_TARGETS`, `S6_FINISH_TOLERANCE_PP` i `stageFinaleMetrics.js`), og `s6FinishTargets8830.test.js` måler den offline S6-kalender over frø 1-5 og fejler uden for ±2.
+
+**Målt 26/11 (offline, S6 30/11-26/12, 140, frø 1-5), opad / flad spurt:** D1 41,9 / 33,2 · D2 35,0 / 25,9 · D3 35,6 / 32,6 · D4 39,5 / 23,7 · U23 38,5 / 31,3 · junior 29,3 / 32,1.
 
 ### 7f. Variation i etaperækkefølgen (ejer 24/10, [#2757](https://github.com/NicolaiDolmer/CyclingZone/issues/2757))
 

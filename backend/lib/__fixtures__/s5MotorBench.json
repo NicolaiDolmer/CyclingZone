@@ -21,7 +21,7 @@
     "descent": "grand_tours",
     "flat_sprint": "grand_tours",
     "long_climb": "grand_tours",
-    "punch": "season",
+    "punch": "grand_tours",
     "solo_tt": "grand_tours",
     "uphill_sprint": "grand_tours",
     "wall_finish": "season"
@@ -37,7 +37,7 @@
     }
   },
   "winnerDigests": {
-    "uphill_sprint": "sha256:238ce5c44eeff68bd7c1ee9cb11f218983745c20d56b3ea89929df3b96e7032d",
-    "long_climb": "sha256:7ebe3630c122ba3e30cf82304dac7c0b89d6e48df664c0fb139e91cb17b4e769"
+    "uphill_sprint": "sha256:04ceb4c1e6e6d508db01e8dfa7411f956b67ba1f4ac860652c35713ed57e2486",
+    "long_climb": "sha256:c068183532a157ce09b5a45b75e83cd75cf65ed0d861d982014618fe3c1b6004"
   }
 }
