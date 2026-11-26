@@ -244,6 +244,9 @@ test("emit: henter selv menneske-managere (is_ai=false, is_bank=false, is_frozen
       const builder = {
         select(cols) { queryLog.push(["select", cols]); return builder; },
         eq(col, val) { queryLog.push(["eq", col, val]); return builder; },
+        // #8797: manager-listen pagineres (fetchAllPaged → .order("id").range()).
+        order(col) { queryLog.push(["order", col]); return builder; },
+        range(from, to) { queryLog.push(["range", from, to]); return builder; },
         then(resolve) {
           return resolve({ data: [{ id: "t1", user_id: "u1" }, { id: "t2", user_id: "u2" }], error: null });
         },
@@ -268,6 +271,8 @@ test("emit: henter selv menneske-managere (is_ai=false, is_bank=false, is_frozen
     ["eq", "is_bank", false],
     ["eq", "is_frozen", false],
     ["eq", "is_test_account", false],
+    ["order", "id"],
+    ["range", 0, 999],
   ]);
   assert.equal(calls.length, 2);
   assert.deepEqual(stats, { eligible: 2, delivered: 2, deduped: 0, failed: 0, failedUserIds: [] });
