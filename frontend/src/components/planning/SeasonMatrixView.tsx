@@ -145,7 +145,7 @@ export default function SeasonMatrixView({ onOpenRace }: { onOpenRace?: (raceId:
           options={SEASON_LENSES.map((key) => ({ value: key, label: t(`matrix.lens.${key}`) }))}
           className="w-full sm:w-auto [&>button]:min-h-8 [&>button]:flex-1 [&>button]:px-1.5 sm:[&>button]:flex-none sm:[&>button]:px-3"
         />
-        <Tooltip label={t(`matrix.lensHelp.${lens}`)}>
+        <Tooltip label={t(`matrix.lensHelp.${lens}`, { max: planner.maxPerRider ?? 2 })}>
           <button
             type="button"
             aria-label={t("matrix.lensHelpAria")}

@@ -576,9 +576,26 @@
       "entries": "Udtagelser",
       "routeMatch": "Rutematch",
       "formPeak": "Form og peak",
-      "load": "Belastning"
+      "load": "Belastning",
+      "form": "Form"
     },
     "problemsOnly": "Kun problemer",
+    "lensLabel": "Linse",
+    "lensHelpAria": "Om linsen",
+    "lensHelp": {
+      "entries": "Hvem kører hvilke løb. Tryk på en celle for at udtage en rytter eller skifte rolle.",
+      "routeMatch": "Hvor godt hver rytter passer til løbets rute, 0 til 100. Det bedste tal i hvert løb er fremhævet.",
+      "form": "Formplanen for hele sæsonen: op til {max} mål pr. rytter, assistentens udkast og formkurven, hvor formhullet efter en top ses.",
+      "load": "Løbsdage pr. rytter i sæsonen."
+    },
+    "formRacesLabel": "Løb",
+    "routeGrid": {
+      "rider": "Rytter",
+      "cellAria": "{rider}, {race}: rutematch {score}",
+      "bestAria": "{rider}, {race}: rutematch {score}, holdets bedste",
+      "noScore": "{rider}, {race}: ingen rutematch endnu",
+      "openRace": "Åbn {race}"
+    },
     "save": "Gem plan",
     "saveCount": "{count, plural, one {Gem plan · # ændring} other {Gem plan · # ændringer}}",
     "saving": "Gemmer...",
