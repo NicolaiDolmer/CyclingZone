@@ -68,6 +68,44 @@ function previewTrainingWeekEnabled() {
   }
 }
 
+// #8592: "Kun denne dag" paa preview (?dayOverride=1); kontakten er off i prod. Valgene lever i
+// hukommelsen for preview-sessionen (Map dato -> { rytter: { session } }).
+function previewDayOverrideEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("dayOverride");
+    if (param === "1") localStorage.setItem("cz_mock_day_override", "1");
+    if (param === "0") localStorage.setItem("cz_mock_day_override", "0");
+    return localStorage.getItem("cz_mock_day_override") === "1";
+  } catch {
+    return false;
+  }
+}
+const previewDayOverrides = new Map();
+const ymdPlus = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+function dayOverridesMockRoute(method, body) {
+  if (!previewDayOverrideEnabled()) {
+    return method === "GET" ? { status: 200, body: { enabled: false, overrides: [] } } : { status: 409, body: { error: "feature_disabled" } };
+  }
+  const window7 = Array.from({ length: 7 }, (_, i) => ymdPlus(i + 1));
+  if (method === "GET") {
+    const overrides = [...previewDayOverrides].flatMap(([date, map]) => Object.entries(map).map(([riderId, o]) => ({ riderId, date, session: o.session })));
+    return { status: 200, body: { enabled: true, today: ymdPlus(0), window: window7, programRequired: false, overrides } };
+  }
+  if (!window7.includes(body?.date)) return { status: 400, body: { error: "invalid_date" } };
+  const ids = Array.isArray(body?.riderIds) ? body.riderIds : [];
+  const map = { ...(previewDayOverrides.get(body.date) ?? {}) };
+  for (const id of ids) {
+    if (method === "PUT") map[id] = { session: body.session };
+    else delete map[id];
+  }
+  previewDayOverrides.set(body.date, map);
+  return { status: 200, body: { ok: true, date: body.date, riderIds: ids } };
+}
+
 // #8580: i dag + 7 dage. Loebene frem er preview-fiktion; dag 6 har ingen fuld akse endnu.
 function previewWeek(seedTraining) {
   const ids = Object.keys(seedTraining.condition ?? {});
@@ -97,7 +135,9 @@ function previewWeek(seedTraining) {
       raceSlots: racers.includes(id) ? fx.slots : [],
       restSlots: i === 3 && idx === 1 ? [0, 1, 2, 3, 4] : [],
     }]));
-    days.push({ date, weekday, available: true, races: fx ? [{ ...fx.race, ownRiders: racers.length }] : [], riders });
+    const overrides = previewDayOverrideEnabled() ? previewDayOverrides.get(date) : null; // #8592
+    days.push({ date, weekday, available: true, races: fx ? [{ ...fx.race, ownRiders: racers.length }] : [], riders,
+      ...(overrides && Object.keys(overrides).length ? { dayOverrides: { ...overrides } } : {}) });
   }
   return { available: true, tickDate: days[0].date, days };
 }
@@ -174,6 +214,7 @@ function previewForecast(seedTraining) {
 
 export function trainingProgramsMockRoute(method, pathname, body, seedTraining) {
   if (!/^\/api\/training\/programs(\/|$)/.test(pathname)) return null;
+  if (/\/programs\/day-overrides\/?$/.test(pathname)) return dayOverridesMockRoute(method, body); // #8592
   // #8580: dagsvaelgerens uge. ?trainingWeek=1 taender den paa preview (kontakten er off i prod).
   if (method === "GET" && pathname.endsWith("/forecast/week")) {
     return { status: 200, body: previewTrainingWeekEnabled() ? previewWeek(seedTraining) : { available: false, reason: "disabled", days: [] } };
