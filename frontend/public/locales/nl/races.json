@@ -593,9 +593,26 @@
       "entries": "Inschrijvingen",
       "routeMatch": "Parcoursmatch",
       "formPeak": "Vorm & piek",
-      "load": "Belasting"
+      "load": "Belasting",
+      "form": "Vorm"
     },
     "problemsOnly": "Alleen problemen",
+    "lensLabel": "Weergave",
+    "lensHelpAria": "Over deze weergave",
+    "lensHelp": {
+      "entries": "Wie welke koersen rijdt. Tik op een cel om een renner te selecteren of zijn rol te wijzigen.",
+      "routeMatch": "Hoe goed elke renner bij het parcours past, 0 tot 100. Het beste getal per koers is gemarkeerd.",
+      "form": "Het vormplan voor het hele seizoen: tot {max} doelen per renner, het concept van de assistent en de vormcurve, waarin de dip na een piek te zien is.",
+      "load": "Koersdagen per renner dit seizoen."
+    },
+    "formRacesLabel": "Koersen",
+    "routeGrid": {
+      "rider": "Renner",
+      "cellAria": "{rider}, {race}: parcoursmatch {score}",
+      "bestAria": "{rider}, {race}: parcoursmatch {score}, beste van de ploeg",
+      "noScore": "{rider}, {race}: nog geen parcoursmatch",
+      "openRace": "Open {race}"
+    },
     "save": "Plan opslaan",
     "saveCount": "{count, plural, one {Plan opslaan · # wijziging} other {Plan opslaan · # wijzigingen}}",
     "saving": "Opslaan...",

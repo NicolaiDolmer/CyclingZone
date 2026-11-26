@@ -45,7 +45,7 @@
     "noPeak": "Ingen peak",
     "pickRace": "Peak-mål for {name}",
     "raceOption": "{date} · {race} · match {fit}",
-    "raceOptionPayback": "{date} · {race} · match {fit} · payback-risiko",
+    "raceOptionPayback": "{date} · {race} · match {fit} · risiko for formhul",
     "raceOptionLocksNow": "{date} · {race} · match {fit} · låser med det samme",
     "age": "{age} år",
     "load": "{days, plural, one {# løbsdag} other {# løbsdage}}",

@@ -576,9 +576,26 @@
       "entries": "Entries",
       "routeMatch": "Route match",
       "formPeak": "Form & peak",
-      "load": "Load"
+      "load": "Load",
+      "form": "Form"
     },
     "problemsOnly": "Problems only",
+    "lensLabel": "Lens",
+    "lensHelpAria": "About this lens",
+    "lensHelp": {
+      "entries": "Who rides which races. Tap a cell to select a rider or change the role.",
+      "routeMatch": "How well each rider suits the race route, 0 to 100. The best number in each race is highlighted.",
+      "form": "The form plan for the whole season: up to {max} targets per rider, the assistant's draft and the form curve, where the dip after a peak shows.",
+      "load": "Race days per rider this season."
+    },
+    "formRacesLabel": "Races",
+    "routeGrid": {
+      "rider": "Rider",
+      "cellAria": "{rider}, {race}: route match {score}",
+      "bestAria": "{rider}, {race}: route match {score}, best on the team",
+      "noScore": "{rider}, {race}: no route match yet",
+      "openRace": "Open {race}"
+    },
     "save": "Save plan",
     "saveCount": "{count, plural, one {Save plan · # change} other {Save plan · # changes}}",
     "saving": "Saving...",
