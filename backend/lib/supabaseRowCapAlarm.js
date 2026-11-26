@@ -89,7 +89,7 @@ export function inspectRowCapResponse(input, init, response, { cap = POSTGREST_R
  * vælte et kald).
  *
  * @param {typeof fetch} baseFetch
- * @param {{ report: (finding: {table:string, shape:string, rows:number}) => void,
+ * @param {{ report?: (finding: {table:string, shape:string, rows:number}) => void,
  *           dedupeMs?: number, now?: () => number, cap?: number }} opts
  */
 export function withRowCapAlarm(baseFetch, { report, dedupeMs = DEFAULT_DEDUPE_MS, now = () => Date.now(), cap = POSTGREST_ROW_CAP } = {}) {

@@ -60,6 +60,11 @@ export async function selectInChunks({ supabase, table, columns, inColumn, ids, 
 // Range-pagineret fetch (PostgREST default-cap = 1000 rækker → tavs trunkering; #1839).
 // `query` er en thunk der returnerer en frisk builder, så .range() kan kædes pr. side.
 export const PAGE_SIZE = 1000;
+/**
+ * @param {() => any} query
+ * @param {{ retryOpts?: any }} [opts]
+ * @returns {Promise<{ data: any[] | null, error: any }>}
+ */
 export async function fetchAllPaged(query, { retryOpts } = {}) {
   const out = [];
   for (let from = 0; ; from += PAGE_SIZE) {

@@ -4,10 +4,16 @@ import assert from "node:assert/strict";
 import { loadRiderNationalities } from "./riderNationalities.js";
 
 // Minimal PostgREST-agtig fake: afkorter ved 1.000 uden .range(), som prod.
+/**
+ * @param {Record<string, any[]>} tables
+ * @param {{ viewError?: { message: string } | null }} [opts]
+ */
 function fakeSupabase(tables, { viewError = null } = {}) {
   return {
     from(table) {
+      /** @type {Array<(r: any) => boolean>} */
       const filters = [];
+      /** @type {number[] | null} */
       let range = null;
       const q = {
         select() { return q; },
