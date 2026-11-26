@@ -122,3 +122,14 @@ test("#8259 seed-formen til migrationen: kun de valgte, alle felter med", () => 
   assert.equal(one.length, 1);
   assert.deepEqual(Object.keys(one[0]), ["external_id", "race_identity_type", "signature", "authored_route"]);
 });
+
+test("#8830 migrationen for de faste ruter er genereret fra JS-kilden og er idempotent", async () => {
+  const { buildIconicRoutesMigrationSql, ICONIC_ROUTES_MIGRATION_PATH } = await import("../scripts/dev/buildIconicRoutesMigration8259.mjs");
+  const { readFileSync } = await import("node:fs");
+  const sql = readFileSync(ICONIC_ROUTES_MIGRATION_PATH, "utf8").replace(/\r\n/g, "\n");
+  assert.equal(sql, buildIconicRoutesMigrationSql(), "koer node backend/scripts/dev/buildIconicRoutesMigration8259.mjs");
+  assert.equal((sql.match(/::jsonb\)/g) ?? []).length, ICONIC_ROUTE_PROPOSALS_8259.length);
+  assert.match(sql, /IS DISTINCT FROM/);
+  assert.match(sql, /race_type = 'single'/);
+  assert.doesNotMatch(sql, /\b(DELETE|INSERT|DROP|TRUNCATE)\b/i);
+});

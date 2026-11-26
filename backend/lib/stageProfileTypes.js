@@ -170,15 +170,15 @@ export function withS5ProfilePlaceholders(byProfileType) {
 //
 // Hver vaerdi ligger inden for FINISH_MATRIX for terraenet; testen holder det fast.
 export const ROAD_FINISH_WEIGHTS = Object.freeze({
-  flat: Object.freeze([{ value: "flat_sprint", weight: 72 }, { value: "uphill_sprint", weight: 28 }]),
-  rolling: Object.freeze([{ value: "flat_sprint", weight: 62 }, { value: "uphill_sprint", weight: 26 }, { value: "punch", weight: 12 }]),
+  flat: Object.freeze([{ value: "flat_sprint", weight: 76 }, { value: "uphill_sprint", weight: 24 }]),
+  rolling: Object.freeze([{ value: "flat_sprint", weight: 44 }, { value: "uphill_sprint", weight: 24 }, { value: "punch", weight: 32 }]),
   hilly: Object.freeze([
-    { value: "flat_sprint", weight: 16 }, { value: "uphill_sprint", weight: 14 }, { value: "punch", weight: 28 },
-    { value: "wall_finish", weight: 26 }, { value: "descent", weight: 16 },
+    { value: "flat_sprint", weight: 8 }, { value: "uphill_sprint", weight: 12 }, { value: "punch", weight: 34 },
+    { value: "wall_finish", weight: 32 }, { value: "descent", weight: 14 },
   ]),
   medium_mountain: Object.freeze([
-    { value: "flat_sprint", weight: 18 }, { value: "punch", weight: 14 }, { value: "wall_finish", weight: 10 },
-    { value: "long_climb", weight: 40 }, { value: "descent", weight: 18 },
+    { value: "flat_sprint", weight: 10 }, { value: "punch", weight: 16 }, { value: "wall_finish", weight: 12 },
+    { value: "long_climb", weight: 46 }, { value: "descent", weight: 16 },
   ]),
 });
 
@@ -195,6 +195,74 @@ export const COBBLES_FINISH_WEIGHTS = Object.freeze({
     { value: "long_climb", weight: 10 }, { value: "descent", weight: 8 },
   ]),
 });
+
+/**
+ * #8830 (ejer 26/11): afslutningsmaal pr. niveau. Senior og U23: opad (punch, mur,
+ * bjergtop) 33-40 %, flad spurt 25-32 %; junior: opad 28-35 %, flad spurt 30-37 %.
+ * Ungdommens kalender er mini-udgaver af D1 (#7471), saa dens Grand Tours er korte (7/4
+ * etaper) og bruger IKKE benchmarkens GT-vaegte: tabellerne her gaelder alle ungdommens
+ * landevejsetaper, ogsaa mini-GT'ernes. Junior er fladere end U23 (ejer). Senior-reglen
+ * "bjerg og hoejbjerg uaendret" gaelder senior; ungdommens bjergetaper ender oftere paa
+ * toppen, saa opad-maalet kan naas med mini-GT'ernes to tidskoersler. Maalingen: PR #8836.
+ */
+export const YOUTH_FINISH_WEIGHTS = Object.freeze({
+  u23: Object.freeze({
+    flat: Object.freeze([{ value: "flat_sprint", weight: 75 }, { value: "uphill_sprint", weight: 25 }]),
+    rolling: Object.freeze([{ value: "flat_sprint", weight: 35 }, { value: "uphill_sprint", weight: 15 }, { value: "punch", weight: 50 }]),
+    hilly: Object.freeze([
+      { value: "flat_sprint", weight: 6 }, { value: "uphill_sprint", weight: 6 }, { value: "punch", weight: 40 },
+      { value: "wall_finish", weight: 38 }, { value: "descent", weight: 10 },
+    ]),
+    medium_mountain: Object.freeze([
+      { value: "flat_sprint", weight: 6 }, { value: "punch", weight: 16 }, { value: "wall_finish", weight: 14 },
+      { value: "long_climb", weight: 58 }, { value: "descent", weight: 6 },
+    ]),
+    mountain: Object.freeze([{ value: "long_climb", weight: 92 }, { value: "descent", weight: 8 }]),
+    high_mountain: Object.freeze([{ value: "long_climb", weight: 92 }, { value: "descent", weight: 8 }]),
+  }),
+  junior: Object.freeze({
+    flat: Object.freeze([{ value: "flat_sprint", weight: 85 }, { value: "uphill_sprint", weight: 15 }]),
+    rolling: Object.freeze([{ value: "flat_sprint", weight: 50 }, { value: "uphill_sprint", weight: 15 }, { value: "punch", weight: 35 }]),
+    hilly: Object.freeze([
+      { value: "flat_sprint", weight: 6 }, { value: "uphill_sprint", weight: 4 }, { value: "punch", weight: 44 },
+      { value: "wall_finish", weight: 42 }, { value: "descent", weight: 4 },
+    ]),
+    medium_mountain: Object.freeze([
+      { value: "flat_sprint", weight: 14 }, { value: "punch", weight: 16 }, { value: "wall_finish", weight: 14 },
+      { value: "long_climb", weight: 50 }, { value: "descent", weight: 6 },
+    ]),
+    mountain: Object.freeze([{ value: "long_climb", weight: 92 }, { value: "descent", weight: 8 }]),
+    high_mountain: Object.freeze([{ value: "long_climb", weight: 92 }, { value: "descent", weight: 8 }]),
+  }),
+});
+
+/**
+ * #8830 (ejer 26/11, afslutningsmaal pr. division): D1's Grand Tours ender i spurt paa 43 %
+ * af de kuperede etaper (benchmarkens vaegte), og det loefter D1's flade spurt over 32 %.
+ * Fra S6 flyttes en del af GT'ernes kuperede og mellembjergs-spurter til punch og mur.
+ * Benchmark-gatens del (3) maaler stadig GT-afslutningerne mod rigtige Grand Tours (flad
+ * spurt 33,7 % +-13,1 pp). Bjerg, hoejbjerg og flad er uaendrede.
+ */
+export const GT_FINISH_WEIGHTS_S6 = Object.freeze({
+  hilly: Object.freeze([
+    { value: "flat_sprint", weight: 18 }, { value: "uphill_sprint", weight: 4 }, { value: "punch", weight: 12 },
+    { value: "wall_finish", weight: 11 }, { value: "descent", weight: 22 },
+  ]),
+  medium_mountain: Object.freeze([
+    { value: "flat_sprint", weight: 8 }, { value: "punch", weight: 3 }, { value: "wall_finish", weight: 3 },
+    { value: "long_climb", weight: 7 }, { value: "descent", weight: 8 },
+  ]),
+});
+
+/**
+ * #8830: ungdommens afslutnings-vaegte for terraenet, eller null (senior, ukendt terraen): kalderen bruger saa senior-reglen.
+ * @param {string} terrain @param {string | null | undefined} squad
+ * @returns {ReadonlyArray<{ value: string, weight: number }> | null}
+ */
+export function youthFinishWeightsFor(terrain, squad) {
+  const table = squad ? /** @type {any} */ (YOUTH_FINISH_WEIGHTS)[squad] : null;
+  return table?.[terrain] ?? null;
+}
 
 /**
  * Afslutnings-vaegtene for en etape uden for en Grand Tour. null = ingen S6-raekke (bjerg,

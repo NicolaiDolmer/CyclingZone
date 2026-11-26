@@ -28,7 +28,7 @@ import { attachSegmentsAndWeather } from "./routeSegments.js";
 import { buildElevationProfile, elevationSeedKey } from "./routeElevationProfile.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 import { isAscendingOrder, REAL_STAGE_RACES, positionBucket, coarseClassOf } from "./stageOrderVariationGate.js";
-import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders, canonicalFinaleType, isFinishAllowed, roadFinishWeightsFor } from "./stageProfileTypes.js";
+import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders, canonicalFinaleType, isFinishAllowed, roadFinishWeightsFor, youthFinishWeightsFor, GT_FINISH_WEIGHTS_S6 } from "./stageProfileTypes.js";
 import { isFixedIconicRouteRace } from "./iconicRoutes8259.js";
 // #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
 // afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
@@ -1467,7 +1467,9 @@ function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = n
   const chooseFinish = (/** @type {string} */ terrain, /** @type {{ summit?: boolean | null }} */ { summit = null } = {}) => {
     if (finish) return finish;
     // #8259: uden for en Grand Tour gælder S6-vægtene (stageProfileTypes.js afsnit 5).
-    const s6 = isStageRace && race?.terrain_archetype === "grand_tour" ? null : roadFinishWeightsFor(terrain, targetType);
+    // #8830: ungdommen (U23/junior) har egne vaegte, ogsaa i mini-GT'erne.
+    const s6 = youthFinishWeightsFor(terrain, race?.squad)
+      ?? (isStageRace && race?.terrain_archetype === "grand_tour" ? null : roadFinishWeightsFor(terrain, targetType));
     const weights = /** @type {any} */ (s6 ?? /** @type {Record<string, any>} */ (S5_FINISH_WEIGHTS)[terrain]);
     if (summit === true) return "long_climb";
     if (summit === false) return pickByQuantile(weights.filter((/** @type {any} */ it) => it.value !== "long_climb"), u);
@@ -1611,11 +1613,15 @@ export function orderGrandTourS5(rng, types) {
  * @param {number} summits
  * @returns {Array<string | null>}
  */
-export function assignGrandTourFinishes(rng, ordered, summits) {
+export function assignGrandTourFinishes(rng, ordered, summits, squad = null) {
   /** @type {Array<string | null>} */
   const finishes = ordered.map(() => null);
+  // #8830: en ungdoms-mini-GT bruger ungdommens vaegte paa de terraener der har en raekke;
+  // bjerg og hoejbjerg (og senior) bruger benchmarkens GT-vaegte som foer.
   /** @type {Record<string, ReadonlyArray<{ value: string, weight: number }>>} */
-  const finishWeights = S5_FINISH_WEIGHTS;
+  const finishWeights = Object.fromEntries(Object.entries(S5_FINISH_WEIGHTS).map(([t, w]) => [
+    t, (squad ? youthFinishWeightsFor(t, squad) : null) ?? /** @type {any} */ (GT_FINISH_WEIGHTS_S6)[t] ?? w,
+  ]));
   const shareOf = (/** @type {string} */ t) => {
     const w = finishWeights[t];
     const total = w.reduce((s, it) => s + it.weight, 0);
@@ -1623,7 +1629,9 @@ export function assignGrandTourFinishes(rng, ordered, summits) {
   };
   const eligible = ordered.map((t, i) => (S5_SUMMIT_CATEGORIES[t] ? i : -1)).filter((i) => i >= 0);
   const chosen = new Set();
-  const want = Math.min(summits, eligible.length);
+  // #8830: en ungdoms-mini-GT ender paa toppen af alle sine bjerg- og hoejbjergetaper (opad-
+  // maalet for U23/junior); senior-GT'er foelger benchmarkens bjergtop-kvote som foer.
+  const want = squad ? eligible.length : Math.min(summits, eligible.length);
   while (chosen.size < want) {
     const remaining = eligible.filter((i) => !chosen.has(i));
     const items = remaining.map((i) => ({ value: i, weight: shareOf(ordered[i]) }));
@@ -1643,7 +1651,7 @@ export function assignGrandTourFinishes(rng, ordered, summits) {
 function buildGrandTourS5(rng, stages, race, { allowTtt = false } = {}) {
   const { types, summits } = grandTourQuotaTypes(grandTourTypeFor(race), stages, { allowTtt });
   const ordered = orderGrandTourS5(rng, types);
-  const finishes = assignGrandTourFinishes(rng, ordered, summits);
+  const finishes = assignGrandTourFinishes(rng, ordered, summits, youthFinishWeightsFor("hilly", race?.squad) ? race.squad : null);
   return ordered.map((t, i) => toStageS5(rng, t, i + 1, race, true, {
     finish: finishes[i],
     shortItt: i === 0 && t === "itt",

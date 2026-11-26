@@ -253,7 +253,7 @@
     {
       "stage_number": 3,
       "profile_type": "rolling",
-      "finale_type": "flat_sprint",
+      "finale_type": "uphill_sprint",
       "demand_vector": {
         "endurance": 0.18,
         "flat": 0.12,
@@ -493,7 +493,7 @@
     {
       "stage_number": 3,
       "profile_type": "rolling",
-      "finale_type": "uphill_sprint",
+      "finale_type": "punch",
       "demand_vector": {
         "endurance": 0.18,
         "flat": 0.12,
@@ -864,7 +864,7 @@
     {
       "stage_number": 1,
       "profile_type": "rolling",
-      "finale_type": "uphill_sprint",
+      "finale_type": "punch",
       "demand_vector": {
         "endurance": 0.18,
         "flat": 0.12,
@@ -995,7 +995,7 @@
     {
       "stage_number": 4,
       "profile_type": "rolling",
-      "finale_type": "flat_sprint",
+      "finale_type": "uphill_sprint",
       "demand_vector": {
         "endurance": 0.18,
         "flat": 0.12,

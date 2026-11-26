@@ -233,3 +233,15 @@ test("loadSeniorMiniAnchors reads only SELECTs and returns the same anchors as t
   assert.deepEqual(norm(anchors), norm(anchorsS5()));
   assert.deepEqual([...new Set(calls)].sort(), ["league_divisions", "race_pool", "race_stage_schedule", "races"]);
 });
+
+test("#8830 det gamle ungdomskatalog pensioneres blødt, kun naar mini-udgaverne findes", () => {
+  const sql = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../database/2026-11-26-8830-retire-old-youth-catalog.sql"), "utf8");
+  for (const squad of ["u23", "junior"]) {
+    assert.ok(sql.includes(`('${squad}', '${MINI_EDITION_RULES[squad].externalPrefix}')`), `${squad}: praefikset matcher JS-reglerne`);
+  }
+  assert.match(sql, /SET retired_at = now\(\)/);
+  assert.match(sql, /rp\.retired_at IS NULL/);
+  assert.match(sql, /NOT LIKE lvl\.prefix/);
+  assert.match(sql, /EXISTS \(/);
+  assert.doesNotMatch(sql, /\b(DELETE|INSERT|DROP|TRUNCATE)\b/i, "intet slettes (rule 38)");
+});
