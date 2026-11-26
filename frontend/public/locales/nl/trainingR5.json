@@ -264,5 +264,35 @@
     "autoNote": "De assistent kiest je ploeg voor {races} bij de start. Wie rijdt, zie je dan pas.",
     "aheadNote": "De komende dagen tonen het plan. Een wijziging geldt voor elke {weekday}.",
     "editInProgram": "Wijzig {weekday} in Programma"
+  },
+  "programW1": {
+    "allRiders": "Alle renners",
+    "weekFor": "Week van {name}",
+    "raceDay": "Koersdag {n}",
+    "noSession": "Geen sessie",
+    "effortFor": "Inspanning, {pass}",
+    "noEffort": "Geen inspanning",
+    "removeOwnPlan": "Eigen plan verwijderen",
+    "copyNeedsProgram": "Zet een programma op dit plan om het te kopiëren",
+    "changeTitle": "Programma wijzigen voor {name}",
+    "current": "Huidig",
+    "openWeek": "Open de week van {name}",
+    "noGroup": "Geen groep",
+    "col": {
+      "rider": "Renner",
+      "group": "Groep",
+      "program": "Programma",
+      "today": "Vandaag",
+      "tomorrow": "Morgen",
+      "next": "Volgende dagen"
+    },
+    "groups": {
+      "follows": "Volgt de groep",
+      "withoutGroup": "Zonder groep",
+      "emptyTitle": "Maak je eerste groep",
+      "emptyBody": "Een groep deelt één weekplan. Elke renner kan nog steeds zijn eigen krijgen.",
+      "offTitle": "Groepen zijn nog niet open",
+      "offBody": "Plan de week van elke renner in Programma."
+    }
   }
 }
