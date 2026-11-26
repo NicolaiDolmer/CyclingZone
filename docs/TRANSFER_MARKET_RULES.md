@@ -570,7 +570,7 @@ Der findes **ingen fysisk spærring** af balance ved bud. I stedet regnes en
 
 `computeAvailableBalance = MAX(0, balance − forpligtelse)` (`auctionRules.js:305-309`).
 
-Sidebjælken, dashboardet og auktionssidens hoved bruger den samme holdafgrænsede læsning af disponibel saldo. Bundne bud vises under hovedtallet, når der er en binding. Salgsprovenu, der afventer et holdskifte, har sin egen linje.
+Sidebjælken, dashboardet og auktionssidens hoved bruger den samme holdafgrænsede læsning af disponibel saldo. Bundne bud vises under hovedtallet, når der er en binding. Ved bekræftet nul i bundne bud vises kontobeløbet som Saldo (#8661). Salgsprovenu, der afventer et holdskifte, har sin egen linje.
 Mens holdets kontosaldo genlæses, eller hvis den læsning fejler, vises det senest kendte beløb som Saldo. Til rådighed kræver en bekræftet kontosaldo og et gyldigt svar for bindingen.
 Auktionshovedet reserverer plads til begge saldolinjer under indlæsning, så handlingsknapperne bliver i samme række, når saldoen vises.
 
