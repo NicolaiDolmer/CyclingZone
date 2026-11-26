@@ -21,16 +21,33 @@
 // en for tidlig taending aldrig kan sende en ukendt ordre til motoren.
 
 import { createHash } from "node:crypto";
-import { STAGE_PLAN_FINAL_KM, isTimeTrialProfile, triggerKm, validateStagePlanLegs } from "./stagePlan.ts";
+import { STAGE_PLAN_FINAL_KM, isTimeTrialProfile, normalizeStagePlanLegs, planHasJerseyHunt, planWithoutJerseyHunt, triggerKm, validateStagePlanLegs } from "./stagePlan.ts";
 
 export const LONG_ATTACK_7884_FLAG_KEY = "long_attack_7884";
 
-/** Motorens trin (designets trin 4) er ikke bygget. Flippes kun i den PR, der bygger det. */
+/**
+ * Motorens trin (designets trin 4-6) er ikke tilsluttet loebet. Flippes kun i den PR, der
+ * tilslutter det. Saa laenge den er false, tager API'et heller ikke imod de nye steder
+ * (longAttack7884OpenForRace), uanset kontakten: en ordre motoren ikke vil koere, maa aldrig
+ * kunne gemmes (samme regel som troejejagten, #7855).
+ */
 export const LONG_ATTACK_7884_ENGINE_READY = false;
 
 const CATEGORIES = new Set(["HC", "1", "2", "3", "4"]);
 const ALL_ROLES = new Set(["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"]);
+
+/**
+ * Stedernes arter og deres skiftepunkt. #8828: strukturen er lavet, saa ejerens to aabne valg
+ * (svar fre 27/11) kan saettes ind uden omskrivning:
+ *  - "km foer maal" bliver en ny art her (fx `km_to_go`) med sin egen fod, og et nyt led i
+ *    attackPlaces7884; valideringen, fingeraftrykket og fladen laeser kun `kind`/`trigger`.
+ *  - "holdet foerer fra" bliver en ny opgave i PLACE_TASKS_7884; stederne er de samme.
+ */
+export const PLACE_KINDS_7884 = Object.freeze(["climb", "finale"]);
 const PLACE_TRIGGERS = new Set(["climb_start", "finale"]);
+
+/** Opgaverne der kan staa paa et sted. I dag kun "Angrib" (ejer 12/11). */
+export const PLACE_TASKS_7884 = Object.freeze(["attack"]);
 
 /** Kun den eksakte streng "on" taender. Alt andet (mangler, "off", true, fejl) er slukket. */
 export function evaluateLongAttack7884Flag(value) {
@@ -71,6 +88,7 @@ export function attackPlaces7884(raw) {
     const summitFinish = c.summit_finish === true || crestKm === distanceKm;
     places.push({
       key: `climb:${index}`,
+      kind: "climb",
       trigger: { at: "climb_start", kom_index: index },
       name: typeof c.name === "string" && c.name.trim() !== "" ? c.name : null,
       category,
@@ -81,6 +99,7 @@ export function attackPlaces7884(raw) {
   });
   places.push({
     key: "finale",
+    kind: "finale",
     trigger: { at: "finale" },
     name: null,
     category: null,
@@ -147,7 +166,7 @@ export function validateLongAttackLegs7884(legs, role, route, places, { newPlan 
     if (!leg || typeof leg !== "object" || Array.isArray(leg)) return "stage_plan_invalid_leg";
     const from = leg.from;
     if (i > 0 && isPlaceTrigger7884(from)) {
-      if (leg.task !== "attack") return "long_attack_needs_attack_task";
+      if (!PLACE_TASKS_7884.includes(leg.task)) return "long_attack_needs_attack_task";
       if (placeForTrigger7884(from, places) === null) return "long_attack_unknown_place";
     } else if (newPlan && leg.task === "attack" && from && typeof from === "object" && from.at === "kom") {
       return "long_attack_top_attack_retired";
@@ -200,4 +219,101 @@ export function validateStagePlan7884(legs, role, route, places, opts = {}) {
 export function effectivePlan7884({ flagValue, legs, engineReady = LONG_ATTACK_7884_ENGINE_READY }) {
   if (evaluateLongAttack7884Flag(flagValue) && engineReady === true) return legs;
   return planWithoutLongAttack7884(legs);
+}
+
+// ── #8828 trin 2: etiket, fakta, gem og laesning ─────────────────────────────
+
+/**
+ * Stedets etiket som data (fladen oversaetter den). Ejer 26/11: en stigning uden navn vises med
+ * kategori og km ("Kat. 3 ved km 87"); km er toppens, samme som profilens forklaring.
+ *  - { key: "climb", name, summit_finish }
+ *  - { key: "climbUnnamed", category, km, summit_finish }
+ *  - { key: "finale", from_km }
+ */
+export function placeLabel7884(place) {
+  if (!place || typeof place !== "object") return null;
+  if (place.kind === "finale") return { key: "finale", from_km: Math.round(place.foot_km) };
+  if (place.name) return { key: "climb", name: place.name, summit_finish: place.summit_finish === true };
+  return { key: "climbUnnamed", category: place.category, km: Math.round(place.crest_km), summit_finish: place.summit_finish === true };
+}
+
+/**
+ * Fakta fra ruten under valget (designets afsnit 6): hvor foden er, hvor mange kategoriserede
+ * stigninger der kommer efter, og om det er topankomsten. Kun rutens egne data, ingen tal fra
+ * motoren (fog of war).
+ */
+export function placeFacts7884(place, places) {
+  if (!place || typeof place !== "object") return null;
+  const list = Array.isArray(places) ? places : [];
+  const after = list.filter((p) => p.kind === "climb" && p.foot_km > place.foot_km).length;
+  return { foot_km: Math.round(place.foot_km), climbs_after: after, summit_finish: place.summit_finish === true };
+}
+
+/** Stederne som fladen faar dem: noegle, skiftepunkt, etiket og fakta, plus rutens fingeraftryk. */
+export function attackPlacesView7884(raw) {
+  const places = attackPlaces7884(raw);
+  return {
+    fingerprint: attackRouteFingerprint7884(places),
+    places: places.map((p) => ({ key: p.key, kind: p.kind, trigger: p.trigger, label: placeLabel7884(p), facts: placeFacts7884(p, places) })),
+  };
+}
+
+/** Har planen mindst ét led paa et af de nye steder? */
+export function planHasLongAttack7884(legs) {
+  return Array.isArray(legs) && legs.some((leg, i) => i > 0 && isPlaceTrigger7884(leg?.from));
+}
+
+/**
+ * Kanonisk form til lagring, ogsaa for de nye steder (stagePlan.normalizeStagePlanLegs kender
+ * kun de gamle punkter og ville tabe stigningens index). Forudsaetter en valideret plan.
+ */
+export function normalizeStagePlan7884(legs) {
+  if (!planHasLongAttack7884(legs)) return normalizeStagePlanLegs(legs);
+  const base = normalizeStagePlanLegs(legs.map((leg, i) => (i > 0 && isPlaceTrigger7884(leg.from) ? { ...leg, from: { at: "final_km" } } : leg)));
+  return base.map((leg, i) => {
+    const from = legs[i].from;
+    if (i === 0 || !isPlaceTrigger7884(from)) return leg;
+    return { ...leg, from: from.at === "finale" ? { at: "finale" } : { at: "climb_start", kom_index: from.kom_index } };
+  });
+}
+
+/**
+ * Rytterens gemte raekke for en plan med de nye steder (stagePlanApi.withStagePlan kalder hertil):
+ *  - `plan`: hele planen med stederne (motoren koerer den kun med kontakten og motorens trin).
+ *  - `plan_no_long_attack`: planen motoren ellers faar (planWithoutLongAttack7884), gemt ved
+ *    siden af, saa en slukket kontakt aldrig dropper rytterens plan.
+ *  - `long_attack_route_7884`: rutens fingeraftryk ved gem.
+ *  - `plan_no_hunt` (#7855): planen uden troejejagt OG uden stederne, kun naar der er jagt.
+ * De gamle felter (effort, try_break, leadout) udledes af planen uden stederne; foerste led og
+ * toget er de samme i begge.
+ */
+export function longAttackStorage7884(legs, fingerprint, legacyOrderFromPlan) {
+  const plan = normalizeStagePlan7884(legs);
+  const fallback = normalizeStagePlanLegs(planWithoutLongAttack7884(plan));
+  return {
+    ...legacyOrderFromPlan(fallback),
+    plan,
+    plan_no_long_attack: fallback,
+    long_attack_route_7884: fingerprint,
+    ...(planHasJerseyHunt(fallback) ? { plan_no_hunt: planWithoutJerseyHunt(fallback) } : {}),
+  };
+}
+
+/**
+ * Gem-konflikten (designets afsnit 2): en plan med de nye steder skal sende det fingeraftryk,
+ * den blev bygget paa. Er ruten aendret siden, afvises gem neutralt, saa rytteren aldrig
+ * angriber paa en flyttet eller omdoebt stigning. null = ok.
+ */
+export function routeFingerprintError7884(rider, fingerprint) {
+  if (!planHasLongAttack7884(rider?.plan)) return null;
+  return rider.long_attack_route_7884 === fingerprint ? null : "long_attack_route_changed";
+}
+
+/**
+ * Tager etapeplanen imod de nye steder i dette loeb? Kun naar ALT holder: kontakten er "on",
+ * loebets revision har etapeplanen, og motorens trin er tilsluttet. Enhver fejl = false.
+ * (Bindingen til loebet ved foerste etape, som #7855, kommer med tilslutningen af motoren.)
+ */
+export function longAttack7884OpenForRace({ flagValue, revisionOk, engineReady = LONG_ATTACK_7884_ENGINE_READY }) {
+  return revisionOk === true && evaluateLongAttack7884Flag(flagValue) && engineReady === true;
 }

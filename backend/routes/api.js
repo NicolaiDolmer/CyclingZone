@@ -310,7 +310,7 @@ import { resolveSelectionWarnings } from "../lib/selectionWarningResolve.ts"; //
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, normalizeTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace, loadStageRoleByRider, loadStageRoleRows } from "../lib/raceTeamOrdersApi.js";
 import { loadTacticsStageCapability7864, writeTacticsStages7864, roleSnapshot7864, entrySnapshot7864, tacticsSaveFailure7864 } from "../lib/tacticsStageSave7864.ts";
 import { fillRaceTactics7864 } from "../lib/raceTacticsBulk7864.js";
-import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
+import { isStagePlanEnabled, loadLongAttack7884Places, loadStagePlanContext, longAttack7884OpenForRaceApi, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003, #8828
 import { jerseyHunt7855OpenForRace } from "../lib/jerseyHunt7855Flag.js"; // #7855
 import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
@@ -6823,6 +6823,8 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
         && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true }),
       // #7855: troejejagtens opgaver kan vaelges (kontakten + loebet koerer med dem). Kun en boolean.
       jersey_hunt_7855: stagePlanRevisionOk(race) && await jerseyHunt7855OpenForRace({ supabase, race }),
+      // #8828: "Angrib paa"-stederne pr. etape med rutens fingeraftryk, kun naar loebet tager imod dem. Ellers false.
+      long_attack_7884: await longAttack7884OpenForRaceApi({ supabase, race }) ? await loadLongAttack7884Places({ supabase, raceId: race.id }) : false,
     });
   } catch (err) {
     captureException(err);
@@ -6850,7 +6852,7 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     const stagePlan = orderHasStagePlan(req.body) && stagePlanRevisionOk(race)
       && Number.isInteger(stageNumber) && stageNumber >= 1 && stageNumber <= ctx.stage_count
       && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true })
-      ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider, jerseyHunt7855: await jerseyHunt7855OpenForRace({ supabase, race }), overrideRows }) // #7855
+      ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider, jerseyHunt7855: await jerseyHunt7855OpenForRace({ supabase, race }), longAttack7884: await longAttack7884OpenForRaceApi({ supabase, race }), overrideRows }) // #7855, #8828
       : null;
     const roleByRider = await loadStageRoleByRider({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider, overrideRows }); // #7003
     const result = validateTeamOrder({
@@ -6868,7 +6870,7 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     });
     if (!result.ok) {
       const code = result.errors[0];
-      const status = code === "team_orders_race_completed" || code === "team_orders_stage_locked" ? 409 : 400;
+      const status = code === "team_orders_race_completed" || code === "team_orders_stage_locked" || code === "long_attack_route_changed" ? 409 : 400; // #8828
       return res.status(status).json({ error: code, errors: result.errors });
     }
 
