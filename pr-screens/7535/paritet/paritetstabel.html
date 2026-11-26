@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paritet: gammel mod ny planlægningsside</title>
+<style>
+  :root { --bg:#f3f1ec; --card:#fbfaf7; --subtle:#ece8df; --border:#e0dbd0; --t1:#1c1d22; --t2:#3e414a; --t3:#6b6f7a; --ok:#2f7d4a; --ok-bg:#e3f1e7; --warn:#a4570f; --warn-bg:#f7ead9; --bad:#b3322e; --bad-bg:#f8e1df; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1); font:13px/1.45 "Segoe UI", Inter, system-ui, sans-serif; }
+  .page { max-width:1360px; margin:0 auto; padding:24px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--t3); margin-bottom:16px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-weight:600; color:var(--t3); font-size:12px; padding:9px 12px; border-bottom:1px solid var(--border); background:var(--subtle); }
+  td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+  tr:last-child td { border-bottom:0; }
+  .f { font-weight:600; }
+  .s { font-size:12px; font-weight:600; border-radius:5px; padding:2px 8px; white-space:nowrap; display:inline-block; }
+  .s.ok { background:var(--ok-bg); color:var(--ok); }
+  .s.part { background:var(--warn-bg); color:var(--warn); }
+  .s.miss { background:var(--bad-bg); color:var(--bad); }
+  .rec { color:var(--t2); }
+  .n { color:var(--t3); font-variant-numeric:tabular-nums; }
+  @media (max-width:700px) {
+    .page { padding:14px 16px; }
+    thead { display:none; }
+    tr { display:block; border-bottom:1px solid var(--border); padding:10px 12px; }
+    td { display:block; border:0; padding:2px 0; }
+    td.n { display:inline; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Gammel /planning mod ny /planning/workbench</h1>
+  <div class="sub">Hver funktion fra den gamle side: findes, delvist eller mangler på den nye. Nummeret passer til wireframet.</div>
+  <div class="card">
+    <table>
+      <thead><tr><th>#</th><th>Funktion (gammel side)</th><th>Ny side</th><th>Hvad den nye har i dag</th><th>Mit forslag</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td class="f">Holdudtagelse, sæson (udtagelsesmatrix: ryttere mod løb, kun problemer, rutematch, form og peak, belastning, sæsonvælger)</td><td><span class="s part">Delvist</span></td><td>Løbslisten med "Hele sæsonen" og ugeoversigten. Intet gitter med ryttere mod løb, ingen "Kun problemer", ingen sæsonvælger.</td><td class="rec">Knap "Sæsonmatrix" i sidehovedet; matrixen uændret i stedet for ugeoversigten.</td></tr>
+        <tr><td class="n">2</td><td class="f">Holdudtagelse, dag og trupfordeling pr. løbsdag (dagens løb side om side, fælles ledige ryttere, Auto-udfyld, Ryd dag, Ryd alt, træk og slip)</td><td><span class="s part">Delvist</span></td><td>Ét løb ad gangen. Status "I [løb]" viser at en rytter er optaget. Foreslå trup og Handlinger dækker auto-udfyld og ryd.</td><td class="rec">"Fordel ryttere" under en dag med flere løb i ugeoversigten åbner dagens løb side om side, som i dag.</td></tr>
+        <tr><td class="n">3</td><td class="f">Formplan (pr. rytter: op til to formtop-mål, assistentens udkast med "Acceptér alle", sæsonvisning med formkurver, payback-kollision, S1/S2, mine/alle løb)</td><td><span class="s part">Delvist</span></td><td>Formtop pr. løb: kryds ryttere af og anvend, værdi og formdyk efter toppen, advarsel når et udtaget formtop-løb mangler rytteren. Intet overblik pr. rytter, intet assistentudkast, ingen næste sæson.</td><td class="rec">Inde i Formtop: "Dette løb" og "Pr. rytter, hele sæsonen" (den gamle formplan uændret).</td></tr>
+        <tr><td class="n">4</td><td class="f">Strategi (A-kæde, faste roller, kaptajner pr. terræn, mål-løb, vis ændringer, generér forslag igen)</td><td><span class="s miss">Mangler</span></td><td>Intet. Taktik pr. løb findes, men ikke holdets stående præferencer.</td><td class="rec">Knap "Holdstrategi" i sidehovedet, der åbner strategisiden uændret.</td></tr>
+        <tr><td class="n">5</td><td class="f">Kalender (månedskalender)</td><td><span class="s ok">Findes</span></td><td>Knappen "Månedskalender" i sidehovedet. Den peger i dag på den gamle sides kalenderfane.</td><td class="rec">Behold knappen; den skal pege på kalenderen selv, når den nye side bliver standard.</td></tr>
+        <tr><td class="n">6</td><td class="f">Payback-hul-advarsel ("Payback-hul her: navn (form)" på løbet)</td><td><span class="s part">Delvist</span></td><td>Kun i Formtop, for den formtop man er ved at sætte. Trup-visningen viser ikke, at en udtaget rytter er i et formdyk i netop dette løb.</td><td class="rec">Linje i løbets hoved som i dag plus mærket "Payback-hul" i rytterens status. Kræver at siden kan hente payback for alle løb, ikke kun dagens.</td></tr>
+        <tr><td class="n">7</td><td class="f">Deler løbsdage ("Deler løbsdag N med [løb]", "kører begge")</td><td><span class="s ok">Findes, bedre</span></td><td>I løbslisten, i løbets hoved og som status "I [løb]", så en rytter ikke kan sættes to steder.</td><td class="rec">Ingen ændring.</td></tr>
+        <tr><td class="n">8</td><td class="f">Mine løb, min division, andre divisioner (skrivebeskyttede startlister pr. dag, pulje-vælger)</td><td><span class="s miss">Mangler</span></td><td>Kun egne løb.</td><td class="rec">Visning "Startlister" ved siden af Trup, Taktik og Formtop, med vælger til andre divisioner.</td></tr>
+        <tr><td class="n">-</td><td class="f">Introduktionsturen (tre trin peger på den gamle dags-tavle)</td><td><span class="s miss">Mangler</span></td><td>Turens ankre findes ikke på den nye side.</td><td class="rec">Ny tur på tre trin: løbslisten, trup-tabellen, Gem trup.</td></tr>
+        <tr><td class="n">-</td><td class="f">Kun på den nye side</td><td><span class="s ok">Nyt</span></td><td>Ugeoversigt, ruteprofil, taktik pr. etape, belastning i ord, kopiér trup, Handlinger over mange løb, U23 og flag, bjælke for ugemte ændringer.</td><td class="rec">-</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>
