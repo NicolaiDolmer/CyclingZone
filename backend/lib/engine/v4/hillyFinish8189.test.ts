@@ -1,4 +1,4 @@
-// #8189 (kontakten hilly_finish_8189, SLUKKET): flad spurt paa kuperet/boelget efter dagens haardhed.
+// #8189 (kontakten hilly_selection_8799, SLUKKET; #8799): flad spurt paa kuperet/boelget efter dagens haardhed.
 // Slukket = bit-identisk med en FROSSEN fixture skrevet af merge-base-koden (#7587), ikke af den
 // nye kodes egen off-gren. Taendt flytter kun kuperede/boelgede flade spurter.
 import test from "node:test";
@@ -23,7 +23,10 @@ const fixture = JSON.parse(readFileSync(new URL("./test-data/hillyFinish8189Off.
   digests: Record<string, Record<string, string>>;
 };
 
-const APPLIES = /^(hilly|rolling)#\d+\/flat_sprint@/;
+// #8799: den faelles kontakt flytter kuperet og mellembjerg (dalens selektion, #7645) og boelget
+// flad spurt (#8189). Alt andet er bit-identisk med merge-basen, ogsaa taendt.
+const APPLIES = /^((hilly|medium_mountain)#|rolling#\d+\/flat_sprint@)/;
+const FINISH_8189 = /^(hilly|rolling)#\d+\/flat_sprint@/;
 
 test("#8189: fixturen er fra merge-base og daekker begge revisioner og S5-spurtvarianterne", () => {
   assert.match(fixture.merge_base, /^[0-9a-f]{40}$/);
@@ -38,31 +41,35 @@ test("#8189: fixturen er fra merge-base og daekker begge revisioner og S5-spurtv
 
 test("#8189: slukket (udeladt eller null) = bit-identisk med merge-base", () => {
   assert.deepEqual(golden8189Digests(), fixture.digests);
-  assert.deepEqual(golden8189Digests({ hilly_finish_8189: null }), fixture.digests);
+  assert.deepEqual(golden8189Digests({ hilly_selection_8799: null }), fixture.digests);
 });
 
-test("#8189: taendt under s5_profiles_v3 flytter kun kuperede/boelgede flade spurter; v2 er uroert", () => {
-  const on = golden8189Digests({ hilly_finish_8189: true });
+test("#8189/#8799: taendt under s5_profiles_v3 flytter kun kuperet, mellembjerg og boelget flad spurt; v2 er uroert", () => {
+  const on = golden8189Digests({ hilly_selection_8799: true });
   assert.deepEqual(on.s5_profiles_v2, fixture.digests.s5_profiles_v2, "aeldre revision: kontakten virker ikke");
   const v3 = on.s5_profiles_v3;
   let moved = 0;
+  let movedFinish = 0;
   for (const [key, digest] of Object.entries(fixture.digests.s5_profiles_v3)) {
     if (APPLIES.test(key)) {
       if (v3[key] !== digest) moved++;
+      if (FINISH_8189.test(key) && v3[key] !== digest) movedFinish++;
     } else {
       assert.equal(v3[key], digest, `${key}: uden for kontaktens etaper`);
     }
   }
-  assert.ok(moved > 0, "kontakten flytter mindst én kuperet/boelget flad spurt");
-  assert.deepEqual(golden8189Digests({ hilly_finish_8189: true }).s5_profiles_v3, v3, "deterministisk");
+  assert.ok(moved > 0, "kontakten flytter mindst én kuperet etape");
+  assert.ok(movedFinish > 0, "kontakten flytter mindst én kuperet/boelget flad spurt");
+  assert.ok(Object.entries(fixture.digests.s5_profiles_v3).some(([k, d]) => /^rolling#\d+\/flat_sprint@/.test(k) && v3[k] !== d), "boelget flad spurt flyttes (reduceret spurt)");
+  assert.deepEqual(golden8189Digests({ hilly_selection_8799: true }).s5_profiles_v3, v3, "deterministisk");
 });
 
 test("#8189: kontakten kraever s5_profiles_v3 og et eksplicit true", () => {
-  assert.equal(hillyFinish8189On({ rules_revision: "s5_profiles_v3", hilly_finish_8189: true }), true);
+  assert.equal(hillyFinish8189On({ rules_revision: "s5_profiles_v3", hilly_selection_8799: true }), true);
   assert.equal(hillyFinish8189On({ rules_revision: "s5_profiles_v3" }), false);
-  assert.equal(hillyFinish8189On({ rules_revision: "s5_profiles_v3", hilly_finish_8189: null }), false);
-  assert.equal(hillyFinish8189On({ rules_revision: "s5_profiles_v2", hilly_finish_8189: true }), false);
-  assert.equal(hillyFinish8189On({ rules_revision: null, hilly_finish_8189: true }), false);
+  assert.equal(hillyFinish8189On({ rules_revision: "s5_profiles_v3", hilly_selection_8799: null }), false);
+  assert.equal(hillyFinish8189On({ rules_revision: "s5_profiles_v2", hilly_selection_8799: true }), false);
+  assert.equal(hillyFinish8189On({ rules_revision: null, hilly_selection_8799: true }), false);
 });
 
 function climb(fromKm: number, toKm: number, category: "4" | "3" | "2" | "1" | "HC"): Segment {

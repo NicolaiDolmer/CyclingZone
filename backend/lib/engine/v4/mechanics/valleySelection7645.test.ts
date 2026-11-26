@@ -1,10 +1,11 @@
-// #7645 (dalens selektion paa kuperet og mellembjerg, SLUKKET): kontrakt-tests.
-//  1. Kontakten slukket (udeladt, null, true, ukendt vaerdi) er bit-identisk med merge-basen
+// #7645 (dalens selektion paa kuperet og mellembjerg, bag #8799-kontakten hilly_selection_8799, SLUKKET): kontrakt-tests.
+//  1. Kontakten slukket (udeladt, null, false, ukendte vaerdier) er bit-identisk med merge-basen
 //     (frosne digests i test-data/valleySelection7645OffDigests.json, skrevet fra koden foer kontakten).
 //  2. Kontakten virker kun paa s5_profiles_v3, kun paa kuperet og mellembjerg.
-//  3. Mekanikken: raekkevidden maales mod forgruppen; uden for den kommer en gruppe kun tilbage,
-//     naar et hold med en kandidat i den har hjaelpere der jager; hjaelperne har et budget;
-//     forgruppens hold kan holde dem ude. Ingen balance-tal i assertions ud over tuningens egne felter.
+//  3. Mekanikken (ejerens variant 3): raekkevidden maales mod forgruppen; uden for den kommer en
+//     gruppe kun tilbage, naar et hold med en kandidat i den har hjaelpere der jager; hjaelperne har
+//     et budget; forgruppens hold kan holde dem ude; arbejder ingen, vokser hullet ikke.
+//     Ingen balance-tal i assertions ud over tuningens egne felter.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -15,14 +16,7 @@ import { simulateStageV4 } from "../index.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
 import { routeFromStageProfileRow } from "../adapters/routeAdapter.ts";
 import { buildStageOrderPlan } from "../orders/teamOrdersAdapter.ts";
-import {
-  VALLEY_SELECTION_7645_TUNING,
-  VALLEY_SELECTION_7645_VARIANTS,
-  valleySelection7645For,
-  valleySelection7645Variant,
-  valleySelectionTempo7645,
-  type ValleySelection7645Variant,
-} from "./timeModel.ts";
+import { VALLEY_SELECTION_7645_TUNING, valleySelection7645For, valleySelectionTempo7645 } from "./timeModel.ts";
 import type { RaceGroup, StageInput } from "../types.ts";
 
 const expected = JSON.parse(readFileSync(new URL("../test-data/valleySelection7645OffDigests.json", import.meta.url), "utf8")) as Record<string, unknown>;
@@ -52,44 +46,35 @@ function runWith(value: unknown): Record<string, string> {
     } as Parameters<typeof buildStageOrderPlan>[0]);
     const startlist = field.map((rider) => ({ ...rider, role: plan.aiRoleByRider?.get(rider.rider_id) ?? rider.role, effort: plan.aiEffortByRider.get(rider.rider_id) ?? rider.effort }));
     for (const seed of VALLEY_7645_OFF_SEEDS) {
-      const input = { route, startlist, orders: plan.orders, seed: `${seed}:${row.stage_number ?? 1}`, tuning: RACE_V4_TUNING, rules_revision: "s5_profiles_v3", gc_context: FIRST_STAGE_GC, valley_selection_7645: value } as unknown as StageInput;
+      const input = { route, startlist, orders: plan.orders, seed: `${seed}:${row.stage_number ?? 1}`, tuning: RACE_V4_TUNING, rules_revision: "s5_profiles_v3", gc_context: FIRST_STAGE_GC, hilly_selection_8799: value } as unknown as StageInput;
       out[`${row.profile_type}#${row.stage_number ?? 1}@${seed}`] = digestOf(simulateStageV4(input));
     }
   }
   return out;
 }
 
-test("#7645: null, true og ukendte vaerdier er slukket (bit-identisk med merge-basen)", () => {
-  for (const value of [null, true, "on", "front-reach", 1]) assert.deepEqual(runWith(value), expected.stageRace, String(value));
+test("#7645: null, false og ukendte vaerdier er slukket (bit-identisk med merge-basen)", () => {
+  for (const value of [null, false, "on", "team_chase_hold", 1]) assert.deepEqual(runWith(value), expected.stageRace, String(value));
 });
 
-test("#7645: varianterne roerer aldrig bjerg (bit-identisk med merge-basen)", () => {
+test("#7645: taendt roerer aldrig bjerg og flytter mindst én kuperet etape", () => {
   const base = expected.stageRace as Record<string, string>;
-  for (const variant of VALLEY_SELECTION_7645_VARIANTS) {
-    const got = runWith(variant);
-    for (const [key, digest] of Object.entries(got)) if (key.startsWith("mountain#")) assert.equal(digest, base[key], `${variant} ${key}`);
-  }
-});
-
-test("#7645: hver variant flytter mindst én kuperet etape (kontakten virker, naar den er taendt)", () => {
-  const base = expected.stageRace as Record<string, string>;
-  for (const variant of VALLEY_SELECTION_7645_VARIANTS) {
-    const got = runWith(variant);
-    assert.ok(Object.entries(got).some(([key, digest]) => key.startsWith("hilly#") && digest !== base[key]), variant);
-  }
+  const got = runWith(true);
+  for (const [key, digest] of Object.entries(got)) if (key.startsWith("mountain#")) assert.equal(digest, base[key], key);
+  assert.ok(Object.entries(got).some(([key, digest]) => key.startsWith("hilly#") && digest !== base[key]));
 });
 
 test("#7645: kontakten gaelder kun s5_profiles_v3 og kun kuperet og mellembjerg", () => {
-  assert.equal(valleySelection7645For({ rules_revision: "s5_profiles_v3", valley_selection_7645: "team_chase_hold" }, "hilly"), "team_chase_hold");
-  assert.equal(valleySelection7645For({ rules_revision: "s5_profiles_v3", valley_selection_7645: "front_reach" }, "medium_mountain"), "front_reach");
+  assert.equal(valleySelection7645For({ rules_revision: "s5_profiles_v3", hilly_selection_8799: true }, "hilly"), true);
+  assert.equal(valleySelection7645For({ rules_revision: "s5_profiles_v3", hilly_selection_8799: true }, "medium_mountain"), true);
   for (const profile of ["flat", "rolling", "mountain", "high_mountain", "cobbles", "classic"] as const) {
-    assert.equal(valleySelection7645For({ rules_revision: "s5_profiles_v3", valley_selection_7645: "team_chase_hold" }, profile), null, profile);
+    assert.equal(valleySelection7645For({ rules_revision: "s5_profiles_v3", hilly_selection_8799: true }, profile), false, profile);
   }
   for (const revision of ["legacy", "s5_profiles_v1", "s5_profiles_v2", "official_times_v5", null]) {
-    assert.equal(valleySelection7645For({ rules_revision: revision, valley_selection_7645: "team_chase_hold" }, "hilly"), null, String(revision));
+    assert.equal(valleySelection7645For({ rules_revision: revision, hilly_selection_8799: true }, "hilly"), false, String(revision));
   }
-  assert.equal(valleySelection7645Variant(true), null);
-  assert.equal(valleySelection7645Variant("team_chase"), "team_chase");
+  assert.equal(valleySelection7645For({ rules_revision: "s5_profiles_v3" }, "hilly"), false);
+  assert.equal(valleySelection7645For({ rules_revision: "s5_profiles_v3", hilly_selection_8799: null }, "hilly"), false);
 });
 
 // ── Mekanikken paa haandbyggede grupper ───────────────────────────────────────
@@ -120,66 +105,63 @@ function scene(behindGap: number) {
   return { entrants, riders, groups, tempo };
 }
 
-function run(variant: ValleySelection7645Variant, behindGap: number, workKm?: Record<string, number>) {
+function run(behindGap: number, workKm?: Record<string, number>) {
   const s = scene(behindGap);
   return valleySelectionTempo7645({
-    groups: s.groups, tempoByGroup: s.tempo, segments: SEGMENTS, segmentIndex: 1, incidentChasers: undefined, variant,
+    groups: s.groups, tempoByGroup: s.tempo, segments: SEGMENTS, segmentIndex: 1, incidentChasers: undefined,
     entrants: s.entrants, riders: s.riders, finaleType: "flat_sprint", profileType: "hilly", workKm,
   });
 }
 
-test("#7645: inden for raekkevidden af forgruppen vokser hullet ikke (alle varianter)", () => {
-  for (const variant of VALLEY_SELECTION_7645_VARIANTS) {
-    const r = run(variant, VALLEY_SELECTION_7645_TUNING.frontReachSeconds / 2);
-    assert.ok((r.tempo.get("B")?.dtSeconds ?? Infinity) <= 1000, variant);
-  }
-});
+const FAR = VALLEY_SELECTION_7645_TUNING.frontReachSeconds * 3;
+const BUDGET = VALLEY_SELECTION_7645_TUNING.workerBudgetKm;
+// Hold A's hjaelpere har brugt deres budget: forgruppen kan ikke forsvare.
+const A_SPENT = { a2: BUDGET, a3: BUDGET };
 
-test("#7645: mulighed 1 lader en gruppe uden for raekkevidden koere sit eget tempo", () => {
-  const r = run("front_reach", VALLEY_SELECTION_7645_TUNING.frontReachSeconds * 3);
-  assert.equal(r.tempo.get("B")?.dtSeconds, 1030);
-  assert.equal(r.workKm, undefined);
+test("#7645: inden for raekkevidden af forgruppen vokser hullet ikke", () => {
+  const r = run(VALLEY_SELECTION_7645_TUNING.frontReachSeconds / 2);
+  assert.ok((r.tempo.get("B")?.dtSeconds ?? Infinity) <= 1000);
 });
 
 test("#7645: jagten med en aarsag: holdet med kandidaten bagved jager og betaler", () => {
-  const r = run("team_chase", VALLEY_SELECTION_7645_TUNING.frontReachSeconds * 3);
+  const r = run(FAR, A_SPENT);
   const dt = r.tempo.get("B")?.dtSeconds ?? Infinity;
   assert.ok(dt < 1000, "gruppen bagved vinder tid paa forgruppen");
   assert.deepEqual([...(r.tempo.get("B")?.frontRiderIds ?? [])].sort(), ["b2", "b3"], "kun hold B's hjaelpere foerer");
-  assert.deepEqual(Object.keys(r.workKm ?? {}).sort(), ["b2", "b3"]);
+  assert.ok((r.workKm?.b2 ?? 0) > 0 && (r.workKm?.b3 ?? 0) > 0, "jagten koster hjaelperne af budgettet");
   assert.equal(r.chases[0]?.teamIds.join(","), "B");
 });
 
 test("#7645: en jagt lukker aldrig mere end hullet (gruppen kommer ikke forbi)", () => {
   const gap = VALLEY_SELECTION_7645_TUNING.frontReachSeconds + 1;
-  const r = run("team_chase", gap);
+  const r = run(gap, A_SPENT);
   assert.ok((r.tempo.get("B")?.dtSeconds ?? 0) >= 1000 - gap);
 });
 
-test("#7645: hjaelpere med brugt budget jager ikke", () => {
-  const spent = VALLEY_SELECTION_7645_TUNING.workerBudgetKm;
-  const r = run("team_chase", VALLEY_SELECTION_7645_TUNING.frontReachSeconds * 3, { b2: spent, b3: spent });
-  assert.equal(r.tempo.get("B")?.dtSeconds, 1030);
-  assert.equal(r.chases.length, 0);
+test("#7645: hjaelpere med brugt budget jager ikke; forgruppens forsvar holder dem ude", () => {
+  const r = run(FAR, { b2: BUDGET, b3: BUDGET });
+  assert.equal(r.tempo.get("B")?.dtSeconds, 1030, "ingen jagt, forgruppen koerer fra");
+  assert.equal(r.workKm?.b2, BUDGET);
+  assert.ok(r.chases.every((c) => c.workerIds.length === 0));
 });
 
 test("#7645: forgruppens hold holder dem ude og betaler; ingen der arbejder = hullet holder", () => {
-  const far = VALLEY_SELECTION_7645_TUNING.frontReachSeconds * 3;
-  const chase = run("team_chase", far).tempo.get("B")?.dtSeconds ?? 0;
-  const hold = run("team_chase_hold", far);
+  const chase = run(FAR, A_SPENT).tempo.get("B")?.dtSeconds ?? 0;
+  const hold = run(FAR);
   assert.ok((hold.tempo.get("B")?.dtSeconds ?? 0) >= chase, "forsvaret goer jagten langsommere");
   assert.ok([...(hold.tempo.get("F")?.frontRiderIds ?? [])].some((id) => id === "a2" || id === "a3"), "hold A's hjaelpere foerer forgruppen");
+  assert.ok((hold.workKm?.a2 ?? 0) > 0 || (hold.workKm?.a3 ?? 0) > 0, "forsvaret koster hjaelperne af budgettet");
   // Ingen kandidat bagved (kun hold C, som ikke har en kandidat): ingen jager, ingen forsvarer, hullet vokser ikke.
-  const s = scene(far);
+  const s = scene(FAR);
   s.groups[1] = { ...s.groups[1], rider_ids: ["c2"] };
-  const quiet = valleySelectionTempo7645({ groups: s.groups, tempoByGroup: s.tempo, segments: SEGMENTS, segmentIndex: 1, incidentChasers: undefined, variant: "team_chase_hold", entrants: s.entrants, riders: s.riders, finaleType: "flat_sprint", profileType: "hilly", workKm: undefined });
+  const quiet = valleySelectionTempo7645({ groups: s.groups, tempoByGroup: s.tempo, segments: SEGMENTS, segmentIndex: 1, incidentChasers: undefined, entrants: s.entrants, riders: s.riders, finaleType: "flat_sprint", profileType: "hilly", workKm: undefined });
   assert.equal(quiet.tempo.get("B")?.dtSeconds, 1000);
 });
 
 test("#7645: foer etapens foerste stigning og paa andet end fladt/rullende goer kontakten intet", () => {
-  const s = scene(VALLEY_SELECTION_7645_TUNING.frontReachSeconds * 3);
-  const before = valleySelectionTempo7645({ groups: s.groups, tempoByGroup: s.tempo, segments: [{ kind: "flat", from_km: 0, to_km: 20 }], segmentIndex: 0, incidentChasers: undefined, variant: "team_chase_hold", entrants: s.entrants, riders: s.riders, finaleType: "flat_sprint", profileType: "hilly", workKm: undefined });
+  const s = scene(FAR);
+  const before = valleySelectionTempo7645({ groups: s.groups, tempoByGroup: s.tempo, segments: [{ kind: "flat", from_km: 0, to_km: 20 }], segmentIndex: 0, incidentChasers: undefined, entrants: s.entrants, riders: s.riders, finaleType: "flat_sprint", profileType: "hilly", workKm: undefined });
   assert.equal(before.tempo, s.tempo);
-  const onClimb = valleySelectionTempo7645({ groups: s.groups, tempoByGroup: s.tempo, segments: [SEGMENTS[0], { kind: "climb", from_km: 10, to_km: 20 }], segmentIndex: 1, incidentChasers: undefined, variant: "team_chase_hold", entrants: s.entrants, riders: s.riders, finaleType: "flat_sprint", profileType: "hilly", workKm: undefined });
+  const onClimb = valleySelectionTempo7645({ groups: s.groups, tempoByGroup: s.tempo, segments: [SEGMENTS[0], { kind: "climb", from_km: 10, to_km: 20 }], segmentIndex: 1, incidentChasers: undefined, entrants: s.entrants, riders: s.riders, finaleType: "flat_sprint", profileType: "hilly", workKm: undefined });
   assert.equal(onClimb.tempo, s.tempo);
 });
