@@ -1437,9 +1437,9 @@
           "On a training day, pick the session: Long ride (easy), Tempo (medium), or Mixed intervals, Climbing intervals, Punch intervals, Threshold, Sprint, Cobbled Sectors, Echelon Drills or Attack Repeats (hard). On a skill day: Technique, Aero or Race craft.",
           "Save. The day runs every day until you change it.",
           "There is no cap on how many riders can have a program: you can set one for your entire squad.",
-          "When Rotation is available in Program, put the passes in the order you want them to run. A race, injury or rest from the fatigue limit pauses the sequence. If the same pass runs on Light, the rotation moves on.",
-          "Use Jump to pass to change a rider’s place. Copying a rotation of the same length keeps each rider’s place unless you select Start from pass 1. A different length starts at pass 1.",
-          "When field priority is available in Week blocks, order each day’s passes by priority. You can lock one pass on that day. Races took lists the passes that did not fit."
+          "In Program, set Plan type to Rotation and put the passes in the order you want them to run. A race, an injury or rest from the fatigue limit pauses the sequence. If the same pass runs on Light, the rotation moves on.",
+          "Use Jump to pass to change a rider’s place. Copying a rotation of the same length keeps each rider’s place unless you select Start from pass 1. A different length starts at pass 1. A rider’s own rotation wins over the group’s week blocks.",
+          "In Program, set Plan type to Week blocks. Order each day’s passes by priority and lock one pass that day. Races take the lowest priority, and Races took lists the passes that did not fit. A locked pass stays in its own field. If a race is there, it moves to the nearest free field."
         ]
       },
       "dayTypes": {
@@ -1692,6 +1692,10 @@
     },
     "academy": {
       "label": "Academy",
+      "pageOverview": {
+        "title": "The Academy page",
+        "text": "The Academy page opens with an overview of this week's intake, your junior and U23 squads, your talents and your age focus. Below it are four tabs. This week's intake is where you bring in and sign candidates. Your talents lists the riders you signed from your own academy offers, with their rider type. Riders from youth auctions and transfers are not in that list, but they still count towards the squad limits. The Academy ledger and your age focus have their own answers in the FAQ."
+      },
       "whatAcademy": {
         "title": "What is the Academy?",
         "text": "The Academy lets you develop your own young talent instead of buying established riders on the open market. Each season your club receives a cohort of prospects at the start of the season. You review them, sign 0-2 into your Academy, and develop them in-house. The Academy is separate from your senior squad and is active, live since the season 1 relaunch."
@@ -2426,6 +2430,14 @@
     "academyAgeFocusFaq": {
       "q": "How does age focus affect the weekly academy intake?",
       "a": "On the Profile and age tab, choose an age to make it more likely in your weekly intake. Other ages can still appear. Mixed keeps the usual age distribution. Changes take effect after fourteen days."
+    },
+    "academyLedgerFaq": {
+      "q": "What does the Academy ledger count?",
+      "a": "The ledger shows one season at a time. Costs and sales count the same riders: everyone you signed from an academy offer or won at a youth auction. Costs are shown with a minus, and running costs are a line of their own. Sales list each rider you sold, where the rider came from and whether the sale went through an auction or a transfer."
+    },
+    "weekBlocksLockFaq": {
+      "q": "What happens to a locked pass when a race or an injury is in the way?",
+      "a": "A race always runs in its fixed fields, so the locked pass moves to the nearest free field that day, and to the later one if two are equally close. If the rider is injured in that field but fit again later the same day, the pass moves to the first fit field and the week shows where it came from. A pass a race took is not made up, and a pass never runs twice. The fatigue limit still wins over the lock."
     },
     "academyIntakeExpiryFaq": {
       "q": "Do Academy intake offers expire?",

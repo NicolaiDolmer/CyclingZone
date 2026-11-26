@@ -1437,9 +1437,9 @@
           "På en træningsdag vælger du sessionen: Lang tur (let), Tempo (mellem), eller Blandede intervaller, Klatreintervaller, Punch-intervaller, Tærskel, Sprint, Brostenssektorer, Vifteøvelser eller Angrebsintervaller (hård). På en færdighedsdag: Teknik, Aero eller Løbslære.",
           "Gem. Dagen kører hver dag, indtil du ændrer den.",
           "Der er ingen grænse for hvor mange ryttere der kan have et program: du kan sætte et for hele truppen.",
-          "Når Rotation er tilgængelig under Program, sætter du passene i den rækkefølge, de skal køres. Et løb, en skade eller hvile fra træthedsgrænsen sætter rotationen på pause. Kører samme pas på Let, fortsætter rotationen.",
-          "Brug Spring til pas for at ændre rytterens plads. Ved kopiering med samme længde beholder hver rytter sin plads, medmindre du vælger Start fra pas 1. En ny længde starter ved pas 1.",
-          "Når feltprioritet er tilgængelig i Ugeblokke, sætter du dagens pas i prioritetsrækkefølge. Du kan låse ét pas den dag. Løb tog viser de pas, der ikke blev plads til."
+          "Under Program sætter du Plantype til Rotation og stiller passene i den rækkefølge, de skal køres. Et løb, en skade eller hvile fra træthedsgrænsen sætter rotationen på pause. Kører samme pas på Let, fortsætter rotationen.",
+          "Brug Spring til pas for at ændre rytterens plads. Ved kopiering med samme længde beholder hver rytter sin plads, medmindre du vælger Start fra pas 1. En ny længde starter ved pas 1. En rytters egen rotation vinder over gruppens ugeblokke.",
+          "Under Program sætter du Plantype til Ugeblokke. Sæt dagens pas i prioritetsrækkefølge, og lås ét pas den dag. Løb tager laveste prioritet, og Løb tog viser de pas, der ikke blev plads til. Et låst pas bliver i sit eget felt. Står et løb dér, flytter det til nærmeste ledige felt."
         ]
       },
       "dayTypes": {
@@ -1692,6 +1692,10 @@
     },
     "academy": {
       "label": "Akademi",
+      "pageOverview": {
+        "title": "Akademisiden",
+        "text": "Akademisiden åbner med et overblik over ugens optag, dine junior- og U23-trupper, dine talenter og dit aldersfokus. Under det ligger fire faner. Ugens optag er der, hvor du henter og signerer kandidater. Dine talenter viser de ryttere, du har signeret fra dit eget akademis tilbud, med deres ryttertype. Ryttere fra ungdomsauktioner og transfers står ikke på den liste, men de tæller stadig med i trupgrænserne. Akademi-regnskabet og dit aldersfokus har deres egne svar under de ofte stillede spørgsmål."
+      },
       "whatAcademy": {
         "title": "Hvad er Akademiet?",
         "text": "Akademiet lader dig udvikle dine egne unge talenter i stedet for kun at købe etablerede ryttere på det åbne marked. Hvert sæson modtager din klub et kuld af unge talenter ved sæsonstart. Du gennemgår kuldet, signerer 0-2 ind i dit Akademi og udvikler dem in-house. Akademiet er adskilt fra din seniorgruppe og er aktivt, live siden sæson 1-relaunchen."
@@ -2426,6 +2430,14 @@
     "academyAgeFocusFaq": {
       "q": "Hvordan påvirker aldersfokus ugens akademioptag?",
       "a": "Vælg en alder på fanen Profil og alder for at gøre den mere sandsynlig i ugens optag. Andre aldre kan stadig dukke op. Blandet følger den almindelige aldersfordeling. Ændringer træder i kraft efter fjorten dage."
+    },
+    "academyLedgerFaq": {
+      "q": "Hvad tæller Akademi-regnskabet?",
+      "a": "Regnskabet viser én sæson ad gangen. Udgifter og salg tæller de samme ryttere: alle, du har hentet fra et akademitilbud eller vundet på en ungdomsauktion. Udgifter står med minus, og driftsudgifter har deres egen linje. Salg viser hver rytter, du har solgt, hvor rytteren kom fra, og om salget gik via auktion eller transfer."
+    },
+    "weekBlocksLockFaq": {
+      "q": "Hvad sker der med et låst pas, når et løb eller en skade står i vejen?",
+      "a": "Et løb køres altid i sine faste felter, så det låste pas flytter til nærmeste ledige felt den dag, og til det senere felt, hvis to ligger lige tæt. Er rytteren skadet i feltet, men rask senere samme dag, flytter passet til det første raske felt, og ugen viser, hvor det kom fra. Et pas, som et løb tog, indhentes ikke, og et pas køres aldrig to gange. Træthedsgrænsen vinder stadig over låsen."
     },
     "academyIntakeExpiryFaq": {
       "q": "Udløber akademi-intake-tilbud?",
