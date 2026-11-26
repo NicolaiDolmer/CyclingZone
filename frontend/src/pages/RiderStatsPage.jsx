@@ -967,7 +967,10 @@ export default function RiderStatsPage() {
   });
   const training = useTraining();
   const trainingHistory = useTrainingHistory();
-  return <RiderStats key={id} tab={tab} setTab={setTab} training={training} trainingHistory={trainingHistory} />;
+  // #8755: rosteret overlever key={id}-remountet, saa switcher-baren ikke
+  // forsvinder (og pile-taster tabes) mens naeste rytters trup hentes igen.
+  const [lastRoster, setLastRoster] = useState(/** @type {Array<{ id: string, firstname?: string, lastname?: string }>} */ ([]));
+  return <RiderStats key={id} tab={tab} setTab={setTab} training={training} trainingHistory={trainingHistory} initialRoster={lastRoster} onRoster={setLastRoster} />;
 }
 
 /**
@@ -976,9 +979,11 @@ export default function RiderStatsPage() {
  *   setTab: (tab: string | null) => void,
  *   training: ReturnType<typeof useTraining>,
  *   trainingHistory: ReturnType<typeof useTrainingHistory>,
+ *   initialRoster: Array<{ id: string, firstname?: string, lastname?: string }>,
+ *   onRoster: (roster: Array<{ id: string, firstname?: string, lastname?: string }>) => void,
  * }} props
  */
-function RiderStats({ tab, setTab, training, trainingHistory }) {
+function RiderStats({ tab, setTab, training, trainingHistory, initialRoster, onRoster }) {
   const { id } = useParams();
   // #8069 T02: handlingsraekkens formularer deler EN aaben-plads (een guld-knap).
   const panelSlot = usePanelSlotState();
@@ -1017,7 +1022,7 @@ function RiderStats({ tab, setTab, training, trainingHistory }) {
   const [interest, setInterest]             = useState(null);
   const [loading, setLoading]               = useState(true);
   // Roster for switcher-baren (#2000): det VISTE holds trup, til prev/next + index.
-  const [roster, setRoster]                 = useState([]);
+  const [roster, setRoster]                 = useState(initialRoster);
   const [myTeamId, setMyTeamId]             = useState(null);
   const [myBalance, setMyBalance]           = useState(0);
   const [myReservedBalance, setMyReservedBalance] = useState(0);
@@ -1098,10 +1103,10 @@ function RiderStats({ tab, setTab, training, trainingHistory }) {
         .eq("team_id", teamId)
         .or("is_retired.is.null,is_retired.eq.false")
         .order("lastname");
-      if (!cancelled) setRoster(data || []);
+      if (!cancelled) { setRoster(data || []); onRoster(data || []); }
     })();
     return () => { cancelled = true; };
-  }, [rider?.team_id]);
+  }, [rider?.team_id, onRoster]);
 
   // #2000 stykke 3: divisions-fysiologi-snit til Fysiologi-fanens benchmarks.
   // Hentes lazily når fanen åbnes (backend cacher pr. division). Fri agent/ingen
