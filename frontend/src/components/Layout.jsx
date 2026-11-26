@@ -577,8 +577,9 @@ export default function Layout() {
   // Init fra cache (#1792-klasse): vis akademiet med det samme hvis brugeren har
   // set det før, så et forbigående fetch-hikke ikke skjuler et fungerende akademi.
   const academyViewer = /** @type {string | null} */ (userId) ?? session?.user.id;
+  const academyProfile = /** @type {{ role?: string | null, is_beta_tester?: boolean | null } | null} */ (profile);
   const [legacyAcademyEnabled] = useState(() => Boolean(readCachedAcademyNav()));
-  const [legacyAcademyViewer, setLegacyAcademyViewer] = useState(/** @type {string | null} */ (null));
+  const [legacyAcademyViewer, setLegacyAcademyViewer] = useState(() => academyViewer ?? null);
   const [academyMenu, setAcademyMenu] = useState(/** @type {{ viewer: string, visible: boolean } | null} */ (null));
   const academyEnabled = academyMenu && academyMenu.viewer === academyViewer
     ? academyMenu.visible
@@ -684,7 +685,7 @@ export default function Layout() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return;
-      setLegacyAcademyViewer(session.user.id);
+      setLegacyAcademyViewer((viewer) => viewer ?? session.user.id);
       setSession(session);
 
       const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).maybeSingle();
@@ -784,7 +785,7 @@ export default function Layout() {
       }
     }).catch((error) => console.error("academy visibility read failed:", error));
     return () => { active = false; };
-  }, [academyViewer]);
+  }, [academyViewer, academyProfile?.role, academyProfile?.is_beta_tester]);
 
   useEffect(() => {
     if (!session) return;
