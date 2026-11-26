@@ -18,10 +18,11 @@ RETURNS TABLE (
   rider jsonb,
   race jsonb
 )
--- Qualify relations and JSON functions so PostgreSQL can inline the read.
+-- Keep the search path pinned when this manual definition is replayed (#8741).
 LANGUAGE sql
 STABLE
 SECURITY INVOKER
+SET search_path = public, pg_catalog
 AS $$
   WITH page AS MATERIALIZED (
     SELECT rr.id, rr.rank, rr.result_type, rr.stage_number, rr.points_earned,
