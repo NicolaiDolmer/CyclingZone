@@ -11,17 +11,24 @@ const PAGE_SIZE = 1000;
 type NationalityRow = { nationality_code: string | null };
 type QueryResult = { data: NationalityRow[] | null; error: unknown };
 
-// Bevidst løs type: kaldes med den typede browser-klient, og viewet findes først i
+// Bevidst smal strukturel type: kaldes med browser-klienten, og viewet findes først i
 // database.types.ts når typerne regenereres efter migrationen.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type LooseSupabase = { from: (table: string) => any };
+interface NationalityQuery {
+  select(columns: string): NationalityQuery;
+  eq(column: string, value: unknown): NationalityQuery;
+  neq(column: string, value: unknown): NationalityQuery;
+  order(column: string): NationalityQuery;
+  range(from: number, to: number): PromiseLike<QueryResult>;
+}
+type LooseSupabase = { from: (table: string) => NationalityQuery };
 
 function uniqueSorted(rows: NationalityRow[] | null): string[] {
   const codes = (rows || []).map((r) => r.nationality_code).filter((c): c is string => Boolean(c));
   return [...new Set(codes)].sort();
 }
 
-export async function loadRiderNationalities(supabase: LooseSupabase): Promise<string[]> {
+export async function loadRiderNationalities(client: unknown): Promise<string[]> {
+  const supabase = client as LooseSupabase;
   const view: QueryResult = await supabase.from("rider_nationality_codes").select("nationality_code")
     .order("nationality_code").range(0, PAGE_SIZE - 1);
   if (!view.error && view.data) return uniqueSorted(view.data);

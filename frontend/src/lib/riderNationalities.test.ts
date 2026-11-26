@@ -36,10 +36,10 @@ const riders: Row[] = Array.from({ length: 2500 }, (_, i) => ({
 
 test("viewet bruges når det findes", async () => {
   const sb = fakeSupabase({ rider_nationality_codes: [{ nationality_code: "SE" }, { nationality_code: "DK" }] });
-  assert.deepEqual(await loadRiderNationalities(sb), ["DK", "SE"]);
+  assert.deepEqual(await loadRiderNationalities(sb as never), ["DK", "SE"]);
 });
 
 test("uden viewet pagineres rytterne, så nationer efter række 1.000 kommer med", async () => {
   const sb = fakeSupabase({ riders }, { viewError: { message: "relation does not exist" } });
-  assert.deepEqual(await loadRiderNationalities(sb), ["DK", "NO", "SE"]);
+  assert.deepEqual(await loadRiderNationalities(sb as never), ["DK", "NO", "SE"]);
 });
