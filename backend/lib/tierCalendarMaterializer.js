@@ -43,7 +43,8 @@ import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 import { withSeniorSquadScope } from "./squads.js";
 // #5644 (Y5): en trups kalender (u23/junior) bygges fra truppens eget katalog med sin egen
 // lille pakker og sin egen taethed (SQUAD_CALENDAR). Senior er default og bit-identisk.
-import { SQUAD_CALENDAR, CALENDAR_SQUADS } from "./calendarTierCaps.js";
+import { SQUAD_CALENDAR, CALENDAR_SQUADS, calendarPlacementRulesForSeason } from "./calendarTierCaps.js";
+import { detectSeasonPlacementRuleViolations } from "./calendarPlacementGates.js";
 import { packSquadCalendar, squadSlotsForDate } from "./squadCalendarPacker.js";
 // #6367: hvilken profil-model en saeson SKAL genereres med (v5 til og med S4, "s5" fra S5).
 // Afledt af saesonnummeret, aldrig af et flag - samme kilde som benchmark-gaten bruger.
@@ -589,6 +590,8 @@ export function buildTierMaterializationPlan({
   // (bit-identisk). "u23"/"junior" = truppens egen, med SQUAD_CALENDAR's taethed og
   // packSquadCalendar i stedet for selectTierRaceSet + packLaneCalendar. Alle truppens
   // puljer i samme tier deler EEN kalender (samme fan-out som senioren, #2276).
+  // #5841: saesonens nummer - S6-placeringsreglerne gaelder kun fra S6. null = de gamle regler.
+  seasonNumber = null,
   squad = "senior",
 } = {}) {
   assertCalendarSquad(squad);
@@ -756,7 +759,7 @@ export function buildTierMaterializationPlan({
     // loebsdage kommer nu fra pakkeren selv (`naturalRaceDays`).
     const packed = packLaneCalendar({
       ...packArgs, raceDayTarget: raceDayTarget != null ? Number(raceDayTarget) : 0,
-      raceTypeSpreadEnabled,
+      raceTypeSpreadEnabled, placementRules: calendarPlacementRulesForSeason(seasonNumber, tier),
     });
     const naturalRaceDays = packed.naturalRaceDays ?? packed.timelineLength ?? 0;
     const raceDayDeficit = raceDayTarget != null ? Math.max(0, Number(raceDayTarget) - naturalRaceDays) : 0;
@@ -823,6 +826,8 @@ export function buildTierMaterializationPlan({
       // #5592: første etape mindst 24 timer efter sæsonskiftet, sidste løbsdag slutter
       // kl. 15. Hårdt krav uden override, målt på de tider der faktisk ville blive skrevet.
       ...detectPlanningWindowViolations({ tier, stageRows, notBefore: planningNotBefore, seasonLastRaceDay: lastRaceDay }),
+      // #5841: S6-placeringsreglerne (monumenter, sæsonens afslutning, etapeløb vs. GT, overlap-bånd).
+      ...detectSeasonPlacementRuleViolations({ tier, rules: calendarPlacementRulesForSeason(seasonNumber, tier), raceRows: poolPlans[0]?.raceRows ?? [], stageRows: poolPlans[0]?.stageRows ?? [], realOrderByPoolRace: new Map(chronologyRaces.map((r) => [r.id, r.seasonFraction])) }),
     ];
 
     tierPlans.push({
@@ -1066,6 +1071,7 @@ export async function materializeTierCalendars({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
     oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations, raceDayTarget,
     seasonTransitionAt, previousSeasonLastStageAtByTier, seasonLastRaceDay, squad,
+    seasonNumber: resolvedSeasonNumber, // #5841: S6-placeringsreglerne
   });
   const summary = {
     dryRun, squad, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [],

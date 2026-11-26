@@ -308,4 +308,119 @@ export function detectQuotaViolations({ tier, quota, totalGameDays } = {}) {
   ];
 }
 
+/**
+ * #5841 (ejerbeslutninger 26/11): S6-placeringsreglerne doemt paa den PLANLAGTE kalender.
+ * Pakkeren holder dem som bindinger (R18-R22 i raceCalendarLanePacker.js); denne gate er
+ * dommen, der stopper --apply hvis pakkeren maatte falde tilbage til en kalender uden dem.
+ *
+ * `rules` er calendarPlacementRulesForSeason(saeson, tier). null = kalenderen er bygget
+ * efter de gamle regler (foer S6), og der er intet at doemme (samme disciplin som §1d).
+ *
+ * Reglerne og deres akse (CALENDAR_RULES.md §0 - de maa aldrig blandes):
+ *   §4 monument-afstand og -spredning   KALENDERDAGE (scheduled_at)
+ *   §4 virkelig monument-raekkefoelge    loebsdags-aksen (game_day)
+ *   §4 monumenter efter sidste GT        loebsdags-aksen
+ *   §2 saesonen slutter med endagsloeb   sidste loebsdag med loeb
+ *   §3 etapeloeb vs. GT-start            loebsdags-aksen
+ *   §1 overlap-baand                     loebsdage med loeb (computeGameDayOverlap)
+ *
+ * @param {{tier:number, rules:object|null, raceRows:Array, stageRows:Array,
+ *   realOrderByPoolRace?:Map<string,number>, minGrandTourStages?:number}} args
+ * @returns {string[]} violation-strings
+ */
+export function detectSeasonPlacementRuleViolations({
+  tier, rules = null, raceRows = [], stageRows = [], realOrderByPoolRace = new Map(),
+  minGrandTourStages = GRAND_TOUR_MIN_STAGES,
+} = {}) {
+  if (!rules) return [];
+  const brud = [];
+  const spans = gameDaySpansByRace(stageRows);
+  const foersteDato = new Map();
+  for (const s of stageRows) {
+    const id = s.pool_race_id ?? s.race_id;
+    const d = s.scheduled_at == null ? null : String(s.scheduled_at).slice(0, 10);
+    if (id == null || d == null) continue;
+    if (!foersteDato.has(id) || d < foersteDato.get(id)) foersteDato.set(id, d);
+  }
+  const navn = (r) => r.name ?? r.pool_race_id;
+  const ro = (id) => {
+    const v = realOrderByPoolRace.get(id);
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  };
+  const erGt = (r) => {
+    const span = spans.get(r.pool_race_id);
+    const stages = Number(r.stages) || span?.stages || 1;
+    return r.race_type === "stage_race" && stages >= minGrandTourStages && Boolean(span);
+  };
+  const gts = raceRows.filter(erGt);
+
+  // §4: monumenterne i kalender-raekkefoelge (loebsdags-aksen).
+  const mons = raceRows
+    .filter((r) => r.race_class === "Monuments" && spans.get(r.pool_race_id))
+    .sort((a, b) => spans.get(a.pool_race_id).first - spans.get(b.pool_race_id).first);
+  for (let i = 1; i < mons.length; i++) {
+    const gap = calendarDaysBetween(foersteDato.get(mons[i - 1].pool_race_id), foersteDato.get(mons[i].pool_race_id));
+    if (gap != null && gap < rules.monumentMinGapDays) {
+      brud.push(`tier ${tier}: monumenterne «${navn(mons[i - 1])}» og «${navn(mons[i])}» ligger ${gap} kalenderdag(e) fra hinanden, mindst ${rules.monumentMinGapDays} (§4/#5841)`);
+    }
+  }
+  if (mons.length >= 2) {
+    const spread = calendarDaysBetween(foersteDato.get(mons[0].pool_race_id), foersteDato.get(mons[mons.length - 1].pool_race_id));
+    if (spread != null && spread < rules.monumentMinSpreadDays) {
+      brud.push(`tier ${tier}: der er ${spread} kalenderdage fra første til sidste monument, mindst ${rules.monumentMinSpreadDays} (§4/#5841)`);
+    }
+  }
+  const doembare = mons.filter((m) => ro(m.pool_race_id) != null);
+  if (!doembare.every((m, i) => i === 0 || ro(doembare[i - 1].pool_race_id) <= ro(m.pool_race_id))) {
+    brud.push(`tier ${tier}: monumenterne ligger i rækkefølgen ${doembare.map(navn).join(" → ")}, ikke i deres virkelige rækkefølge (§4/#5841)`);
+  }
+  if (rules.lastMonumentAfterGrandTours && gts.length && gts.every((g) => ro(g.pool_race_id) != null)) {
+    const sidsteGtRo = Math.max(...gts.map((g) => ro(g.pool_race_id)));
+    const sidsteGtSlut = Math.max(...gts.map((g) => spans.get(g.pool_race_id).last));
+    for (const m of doembare) {
+      if (ro(m.pool_race_id) > sidsteGtRo && spans.get(m.pool_race_id).first <= sidsteGtSlut) {
+        brud.push(`tier ${tier}: monumentet «${navn(m)}» ligger i virkeligheden efter den sidste Grand Tour, men ligger før den er slut i kalenderen (løbsdag ${spans.get(m.pool_race_id).first}, sidste GT slutter ${sidsteGtSlut}) (§4/#5841)`);
+      }
+    }
+  }
+
+  // §2: saesonens sidste loebsdag med loeb baerer kun endagsloeb.
+  if (rules.seasonEndsWithOneDayRace && stageRows.length) {
+    const typeAf = new Map(raceRows.map((r) => [r.pool_race_id, r]));
+    const sidste = Math.max(...stageRows.map((s) => Number(s.game_day)).filter(Number.isFinite));
+    const paaSidste = [...new Set(stageRows.filter((s) => Number(s.game_day) === sidste).map((s) => s.pool_race_id ?? s.race_id))];
+    const etapeloeb = paaSidste.map((id) => typeAf.get(id)).filter((r) => r && r.race_type !== "single");
+    if (etapeloeb.length) {
+      brud.push(`tier ${tier}: sæsonens sidste løbsdag (${sidste}) har etapeløbet ${etapeloeb.map(navn).join(", ")}; sæsonen skal slutte med endagsløb (§2/#5841)`);
+    }
+  }
+
+  // §3: et andet etapeloeb der overlapper en GT, slutter senest paa GT'ens foerste loebsdag.
+  if (rules.stageRaceEndsByGrandTourStart && gts.length) {
+    const gtIds = new Set(gts.map((g) => g.pool_race_id));
+    for (const r of raceRows) {
+      if (r.race_type === "single" || gtIds.has(r.pool_race_id)) continue;
+      const s = spans.get(r.pool_race_id);
+      if (!s) continue;
+      for (const g of gts) {
+        const gs = spans.get(g.pool_race_id);
+        if (s.first <= gs.last && s.last >= gs.first && s.last > gs.first) {
+          brud.push(`tier ${tier}: etapeløbet «${navn(r)}» (løbsdag ${s.first}-${s.last}) overlapper «${navn(g)}» (løbsdag ${gs.first}-${gs.last}) og slutter efter GT'ens start (§3/#5841)`);
+        }
+      }
+    }
+  }
+
+  // §1: overlap-baandet - gulv OG loft.
+  const band = rules.multiRaceShareBand;
+  if (band) {
+    const o = computeGameDayOverlap({ stageRows });
+    const share = o.multiRaceShare ?? 0;
+    if (o.gameDays && (share < band.min - 1e-9 || share > band.max + 1e-9)) {
+      brud.push(`tier ${tier}: ${(100 * share).toFixed(1)} % af løbsdagene har 2+ samtidige løb (${o.multiRaceDays}/${o.gameDays}), skal ligge i ${(100 * band.min).toFixed(0)}-${(100 * band.max).toFixed(0)} % (§1/#5841)`);
+    }
+  }
+  return brud;
+}
+
 export { TIER_OVERLAP_CAP, TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE };
