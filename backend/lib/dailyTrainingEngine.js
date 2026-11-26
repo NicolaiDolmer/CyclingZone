@@ -40,7 +40,7 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 import { isTrainingWeekPriorityEnabledForTeam, loadPlannedStageDaysByRider, weekPrioritySourceSlot, winningWeekEntry } from "./trainingWeekPriority.js"; // #8549
 import { loadRotationPlans, loadRotationReceipts, rotationProgram, stampRotation } from "./trainingRotationProgress.js";
-import { loadEngineDateOverrides, overrideProgram, overrideStamp } from "./trainingDayOverride8592.js"; // #8592
+import { isDayOverrideEnabledForTeam, loadEngineDateOverrides, overrideBeatsFatigueRule, overrideProgram, overrideStamp } from "./trainingDayOverride8592.js"; // #8592
 // #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
 import { isTrainingEffortLevelsEnabled, executedEffortForScore } from "./trainingEffortLevels.js"; // #7947
@@ -1522,11 +1522,13 @@ export async function runTeamTrainingDay({
   // aldringsbremsen talte sessionens tabel-niveau i stedet for det han koerte. Uden programceller
   // roerer kontakten ikke traeningen (resolveDayProgram svarer den gamle sti), kun kvitteringen.
   // Opslaget holdes uden for #7982's frosne facit (harness: effortSwitchReads).
-  [programsOn, effortLevelsOn] = await Promise.all([
+  let dayOverrideOn = false; // #8819: kontakten læses for alle hold (ejer: virker altid, også uden program)
+  [programsOn, effortLevelsOn, dayOverrideOn] = await Promise.all([
     (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
       ? isTrainingCellsEnabledForTeam(supabase, teamId)
       : false,
     isTrainingEffortLevelsEnabled(supabase),
+    isDayOverrideEnabledForTeam(supabase, teamId),
   ]);
   // #8549: Week blocks. Uden en 'week'-plan intet opslag; kontakten off = dagens kald (OFF-1).
   weekPriorityOn = programsOn && (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => r.plan_kind === "week")
@@ -1543,8 +1545,8 @@ export async function runTeamTrainingDay({
     });
     rotationReceiptsByRider = await loadRotationReceipts({ supabase, teamId, tickDate, rotationByRider, dateReceipts });
   }
-  // #8592: "Kun denne dag". Kun med programceller; ellers intet opslag (DO-8).
-  dateOverrideByRider = await loadEngineDateOverrides({ supabase, teamId, tickDate, gate: programsOn });
+  // #8592/#8819: "Kun denne dag". Kontakten off = intet opslag i tabellen (DO-8).
+  dateOverrideByRider = await loadEngineDateOverrides({ supabase, teamId, tickDate, gate: dayOverrideOn });
   },
   async () => {
   // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
@@ -1977,7 +1979,8 @@ export function computeTrainingDayTick(input) {
     // #4854: reglen vurderes paa traethed ved DATOENS START og retter aldrig planen.
     // #7801: med kontakten paa trætheden lige nu (aabningen plus datoens koerte etaper).
     const fatigueRuleResult = fatigueRules ? applyFatigueRules({
-      program, rule: fatigueRules.forRider(rider.id),
+      // #8819 DO-10: et valg truffet efter grænsens markering går forud for grænsen.
+      program, rule: overrideBeatsFatigueRule(dateOverride, dateOverrideProgram) ? null : fatigueRules.forRider(rider.id),
       fatigueAtDateStart: fatigueNowOn ? fatigueNowBeforeGameDay({
         openingFatigue: Number(conditionBeforeDate.fatigue ?? 0), loadRows: canonicalLoadRows, riderId: rider.id,
         beforeGameDay: raceDay, recoveryAbility: Number(abRow.recovery ?? 50), medicalBonus: teamMedicalBonus,

@@ -1,19 +1,22 @@
 // #8592 · "Kun denne dag": et pas for én rytter (flere eller en gruppe) på én dato i den
-// rullende uge. Ejerbeslutning 26/11 på #8592 (seks punkter). Dommer-scenarier DO-1..DO-11:
-// docs/audits/8592-kun-denne-dag-dommer-scenarier.md.
+// rullende uge. Ejerbeslutning 26/11 på #8592 (seks punkter) og #8819 (to svar plus Fable-dommens
+// fire fund). Dommer-scenarier DO-1..DO-15: docs/audits/8592-kun-denne-dag-dommer-scenarier.md.
 //
 // Forrang (motor og prognose, samme funktion):
-//   løb / binding / skade > træthedsgrænsen > dato-valget > rotation > ugeblok > ugedag > plan.
+//   løb / binding / skade > træthedsgrænsen (medmindre valget er nyere, DO-10) > dato-valget
+//   > rotation > ugeblok > ugedag > plan.
 // Ugeplanen ændres aldrig; dato-valget bor i sin egen tabel (training_day_overrides) og
 // gælder kun sin dato. Dagen efter læser motoren intet valg, og planen kører igen.
+// Det virker for alle hold, også uden program (#8819, DO-11): uden program er planen den samme
+// som i går, og valget erstatter den kun på datoen.
 //
 // Kontakt `training_day_override_8592` (off | beta | on), seedet off. Off = motoren læser
-// hverken kontakten eller tabellen (gaten sidder bag programcellerne), og API'et afviser
-// skrivning med 409 feature_disabled.
+// kontakten, men aldrig tabellen, og API'et afviser skrivning med 409 feature_disabled.
 import express from "express";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
-import { isProgramSession, programForSession, weekDaysHaveSessions } from "./trainingPrograms.js";
+import { isProgramSession, programForSession } from "./trainingPrograms.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer } from "./trainingCatalogV3.js";
+import { applyFatigueRules } from "./trainingFatigueRules.ts";
 import { copenhagenDateString } from "./copenhagenTime.js";
 
 export const TRAINING_DAY_OVERRIDE_FLAG_KEY = "training_day_override_8592";
@@ -22,6 +25,8 @@ export const DAY_OVERRIDE_TABLE = "training_day_overrides";
 export const DAY_OVERRIDE_WINDOW_DAYS = 7;
 /** Største antal ryttere i én skrivning (en hel trup er langt under). */
 export const DAY_OVERRIDE_MAX_RIDERS = 60;
+/** Hvor langt tilbage skærmen viser, hvordan valgene gik (efter datoen, #8819 fund 1). */
+export const DAY_OVERRIDE_RECENT_DAYS = 7;
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -80,8 +85,17 @@ export function overrideProgram({ override, previousFocus = null, catalogV3 = fa
 }
 
 /**
+ * DO-10 (ejer 26/11, #8819: nyeste information vinder). Valget går forud for træthedsgrænsen,
+ * når spilleren traf det, mens grænsen synligt havde erstattet dagen (rækkens beats_fatigue_rule),
+ * og valget faktisk kan køres. Ellers bestemmer grænsen, og feltet stemples "fatigue_rule".
+ */
+export function overrideBeatsFatigueRule(override, appliedProgram) {
+  return !!(override?.beatsRule && appliedProgram);
+}
+
+/**
  * Markeringen på feltets kvittering (ejer punkt 4): hvad der skete med valget i netop dette felt.
- * "race" | "bound_rest" | "injured" | "unknown" | "fatigue_rule" | "trained".
+ * "race" | "bound_rest" | "injured" | "unknown" | "unavailable" | "fatigue_rule" | "trained".
  */
 export function overrideOutcome({ raced = false, boundRest = false, injured = false, unknown = false, fatigueRule = null, applied = true }) {
   if (unknown) return "unknown";
@@ -94,61 +108,158 @@ export function overrideOutcome({ raced = false, boundRest = false, injured = fa
 }
 
 export function overrideStamp({ override, ...facts }) {
-  return { session: override.session, outcome: overrideOutcome(facts) };
+  return {
+    session: override.session, outcome: overrideOutcome(facts),
+    ...(override.beatsRule ? { beats_fatigue_rule: true } : {}),
+  };
+}
+
+// Det vigtigste, der tog valget, vinder sammendraget (samme rækkefølge som overrideOutcome).
+const OUTCOME_RANK = ["unknown", "race", "bound_rest", "injured", "unavailable", "fatigue_rule"];
+
+/**
+ * Feltenes markeringer for én rytter på én dato → det, skærmen siger (#8819 fund 1):
+ * { outcome, some } hvor outcome er "trained" eller det, der tog valget, og some = kun nogle felter.
+ * Ingen markeringer = null.
+ */
+export function summarizeOverrideOutcomes(outcomes) {
+  const list = (outcomes ?? []).filter((o) => typeof o === "string");
+  if (list.length === 0) return null;
+  const taken = list.filter((o) => o !== "trained");
+  if (taken.length === 0) return { outcome: "trained", some: false };
+  const outcome = OUTCOME_RANK.find((o) => taken.includes(o)) ?? taken[0];
+  return { outcome, some: taken.length < list.length };
+}
+
+/**
+ * DO-10: grænsens markering for i morgen, som spilleren ser den i dag (dagsvælgeren). Tallet er
+ * aftenens prognose for i dag, som er morgendagens start; samme regel som motoren (felt 1).
+ * Map(rider_id → { kind, fallback }). Uden prognose eller regler: tom.
+ */
+export function fatigueRuleMarksAhead({ today, rules }) {
+  const out = new Map();
+  if (!rules || !today?.available || !today.riders) return out;
+  for (const [riderId, entry] of Object.entries(today.riders)) {
+    const fatigue = Number(entry?.fatigue);
+    if (entry?.fatigue == null || !Number.isFinite(fatigue)) continue;
+    // Prøvepasset er et normalt pas, så enhver erstatning (let, restitution, hvile) slår igennem.
+    const { stamp } = applyFatigueRules({
+      program: { focus: "endurance", intensity: "normal" }, rule: rules.forRider(riderId),
+      fatigueAtDateStart: fatigue, slotIndex: 0, rodeStagePreviousDate: (entry.raceSlots?.length ?? 0) > 0,
+    });
+    if (stamp) out.set(riderId, { kind: stamp.kind, fallback: stamp.fallback });
+  }
+  return out;
 }
 
 // ── Læsning ───────────────────────────────────────────────────────────────
 
-/** Datoens valg for holdet: Map(rider_id → { session }). Fejl kaster (datoen prøves igen). */
+const rowOverride = (row) => ({ session: row.session, beatsRule: row.beats_fatigue_rule === true });
+
+/** Datoens valg for holdet: Map(rider_id → { session, beatsRule }). Fejl kaster (datoen prøves igen). */
 export async function loadDateOverrides({ supabase, teamId, tickDate }) {
   // pagination-safe: one team roster on one date (UNIQUE team_id, rider_id, override_date).
   // schema-columns-ok: training_day_overrides is created by database/2026-11-26-8592-training-day-overrides.sql (post-merge); only read with the switch on.
-  const { data, error } = await supabase.from(DAY_OVERRIDE_TABLE).select("rider_id, session")
+  const { data, error } = await supabase.from(DAY_OVERRIDE_TABLE).select("rider_id, session, beats_fatigue_rule")
     .eq("team_id", teamId).eq("override_date", tickDate);
   if (error) throw new Error(`training day overrides (team ${teamId}, ${tickDate}): ${error.message ?? error}`);
-  return new Map((data ?? []).filter((row) => isProgramSession(row.session)).map((row) => [row.rider_id, { session: row.session }]));
+  return new Map((data ?? []).filter((row) => isProgramSession(row.session)).map((row) => [row.rider_id, rowOverride(row)]));
 }
 
 /**
- * Motorens indgang. `gate` er motorens programceller (programsOn): uden programfelter på holdet
- * sker intet opslag, og motoren er præcis som før (DO-8). Ingen valg = null.
+ * Motorens indgang. `gate` er kontaktens svar for holdet (læst i motorens fælles opslag): off =
+ * intet opslag i tabellen, og motoren er præcis som før (DO-8). Ingen valg = null.
  */
 export async function loadEngineDateOverrides({ supabase, teamId, tickDate, gate }) {
   if (!gate) return null;
-  if (!(await isDayOverrideEnabledForTeam(supabase, teamId))) return null;
   const map = await loadDateOverrides({ supabase, teamId, tickDate });
   return map.size ? map : null;
 }
 
-/** Holdets valg fra i dag og frem: Map(date → Map(rider_id → { session })). */
+/** Holdets valg fra i dag og frem: Map(date → Map(rider_id → { session, beatsRule })). */
 export async function loadWeekDateOverrides({ supabase, teamId, today }) {
   // pagination-safe: one roster x at most eight dates.
   // schema-columns-ok: training_day_overrides is created by database/2026-11-26-8592-training-day-overrides.sql (post-merge); only read with the switch on.
-  const { data, error } = await supabase.from(DAY_OVERRIDE_TABLE).select("rider_id, override_date, session")
+  const { data, error } = await supabase.from(DAY_OVERRIDE_TABLE).select("rider_id, override_date, session, beats_fatigue_rule")
     .eq("team_id", teamId).gte("override_date", today).lte("override_date", addDaysYmd(today, DAY_OVERRIDE_WINDOW_DAYS));
   if (error) throw new Error(`training day overrides week (team ${teamId}): ${error.message ?? error}`);
   const out = new Map();
   for (const row of data ?? []) {
     if (!isProgramSession(row.session)) continue;
     if (!out.has(row.override_date)) out.set(row.override_date, new Map());
-    out.get(row.override_date).set(row.rider_id, { session: row.session });
+    out.get(row.override_date).set(row.rider_id, rowOverride(row));
   }
   return out;
 }
 
-/** DO-9: udløbne valg (før i dag) slettes. Motoren læser kun datoens egen dato. */
+/**
+ * DO-9 (#8819 fund 2): et valg fra en tidligere dato bevares, til datoen er gjort op for holdet
+ * (training_date_work = complete). En dato, der stadig er pending eller partial, prøves igen
+ * af motoren med datoens eget valg, så rækken må ikke forsvinde før.
+ */
 export async function deleteExpiredOverrides({ supabase, teamId, today }) {
-  const { error } = await supabase.from(DAY_OVERRIDE_TABLE).delete().eq("team_id", teamId).lt("override_date", today);
-  if (error) throw new Error(`training day overrides cleanup (team ${teamId}): ${error.message ?? error}`);
+  // pagination-safe: one roster x the few past dates still waiting (at most a week of rows).
+  const { data: stale, error } = await supabase.from(DAY_OVERRIDE_TABLE).select("override_date")
+    .eq("team_id", teamId).lt("override_date", today);
+  if (error) throw new Error(`training day overrides cleanup read (team ${teamId}): ${error.message ?? error}`);
+  const dates = [...new Set((stale ?? []).map((row) => row.override_date))];
+  if (dates.length === 0) return;
+  // pagination-safe: one team x a few dates (one row per season and date).
+  const { data: work, error: workError } = await supabase.from("training_date_work").select("tick_date, status")
+    .eq("team_id", teamId).in("tick_date", dates);
+  if (workError) throw new Error(`training day overrides cleanup work (team ${teamId}): ${workError.message ?? workError}`);
+  const byDate = new Map();
+  for (const row of work ?? []) {
+    if (!byDate.has(row.tick_date)) byDate.set(row.tick_date, []);
+    byDate.get(row.tick_date).push(row.status);
+  }
+  const settled = dates.filter((date) => byDate.get(date)?.length && byDate.get(date).every((status) => status === "complete"));
+  if (settled.length === 0) return;
+  const { error: deleteError } = await supabase.from(DAY_OVERRIDE_TABLE).delete().eq("team_id", teamId).in("override_date", settled);
+  if (deleteError) throw new Error(`training day overrides cleanup (team ${teamId}): ${deleteError.message ?? deleteError}`);
 }
 
-/** Ugens svar får datoens valg pr. rytter på hver dag (`dayOverrides`). Uden valg: uændret. */
-export function attachDayOverrides(week, byDate) {
-  if (!week?.available || !Array.isArray(week.days) || !byDate?.size) return week;
-  for (const day of week.days) {
-    const map = byDate.get(day.date);
-    if (map?.size) day.dayOverrides = Object.fromEntries(map);
+/**
+ * #8819 fund 1 (efter datoen): sådan gik holdets valg de seneste dage, fra feltenes kvitteringer.
+ * [{ date, riderId, session, outcome, some, beatsRule }], nyeste dato først.
+ */
+export async function loadRecentOverrideOutcomes({ supabase, teamId, today }) {
+  const since = addDaysYmd(today, -DAY_OVERRIDE_RECENT_DAYS);
+  // pagination-safe: one roster x seven dates x five fields, only rows that carry a day choice.
+  const { data, error } = await supabase.from("training_rider_ticks")
+    .select("rider_id, tick_date, game_day, date_override:report->date_override")
+    .eq("team_id", teamId).gte("tick_date", since).lt("tick_date", today)
+    .not("report->date_override", "is", null)
+    .order("tick_date", { ascending: false }).limit(1000);
+  if (error) throw new Error(`training day overrides recent (team ${teamId}): ${error.message ?? error}`);
+  const byKey = new Map();
+  for (const row of data ?? []) {
+    const stamp = row.date_override;
+    if (!stamp || typeof stamp !== "object" || !isProgramSession(stamp.session)) continue;
+    const key = `${row.tick_date}:${row.rider_id}`;
+    if (!byKey.has(key)) byKey.set(key, { date: row.tick_date, riderId: row.rider_id, session: stamp.session, beatsRule: false, outcomes: [] });
+    const entry = byKey.get(key);
+    entry.outcomes.push(stamp.outcome);
+    if (stamp.beats_fatigue_rule === true) entry.beatsRule = true;
   }
+  return [...byKey.values()].map(({ outcomes, ...entry }) => ({ ...entry, ...summarizeOverrideOutcomes(outcomes) }))
+    .filter((entry) => entry.outcome)
+    .sort((a, b) => b.date.localeCompare(a.date) || a.riderId.localeCompare(b.riderId));
+}
+
+const plainOverride = (o) => ({ session: o.session, ...(o.beatsRule ? { beatsRule: true } : {}) });
+
+/**
+ * Ugens svar får datoens valg pr. rytter på hver dag (`dayOverrides`) og, for i morgen,
+ * grænsens markering (`fatigueRuleAhead`, DO-10). Uden valg og markeringer: uændret.
+ */
+export function attachDayOverrides(week, byDate, { ruleMarks = null } = {}) {
+  if (!week?.available || !Array.isArray(week.days)) return week;
+  for (const day of week.days) {
+    const map = byDate?.get(day.date);
+    if (map?.size) day.dayOverrides = Object.fromEntries([...map].map(([id, o]) => [id, plainOverride(o)]));
+  }
+  if (ruleMarks?.size && week.days[1]) week.days[1].fatigueRuleAhead = Object.fromEntries(ruleMarks);
   return week;
 }
 
@@ -170,9 +281,14 @@ export function parseOverrideWrite(body, { today, needSession = true }) {
 
 const PASS = (_req, _res, next) => next();
 
+/**
+ * `fatigueRuleAhead(req, date)` → Map(rider_id → markering): grænsens markering for datoen,
+ * som spilleren ser den lige nu (kun i morgen har en). Serveren afgør selv, om et valg er
+ * truffet efter markeringen (DO-10); klienten sender intet om det.
+ */
 export function createDayOverrideRouter({
   supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, readLimiter = PASS, captureExceptionFn = () => {},
-  clock = () => new Date(), cellsOn = async () => false,
+  clock = () => new Date(), fatigueRuleAhead = async () => new Map(),
 }) {
   const router = express.Router();
   const today = () => copenhagenDateString(clock());
@@ -192,14 +308,6 @@ export function createDayOverrideRouter({
     return (data ?? []).map((row) => row.rider_id);
   }
 
-  // DO-11: motoren bruger kun valget med programfelter på holdet (samme gate som programcellerne).
-  async function teamHasProgram(req) {
-    if (!(await cellsOn(req))) return false;
-    const { data, error } = await supabase.from("training_week_plans").select("days").eq("team_id", req.team.id);
-    if (error) throw new Error(error.message);
-    return (data ?? []).some((row) => weekDaysHaveSessions(row.days));
-  }
-
   async function targets(req, parsed) {
     const own = await ownRiderIds(req.team.id);
     const ids = parsed.groupId ? await groupMemberIds(req.team.id, parsed.groupId) : parsed.riderIds;
@@ -214,9 +322,12 @@ export function createDayOverrideRouter({
       if (!(await enabled(req))) return res.json({ enabled: false, overrides: [] });
       const now = today();
       await deleteExpiredOverrides({ supabase, teamId: req.team.id, today: now });
-      const byDate = await loadWeekDateOverrides({ supabase, teamId: req.team.id, today: now });
-      const overrides = [...byDate].flatMap(([date, map]) => [...map].map(([riderId, o]) => ({ riderId, date, session: o.session })));
-      res.json({ enabled: true, today: now, window: overrideWindow(now), programRequired: !(await teamHasProgram(req)), overrides });
+      const [byDate, recent] = await Promise.all([
+        loadWeekDateOverrides({ supabase, teamId: req.team.id, today: now }),
+        loadRecentOverrideOutcomes({ supabase, teamId: req.team.id, today: now }),
+      ]);
+      const overrides = [...byDate].flatMap(([date, map]) => [...map].map(([riderId, o]) => ({ riderId, date, ...plainOverride(o) })));
+      res.json({ enabled: true, today: now, window: overrideWindow(now), overrides, recent });
     } catch (err) {
       captureExceptionFn(err);
       res.status(500).json({ error: err.message });
@@ -234,17 +345,22 @@ export function createDayOverrideRouter({
       if (isV3OnlySession(parsed.session) && !(await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))) {
         return res.status(400).json({ error: "invalid_session" });
       }
-      if (!(await teamHasProgram(req))) return res.status(409).json({ error: "program_required" });
       const target = await targets(req, parsed);
       if (!target.ok) return res.status(target.status).json({ error: target.reason });
+      // DO-10: et valg truffet, mens grænsen synligt har erstattet dagen, går forud for grænsen.
+      const marks = await fatigueRuleAhead(req, parsed.date);
       await deleteExpiredOverrides({ supabase, teamId: req.team.id, today: now });
       const at = clock().toISOString();
       const rows = target.ids.map((riderId) => ({
-        team_id: req.team.id, rider_id: riderId, override_date: parsed.date, session: parsed.session, updated_at: at,
+        team_id: req.team.id, rider_id: riderId, override_date: parsed.date, session: parsed.session,
+        beats_fatigue_rule: marks?.has(riderId) === true, updated_at: at,
       }));
       const { error } = await supabase.from(DAY_OVERRIDE_TABLE).upsert(rows, { onConflict: "team_id,rider_id,override_date" });
       if (error) throw new Error(error.message);
-      res.json({ ok: true, date: parsed.date, session: parsed.session, riderIds: target.ids });
+      res.json({
+        ok: true, date: parsed.date, session: parsed.session, riderIds: target.ids,
+        beatsRuleRiderIds: rows.filter((row) => row.beats_fatigue_rule).map((row) => row.rider_id),
+      });
     } catch (err) {
       captureExceptionFn(err);
       res.status(500).json({ error: err.message });

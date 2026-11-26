@@ -42,7 +42,8 @@ import { isTrainingRotationEnabled } from "../lib/trainingRotationFlag.js"; // #
 import { rotationWriteInput, rotationView } from "../lib/trainingRotationInput.js"; // #8548
 import { applyRotationWrite, rotationRevFloor } from "../lib/trainingRotation.js"; // #8548
 import { isWeekPriorityEditorEnabled, loadWeekPrioritySettled, setWeekBlockDay, weekBlockDayWrite } from "../lib/trainingWeekEditor.js";
-import { attachDayOverrides, createDayOverrideRouter, isDayOverrideEnabled, loadWeekDateOverrides } from "../lib/trainingDayOverride8592.js"; // #8592
+import { addDaysYmd, attachDayOverrides, createDayOverrideRouter, fatigueRuleMarksAhead, isDayOverrideEnabled, loadWeekDateOverrides } from "../lib/trainingDayOverride8592.js"; // #8592
+import { loadTeamFatigueRules } from "../lib/trainingFatigueRules.ts"; // #8819 DO-10
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 
 const PASS = (_req, _res, next) => next();
@@ -96,7 +97,20 @@ export function createTrainingProgramsRouter({
   }
 
   // #8592: "Kun denne dag" (/day-overrides) og datoens valg i prognoserne, bag sin egen kontakt.
-  router.use("/day-overrides", createDayOverrideRouter({ supabase, requireAuth, isViewerBetaTester, writeLimiter, readLimiter, captureExceptionFn, clock, cellsOn }));
+  // #8819 DO-10: graensens markering for i morgen, som dagsvaelgeren viser den (dagens prognose, samme gate).
+  async function fatigueRuleMarksFor(req, now, today) {
+    if (!today?.available) return new Map();
+    return fatigueRuleMarksAhead({ today, rules: await loadTeamFatigueRules(supabase, req.team.id) });
+  }
+  async function fatigueRuleAhead(req, date) {
+    const now = clock();
+    const todayStr = copenhagenDateString(now);
+    if (date !== addDaysYmd(todayStr, 1) || !(await cellsOn(req))) return new Map();
+    const seasonId = await activeSeasonId();
+    const dateOverrideByRider = (await dayOverridesFor(req, now))?.get(todayStr) ?? null;
+    return fatigueRuleMarksFor(req, now, await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now, dateOverrideByRider }));
+  }
+  router.use("/day-overrides", createDayOverrideRouter({ supabase, requireAuth, isViewerBetaTester, writeLimiter, readLimiter, captureExceptionFn, clock, fatigueRuleAhead }));
   async function dayOverridesFor(req, now) {
     if (!(await isDayOverrideEnabled(supabase, { isBetaTester: await isViewerBetaTester(req) }))) return null;
     return loadWeekDateOverrides({ supabase, teamId: req.team.id, today: copenhagenDateString(now) });
@@ -509,7 +523,9 @@ export function createTrainingProgramsRouter({
           ? loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now, dateOverrideByRider: dayOverrides?.get(copenhagenDateString(now)) ?? null })
           : { available: false, reason: "disabled", riders: {} }),
       });
-      res.json(attachDayOverrides(week, dayOverrides));
+      // #8819 DO-10: kun med kontakten (dayOverrides != null) faar i morgen graensens markering.
+      const ruleMarks = dayOverrides ? await fatigueRuleMarksFor(req, now, week.days?.[0]?.today) : null;
+      res.json(attachDayOverrides(week, dayOverrides, { ruleMarks }));
     } catch (err) {
       captureExceptionFn(err);
       res.status(500).json({ error: err.message });
