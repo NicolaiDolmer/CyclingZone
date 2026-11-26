@@ -38,6 +38,17 @@ test("GET /admin/seasons/:id/generate-calendar/preview er requireAdmin-gated og 
   assert.doesNotMatch(block, /\.insert\(/, "preview må ALDRIG indeholde en insert-kode-sti");
 });
 
+// #5841 (review): previewet skal give planen sæsonnummeret, ellers pakkes et S6+-preview
+// uden placeringsreglerne og viser andre invariant-brud end det "Generér" skriver.
+test("GET preview giver buildTierMaterializationPlan seasonNumber (S6-placeringsregler, #5841)", () => {
+  const block = handlerBlock('router.get("/admin/seasons/:id/generate-calendar/preview"');
+  assert.match(
+    block,
+    /buildTierMaterializationPlan\(\{[\s\S]*?seasonNumber:\s*Number\(season\.number\)[\s\S]*?\}\)/,
+    "preview skal sende seasonNumber som materializeTierCalendars gør",
+  );
+});
+
 test("POST /admin/seasons/:id/generate-calendar er requireAdmin + adminWriteLimiter-gated", () => {
   assert.match(
     apiSource,
