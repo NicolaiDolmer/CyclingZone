@@ -1439,7 +1439,8 @@
           "Il n'y a pas de plafond au nombre de coureurs pouvant avoir un programme : tu peux en fixer un pour tout ton effectif.",
           "Lorsque Rotation est disponible dans Programme, placez les séances dans l’ordre souhaité. Une course, une blessure ou un repos imposé par la limite de fatigue suspend la rotation. Si la même séance est effectuée avec un effort léger, la rotation avance.",
           "Utilisez Aller à la séance pour changer la position d’un coureur. Copier une rotation de même longueur conserve sa position, sauf si vous choisissez Repartir de la séance 1. Une longueur différente le ramène à la séance 1.",
-          "Lorsque la priorité des créneaux est disponible dans les blocs hebdomadaires, classez les séances de chaque jour par priorité. Vous pouvez verrouiller une séance par jour. Séances écartées par les courses indique les séances qui n’ont pas trouvé de créneau."
+          "Lorsque la priorité des créneaux est disponible dans les blocs hebdomadaires, classez les séances de chaque jour par priorité. Vous pouvez verrouiller une séance par jour. Séances écartées par les courses indique les séances qui n’ont pas trouvé de créneau.",
+          "Lorsque Seulement ce jour est disponible, choisis l’un des 7 prochains jours dans le sélecteur de jours d’Aujourd’hui et donne à un coureur, à plusieurs ou à tout un groupe une autre séance ce jour-là seulement. Le plan de la semaine ne change pas, et le plan reprend le lendemain. Une course gagne toujours, et la rotation attend le lendemain. Revenir au plan retire le choix."
         ]
       },
       "dayTypes": {

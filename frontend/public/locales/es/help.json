@@ -1439,7 +1439,8 @@
           "No hay tope en cuántos ciclistas pueden tener un programa: puedes fijar uno para toda tu plantilla.",
           "Cuando Rotación esté disponible en Programa, ordena las sesiones como quieras realizarlas. Una carrera, una lesión o el descanso por el límite de fatiga detienen la secuencia. Si la misma sesión se realiza con esfuerzo suave, la rotación avanza.",
           "Usa Ir a la sesión para cambiar la posición de un ciclista. Copiar una rotación de la misma longitud conserva su posición, salvo que elijas Empezar en la sesión 1. Una longitud distinta reinicia la rotación en la sesión 1.",
-          "Cuando la prioridad de los turnos esté disponible en Bloques semanales, ordena las sesiones de cada día por prioridad. Puedes bloquear una sesión por día. Sesiones desplazadas por carreras indica cuáles se quedaron sin turno."
+          "Cuando la prioridad de los turnos esté disponible en Bloques semanales, ordena las sesiones de cada día por prioridad. Puedes bloquear una sesión por día. Sesiones desplazadas por carreras indica cuáles se quedaron sin turno.",
+          "Cuando Solo este día esté disponible, elige uno de los próximos 7 días en el selector de días de Hoy y da a un corredor, a varios o a un grupo entero otra sesión solo ese día. El plan semanal no cambia y el plan vuelve a aplicarse al día siguiente. Una carrera siempre gana, y la rotación espera al día siguiente. Volver al plan quita la elección."
         ]
       },
       "dayTypes": {
