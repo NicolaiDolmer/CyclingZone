@@ -54,7 +54,9 @@ const VERDICT_CONFIDENCE = Object.freeze({ sure: "high", fair: "medium", unsure:
 
 // Ren funktion. Et gemt skøn vinder altid: holdet beholder sin viden, også hvis det
 // scoutede rytteren før han kom til holdet, eller efter han har forladt det (S19).
-export function buildPotentialView({ row = null, currentRating = null, learningYouth = false, trainings = 0, aiTeam = false } = {}) {
+export function buildPotentialView({
+  row = null, currentRating = null, learningYouth = false, trainings = 0, aiTeam = false, learningUntilWritten = false,
+} = {}) {
   if (row) {
     const view = publicEstimateView(row, { currentRating });
     if (!view.hidden) return view;
@@ -62,8 +64,13 @@ export function buildPotentialView({ row = null, currentRating = null, learningY
   // #8604: et eget akademitalent forbliver i Læres, til skønnet er skrevet. Før faldt han
   // efter grænsen til "uscoutet" (intet tal, ingen tekst) indtil søndagen; nu skriver
   // timesweepet skønnet, og imens står han på x af x.
-  if (learningYouth) {
+  // #8810: kun med prognosis_model2 tændt (learningUntilWritten), fordi det er timesweepet,
+  // der lukker hullet. Slukket gælder reglen fra før #8604.
+  if (learningYouth && learningUntilWritten) {
     return { hidden: true, reason: "learning", trainings: Math.min(trainings, TRAININGS_NEEDED), trainingsNeeded: TRAININGS_NEEDED };
+  }
+  if (learningYouth && trainings < TRAININGS_NEEDED) {
+    return { hidden: true, reason: "learning", trainings, trainingsNeeded: TRAININGS_NEEDED };
   }
   return aiTeam ? AI_TEAM : UNSCOUTED;
 }
@@ -127,12 +134,18 @@ async function loadEstimateContext(supabase, { teamId, riderIds }) {
     }),
     loadAiTeamIds(supabase, { teamId, riderRows: riderRows.filter((rider) => !rows.has(rider.id)) }),
   ]);
+  // #8810: kontakten læses kun, når den kan ændre svaret: et eget akademitalent uden række,
+  // der har nået grænsen. Ellers er læsningen præcis som før.
+  const pastThreshold = riderRows.some((rider) => isLearningYouth(rider) && !rows.has(rider.id)
+    && (dates.get(rider.id)?.size ?? 0) >= TRAININGS_NEEDED);
+  const learningUntilWritten = pastThreshold && await isPrognosisModel2Enabled(supabase);
   const views = new Map(riderRows.map((rider) => [rider.id, buildPotentialView({
     row: rows.get(rider.id),
     currentRating: ratings.get(rider.id),
     learningYouth: isLearningYouth(rider),
     trainings: dates.get(rider.id)?.size ?? 0,
     aiTeam: aiTeamIds.has(rider.team_id),
+    learningUntilWritten,
   })]));
   return { abilities, ratings, views, riderRows };
 }

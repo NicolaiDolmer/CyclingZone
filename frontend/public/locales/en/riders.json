@@ -21,7 +21,7 @@
     "prognosisBandValue": "{lo} to {hi}",
     "aiTeamTitle": "Riders on AI teams can't be scouted.",
     "potentialSubtitle": "the scout's estimate",
-    "potentialTitle": "Potential is the scout's estimate of how high he can reach, and the prognosis is where he is expected to end up if he carries on as now.",
+    "potentialTitle": "Potential, the scout's estimate. An estimate, not a fact.",
     "approx": "approx. {value}"
   },
   "table": {

@@ -21,7 +21,7 @@
     "prognosisBandValue": "{lo} til {hi}",
     "aiTeamTitle": "AI-holdenes ryttere kan ikke scoutes.",
     "potentialSubtitle": "spejderens skøn",
-    "potentialTitle": "Potentiale er spejderens skøn over, hvor højt han kan nå, og prognosen er, hvor han forventes at ende, hvis han fortsætter som nu.",
+    "potentialTitle": "Potentiale, spejderens skøn. Et skøn, ikke et facit.",
     "approx": "ca. {value}"
   },
   "table": {

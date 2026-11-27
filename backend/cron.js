@@ -2263,7 +2263,7 @@ export function startCron() {
     { label: "potential-estimate-sunday", shouldStop: isCronSchedulingStopped }
   );
   setInterval(trackedTick("potential-estimate-team-change", () => runPotentialEstimateTeamChangeTick({ supabase })), 60 * 60 * 1000);
-  // #8604: egne ryttere uden skøn får deres første inden for en time (flag-gated, idempotent).
+  // #8604: egne ryttere uden skøn får deres første inden for en time (bag prognosis_model2, idempotent).
   setInterval(trackedTick("potential-estimate-missing", () => runPotentialEstimateMissingTick({ supabase })), 60 * 60 * 1000);
   // #8604 Model 2: forbereder prognoserne uden for anmodningen (kontakt-gated, idempotent).
   setInterval(trackedTick("prognosis-model2", () => runPrognosisModel2Tick({ supabase })), 60 * 60 * 1000);
@@ -2469,7 +2469,7 @@ export function startCron() {
   trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_SUNDAY_VALUE))(); // boot-run: claim-idempotent, søndags- + time-gated
   trackedTick("potential-estimate-sunday", () => runSundayPotentialEstimateTick({ supabase }))(); // #7685 boot-run: idempotent, søndags- + time-gated
   trackedTick("potential-estimate-team-change", () => runPotentialEstimateTeamChangeTick({ supabase }))(); // #7685 boot-run: setInterval nulstilles ved hvert deploy
-  trackedTick("potential-estimate-missing", () => runPotentialEstimateMissingTick({ supabase }))(); // #8604 boot-run: datareparationen efter deploy, idempotent
+  trackedTick("potential-estimate-missing", () => runPotentialEstimateMissingTick({ supabase }))(); // #8604 boot-run: bag prognosis_model2 (slukket = kun kontakten læses), idempotent
   trackedTick("prognosis-model2", () => runPrognosisModel2Tick({ supabase }))(); // #8604 boot-run: kontakt-gated, idempotent
 }
 

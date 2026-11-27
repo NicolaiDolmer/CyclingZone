@@ -51,7 +51,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { bestRoleForAbilities } from "./riderBestRoleCache.js";
 import { abilityValue } from "./weights/displayRecipes.js";
 import { publicEstimateView } from "./potentialEstimate.js";
-import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
+import { PROGNOSIS_MODEL2_FLAG_KEY, isPrognosisModel2Enabled } from "./prognosisModel2Flag.js";
 import { copenhagenDateString, copenhagenHour, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
@@ -59,7 +59,8 @@ import { captureException } from "./sentry.js";
 import { privateConfigHash } from "./privateConfig.ts";
 import { loadEstimateDevelopmentXp, loadEstimateTeamIds } from "./potentialEstimateWriter.js";
 
-export const PROGNOSIS_MODEL2_FLAG_KEY = "prognosis_model2";
+// #8810: kontakten bor i prognosisModel2Flag.js, så skrivningen kan læse den uden en cirkel.
+export { PROGNOSIS_MODEL2_FLAG_KEY, isPrognosisModel2Enabled };
 export const PROGNOSIS_MODEL2_TABLE = "rider_prognosis_model2";
 // Hæves ved enhver ændring af beregningen: hashen ændrer sig, og alle rækker skrives om.
 // v2 (#8810): motorens planopløsning, etapens profil, uafgjorte felter og datoer på tværs af sæsoner.
@@ -79,10 +80,6 @@ export const MODEL2_DAILY_FROM_HOUR = 5;
 const MENTAL = new Set(VISIBLE_ABILITIES.filter((ability) => abilityMeta(ability)?.category === "mental"));
 const isNum = (x) => typeof x === "number" && Number.isFinite(x);
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-export async function isPrognosisModel2Enabled(supabase) {
-  return evaluateFlagStage(await readFlagStage(supabase, PROGNOSIS_MODEL2_FLAG_KEY));
-}
 
 // ── Mixet: programmer pr. dato ───────────────────────────────────────────────────
 

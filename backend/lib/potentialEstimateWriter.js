@@ -19,6 +19,7 @@
 
 import { planEstimateWrite } from "./potentialEstimate.js";
 import { isPotentialEstimateWritesEnabled } from "./potentialEstimateWritesFlag.js";
+import { isPrognosisModel2Enabled } from "./prognosisModel2Flag.js";
 import { privateConfigHash, readPrivateConfig } from "./privateConfig.ts";
 import { learningSpeed } from "./academyProspectKnowledge.ts";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
@@ -81,6 +82,9 @@ export async function loadEstimateDevelopmentXp(supabase, { now = new Date(), lo
  *
  * Gælder XP-modellen for datoen, får konfigurationen også `developmentXp` (params),
  * og det sande tal bliver det forventede topniveau. Ellers er svaret som før.
+ *
+ * #8810: med prognosis_model2 tændt får konfigurationen også `fromDayOne: true` (første
+ * skøn fra dag ét for egne ryttere uden for akademiet, #8604). Slukket er svaret som før.
  */
 export async function loadEstimateWriteConfig(supabase, { now = new Date() } = {}) {
   if (!(await isPotentialEstimateWritesEnabled(supabase))) return { enabled: false, reason: "flag_off" };
@@ -88,7 +92,8 @@ export async function loadEstimateWriteConfig(supabase, { now = new Date() } = {
   if (!params) return { enabled: false, reason: "params_missing" };
   const developmentXp = await loadEstimateDevelopmentXp(supabase, { now });
   const config = { enabled: true, params, paramsVersion: privateConfigHash(params) };
-  return developmentXp ? { ...config, developmentXp } : config;
+  const withXp = developmentXp ? { ...config, developmentXp } : config;
+  return (await isPrognosisModel2Enabled(supabase)) ? { ...withXp, fromDayOne: true } : withXp;
 }
 
 // ── Krogpunkter: viden om nye og tidligere ryttere (ejervalg 12/11, #6110) ────────
@@ -170,10 +175,11 @@ export function scoutKnowledgeForWrite({ stored = null, looks = 0, scoutTier = n
  * forventede topniveau. Uden den er det sande tal talent_ceiling som før. En rytter
  * uden sandt tal springes over og tælles i noCeiling. `originByRider` er krogen for
  * ejervalget 12/11 (knowledgeForOrigin) og er kun aktiv med `params.origin`.
+ * `fromDayOne` (#8604/#8810) er kun sand med prognosis_model2 tændt.
  */
 export function planTeamEstimates({
   teamId, riders, storedByRider, looksByRider, datesByRider, staffSpeed = 0, scoutTier = null,
-  trigger, params, paramsVersion, now, truthByRider = null, originByRider = null,
+  trigger, params, paramsVersion, now, truthByRider = null, originByRider = null, fromDayOne = false,
 }) {
   const rows = [];
   const counts = { written: 0, changed: 0, kept: 0, noKnowledge: 0, noCeiling: 0 };
@@ -193,9 +199,10 @@ export function planTeamEstimates({
     // dag. Uden det stod en købt eller hentet rytter uden tal til første søndag efter
     // grænsen. Akademiets talenter læres stadig først (Læres · x af y). Kun en rytter,
     // der eksplicit står uden for akademiet: et ukendt felt følger den gamle regel.
-    const fromDayOne = own && rider.is_academy === false;
+    // #8810: kun med prognosis_model2 tændt (config.fromDayOne); slukket er planen som før.
+    const dayOne = fromDayOne === true && own && rider.is_academy === false;
     const knowledge = {
-      own, trainingDates: datesByRider.get(rider.id) ?? 0, staffSpeed, ...scout, ...(fromDayOne ? { fromDayOne } : {}),
+      own, trainingDates: datesByRider.get(rider.id) ?? 0, staffSpeed, ...scout, ...(dayOne ? { fromDayOne: true } : {}),
     };
     const plan = planEstimateWrite({
       stored,
@@ -414,6 +421,7 @@ export async function planTeamEstimatesFromDb({ supabase, teamId, riders, trigge
   const context = {
     teamId, riders: candidates, storedByRider, looksByRider, datesByRider, staffSpeed, scoutTier,
     params: config.params, paramsVersion: config.paramsVersion, now: now.toISOString(), truthByRider,
+    ...(config.fromDayOne === true ? { fromDayOne: true } : {}),
   };
   const { rows, counts } = planTeamEstimates({ ...context, trigger });
   return { rows, counts, context };

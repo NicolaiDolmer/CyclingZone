@@ -97,7 +97,8 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     aiRidersV2: AGING_V2_ON,
     potentialBestRole: POTENTIAL_ESTIMATE_OFF,
     potentialBestRoleEstimate: POTENTIAL_ESTIMATE_ON,
-    potentialAndPrognosis: POTENTIAL_ESTIMATE_ON, // #8604
+    // #8604/#8810: teksten lover første skøn fra dag ét, så den følger prognosis_model2.
+    potentialAndPrognosis: Object.freeze({ flag: "prognosis_model2", when: true, and: POTENTIAL_ESTIMATE_ON }),
     // #8476: under XP vokser en traenet evne ikke "mod sit loft"; den tjener XP hurtigere.
     trainingFocus: XP_OFF,
     trainingFocusXp: XP_ON_WITH_EFFORT,

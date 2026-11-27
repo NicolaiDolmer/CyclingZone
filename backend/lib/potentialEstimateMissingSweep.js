@@ -13,9 +13,13 @@
 //
 // IDEMPOTENT og SELV-REPARERENDE: første kørsel efter deploy er datareparationen for
 // ryttere, der allerede står uden tal; derefter lukker den hullet inden for en time.
+//
+// #8810: BAG prognosis_model2. Slukket læser kørslen kun kontakten og skriver intet,
+// så skønnene skrives præcis som før #8604 (kig, holdskifte, søndag).
 
 import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
+import { isPrognosisModel2Enabled } from "./prognosisModel2Flag.js";
 import {
   ESTIMATE_RIDER_COLUMNS, POTENTIAL_ESTIMATES_TABLE, loadEstimateTeamIds, loadEstimateWriteConfig, writeTeamEstimates,
 } from "./potentialEstimateWriter.js";
@@ -39,6 +43,7 @@ export function missingOwnRidersByTeam(riders, storedPairs, teamIds) {
  *   written?: number, failedTeams?: number, firstError?: string }>}
  */
 export async function runPotentialEstimateMissingSweep({ supabase, now = new Date() }) {
+  if (!(await isPrognosisModel2Enabled(supabase))) return { ran: false, skipped: "model2_off" };
   const loaded = await loadEstimateWriteConfig(supabase, { now });
   if (!loaded.enabled) return { ran: false, skipped: loaded.reason };
   const config = { ...loaded, truthCache: new Map() };
