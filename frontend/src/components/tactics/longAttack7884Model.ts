@@ -113,3 +113,21 @@ export function withAttackRoute7884<R extends { plan?: unknown; long_attack_rout
   const { long_attack_route_7884: _old, ...rest } = rider;
   return (hasPlace && fingerprint ? { ...rest, long_attack_route_7884: fingerprint } : rest) as R;
 }
+
+/**
+ * Ordren uden stederne (samme objekt, naar ingen rytter har et sted). Bruges naar loebet ikke tager imod
+ * dem (kontakten slukket eller noedstop) og ved kopi til andre etaper: "Brug paa flere etaper" kopierer
+ * aldrig en stigning (designets afsnit 2).
+ */
+export function orderWithoutAttack7884<O extends { riders?: ReadonlyArray<{ plan?: unknown; long_attack_route_7884?: unknown }> | null }>(order: O): O {
+  const riders = order?.riders ?? [];
+  if (!riders.some((r) => Array.isArray(r.plan) && attackPlaceKey7884(r.plan as LegWithPlace[]) !== null)) return order;
+  return {
+    ...order,
+    riders: riders.map((r) => {
+      if (!Array.isArray(r.plan) || attackPlaceKey7884(r.plan as LegWithPlace[]) === null) return r;
+      const { long_attack_route_7884: _fp, ...rest } = r;
+      return { ...rest, plan: planWithoutAttack7884(r.plan as LegWithPlace[]) };
+    }),
+  };
+}

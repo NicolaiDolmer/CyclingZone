@@ -143,5 +143,30 @@
     "locked": "Bloqueado",
     "unsaved": "{count, plural, one {La etapa {stages} tiene cambios sin guardar.} other {Las etapas {stages} tienen cambios sin guardar.}}",
     "unsavedNote": "No se pierde nada al cambiar de etapa."
+  },
+  "attack7884": {
+    "title": "Atacar en",
+    "subtitle": "{name} · {role}",
+    "chip": "Atacar en {place}",
+    "none": "Sin ataque",
+    "today": "Ataca en {place}",
+    "finale": "Final",
+    "unnamed": "Cat. {category} en el km {km}",
+    "summit": "{name} (meta)",
+    "factCategory": "Cat. {category}",
+    "factFoot": "pie km {km}",
+    "factClimbAfter": "{count} subida después",
+    "factClimbsAfter": "{count} subidas después",
+    "factSummit": "final en alto",
+    "factValley": "valle después",
+    "factLongValley": "valle largo después",
+    "factFinale": "Últimos 10 km · desde el km {km}",
+    "rule": "Un intento. Si lo alcanzan, sus fuerzas están gastadas y se aplica el resto del plan.",
+    "ruleShort": "Un intento. Si lo alcanzan, sus fuerzas están gastadas.",
+    "choose": "Elegir {place}",
+    "chooseNone": "Elige una subida",
+    "remove": "Quitar el ataque",
+    "close": "Cerrar",
+    "blocked": "No encaja en el orden de su plan en esta etapa"
   }
 }

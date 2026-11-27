@@ -19,6 +19,7 @@ import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centra
 import { defaultTeamOrder, mergeOrderWithRoster, trainDefaultForStage } from "./tacticsPlan.js";
 import { orderWithoutJerseyHunt, withStagePlanFields } from "../components/race/StagePlanModel.ts"; // #7003, #7855
 import { tacticsOrderPayload7864 } from "./tacticsOrderPayload7864.ts";
+import { orderWithoutAttack7884 } from "../components/tactics/longAttack7884Model.ts"; // #8828
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -60,6 +61,8 @@ export async function fetchTeamOrders({ raceId }) {
     atomicStageSave: body.atomic_stage_save === true,
     savedStageNumbers: Array.isArray(body.saved_stage_numbers) ? body.saved_stage_numbers.filter(sn => Number.isInteger(sn) && sn > 0) : [],
     jerseyHunt7855: body.jersey_hunt_7855 === true, // #7855: troejejagtens opgaver kan vaelges
+    // #8828: "Angrib paa"-stederne pr. etape ({ [stage]: { fingerprint, places } }), kun naar loebet tager imod dem.
+    longAttack7884: body.long_attack_7884 && typeof body.long_attack_7884 === "object" ? /** @type {Record<string, unknown>} */ (body.long_attack_7884) : null,
   };
 }
 
@@ -84,7 +87,9 @@ export function orderForStage(context, stage, profileType = null) {
   const stored = (context?.orders ?? []).find((o) => o.stage_number === stage) ?? null;
   // #7855: gaelder troejejagten ikke (laengere), viser og gemmer etaper der ikke er koert planen
   // uden jagt, praecis som motoren koerer den. En koert etape staar som den blev gemt.
-  const saved = stored && context?.jerseyHunt7855 !== true && stage > (context?.stagesCompleted ?? 0) ? orderWithoutJerseyHunt(stored) : stored;
+  const huntSaved = stored && context?.jerseyHunt7855 !== true && stage > (context?.stagesCompleted ?? 0) ? orderWithoutJerseyHunt(stored) : stored;
+  // #8828: samme regel for "Angrib paa": tager loebet ikke imod stederne, vises og gemmes planen uden dem.
+  const saved = huntSaved && !context?.longAttack7884 && stage > (context?.stagesCompleted ?? 0) ? orderWithoutAttack7884(huntSaved) : huntSaved;
   const defaultOrder = defaultOrderForStage(context, profileType);
   // #6067: uden gemt ordre er ROLLENS standard svaret. defaultTeamOrder()'s
   // neutrale rytter-rækker (try_break:false) overskrev før rolledefaulten, så

@@ -153,6 +153,7 @@ import {
   partTaskOptions, partTasks, routeParts, setPartTask, todayTasks, withLockedRiders,
 } from "../tactics/tacticsV6cModel.ts";
 import { applyQuickEffort, quickEffortOf, QUICK_EFFORTS } from "../tactics/quickEffort8356.ts";
+import { attackPlaceKey7884, orderWithoutAttack7884, planWithAttack7884, planWithoutAttack7884, stagePlaces7884, withAttackRoute7884 } from "../tactics/longAttack7884Model.ts"; // #8828
 import { isLuxuryHelperRole, isTimeTrialProfile, setRiderPlan, suggestStagePlan, TASK_ROLES, withJerseyHunt7855 } from "./StagePlanModel.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
 import I18nReadyGate from "../I18nReadyGate.jsx"; // #8298: "tactics" er route-gatet
@@ -767,7 +768,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         write: async () => {
           const overrides = diffToOverrides({ matrix: normalize(draftSnapshot), riders });
           const response = await apiFetch(`${API}/api/races/${raceId}/tactics-fill`, { method: "POST", headers,
-            body: JSON.stringify({ source_stage: source, plans: targets.map(sn => ({ stage_number: sn, overrides: overrides.filter(row => row.stage_number === sn), order: tacticsOrderPayload7864(sent[sn], true) })) }),
+            body: JSON.stringify({ source_stage: source, plans: targets.map(sn => ({ stage_number: sn, overrides: overrides.filter(row => row.stage_number === sn), order: tacticsOrderPayload7864(orderWithoutAttack7884(sent[sn]), true) })) }), // #8828: "Brug på flere etaper" kopierer aldrig en stigning
           });
           if (!response.ok) throw new Error(stageFillError7864(response.data));
           return response.data;
@@ -1301,6 +1302,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       .filter((w) => w.kind === "kom")
       .map((w) => ({ km: Number(w.km), name: w.name ?? null, summit: w.summit_finish === true }));
     const parts = stagePlanOn ? routeParts(planRoute, namedClimbs) : [];
+    // #8828: "Angrib på"-stederne for etapen, kun når løbet tager imod dem (ellers null og intet valg).
+    const places7884 = stagePlanOn ? stagePlaces7884(orders?.longAttack7884, activeStage) : null;
+    const setRiderPlan7884 = (o, id, plan) => { const next = setRiderPlan(o, id, plan); return { ...next, riders: (next.riders ?? []).map((r) => (r.rider_id === id ? withAttackRoute7884(r, places7884?.fingerprint ?? null) : r)) }; };
     const surname = (name) => (name ? String(name).trim().split(/\s+/).slice(-1)[0] : null);
     const activePlan = selectedTeamPlan ? readyPlans[selectedTeamPlan] : null;
     const leaderName = surname(activePlan?.target?.name ?? (selectedTeamPlan === "sprint" ? sprintCaptain?.name : captain?.name) ?? null);
@@ -1347,14 +1351,20 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         const teamRow = activePlan?.order?.riders?.find((r) => r.rider_id === id)?.plan;
         const medium = Array.isArray(teamRow) && teamRow.length ? teamRow : assistant;
         const shown = legs ?? medium;
-        const quickPlans = new Map(QUICK_EFFORTS.map(pick => [pick, applyQuickEffort(shown, role, pick, planRoute)]));
+        // #8828: rutedelene og Easy | Medium | Hard arbejder på planen uden "Angrib på"-stedet; stedet lægges på igen ved skrivning.
+        const shownBase = shown ? planWithoutAttack7884(shown) : shown;
+        const attackKey = attackPlaceKey7884(legs);
+        const attackPlace = attackKey && places7884 ? places7884.places.find((p) => p.key === attackKey) ?? null : null;
+        const quickPlans = new Map(QUICK_EFFORTS.map(pick => [pick, applyQuickEffort(shownBase, role, pick, planRoute)]));
         const selected = JSON.stringify(legs) === JSON.stringify(medium) ? null : quickEffortOf(legs, role);
         const level = selected && !quickPlans.get(selected)?.error ? selected : null;
-        const tasks = partTasks(shown, planRoute, parts) ?? parts.map(() => "stay_sheltered");
+        const tasks = partTasks(shownBase, planRoute, parts) ?? parts.map(() => "stay_sheltered");
         const editable = planEditable(rider);
         const writeTasks = (next) => {
-          const legsNext = legsFromParts(next, parts, role, planRoute, droppedLeg(legs ?? shown), legs ?? shown);
-          updateOrder((o) => setRiderPlan(o, id, legsNext));
+          const base = planWithoutAttack7884(legs ?? shown);
+          const legsNext = legsFromParts(next, parts, role, planRoute, droppedLeg(base), base);
+          const withAttack = attackPlace ? planWithAttack7884(legsNext, attackPlace, planRoute) : null; // #8828: stedet følger med, når det stadig passer
+          updateOrder((o) => setRiderPlan7884(o, id, withAttack ?? legsNext));
         };
         const firstOff = (() => { const m = partTasks(medium, planRoute, parts)?.[0]; return m && m !== "breakaway" ? m : "stay_sheltered"; })();
         const lastOff = (() => { const m = partTasks(medium, planRoute, parts); const v = m?.[m.length - 1]; return v && v !== "sprint_train" ? v : "ride_in"; })();
@@ -1367,12 +1377,19 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         const breakReason = TASK_ROLES.breakaway.includes(role) ? null : tt("orders.notForRole");
         return {
           ...base,
-          today: legs ? todayTasks(legs, planRoute.climbs, leaderName) : [{ key: "effort", effort }],
+          today: legs ? todayTasks(planWithoutAttack7884(legs), planRoute.climbs, leaderName) : [{ key: "effort", effort }],
           level: null,
           quickEffort: { role, value: level, errors: Object.fromEntries([...quickPlans].map(([pick, plan]) => [pick, plan.error])) },
           levelEditable: editable,
           levelText: stageLocked ? (legs ? null : t("intention.roleDefault")) : null,
-          parts: tasks.map((task, index) => ({ task, options: editable ? partTaskOptions(tasks, index, parts, role, planRoute, legs ?? shown) : [task], editable })),
+          parts: tasks.map((task, index) => ({ task, options: editable ? partTaskOptions(tasks, index, parts, role, planRoute, shownBase) : [task], editable })),
+          // #8828: "Angrib på <sted>" (wireframet). Steder der ikke passer i planens rækkefølge, kan ikke vælges.
+          attack: places7884 ? { value: attackPlace ? attackKey : null, places: places7884.places, blocked: new Set(places7884.places.filter((p) => !shownBase || planWithAttack7884(shownBase, p, planRoute) === null).map((p) => p.key)), editable } : null,
+          onAttack: (key) => {
+            const place = key && places7884 ? places7884.places.find((p) => p.key === key) ?? null : null;
+            const next = shownBase ? planWithAttack7884(shownBase, place, planRoute) : null;
+            if (editable && next) updateOrder((o) => setRiderPlan7884(o, id, next));
+          },
           dropped: droppedLeg(shown)?.task ?? null,
           noPlanNote: legs ? null : t("stagePlan.noPlan"),
           steps: null,
@@ -1559,7 +1576,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           : null}
         board={(
           <TacticsBoardV6c
-            riders={boardRiders.map(({ onLevel: _l, onQuickEffort: _q, onPart: _p, followTeam, extras, ...rest }) => ({ ...rest, canFollowTeam: !!followTeam, extras: extras.map(({ toggle: _t, ...x }) => x) }))}
+            riders={boardRiders.map(({ onLevel: _l, onQuickEffort: _q, onPart: _p, onAttack: _a, followTeam, extras, ...rest }) => ({ ...rest, canFollowTeam: !!followTeam, extras: extras.map(({ toggle: _t, ...x }) => x) }))}
             partLabels={parts.map((p) => p.label)}
             allOrders={allOrders}
             summary={stagePlanOn && activeStage != null ? { stage: activeStage, assistant: assistantCount } : null}
@@ -1574,6 +1591,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             onExtra={(id, key) => byId.get(id)?.extras.find((x) => x.key === key)?.toggle()}
             onLock={(id) => updateOrder((o) => ({ ...o, riders: (o.riders ?? []).map((r) => (r.rider_id === id ? { ...r, locked: r.locked !== true } : r)) }))}
             onFollowTeam={(id) => byId.get(id)?.followTeam?.()}
+            onAttack={(id, key) => byId.get(id)?.onAttack?.(key)} // #8828
           />
         )}
         legend={legend}
