@@ -13,11 +13,22 @@
 # i Brugerverifikation-sektionen ELLER label docs-only/backend-only).
 # Husk også: ingen em-dash i PR-bodies og issue-kommentarer (samme tone-regel).
 
+param(
+  [string] $PrTitle = "",
+  [string] $PrBodyFile = ""
+)
+
 $ErrorActionPreference = "Stop"
 $root = (& git rev-parse --show-toplevel).Trim()
 Push-Location $root
 $failed = @()
 try {
+  Write-Host "== PR-evidence: Refs, production effect, UI screenshots, migration settings ==" -ForegroundColor Cyan
+  node --test scripts/check-pr-delivery.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "pr-delivery-tests" }
+  node scripts/check-pr-delivery.mjs "$PrTitle" "$PrBodyFile"
+  if ($LASTEXITCODE -ne 0) { $failed += "pr-delivery" }
+
   Write-Host "== check:i18n (keys/ICU/duplicates + tone-em-dash i player-copy) ==" -ForegroundColor Cyan
   npm run check:i18n
   if ($LASTEXITCODE -ne 0) { $failed += "check:i18n" }

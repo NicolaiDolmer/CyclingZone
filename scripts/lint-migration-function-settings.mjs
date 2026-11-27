@@ -26,7 +26,7 @@ import { join, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const STATEMENT_HEAD = /^\s*(?:CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)|ALTER\s+(?:FUNCTION|PROCEDURE|ROUTINE|ROLE|USER|DATABASE))\b/i;
-const CUSTOM_SETTING = /\bSET\s+("?[A-Za-z_][\w$]*"?\s*\.\s*"?[A-Za-z_][\w$]*"?)\s*(?:=|\bTO\b|\bFROM\s+CURRENT\b)/i;
+const CUSTOM_SETTING = /\bSET\s+(?:(?:LOCAL|SESSION)\s+)?("?[A-Za-z_][\w$]*"?\s*\.\s*"?[A-Za-z_][\w$]*"?|"[A-Za-z_][\w$]*\.[A-Za-z_][\w$]*")\s*(?:=|\bTO\b|\bFROM\s+CURRENT\b)/i;
 
 /** Replace comments, quoted strings and dollar-quoted bodies with spaces, keeping newlines. */
 export function stripSql(source) {
@@ -80,12 +80,12 @@ export function stripSql(source) {
 }
 
 /** @returns {{file: string, line: number, setting: string}[]} */
-export function findFunctionSettings(source, file = '<sql>') {
+export function findFunctionSettings(source, file = '<sql>', { includeTopLevel = false } = {}) {
   const stripped = stripSql(source);
   const findings = [];
   let offset = 0;
   for (const statement of stripped.split(';')) {
-    if (STATEMENT_HEAD.test(statement)) {
+    if (STATEMENT_HEAD.test(statement) || (includeTopLevel && /^\s*SET\b/i.test(statement))) {
       const match = CUSTOM_SETTING.exec(statement);
       if (match) {
         const at = offset + match.index;
