@@ -1,0 +1,14 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Help",
+      "area": "help",
+      "en": { "title": "Help explains Form on rest days correctly", "body": "Help now describes Rest days as days when the rider is set to Rest in the training plan. Rest lowers Fatigue, but Form is only built by training." },
+      "da": { "title": "Hjælp forklarer Form på hviledage rigtigt", "body": "Hjælp beskriver nu hviledage som dage, hvor rytteren står på Hvile i træningsplanen. Hvile sænker Trætheden, men Form bygges kun af træning." },
+      "refs": [8789]
+    }
+  ]
+}
