@@ -183,6 +183,9 @@ export const STAGE_FLAGS = Object.freeze([
   // #8799: selektion på kuperet og mellembjerg (#7645) + afslutninger på kuperet og bølget (#8189), kun s5_profiles_v3
   // og kun løb der ikke er startet. Seedet off; kun "on" tænder; "stop" er nødstop for løb i gang (hillySelection8799Flag.js). Ejer-only flip.
   { key: "hilly_selection_8799", area: "race-engine", label: "Kuperet — selektion og afslutninger (S6)" },
+  // #8828: "Angrib på <sted>" i etapeplanen (langt angreb fra foden), kun s5_profiles_v3 og kun løb der ikke er startet.
+  // Seedet off; kun "on" tænder; "stop" er nødstop for løb i gang (longAttack7884Flag.js). Ejer-only flip.
+  { key: "long_attack_7884", area: "race-engine", label: "Taktik — Angrib på <sted>" },
   // #7715: meget traette ryttere paa en haard etape risikerer tidsgraensen, med maerke foer etapen (kun s5_profiles_v3 og kun
   // loeb der ikke er startet). Ikke seedet = off; kun "on" taender (timeLimitFatigue7715.js). Ejer-only flip.
   { key: "time_limit_fatigue_7715", area: "race-engine", label: "Tidsgrænsen — meget trætte ryttere" },

@@ -24,8 +24,6 @@ import {
 } from "./stagePlan.ts";
 import {
   LONG_ATTACK_7884_ENGINE_READY,
-  LONG_ATTACK_7884_FLAG_KEY,
-  longAttack7884OpenForRace,
   attackPlaces7884,
   attackPlacesView7884,
   attackRouteFingerprint7884,
@@ -34,6 +32,7 @@ import {
   routeFingerprintError7884,
   validateStagePlan7884,
 } from "./tacticAttackTrigger7884.js"; // #8828
+import { longAttack7884OpenForRaceStamped } from "./longAttack7884Flag.js"; // #8828: stemplet paa loebet afgoer
 
 export const STAGE_PLAN_FLAG_KEY = "stage_plan_v1";
 
@@ -55,7 +54,7 @@ const VALID_ROLES = new Set(["captain", "co_captain", "sprint_captain", "helper"
  * effektive rolle. Kaldes kun naar PUT-kroppen faktisk baerer en plan.
  */
 // #7855: `jerseyHunt7855` = loebet tager imod troejejagtens opgaver (jerseyHunt7855Flag.jerseyHunt7855OpenForRace).
-// #8828: `longAttack7884` = loebet tager imod "Angrib paa"-stederne (tacticAttackTrigger7884.longAttack7884OpenForRace).
+// #8828: `longAttack7884` = loebet tager imod "Angrib paa"-stederne (longAttack7884OpenForRaceApi).
 export async function loadStagePlanContext({ supabase, raceId, stageNumber, baseRoleByRider, jerseyHunt7855 = false, longAttack7884 = false, overrideRows }) {
   const riderIds = [...baseRoleByRider.keys()];
   const [profileRes, rolesRes] = await Promise.all([
@@ -88,16 +87,14 @@ export async function loadStagePlanContext({ supabase, raceId, stageNumber, base
 }
 
 /**
- * #8828: tager loebet imod "Angrib paa"-stederne? Intet DB-kald, saa laenge motorens trin ikke er
- * tilsluttet (LONG_ATTACK_7884_ENGINE_READY). Enhver fejl = false (fail closed).
+ * #8828: tager loebet imod "Angrib paa"-stederne? Kun naar motoren vil koere dem i netop dette loeb:
+ * stemplet ved foerste etape (og ikke "stop"), eller kontakten "on" og loebet ikke startet
+ * (longAttack7884Flag.longAttack7884OpenForRaceStamped, samme regel som troejejagten). Intet DB-kald
+ * uden motorens trin (LONG_ATTACK_7884_ENGINE_READY) eller uden etapeplanens revision. Fejl = false.
  */
-export async function longAttack7884OpenForRaceApi({ supabase, race, readStage = readFlagStage }) {
+export async function longAttack7884OpenForRaceApi({ supabase, race, readStage = readFlagStage, openForRace = longAttack7884OpenForRaceStamped }) {
   if (LONG_ATTACK_7884_ENGINE_READY !== true || !stagePlanRevisionOk(race)) return false;
-  try {
-    return longAttack7884OpenForRace({ flagValue: await readStage(supabase, LONG_ATTACK_7884_FLAG_KEY), revisionOk: true });
-  } catch {
-    return false; // catch-ok: fail closed, stederne kan ikke gemmes
-  }
+  return openForRace({ supabase, race, readStage });
 }
 
 /**

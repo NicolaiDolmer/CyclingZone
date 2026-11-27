@@ -26,12 +26,12 @@ import { STAGE_PLAN_FINAL_KM, isTimeTrialProfile, normalizeStagePlanLegs, planHa
 export const LONG_ATTACK_7884_FLAG_KEY = "long_attack_7884";
 
 /**
- * Motorens trin (designets trin 4-6) er ikke tilsluttet loebet. Flippes kun i den PR, der
- * tilslutter det. Saa laenge den er false, tager API'et heller ikke imod de nye steder
- * (longAttack7884OpenForRace), uanset kontakten: en ordre motoren ikke vil koere, maa aldrig
- * kunne gemmes (samme regel som troejejagten, #7855).
+ * #8828 trin 3: motorens mekanik er tilsluttet etapeplanen bag kontakten og loebets startstempel
+ * (stagePlanEngine.ts, longAttack7884Flag.js). Kontakten selv er stadig slukket; API'et tager kun
+ * imod stederne, naar loebet vil koere med dem (stagePlanApi.longAttack7884OpenForRaceApi). Saettes
+ * den tilbage til false, tager API'et ikke imod stederne, uanset kontakten.
  */
-export const LONG_ATTACK_7884_ENGINE_READY = false;
+export const LONG_ATTACK_7884_ENGINE_READY = true;
 
 const CATEGORIES = new Set(["HC", "1", "2", "3", "4"]);
 const ALL_ROLES = new Set(["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"]);

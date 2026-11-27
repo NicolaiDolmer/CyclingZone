@@ -73,6 +73,8 @@ import {
 } from "./stagePlan.ts";
 import { luxuryHelperDefaultPlans } from "./engine/v4/mechanics/luxuryHelper5982.ts"; // #5982
 import { STAGE_PLAN_DROPPED_7635_TUNING } from "./engine/v4/tuning.ts"; // #7635
+import { LONG_ATTACK_7884_AFTER_CAUGHT_TASK, enginePlaces7884, launchLongAttack7884, longAttackCaught7884, type EnginePlace7884 } from "./engine/v4/mechanics/longAttack7884.ts"; // #8828
+import { isPlaceTrigger7884, placeForTrigger7884, validateStagePlan7884 } from "./tacticAttackTrigger7884.js"; // #8828
 
 export const STAGE_PLAN_ORDER_KIND = "stage_plan";
 export const STAGE_PLAN_LEG_EVENT = "stage_plan_leg";
@@ -82,7 +84,10 @@ export const STAGE_PLAN_HUNT_FALLBACK_EVENT = "stage_plan_hunt_fallback";
 /** #7333: opgaver hvis virkning er segmentets holdarbejde, ikke opgoerelsen ved maal. */
 const SEGMENT_WORK_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["tempo", "shelter_leader"]);
 
-export type StagePlanSwitchReason = "kom" | "final_km" | "dropped" | "caught" | "missed_break";
+export type StagePlanSwitchReason = "kom" | "final_km" | "dropped" | "caught" | "missed_break" | "long_attack";
+
+/** #8828: event-typen naar en rytter paa "Angrib paa" er hentet (fakta: rytter, led, km). */
+export const LONG_ATTACK_7884_CAUGHT_EVENT = "long_attack_7884_caught";
 
 type ResolvedLeg = {
   task: StagePlanTask;
@@ -92,8 +97,28 @@ type ResolvedLeg = {
   /** Rutepunktets km, eller null for foerste led og sat-leddet. */
   fromKm: number | null;
   fromDropped: boolean;
-  routeReason: "kom" | "final_km" | null;
+  routeReason: "kom" | "final_km" | "long_attack" | null;
+  /** #8828 (KUN kontakten): "Angrib paa" et sted. Angrebet holder til `untilKm` (toppen, eller maal). Udeladt = som foer. */
+  longAttack?: { untilKm: number };
 };
+
+/**
+ * #8828 (KUN et loeb stemplet til long_attack_7884): "Angrib paa"-angrebenes tilstand mellem
+ * segmentgraenserne. Udeladt paa runtime'en, naar ingen rytter har et gyldigt sted (bit-identisk).
+ *  - pending: ryttere der skal saette af ved dette segments start (rider_id-orden).
+ *  - active: rytter -> leddet han angriber paa (ét forsoeg pr. led).
+ *  - caught: rytter -> leddet han blev hentet paa; resten af leddet koeres som "Foelg med".
+ *  - entryGroups: gruppebilledet ved segmentets start, efter afsaettet (til "hentet").
+ */
+export type LongAttack7884State = {
+  pending: string[];
+  active: Map<string, number>;
+  caught: Map<string, number>;
+  entryGroups: readonly RaceGroup[] | null;
+};
+
+/** #8828: indsatsen mens angrebet er aktivt. Farten betales af reserven (mechanics/longAttack7884.ts), ikke af "Alt ud" (én ejer af gevinsten, intet knaek ved lodtraekning). */
+const LONG_ATTACK_ACTIVE_EFFORT: EffortLevel = "normal";
 
 export type StagePlanRuntime = {
   legs: Map<string, ResolvedLeg[]>;
@@ -115,6 +140,8 @@ export type StagePlanRuntime = {
    * (`fromField`, se noteHuntFromField7855). Udeladt = ingen saadan rytter (bit-identisk).
    */
   missedBreakHunt7855?: MissedBreakHunt7855;
+  /** #8828 (KUN kontakten): "Angrib paa"-angrebene. Udeladt = ingen saadan plan (bit-identisk). */
+  longAttack7884?: LongAttack7884State;
 };
 
 /**
@@ -164,11 +191,16 @@ export function stagePlanRouteFromV4(route: RouteV2, opts: { jerseyHunt7855?: bo
   return { ...base, sprints, jersey_hunt_7855: true };
 }
 
-function resolveLegs(legs: readonly StagePlanLeg[], route: StagePlanRoute): ResolvedLeg[] {
-  return legs.map((leg) => {
+function resolveLegs(legs: readonly StagePlanLeg[], route: StagePlanRoute, places7884?: readonly EnginePlace7884[]): ResolvedLeg[] {
+  return legs.map((leg, i) => {
     const from = leg.from;
     let fromKm: number | null = null;
     let routeReason: ResolvedLeg["routeReason"] = null;
+    // #8828: et sted ("Angrib paa") skifter ved foden; planen er valideret mod de samme steder.
+    const place = places7884 && i > 0 && isPlaceTrigger7884(from) ? (placeForTrigger7884(from, places7884) as EnginePlace7884 | null) : null;
+    if (place) {
+      return { task: leg.task, effort: TASK_EFFORT[leg.task] as EffortLevel, hunt: legHuntTask(leg), fromKm: place.foot_km, fromDropped: false, routeReason: "long_attack", longAttack: { untilKm: place.until_km } };
+    }
     if (from?.at === "final_km") {
       fromKm = Math.max(0, route.distance_km - STAGE_PLAN_FINAL_KM);
       routeReason = "final_km";
@@ -188,11 +220,14 @@ export function createStagePlanRuntime(
   orders: readonly TeamOrder[],
   route: RouteV2,
   entrants: Readonly<Record<string, Entrant>>,
-  opts: { droppedFront7635?: boolean; jerseyHunt7855?: boolean } = {},
+  opts: { droppedFront7635?: boolean; jerseyHunt7855?: boolean; longAttack7884?: boolean } = {},
 ): StagePlanRuntime | null {
   const planRoute = stagePlanRouteFromV4(route, { jerseyHunt7855: opts.jerseyHunt7855 === true }); // #7855 (slukket)
   const legs = new Map<string, ResolvedLeg[]>();
   const huntFallback: string[] = []; // #7855
+  // #8828 (KUN et loeb stemplet til kontakten): stederne fra motorens egen rute. Ellers aldrig laest.
+  const places7884 = opts.longAttack7884 === true ? enginePlaces7884(route, STAGE_PLAN_FINAL_KM) : null;
+  let longAttackRiders = 0;
   for (const order of orders) {
     if (order.kind !== STAGE_PLAN_ORDER_KIND) continue;
     const riders = order.params?.["riders"];
@@ -206,6 +241,14 @@ export function createStagePlanRuntime(
       // Kun hold-egne ryttere: en ordre kan aldrig styre et andet holds rytter.
       if (!entrant || String(entrant.team_id ?? "") !== String(order.team_id)) continue;
       const role = ROLES.has(entrant.role) ? (entrant.role as StagePlanRole) : "free_role";
+      // #8828: planen med stederne koeres kun i et stemplet loeb og kun, naar den er gyldig mod motorens
+      // egne steder (gemt plan: newPlan false). Ellers koeres planen uden stederne (`legs`) som i dag.
+      const longLegs = places7884 ? (raw as Record<string, unknown>)["long_attack_legs"] : undefined;
+      if (places7884 && Array.isArray(longLegs) && validateStagePlan7884(longLegs, role, planRoute, places7884, { newPlan: false }) === null) {
+        legs.set(riderId, resolveLegs(longLegs as StagePlanLeg[], planRoute, places7884));
+        longAttackRiders += 1;
+        continue;
+      }
       if (validateStagePlanLegs(plan, role, planRoute) !== null) {
         // #7855: en plan med troejejagt har sin egen udgave uden jagt med fra gemningen. Den koeres,
         // naar jagten ikke gaelder (kontakten slukket foer foerste etape, eller "stop"). Andre
@@ -231,6 +274,7 @@ export function createStagePlanRuntime(
   if (opts.droppedFront7635 === true) rt.front7635 = { prevGroupOf: null, seen: new Set(), attackGroups: new Set(), streak: new Map() };
   if (opts.jerseyHunt7855 === true) rt.huntRoute7855 = planRoute; // #7855
   if (huntFallback.length > 0) rt.huntFallback7855 = huntFallback.sort(); // #7855
+  if (longAttackRiders > 0) rt.longAttack7884 = { pending: [], active: new Map(), caught: new Map(), entryGroups: null }; // #8828
   // #7855 valg 3 (ejer 13/11): den forsigtige laesning (dommerens S5, S6, S7 er aabne ejer-valg):
   // kun hjaelperen og kun "Hent point" paa udbrudsleddet; kun traetheden efter etapen aendres.
   if (opts.jerseyHunt7855 === true) {
@@ -469,6 +513,11 @@ export function advanceStagePlan(
     return fromKm <= switchPointKm(next.task) || huntHasPassageHere(next, fromKm, segment.to_km);
   };
   const holdsForHunt = (leg: ResolvedLeg, nextFromKm: number) => huntHasPassageHere(leg, leg.fromKm ?? 0, nextFromKm);
+  // #8828 (KUN kontakten): "Angrib paa" holder hele stigningen (til toppen, eller maal ved topankomst og
+  // finalen), medmindre han er hentet. Senere led i planen skifter derefter, som i dag.
+  const la = rt.longAttack7884;
+  const holdsForLongAttack = (riderId: string, idx: number, leg: ResolvedLeg) =>
+    la !== undefined && leg.longAttack !== undefined && la.caught.get(riderId) !== idx && segment.from_km < leg.longAttack.untilKm;
   // #7855 valg 3 + hul 1 og 2: spurterne i segmentet, der lige er koert (tom uden kontakten).
   const missed = rt.missedBreakHunt7855;
   const sprints = missed ? takeNewSprints7855(missed, state) : [];
@@ -484,6 +533,13 @@ export function advanceStagePlan(
       noteHuntFromField7855(missed, riderId, { legDuringSegment: legs[cur], sprints, wasInEscape: rt.everInEscape.has(riderId), inEscapeNow: inEscape });
     }
     if (inEscape) rt.everInEscape.add(riderId);
+    // #8828 (KUN kontakten): ét forsoeg. Er han hentet i segmentet der lige er koert, er angrebet slut,
+    // og resten af leddet koeres som "Foelg med" (ejerens valg 4 A).
+    if (la && la.active.get(riderId) === cur && la.entryGroups && longAttackCaught7884(la.entryGroups, state.groups, riderId)) {
+      la.active.delete(riderId);
+      la.caught.set(riderId, cur);
+      events.push({ km: Math.round(segment.from_km * 100) / 100, type: LONG_ATTACK_7884_CAUGHT_EVENT, params: { rider_id: riderId, leg: cur, task: LONG_ATTACK_7884_AFTER_CAUGHT_TASK } });
+    }
 
     const droppedIdx = legs.findIndex((l) => l.fromDropped);
     const breakawayLeg = legs[cur].task === "breakaway";
@@ -507,7 +563,7 @@ export function advanceStagePlan(
       next = droppedIdx;
       reason = breakawayLeg ? (rt.everInEscape.has(riderId) ? "caught" : "missed_break") : "dropped";
     } else {
-      while (next + 1 < legs.length && legs[next + 1].fromKm !== null && switchesNow(legs[next + 1]) && !holdsForHunt(legs[next], legs[next + 1].fromKm as number)) {
+      while (next + 1 < legs.length && legs[next + 1].fromKm !== null && switchesNow(legs[next + 1]) && !holdsForHunt(legs[next], legs[next + 1].fromKm as number) && !holdsForLongAttack(riderId, next, legs[next])) {
         next += 1;
         reason = legs[next].routeReason;
       }
@@ -515,6 +571,14 @@ export function advanceStagePlan(
     if (next === cur || reason === null) continue;
     rt.current.set(riderId, next);
     rt.ridden.get(riderId)?.add(next);
+    if (la) {
+      // #8828: et nyt led afslutter et aktivt angreb; et "Angrib paa"-led saetter af ved segmentets start.
+      la.active.delete(riderId);
+      if (legs[next].longAttack !== undefined && reason === "long_attack") {
+        la.active.set(riderId, next);
+        la.pending.push(riderId);
+      }
+    }
     events.push({
       km: Math.round(segment.from_km * 100) / 100,
       type: STAGE_PLAN_LEG_EVENT,
@@ -550,10 +614,14 @@ export function advanceStagePlanAtFinish(
       noteHuntFromField7855(missed, riderId, { legDuringSegment: legs[cur], sprints, wasInEscape: rt.everInEscape.has(riderId), inEscapeNow: group !== undefined && isEscape(group) });
     }
     let next = cur;
-    while (next + 1 < legs.length && legs[next + 1].fromKm !== null && (legs[next + 1].fromKm as number) <= segment.to_km) next += 1;
+    // #8828 (KUN kontakten): et aktivt "Angrib paa" der holder til maal, skifter ikke foer finalen.
+    const la = rt.longAttack7884;
+    const holds = (idx: number) => la !== undefined && la.active.get(riderId) === idx && legs[idx].longAttack !== undefined && segment.to_km <= (legs[idx].longAttack as { untilKm: number }).untilKm;
+    while (next + 1 < legs.length && legs[next + 1].fromKm !== null && (legs[next + 1].fromKm as number) <= segment.to_km && !holds(next)) next += 1;
     if (next === cur) continue;
     rt.current.set(riderId, next);
     rt.ridden.get(riderId)?.add(next);
+    la?.active.delete(riderId); // #8828: et led der foerst begynder i finalen, saetter ikke af (det er "Alt ud" i finalen)
     const km = Math.max(segment.from_km, legs[cur + 1].fromKm as number);
     events.push({
       km: Math.round(km * 100) / 100,
@@ -575,16 +643,53 @@ export function stagePlanEntrants(
   for (const riderId of rt.riderIds) {
     const entrant = base[riderId];
     if (!entrant) continue;
-    const effort = rt.legs.get(riderId)![rt.current.get(riderId) ?? 0].effort;
+    const effort = longAttackLeg7884(rt, riderId)?.effort ?? rt.legs.get(riderId)![rt.current.get(riderId) ?? 0].effort;
     if (effort !== entrant.effort) out[riderId] = { ...entrant, effort };
   }
+  return out;
+}
+
+/**
+ * #8828 (KUN kontakten): hvad en rytter paa et "Angrib paa"-led koerer lige nu. Aktivt angreb: opgaven
+ * er stadig "Angrib", men indsatsen er LONG_ATTACK_ACTIVE_EFFORT (farten betales af reserven).
+ * Hentet: resten af leddet er "Foelg med". null = leddet koeres som i dag.
+ */
+function longAttackLeg7884(rt: StagePlanRuntime, riderId: string): { task: StagePlanTask; effort: EffortLevel } | null {
+  const la = rt.longAttack7884;
+  if (!la) return null;
+  const cur = rt.current.get(riderId) ?? 0;
+  if (la.active.get(riderId) === cur) return { task: rt.legs.get(riderId)![cur].task, effort: LONG_ATTACK_ACTIVE_EFFORT };
+  if (la.caught.get(riderId) === cur) return { task: LONG_ATTACK_7884_AFTER_CAUGHT_TASK, effort: TASK_EFFORT[LONG_ATTACK_7884_AFTER_CAUGHT_TASK] as EffortLevel };
+  return null;
+}
+
+/** #8828 (KUN kontakten): rytterne med et aktivt "Angrib paa" i segmentet (rider_id-orden). Tom uden kontakten. */
+export function stagePlanLongAttackers7884(rt: StagePlanRuntime | null): string[] {
+  const la = rt?.longAttack7884;
+  if (!la || la.active.size === 0) return [];
+  return [...la.active.keys()].sort();
+}
+
+/**
+ * #8828 (KUN kontakten): segmentets start for "Angrib paa". Ryttere der lige har skiftet til leddet,
+ * saetter af fra den gruppe de sidder i (mechanics/longAttack7884.launchLongAttack7884, samme hul),
+ * og gruppebilledet efter afsaettet huskes til "hentet" ved naeste graense. Uden kontakten eller uden
+ * nogen saadan plan: samme array tilbage.
+ */
+export function stagePlanLongAttackStart7884(rt: StagePlanRuntime | null, groups: RaceGroup[], segmentIndex: number): RaceGroup[] {
+  const la = rt?.longAttack7884;
+  if (!la) return groups;
+  let out = groups;
+  for (const riderId of [...la.pending].sort()) out = launchLongAttack7884(out, riderId, segmentIndex);
+  la.pending = [];
+  la.entryGroups = out;
   return out;
 }
 
 /** #7380: den opgave hver rytter med plan koerer segmentet med (samme led som stagePlanEntrants). */
 export function stagePlanCurrentTasks(rt: StagePlanRuntime): Record<string, StagePlanTask> {
   const out: Record<string, StagePlanTask> = {};
-  for (const riderId of rt.riderIds) out[riderId] = rt.legs.get(riderId)![rt.current.get(riderId) ?? 0].task;
+  for (const riderId of rt.riderIds) out[riderId] = longAttackLeg7884(rt, riderId)?.task ?? rt.legs.get(riderId)![rt.current.get(riderId) ?? 0].task;
   return out;
 }
 
@@ -696,17 +801,19 @@ export function stagePlanOrderFromRow(
   isV3: (revision: unknown) => boolean,
 ): TeamOrder | null {
   if (!row || !isV3(rulesRevision) || !Array.isArray(row.riders)) return null;
-  const riders: Array<{ rider_id: string; legs: unknown; fallback_legs?: unknown }> = [];
+  const riders: Array<{ rider_id: string; legs: unknown; fallback_legs?: unknown; long_attack_legs?: unknown }> = [];
   for (const r of row.riders) {
     if (!r || typeof r !== "object") continue;
     const rec = r as Record<string, unknown>;
     if (typeof rec["rider_id"] !== "string" || !Array.isArray(rec["plan"])) continue;
     // #7855: kun raekker gemt med en jagt-opgave baerer plan_no_hunt; alle andre er uaendrede.
     // #8828 (kontakten long_attack_7884): kun raekker gemt med et "Angrib paa"-sted baerer
-    // plan_no_long_attack. Motorens trin er ikke tilsluttet, saa motoren koerer altid planen uden
-    // stederne (tacticAttackTrigger7884.longAttackStorage7884); alle andre raekker er uroerte.
-    const legs = Array.isArray(rec["plan_no_long_attack"]) ? rec["plan_no_long_attack"] : rec["plan"];
-    riders.push({ rider_id: rec["rider_id"], legs, ...(Array.isArray(rec["plan_no_hunt"]) ? { fallback_legs: rec["plan_no_hunt"] } : {}) });
+    // plan_no_long_attack. `legs` er planen uden stederne (tacticAttackTrigger7884.longAttackStorage7884);
+    // planen med stederne foelger med som `long_attack_legs`, og motoren koerer den kun i et loeb
+    // stemplet til kontakten (createStagePlanRuntime). Alle andre raekker er uroerte.
+    const noLongAttack = Array.isArray(rec["plan_no_long_attack"]);
+    const legs = noLongAttack ? rec["plan_no_long_attack"] : rec["plan"];
+    riders.push({ rider_id: rec["rider_id"], legs, ...(Array.isArray(rec["plan_no_hunt"]) ? { fallback_legs: rec["plan_no_hunt"] } : {}), ...(noLongAttack ? { long_attack_legs: rec["plan"] } : {}) });
   }
   return riders.length ? { team_id: teamId, kind: STAGE_PLAN_ORDER_KIND, params: { riders } } : null;
 }

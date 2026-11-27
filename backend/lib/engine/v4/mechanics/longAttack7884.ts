@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/longAttack7884.ts
-// #7884/#8828 (kontakten long_attack_7884, IKKE tilsluttet segment-loopet endnu): langt angreb
+// #7884/#8828 (kontakten long_attack_7884 + loebets startstempel, SLUKKET): langt angreb
 // fra FODEN af den valgte stigning. Design: docs/superpowers/specs/2026-11-12-7884-langt-angreb-design.md
 // afsnit 2 ("Motorens regel"); dommer-scenarierne M1-M8 staar i
 // docs/superpowers/specs/2026-11-26-7884-taktik-klager-og-angreb-paa-stigning.md afsnit 6.
@@ -10,10 +10,10 @@
 // doed", med aegte aarsag). Derfra gaelder motorens almindelige regler for fart, laeg, dal og jagt.
 //
 // REN: ingen IO, ingen Date, ingen tilfaeldighed. Funktionerne tager ingen rng og aendrer intet input.
-// LONG_ATTACK_7884_ENGINE_READY (tacticAttackTrigger7884.js) flippes foerst i den PR, der kobler
-// mekanikken paa segment-loopet med maaling og dommer; indtil da kalder motoren ikke denne fil.
+// Tilsluttet via stagePlanEngine.ts (afsaet, hentet, hold til toppen) og segmentLoop.ts (tillaegget
+// og reservens pris), kun for et loeb stemplet til kontakten ved foerste etape (longAttack7884Flag.js).
 
-import type { RaceGroup } from "../types.ts";
+import type { RaceGroup, RouteV2 } from "../types.ts";
 import { splitGroup } from "../groups.ts";
 import { LONG_ATTACK_7884_TUNING } from "../tuning.ts";
 
@@ -71,7 +71,56 @@ export function longAttackCaught7884(before: readonly RaceGroup[], after: readon
   const gapBefore = new Map<string, number>();
   for (const g of before) for (const id of g.rider_ids) gapBefore.set(id, g.gap_seconds);
   const mine = new Set(ownBefore.rider_ids);
-  return ownAfter.rider_ids.some((id) => !mine.has(id) && (gapBefore.get(id) ?? -Infinity) > ownBefore.gap_seconds);
+  // #8828: ogsaa ryttere med SAMME hul taeller. Ved afsaettet har gruppen han kom fra samme hul som
+  // ham (M1); samles han med den igen, er han ikke kommet vaek, og angrebet er slut.
+  return ownAfter.rider_ids.some((id) => !mine.has(id) && (gapBefore.get(id) ?? -Infinity) >= ownBefore.gap_seconds);
+}
+
+/**
+ * #8828: stederne set fra motorens egen rute (samme noegler og samme fod som API'ets
+ * tacticAttackTrigger7884.attackPlaces7884 paa de raa felter). Foden er starten paa stigningens
+ * segment (routeSegments.buildSegments laegger segmentet fra toppen minus laengden); en stigning
+ * delt i flere stykker (#7383) har foden ved det foerste stykke. Uden et stigningssegment, der ender
+ * ved toppen, kendes foden ikke, og stigningen er ikke et sted. `until_km` er hvor angrebet slutter
+ * som angreb: toppen, eller maal ved topankomsten og finalen.
+ */
+export type EnginePlace7884 = {
+  key: string;
+  kind: "climb" | "finale";
+  trigger: { at: "climb_start"; kom_index: number } | { at: "finale" };
+  foot_km: number;
+  until_km: number;
+};
+
+const CREST_EPS_KM = 1e-6;
+
+export function enginePlaces7884(route: RouteV2, finalKm: number): EnginePlace7884[] {
+  const distanceKm = route.distance_km;
+  if (!(distanceKm > 0)) return [];
+  const segments = route.segments;
+  const places: EnginePlace7884[] = [];
+  for (const w of route.waypoints) {
+    if (w.kind !== "kom" || w.category === undefined || !(w.km > 0 && w.km <= distanceKm + CREST_EPS_KM)) continue;
+    let i = segments.findIndex((s) => s.kind === "climb" && Math.abs(s.to_km - w.km) <= CREST_EPS_KM);
+    if (i < 0) continue;
+    while (i > 0) {
+      const prev = segments[i - 1];
+      const cur = segments[i];
+      if (prev.kind !== "climb" || cur.kind !== "climb" || prev.category !== cur.category || Math.abs(prev.to_km - cur.from_km) > CREST_EPS_KM) break;
+      i -= 1;
+    }
+    const summit = w.summit_finish === true || Math.abs(w.km - distanceKm) <= CREST_EPS_KM;
+    places.push({
+      key: `climb:${w.index}`,
+      kind: "climb",
+      trigger: { at: "climb_start", kom_index: w.index },
+      foot_km: Math.max(0, segments[i].from_km),
+      until_km: summit ? distanceKm : w.km,
+    });
+  }
+  places.push({ key: "finale", kind: "finale", trigger: { at: "finale" }, foot_km: Math.max(0, distanceKm - finalKm), until_km: distanceKm });
+  const order = (p: EnginePlace7884) => (p.trigger.at === "finale" ? Number.MAX_SAFE_INTEGER : p.trigger.kom_index);
+  return places.sort((a, b) => a.foot_km - b.foot_km || order(a) - order(b));
 }
 
 /** M5 (ejerens valg 4 A): hvad en hentet rytter koerer resten af leddet. */
