@@ -429,7 +429,7 @@ export const SEED_STAGE_PROFILES = [
   { race_id: "race-up-1", stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint",
     weather: { kind: "sun", wind_exposure: 0.4 },
     distance_km: 190, elevation_gain_m: 268,
-    climbs: [{ name: "Côte de Beauregard", category: "4", crest_km: 172, length_km: 1.5, avg_gradient: 4.5, summit_finish: false }],
+    climbs: [{ name: "Côte de Beauregard", category: "4", crest_km: 128, length_km: 1.5, avg_gradient: 4.5, summit_finish: false }],
     sprints: [{ name: "Intermediate Sprint", km: 108, kind: "intermediate" }, { name: "Finish", km: 190, kind: "finish" }],
     sectors: [], demand_vector: { sprint: 0.61, acceleration: 0.15, positioning: 0.08, flat: 0.06, endurance: 0.02, randomness: 0.08 } },
   { race_id: "race-up-1", stage_number: 2, profile_type: "mountain", finale_type: "descent",

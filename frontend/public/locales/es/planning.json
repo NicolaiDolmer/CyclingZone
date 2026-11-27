@@ -5,6 +5,31 @@
     "needSquad": "{count, plural, one {# carrera necesita equipo en los próximos 8 días} other {# carreras necesitan equipo en los próximos 8 días}}",
     "allReady": "Todas las carreras de los próximos 8 días tienen equipo completo"
   },
+  "mode": {
+    "label": "Mostrar",
+    "week": "Semana",
+    "season": "Temporada",
+    "month": "Mes"
+  },
+  "teamStrategy": "Estrategia del equipo",
+  "distribute": {
+    "action": "Repartir corredores",
+    "title": "Repartir corredores",
+    "titleOn": "Repartir corredores · {date}",
+    "back": "Volver a la semana",
+    "backSeason": "Volver a la temporada",
+    "unsaved": "Tienes cambios sin guardar en esta carrera. ¿Dejarlos y abrir el día?"
+  },
+  "match": {
+    "label": "Match",
+    "wholeRace": "Toda la carrera",
+    "stage": "Etapa {n}"
+  },
+  "startlists": {
+    "unavailable": "La lista de salida de esta carrera aún no está disponible aquí.",
+    "grossOnly": "Solo equipos y corredores, sin roles",
+    "yourTeam": "Tu equipo"
+  },
   "toggles": {
     "weekBoard": "Vista semanal",
     "raceList": "Lista de carreras"
@@ -16,7 +41,9 @@
     "next": "Semana siguiente",
     "week": "Semana {week}",
     "empty": "No hay carreras esta semana. Usa las flechas para buscar la siguiente.",
-    "raceDaysShort": "DC {days}"
+    "raceDaysShort": "DC {days}",
+    "continuedFrom": "Empezó la semana anterior",
+    "continuesNext": "Sigue la semana siguiente"
   },
   "raceList": {
     "title": "Lista de carreras",
@@ -112,6 +139,17 @@
       "fatigue": "Fatiga",
       "load": "Carga",
       "rating": "Valoración"
+    },
+    "helpAria": "¿Qué significa {column}?",
+    "help": {
+      "status": "Por qué un corredor no se puede elegir ahora: lesionado, demasiado mayor, en otra carrera los mismos días o bloqueado por Entrenar ya.",
+      "role": "La tarea del corredor en esta carrera. Solo los corredores elegidos tienen rol.",
+      "type": "El tipo natural del corredor.",
+      "rating": "La valoración del corredor en su mejor rol ahora mismo.",
+      "form": "La forma de hoy. Una fecha debajo indica cuándo es su próximo pico de forma.",
+      "fatigue": "Lo cansado que está el corredor. Más alto es más cansado.",
+      "load": "Lo dura que se espera la carrera con un esfuerzo normal: ligera, media o dura.",
+      "routeMatch": "Lo bien que encaja el corredor con el recorrido. En una carrera por etapas puedes elegir toda la carrera o una etapa."
     }
   },
   "role": {
@@ -216,7 +254,8 @@
       "squad": "Elige corredores y dales un rol · todas las columnas ordenan",
       "tactics": "El plan sigue la etapa del perfil",
       "peak": "Marca corredores y aplica el pico de forma a esta carrera"
-    }
+    },
+    "startlists": "Listas de salida"
   },
   "tactics": {
     "noSquad": {
@@ -258,5 +297,34 @@
     "next": "Carrera siguiente",
     "close": "Cerrar",
     "position": "{n} / {total}"
+  },
+  "seasonMatrix": {
+    "legendLabel": "Celdas:",
+    "legendEmpty": "No seleccionado. Toca para seleccionar"
+  },
+  "climbList": {
+    "title": "Las subidas",
+    "name": "Subida",
+    "category": "Categoría {cat}",
+    "top": "Cima en el km",
+    "length": "Longitud",
+    "average": "Media",
+    "toFinish": "Hasta la meta",
+    "showOnProfile": "Mostrar {name} en el perfil",
+    "mobileFacts": "Cima en el km {km} · {length} km · {average} % · {toFinish} km hasta la meta"
+  },
+  "sectorList": {
+    "titleCobbles": "Los tramos de adoquines",
+    "titleGravel": "Los tramos de tierra",
+    "titleMixed": "Adoquines y tierra",
+    "kind": { "cobbles": "Adoquines", "gravel": "Tierra" },
+    "sector": "Tramo",
+    "from": "Km",
+    "length": "Longitud",
+    "toFinish": "Hasta la meta",
+    "range": "{from}-{to}",
+    "showOnProfile": "Mostrar en el perfil: {text}",
+    "mobileFacts": "Km {from}-{to} · {length} km · {toFinish} km hasta la meta",
+    "full": "{kind} · {name} · {length} km · km {from}-{to} · {toFinish} km hasta la meta"
   }
 }

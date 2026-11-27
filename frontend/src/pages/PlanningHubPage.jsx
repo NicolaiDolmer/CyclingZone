@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, Navigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { PageHeader, Tabs, TabList, Tab, ChevronLeftIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
-import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts"; // #7535
+import { usePlanningFlags } from "../lib/usePlanningWorkbenchFlag.ts"; // #7535, #8419
 import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
 import SeasonView from "../components/racehub/SeasonView.jsx";
 import SeasonDayToggle from "../components/racehub/SeasonDayToggle.jsx";
@@ -59,7 +59,8 @@ export default function PlanningHubPage() {
   // #4983: samme kilde som nav-markeringen (Layout.jsx) — boksen her viser
   // hvilke trupper der mangler og hvor lang tid der er til fristen.
   const { reminder: selectionReminder } = useSelectionReminder();
-  const workbenchEnabled = usePlanningWorkbenchFlag();
+  const planningFlags = usePlanningFlags();
+  const workbenchEnabled = planningFlags ? planningFlags.workbench : null;
 
   // URL'en ER fane-tilstanden (#3102 etape 2-læringen) — ingen useState-kopi,
   // så browserens tilbage/frem flytter fanen med.
@@ -116,6 +117,16 @@ export default function PlanningHubPage() {
       params.delete("returnView");
       return params;
     }, { replace: true });
+  }
+
+  // #8419: med kontakten planning_v2_default_8419 er den nye side standard for Holdudtagelse. Formplan,
+  // Strategi og Kalender-fanerne bliver her uaendret (Holdstrategi-linket peger paa ?tab=strategy).
+  if (planningFlags?.v2Default && tab === "selection") {
+    const next = new URLSearchParams(searchParams);
+    if (next.get("view") === "season") next.set("mode", "season");
+    next.delete("view");
+    const qs = next.toString();
+    return <Navigate to={`/planning/workbench${qs ? `?${qs}` : ""}`} replace />;
   }
 
   return (

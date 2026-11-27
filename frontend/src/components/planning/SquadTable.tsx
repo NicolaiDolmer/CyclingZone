@@ -7,11 +7,16 @@
 //
 // Mobil (punkt 2, kompakt): navnecellen (afkrydsning, navn, rolle som lille vaelger eller typen) og de
 // tal-kolonner spilleren har valgt i chip-raekken (hoejst tre), med kolonneoverskrifter. Ingen vandret scroll.
+//
+// #8419 (ejer 26/11): ingen forklaringstekst over tabellen; hver kolonne har et ?-ikon med en kort forklaring
+// (resten staar i Hjaelp). Match kan gaelde én etape (vaelgeren over tabellen); overskriften siger hvilken.
+// Ingen smaa versaler (TASTE): overskrifter og maerker staar i almindelig skrift.
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { SortableTh, Select, RiderNameCell, RiderBadges, Flag, isU23, injuryTimeLeft, statPlateStyle, RIDER_TYPE_KEYS } from "./primitives.ts";
 import { formatShortDate } from "./planningUi.tsx";
 import TableTitleBar from "../ui/TableTitleBar.tsx";
+import TooltipBase from "../ui/Tooltip.jsx";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import { OPTIONAL_COLUMNS, readColumnsPref, toggleOptionalColumn, writeColumnsPref, type OptionalColumn } from "./squadColumns.ts";
 import { injuryFitAgainDate } from "../../lib/injuryExplain.ts";
@@ -32,9 +37,31 @@ import {
 
 // TASTE: 5 px radius (rounded-cz) paa alle smaa maerker, ingen piller.
 const CHIP =
-  "inline-flex items-center justify-center text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz shrink-0";
+  "inline-flex items-center justify-center text-2xs font-semibold leading-none px-1.5 py-0.5 rounded-cz shrink-0";
 const NEUTRAL = "bg-cz-subtle text-cz-2 border border-cz-border";
 const TYPES = new Set(RIDER_TYPE_KEYS);
+const Tooltip = TooltipBase as unknown as (props: Record<string, unknown>) => any;
+
+/** ?-ikonet ved en kolonne (#8419 punkt 9): kort forklaring i en boble; tryk eller hover viser den. */
+function ColumnHelp({ text, column }: { text: string; column: string }) {
+  const { t } = useTranslation("planning");
+  return (
+    <Tooltip label={text}>
+      <button
+        type="button"
+        aria-label={t("squad.helpAria", { column })}
+        className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-cz-3 hover:text-cz-1"
+        data-testid="planning-column-help"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+          <path d="M12 17h.01" />
+        </svg>
+      </button>
+    </Tooltip>
+  );
+}
 
 function StatusCell({ row, detail, seasonYear, compact = false }: { row: SquadRow; detail?: RiderDetail; seasonYear: number | null; compact?: boolean }) {
   const { t } = useTranslation("planning");
@@ -153,6 +180,8 @@ interface SquadTableProps {
   peakNext?: Map<string, PeakNext>;
   /** Mobilens valgte tal-kolonner (chip-raekken). */
   mobileColumns?: MobileColumn[];
+  /** Match gaelder én etape (#8419): etapens navn under overskriften; null = hele loebet. */
+  matchLabel?: string | null;
 }
 
 export default function SquadTable({
@@ -171,6 +200,7 @@ export default function SquadTable({
   showLoad = false,
   peakNext,
   mobileColumns = DEFAULT_MOBILE_COLUMNS,
+  matchLabel = null,
 }: SquadTableProps) {
   const { t } = useTranslation("planning");
   const { t: tRaces } = useTranslation("races");
@@ -228,7 +258,14 @@ export default function SquadTable({
   // Valgfri kolonne paa pc: skjult som standard (kolonnevaelgeren); mobilen styres af chip-raekken.
   const optionalOnPc = (key: OptionalColumn, mobile: boolean) => `${mobile ? "table-cell" : "hidden"} ${shown(key) ? "sm:table-cell" : "sm:hidden"}`;
   // Overskrifterne staar paa én linje (nowrap); de laengste har en kort tekst, og hele ordet staar i title.
-  const th = (key: SquadSortKey, label: ReactNode, { numeric = true, visibility = "hidden sm:table-cell", title }: { numeric?: boolean; visibility?: string; title?: string } = {}) => (
+  // ?-ikonet (punkt 9) staar ved overskriften paa pc; i en trang tabel (compact) kun i titlen.
+  const helpFor = (key: SquadSortKey, label: string) =>
+    compact ? null : (
+      <span className="hidden sm:inline-flex">
+        <ColumnHelp text={t(`squad.help.${key}`)} column={label} />
+      </span>
+    );
+  const th = (key: SquadSortKey, label: ReactNode, { numeric = true, visibility = "hidden sm:table-cell", title, help = null }: { numeric?: boolean; visibility?: string; title?: string; help?: ReactNode } = {}) => (
     <SortableTh
       key={key}
       sortKey={key}
@@ -236,7 +273,8 @@ export default function SquadTable({
       sortDir={sort.dir}
       onSort={onSort}
       title={title}
-      className={`whitespace-nowrap align-bottom px-1.5 py-2 font-data text-2xs font-semibold uppercase leading-tight tracking-normal text-cz-3 sm:px-1.5 sm:tracking-wide ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${visibility} ${edge(key)}`}
+      help={help}
+      className={`whitespace-nowrap align-bottom px-1.5 py-2 font-data text-xs font-semibold leading-tight text-cz-3 sm:px-1.5 ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${visibility} ${edge(key)}`}
     >
       {label}
     </SortableTh>
@@ -273,14 +311,25 @@ export default function SquadTable({
           <tr>
             {th("pick", compact ? <span className="sr-only">{t("squad.pick")}</span> : t("squad.pick"), { numeric: false, title: t("squad.pick") })}
             {th("name", t("squad.rider"), { numeric: false, visibility: "table-cell" })}
-            {th("status", t("squad.status"), { numeric: false, visibility: shown("status") ? "hidden sm:table-cell" : "hidden" })}
-            {th("role", t("squad.role"), { numeric: false })}
-            {th("type", t("squad.type"), { numeric: false })}
-            {th("rating", t("squad.short.rating"), { visibility: onMobile("rating"), title: t("squad.rating") })}
-            {th("form", t("squad.form"), { visibility: onMobile("form") })}
-            {th("fatigue", t("squad.short.fatigue"), { visibility: optionalOnPc("fatigue", mobileColumns.includes("fatigue")), title: t("squad.fatigue") })}
-            {showLoad && th("load", t("squad.short.load"), { numeric: false, visibility: optionalOnPc("load", mobileColumns.includes("load")), title: `${t("squad.load")}: ${t("squad.loadTitle")}` })}
-            {th("routeMatch", t("squad.short.routeMatch"), { visibility: onMobile("routeMatch"), title: t("squad.routeMatch") })}
+            {th("status", t("squad.status"), { numeric: false, visibility: shown("status") ? "hidden sm:table-cell" : "hidden", help: helpFor("status", t("squad.status")) })}
+            {th("role", t("squad.role"), { numeric: false, help: helpFor("role", t("squad.role")) })}
+            {th("type", t("squad.type"), { numeric: false, help: helpFor("type", t("squad.type")) })}
+            {th("rating", t("squad.short.rating"), { visibility: onMobile("rating"), title: t("squad.rating"), help: helpFor("rating", t("squad.rating")) })}
+            {th("form", t("squad.form"), { visibility: onMobile("form"), help: helpFor("form", t("squad.form")) })}
+            {th("fatigue", t("squad.short.fatigue"), { visibility: optionalOnPc("fatigue", mobileColumns.includes("fatigue")), title: t("squad.fatigue"), help: helpFor("fatigue", t("squad.fatigue")) })}
+            {showLoad && th("load", t("squad.short.load"), { numeric: false, visibility: optionalOnPc("load", mobileColumns.includes("load")), title: `${t("squad.load")}: ${t("squad.loadTitle")}`, help: helpFor("load", t("squad.load")) })}
+            {th(
+              "routeMatch",
+              matchLabel ? (
+                <span className="inline-flex flex-col items-end leading-tight">
+                  <span>{t("squad.short.routeMatch")}</span>
+                  <span className="font-normal" data-testid="planning-match-label">{matchLabel}</span>
+                </span>
+              ) : (
+                t("squad.short.routeMatch")
+              ),
+              { visibility: onMobile("routeMatch"), title: matchLabel ? `${t("squad.routeMatch")}: ${matchLabel}` : t("squad.routeMatch"), help: helpFor("routeMatch", t("squad.routeMatch")) },
+            )}
           </tr>
         </thead>
         <tbody>

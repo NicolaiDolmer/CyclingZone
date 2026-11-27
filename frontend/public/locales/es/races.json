@@ -595,9 +595,26 @@
       "entries": "Inscripciones",
       "routeMatch": "Encaje con el recorrido",
       "formPeak": "Forma y pico",
-      "load": "Carga"
+      "load": "Carga",
+      "form": "Forma"
     },
     "problemsOnly": "Solo problemas",
+    "lensLabel": "Vista",
+    "lensHelpAria": "Sobre esta vista",
+    "lensHelp": {
+      "entries": "Quién corre cada carrera. Toca una celda para seleccionar a un corredor o cambiar su rol.",
+      "routeMatch": "Lo bien que encaja cada corredor con el recorrido, de 0 a 100. El mejor número de cada carrera aparece resaltado.",
+      "form": "El plan de forma de toda la temporada: hasta {max} objetivos por corredor, el borrador del asistente y la curva de forma, donde se ve el bajón tras un pico.",
+      "load": "Días de carrera por corredor esta temporada."
+    },
+    "formRacesLabel": "Carreras",
+    "routeGrid": {
+      "rider": "Corredor",
+      "cellAria": "{rider}, {race}: encaje {score}",
+      "bestAria": "{rider}, {race}: encaje {score}, el mejor del equipo",
+      "noScore": "{rider}, {race}: aún sin encaje",
+      "openRace": "Abrir {race}"
+    },
     "save": "Guardar plan",
     "saveCount": "{count, plural, one {Guardar plan · # cambio} other {Guardar plan · # cambios}}",
     "saving": "Guardando...",

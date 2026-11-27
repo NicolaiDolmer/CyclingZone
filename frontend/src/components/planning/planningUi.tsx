@@ -5,6 +5,8 @@ import { TerrainTypeGlyph, statusBadgeClass } from "./primitives.ts";
 
 import type { Readiness } from "../../lib/planningWorkbench.ts";
 
+// Statusmaerkets faelles stil har smaa versaler; planlaegningssiden viser dem i almindelig skrift (#8419, TASTE).
+const BADGE_CAPS = /\buppercase\b|\btracking-\[[^\]]*\]/g;
 const READINESS_TONE: Record<string, string> = { ready: "won", missing: "closing", locked: "info", withdrawn: "info" };
 
 /** Kort dato ("Mon 2 Nov") ud fra en Europe/Copenhagen-dato (YYYY-MM-DD). */
@@ -68,7 +70,8 @@ export function ReadinessBadge({ readiness }: { readiness: Readiness }) {
       ? t("status.missing", { count: readiness.missing })
       : t(`status.${readiness.state}`);
   return (
-    <span className={`${statusBadgeClass(READINESS_TONE[readiness.state], { emphasis: true })} shrink-0`}>
+    // #8419: ingen smaa versaler paa planlaegningssiden (TASTE); maerket staar i almindelig skrift.
+    <span className={`${statusBadgeClass(READINESS_TONE[readiness.state], { emphasis: true }).replace(BADGE_CAPS, "")} shrink-0`}>
       {label}
     </span>
   );

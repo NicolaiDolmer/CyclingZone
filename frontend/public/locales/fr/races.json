@@ -595,9 +595,26 @@
       "entries": "Engagements",
       "routeMatch": "Adéquation au parcours",
       "formPeak": "Forme et pic",
-      "load": "Charge"
+      "load": "Charge",
+      "form": "Forme"
     },
     "problemsOnly": "Problèmes uniquement",
+    "lensLabel": "Vue",
+    "lensHelpAria": "À propos de cette vue",
+    "lensHelp": {
+      "entries": "Qui court quelles courses. Touchez une case pour sélectionner un coureur ou changer son rôle.",
+      "routeMatch": "L'adéquation de chaque coureur au parcours, de 0 à 100. Le meilleur chiffre de chaque course est mis en avant.",
+      "form": "Le plan de forme de toute la saison : jusqu'à {max} objectifs par coureur, le brouillon de l'assistant et la courbe de forme, où l'on voit le creux après un pic.",
+      "load": "Jours de course par coureur cette saison."
+    },
+    "formRacesLabel": "Courses",
+    "routeGrid": {
+      "rider": "Coureur",
+      "cellAria": "{rider}, {race} : adéquation {score}",
+      "bestAria": "{rider}, {race} : adéquation {score}, meilleur de l'équipe",
+      "noScore": "{rider}, {race} : pas encore d'adéquation",
+      "openRace": "Ouvrir {race}"
+    },
     "save": "Enregistrer le plan",
     "saveCount": "{count, plural, one {Enregistrer le plan · # changement} other {Enregistrer le plan · # changements}}",
     "saving": "Enregistrement...",

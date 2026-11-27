@@ -5,6 +5,31 @@
     "needSquad": "{count, plural, one {# koers heeft een selectie nodig in de komende 8 dagen} other {# koersen hebben een selectie nodig in de komende 8 dagen}}",
     "allReady": "Alle koersen in de komende 8 dagen hebben een volledige selectie"
   },
+  "mode": {
+    "label": "Toon",
+    "week": "Week",
+    "season": "Seizoen",
+    "month": "Maand"
+  },
+  "teamStrategy": "Teamstrategie",
+  "distribute": {
+    "action": "Renners verdelen",
+    "title": "Renners verdelen",
+    "titleOn": "Renners verdelen · {date}",
+    "back": "Terug naar de week",
+    "backSeason": "Terug naar het seizoen",
+    "unsaved": "Je hebt niet-opgeslagen wijzigingen in deze koers. Achterlaten en de dag openen?"
+  },
+  "match": {
+    "label": "Match",
+    "wholeRace": "Hele koers",
+    "stage": "Etappe {n}"
+  },
+  "startlists": {
+    "unavailable": "De startlijst van deze koers is hier nog niet beschikbaar.",
+    "grossOnly": "Alleen ploegen en renners, geen rollen",
+    "yourTeam": "Jouw ploeg"
+  },
   "toggles": {
     "weekBoard": "Weekoverzicht",
     "raceList": "Koerslijst"
@@ -16,7 +41,9 @@
     "next": "Volgende week",
     "week": "Week {week}",
     "empty": "Geen koersen deze week. Gebruik de pijlen om de volgende te vinden.",
-    "raceDaysShort": "KD {days}"
+    "raceDaysShort": "KD {days}",
+    "continuedFrom": "Begon de week ervoor",
+    "continuesNext": "Gaat door in de volgende week"
   },
   "raceList": {
     "title": "Koerslijst",
@@ -112,6 +139,17 @@
       "fatigue": "Vermoeidheid",
       "load": "Belasting",
       "rating": "Rating"
+    },
+    "helpAria": "Wat betekent {column}?",
+    "help": {
+      "status": "Waarom een renner nu niet gekozen kan worden: geblesseerd, te oud, in een andere koers op dezelfde dagen of vergrendeld door Nu trainen.",
+      "role": "De taak van de renner in deze koers. Alleen gekozen renners hebben een rol.",
+      "type": "Het natuurlijke type van de renner.",
+      "rating": "De rating van de renner in zijn beste rol op dit moment.",
+      "form": "De vorm van vandaag. Een datum eronder toont wanneer zijn volgende vormpiek is.",
+      "fatigue": "Hoe moe de renner is. Hoger is vermoeider.",
+      "load": "Hoe zwaar de koers naar verwachting wordt bij normale inzet: licht, gemiddeld of zwaar.",
+      "routeMatch": "Hoe goed de renner bij het parcours past. In een etappekoers kies je de hele koers of één etappe."
     }
   },
   "role": {
@@ -216,7 +254,8 @@
       "squad": "Kies renners en geef ze een rol · elke kolom sorteert",
       "tactics": "Het plan volgt de etappe in het profiel",
       "peak": "Vink renners aan en pas de vormpiek toe op deze koers"
-    }
+    },
+    "startlists": "Startlijsten"
   },
   "tactics": {
     "noSquad": {
@@ -258,5 +297,34 @@
     "next": "Volgende koers",
     "close": "Sluiten",
     "position": "{n} / {total}"
+  },
+  "seasonMatrix": {
+    "legendLabel": "Cellen:",
+    "legendEmpty": "Niet geselecteerd. Tik om te selecteren"
+  },
+  "climbList": {
+    "title": "De beklimmingen",
+    "name": "Beklimming",
+    "category": "Categorie {cat}",
+    "top": "Top op km",
+    "length": "Lengte",
+    "average": "Gemiddelde",
+    "toFinish": "Tot de finish",
+    "showOnProfile": "Toon {name} op het profiel",
+    "mobileFacts": "Top op km {km} · {length} km · {average} % · {toFinish} km tot de finish"
+  },
+  "sectorList": {
+    "titleCobbles": "De kasseistroken",
+    "titleGravel": "De gravelstroken",
+    "titleMixed": "Kasseien en gravel",
+    "kind": { "cobbles": "Kasseien", "gravel": "Gravel" },
+    "sector": "Strook",
+    "from": "Km",
+    "length": "Lengte",
+    "toFinish": "Tot de finish",
+    "range": "{from}-{to}",
+    "showOnProfile": "Toon op het profiel: {text}",
+    "mobileFacts": "Km {from}-{to} · {length} km · {toFinish} km tot de finish",
+    "full": "{kind} · {name} · {length} km · km {from}-{to} · {toFinish} km tot de finish"
   }
 }

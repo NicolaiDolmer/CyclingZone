@@ -7,7 +7,7 @@
 //
 // LÅST KONTRAKT — se seasonMatrix.js's fil-header for de fulde punkter. Al
 // geometri/kladde-logik bor DER (ren, testet); denne fil er render + IO.
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
@@ -18,6 +18,9 @@ import { mobileRaceWindow, shiftMobileRaceWindow } from "../../lib/seasonMatrixM
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { fitTier, trainNowLockSummary } from "../../lib/raceHubLogic.js";
 import { MIN_RACE_ENTRIES } from "../../lib/raceSelectionLogic.js"; // #6740
+import { intlLocale } from "../../lib/intlLocale.ts"; // #8781
+import { copenhagenToday } from "../../lib/planningWorkbench.ts"; // #8848
+import { firstColumnFromToday, firstRaceFromToday, matrixFooterParts, rolesInMatrix } from "../planning/seasonMatrixLenses.ts"; // #8848
 import TrainNowLockBanner from "./TrainNowLockBanner.tsx"; // #6383
 import { trainNowLockCopy } from "../training/trainNowClock.ts";
 import { Spinner, EmptyState, ErrorState, Button, Segmented, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
@@ -35,21 +38,43 @@ const FIT_TEXT = { strong: "text-cz-accent-t", average: "text-cz-2", poor: "text
 
 // Chunket save (defensivt — bulk-endpointets cap er 60 ændringer/kald, #4316).
 const BULK_CHUNK = 60;
+const DAY_COL_WIDTH = 30; // px pr. loebsdags-kolonne
 
 // #6383: skravering af Train now-låste celler (diagonale streger, 6 px).
 const LOCK_HATCH_IMAGE = `url("data:image/svg+xml,${encodeURIComponent(
   "<svg xmlns='http://www.w3.org/2000/svg' width='6' height='6'><path d='M-1 1l2-2M0 6l6-6M5 7l2-2' stroke='rgba(128,128,128,0.35)' stroke-width='1.5'/></svg>",
 )}")`;
 
-export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange }) {
+// #8781: den nye planlaegningsside (SeasonMatrixView) styrer linse og "Kun problemer" selv og
+// viser matrixen indlejret. Uden de nye props opfoerer matrixen sig praecis som foer.
+//   lens / problemsOnly  styret udefra (ellers egen tilstand)
+//   embedded             skjuler matrixens egen linse-raekke og overskrift; overskrifter uden versaler
+//   onOpenRace(raceId)   loebsdag-knapperne aabner loebet i stedet for dags-boardet
+//   onData(snapshot)     loeb og ryttere til visningens Rutematch-linse (ingen ekstra hentning)
+// #8848 (kun indlejret): gitteret aabner ved i dag, linjen under matrixen naevner sidens "mangler en
+// trup" (needSquadCount, samme tal som sidehovedet), og rollebogstaverne forklares paa fladen.
+/**
+ * @param {{ seasonNumber?: number, onOpenDay?: (date: string) => void, onDirtyChange?: (dirty: boolean) => void,
+ *   lens?: string, problemsOnly?: boolean, embedded?: boolean, onOpenRace?: (raceId: string) => void,
+ *   onData?: (snapshot: any) => void, needSquadCount?: number }} props
+ */
+export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, lens: lensProp, problemsOnly: problemsOnlyProp, embedded = false, onOpenRace, onData, needSquadCount }) {
   const { t, i18n } = useTranslation("races");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null); // { kind } | null
   const [draftByRace, setDraftByRace] = useState(new Map());
   const [serverByRace, setServerByRace] = useState(new Map());
-  const [lens, setLens] = useState("entries");
-  const [problemsOnly, setProblemsOnly] = useState(false);
+  const [lensState, setLens] = useState("entries");
+  const [problemsOnlyState, setProblemsOnly] = useState(false);
+  const lens = lensProp ?? lensState;
+  const problemsOnly = problemsOnlyProp ?? problemsOnlyState;
+  // Overskrifter: versaler kun paa den gamle side (TASTE: ingen smaa versaler paa den nye).
+  const capsClass = embedded ? "" : "uppercase tracking-wide";
+  const openDayColumn = (raceId, date) => {
+    if (onOpenRace) onOpenRace(raceId);
+    else if (date) onOpenDay?.(date);
+  };
   const [saving, setSaving] = useState(false);
   // saveError: { code, raceId, raceName, params } | null — spillertest-punkt 1
   // (Discord 29/8, begge testere ramte en tavs generisk fejl). buildSaveError
@@ -160,6 +185,14 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   // Ugemte ændringer bubbles op til SeasonView, som guarder sæson-skift/view-toggle
   // (samme boardDirty-mønster som RaceHubBoard.jsx, IKKE StrategyPage-mønsteret).
   useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
+  // #8781: samme loeb og ryttere til Rutematch-linsen, saa den ikke henter endpointet igen.
+  useEffect(() => {
+    if (!onData || loading) return;
+    const d = /** @type {any} */ (data);
+    if (loadError) onData({ state: "error" });
+    else if (!d?.enabled || !d?.season) onData({ state: "off" });
+    else onData({ state: "ready", seasonNumber: d.season.number, readOnly: !!d.readOnly, races, riders, dayDates: d.dayDates ?? [] });
+  }, [onData, loading, loadError, data, races, riders]);
   useEffect(() => {
     if (!isDirty) return;
     const handler = (e) => { e.preventDefault(); e.returnValue = ""; };
@@ -223,6 +256,29 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
     return out;
   }, [peakPlans, dayDatesMap]);
 
+  // #8848: den indlejrede matrix aabner ved i dag. Een gang pr. saeson, og foerst naar gitteret
+  // har en bredde (det ligger skjult bag Rutematch/Form, til linsen skiftes tilbage).
+  const desktopRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const scrolledForRef = useRef(/** @type {unknown} */ (null));
+  useEffect(() => {
+    if (!embedded || loading || !data) return undefined;
+    const el = desktopRef.current;
+    if (!el) return undefined;
+    // Pr. saeson, ikke pr. hentning: et "Gem plan" henter igen og maa ikke flytte spillerens scroll.
+    const seasonKey = /** @type {any} */ (data)?.season?.number ?? "none";
+    const tryScroll = () => {
+      if (scrolledForRef.current === seasonKey || el.clientWidth === 0) return;
+      scrolledForRef.current = seasonKey;
+      const index = firstColumnFromToday(dayColumns, dayDatesMap, copenhagenToday());
+      if (index != null) el.scrollLeft = index * DAY_COL_WIDTH;
+    };
+    tryScroll();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(tryScroll);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [embedded, loading, data, dayColumns, dayDatesMap]);
+
   if (loading) return <div className="flex justify-center py-8"><Spinner size={20} /></div>;
   if (loadError) {
     return (
@@ -241,7 +297,9 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   }
 
   const readOnly = !!data.readOnly;
-  const selectedMobileRace = raceById.get(mobileRaceId) ?? races[0];
+  const selectedMobileRace = raceById.get(mobileRaceId)
+    ?? (embedded ? raceById.get(firstRaceFromToday(races, dayDatesMap, copenhagenToday())) : null) // #8848
+    ?? races[0];
   const mobileWindow = mobileRaceWindow(dayColumns, selectedMobileRace?.id, mobileStart);
   const visibleRiders = riders.filter((r) => !problemsOnly || problems.affectedRiderIds.has(r.id) || races.some((race) => problems.affectedRaceIds.has(race.id) && roleOf(draftByRace.get(race.id), r.id) != null));
 
@@ -298,12 +356,18 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
     }
   }
 
-  const colWidth = 30;
+  const colWidth = DAY_COL_WIDTH;
+  // #8848: forklaringen af cellerne (kun indlejret): de roller der faktisk staar i matrixen.
+  const legendRoles = embedded
+    ? rolesInMatrix(races.flatMap((race) => visibleRiders.map((r) => roleOf(draftByRace.get(race.id), r.id))), Object.keys(ROLE_LETTER))
+    : [];
+  const footerParts = embedded && needSquadCount !== undefined ? matrixFooterParts(problems.count, needSquadCount) : null;
 
   return (
     <div className="mt-5">
       {races.some((r) => (r.withdrawn || r.rejoining) && !r.didNotStart && !r.lineupLocked) && <p className="mb-2 text-xs text-cz-warning">{t("selection.rejoinNote")}</p>}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        {embedded ? <div /> : (
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="font-data text-sm font-semibold text-cz-1">{t("matrix.heading")}</h2>
           {/* #5124 AI-slop-tjek (ejer 1/10: "nogle knapper er maerkeligt store"):
@@ -332,6 +396,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             {t("matrix.problemsOnly")}
           </button>
         </div>
+        )}
         {!readOnly && (
           <div className="flex items-center gap-2">
             {saveError && (
@@ -364,7 +429,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
       {mobileView && (
       <div data-testid="season-matrix-mobile" className="sm:hidden rounded-cz border border-cz-border bg-cz-card min-w-0">
         <div className="px-3 py-3 border-b border-cz-border space-y-2">
-          <label htmlFor="season-matrix-mobile-race" className="block text-2xs uppercase tracking-wide text-cz-3">
+          <label htmlFor="season-matrix-mobile-race" className={`block text-2xs ${capsClass} text-cz-3`}>
             {t("matrix.mobile.raceLabel")}
           </label>
           <select
@@ -396,12 +461,12 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         <table data-sort-exempt="mobile rytter x loebsdag-gitter" className="w-full table-fixed border-collapse">
           <colgroup><col style={{ width: "40%" }} />{mobileWindow.days.map((day) => <col key={day.key} style={{ width: `${60 / mobileWindow.days.length}%` }} />)}</colgroup>
           <thead><tr>
-            <th className="border-b border-r border-cz-border bg-cz-subtle px-2 py-2 text-left text-2xs uppercase tracking-wide text-cz-3">{t("matrix.mobile.riderLabel")}</th>
+            <th className={`border-b border-r border-cz-border bg-cz-subtle px-2 py-2 text-left text-2xs ${capsClass} text-cz-3`}>{t("matrix.mobile.riderLabel")}</th>
             {mobileWindow.days.map((day) => {
               const date = dayDatesMap.get(day.gameDay);
-              return <th key={day.key} className="border-b border-cz-border bg-cz-subtle px-1 py-1 text-center text-2xs uppercase tracking-wide text-cz-3">
-                <button type="button" disabled={!date} onClick={() => date && onOpenDay?.(date)} title={t("matrix.dayAria", { index: day.stageIndex, date: date ?? "?" })} className="w-full leading-tight disabled:cursor-default">
-                  <span className="block font-semibold">{date ? formatBandDate(date) : "—"}</span>
+              return <th key={day.key} className={`border-b border-cz-border bg-cz-subtle px-1 py-1 text-center text-2xs ${capsClass} text-cz-3`}>
+                <button type="button" disabled={!date && !onOpenRace} onClick={() => openDayColumn(selectedMobileRace.id, date)} title={t("matrix.dayAria", { index: day.stageIndex, date: date ?? "?" })} className="w-full leading-tight disabled:cursor-default">
+                  <span className="block font-semibold">{date ? formatBandDate(date, embedded ? i18n.language : null) : "—"}</span>
                   <span className="block tabular-nums">{t("matrix.mobile.gameDay", { day: day.gameDay })}</span>
                   {!readOnly && raceHasTrainNowLock(selectedMobileRace.id) && (
                     <span className="flex items-center justify-center gap-0.5 normal-case text-cz-warning"><LockIcon size={9} aria-hidden="true" />{t("selection.trainNowLock.columnLocked")}</span>
@@ -452,7 +517,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
 
       {/* Flag off/ikke-beta: den fulde tabel paa ALLE bredder, praecis som foer
           #5124 (sticky navnekolonne + kontaineret vandret scroll, #1146). */}
-      <div data-testid="season-matrix-desktop" className={`${mobileView ? "hidden sm:block " : ""}rounded-cz border border-cz-border bg-cz-card overflow-x-auto`}>
+      <div ref={desktopRef} data-testid="season-matrix-desktop" className={`${mobileView ? "hidden sm:block " : ""}rounded-cz border border-cz-border bg-cz-card overflow-x-auto`}>
         <table
           data-sort-exempt="rytter x loebsdag-gitter, ikke en sorterbar liste"
           className="border-collapse"
@@ -469,16 +534,16 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
           <thead>
             <tr>
               <th rowSpan={raceLanes.laneCount + 2} className="sticky left-0 z-sticky bg-cz-subtle border-b border-r border-cz-border px-3 py-1.5 text-left align-bottom" style={{ minWidth: 148 }}>
-                <span className="text-2xs uppercase tracking-wide text-cz-3">{t("matrix.heading")}</span>
+                <span className={`text-2xs ${capsClass} text-cz-3`}>{t("matrix.heading")}</span>
               </th>
               {dateBands.map((band, i) => (
                 <th
                   key={`${band.date}-${i}`}
                   colSpan={band.days.length}
                   title={band.date ?? undefined}
-                  className="border-b border-cz-border bg-cz-subtle px-1 py-1 text-2xs uppercase tracking-wide text-cz-3 font-semibold whitespace-nowrap overflow-hidden text-ellipsis"
+                  className={`border-b border-cz-border bg-cz-subtle px-1 py-1 text-2xs ${capsClass} text-cz-3 font-semibold whitespace-nowrap overflow-hidden text-ellipsis`}
                 >
-                  {band.date ? formatBandDate(band.date) : "—"}
+                  {band.date ? formatBandDate(band.date, embedded ? i18n.language : null) : "—"}
                 </th>
               ))}
             </tr>
@@ -529,7 +594,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                   <th key={col.key} className="border-b border-cz-border p-0" style={{ width: colWidth, minWidth: colWidth }}>
                     <button
                       type="button"
-                      onClick={() => { const d = dayDatesMap.get(col.gameDay); if (d) onOpenDay?.(d); }}
+                      onClick={() => openDayColumn(col.raceId, dayDatesMap.get(col.gameDay))}
                       title={t("matrix.dayAria", { index: col.stageIndex, date: dayDatesMap.get(col.gameDay) ?? "?" })}
                       className="w-full h-6 flex items-center justify-center text-3xs font-mono tabular-nums text-cz-3 hover:text-cz-accent-t hover:bg-cz-subtle"
                     >
@@ -645,13 +710,44 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         </table>
       </div>
 
-      <div className="mt-2 flex items-center gap-1.5 font-data text-3xs">
-        {problems.count === 0 ? (
+      <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-data text-3xs" data-testid="season-matrix-footer">
+        {footerParts ? (
+          footerParts === "none" ? (
+            <span className="text-cz-success">{t("matrix.noProblems")}</span>
+          ) : (
+            footerParts.map((part, i) => (
+              <span key={part} className="text-cz-danger">
+                {i > 0 && <span className="me-1.5 text-cz-3" aria-hidden="true">·</span>}
+                {part === "needSquad" ? t("planning:subtitle.needSquad", { count: needSquadCount }) : t("matrix.problemsCount", { count: problems.count })}
+              </span>
+            ))
+          )
+        ) : problems.count === 0 ? (
           <span className="text-cz-success">{t("matrix.noProblems")}</span>
         ) : (
           <span className="text-cz-danger">{t("matrix.problemsCount", { count: problems.count })}</span>
         )}
       </div>
+
+      {/* #8848: cellernes bogstaver og "+" forklaret paa fladen med fuld tekst (ogsaa paa mobil, hvor
+          der ingen tooltip er). Kun de roller der staar i matrixen. */}
+      {embedded && (legendRoles.length > 0 || mobileView) && (
+        <div data-testid="season-matrix-legend" className={`${legendRoles.length ? "" : "sm:hidden "}mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-2xs text-cz-2`}>
+          <span className="text-cz-3">{t("planning:seasonMatrix.legendLabel")}</span>
+          {legendRoles.map((role) => (
+            <span key={role} className="inline-flex items-center gap-1.5">
+              <span className={`inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-cz px-1 text-3xs font-semibold ${roleBadgeClass(role)}`}>{ROLE_LETTER[role]}</span>
+              {t(`tacticsOrders.roleLabel.${role}`)}
+            </span>
+          ))}
+          {mobileView && (
+            <span className="inline-flex items-center gap-1.5 sm:hidden">
+              <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-cz border border-cz-border px-1 text-3xs text-cz-3">+</span>
+              {t("planning:seasonMatrix.legendEmpty")}
+            </span>
+          )}
+        </div>
+      )}
 
       {popover && (() => {
         const rider = riders.find((r) => r.id === popover.riderId);
@@ -703,8 +799,13 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
 }
 
 // "27 Aug"-datobånd-label, sprog-neutral kort form (samme mønster som SeasonView's fmt.range).
-function formatBandDate(iso) {
+// #8781: med `plainLanguage` (den nye side) i spillerens sprog og uden versaler.
+/** @param {string} iso @param {string | null} [plainLanguage] */
+function formatBandDate(iso, plainLanguage = null) {
   const d = new Date(`${iso}T00:00:00Z`);
+  if (plainLanguage) {
+    return new Intl.DateTimeFormat(intlLocale(plainLanguage), { day: "numeric", month: "short", timeZone: "UTC" }).format(d).replace(/\./g, "");
+  }
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(d).replace(/\./g, "").toUpperCase();
 }
 

@@ -45,7 +45,7 @@
     "noPeak": "No peak",
     "pickRace": "Peak target for {name}",
     "raceOption": "{date} · {race} · fit {fit}",
-    "raceOptionPayback": "{date} · {race} · fit {fit} · payback risk",
+    "raceOptionPayback": "{date} · {race} · fit {fit} · form dip risk",
     "raceOptionLocksNow": "{date} · {race} · fit {fit} · locks immediately",
     "age": "{age}y",
     "load": "{days, plural, one {# race day} other {# race days}}",
