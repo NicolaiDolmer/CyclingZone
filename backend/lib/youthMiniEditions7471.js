@@ -139,7 +139,8 @@ const roundKm = (km) => Math.round(km * 10) / 10;
  */
 export function scaleAuthoredRoute(route, factor) {
   if (route == null || factor === 1) return route;
-  const distance = roundKm(route.distance_km * factor);
+  // race_stage_profiles.distance_km er et heltal: junior-apply 27/11 fejlede paa "119.4".
+  const distance = Math.max(1, Math.round(route.distance_km * factor));
   const pos = (km) => Math.min(distance, roundKm(km * factor));
   const climbs = route.climbs.map((c) => {
     const crest = c.summit_finish ? distance : pos(c.crest_km);
