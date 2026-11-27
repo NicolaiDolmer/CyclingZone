@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Program tab compact</title>
+<!-- #8827 levende wireframe: komprimeret Program-fane (W1 v2), "Alle ryttere".
+     ?state=after (standard) = forslaget, ?state=before = genskabt fra PR #8827's AllRidersTable-markup.
+     Bredde < 768 px giver telefonudgaven. Data: preview-mockens programkatalog
+     (frontend/src/preview/trainingProgramsMock.js), opdigtede rytternavne. Ingen spillerdata. -->
+<style>
+  :root {
+    --bg-body: #f4f2ec; --bg-card: #fcfbf7; --bg-elevated: #ffffff; --bg-subtle: #ece9e1;
+    --border: #e5e0d5; --border-strong: #827f96;
+    --text-1: #0e0f15; --text-2: #4c4a5e; --text-3: #67657e;
+    --accent: 232 197 71; --accent-t: 134 100 0; --success: 21 119 47;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-body); color: var(--text-1);
+    font: 13px/1.4 "DM Sans", "Inter Tight", system-ui, sans-serif; }
+  .num { font-variant-numeric: tabular-nums; }
+  .page { max-width: 1600px; margin: 0 auto; padding: 24px 32px 48px; }
+  .stamp { font-size: 11px; color: var(--text-3); margin-bottom: 12px; letter-spacing: .02em; }
+  .stamp b { color: var(--text-1); }
+  header.ph { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+  header.ph h1 { margin: 0; font: 700 22px/1.2 "Inter Tight", system-ui, sans-serif; }
+  .btn-gold { background: rgb(var(--accent)); color: var(--text-1); border: 0; border-radius: 5px;
+    padding: 8px 14px; font: 600 13px "Inter Tight", system-ui, sans-serif; min-height: 36px; }
+  nav.tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; overflow: hidden; }
+  nav.tabs span { padding: 8px 0; color: var(--text-2); font-weight: 500; white-space: nowrap; }
+  nav.tabs span.on { color: var(--text-1); border-bottom: 2px solid var(--text-1); margin-bottom: -1px; }
+  .frame { background: var(--bg-card); border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+  .titleline { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-bottom: 1px solid var(--border); min-height: 44px; }
+  .titleline .pick { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+  .titleline .sep { color: var(--text-3); }
+  .titleline .grow { flex: 1; }
+  .titleline .search { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
+    border-radius: 5px; padding: 5px 8px; width: 240px; color: var(--text-3); background: var(--bg-elevated); }
+  .titleline .colbtn { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+  svg.i { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th.h { text-align: start; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3);
+    font-weight: 500; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg-card); white-space: nowrap; }
+  th.h.today, td.today { background: var(--bg-subtle); }
+  td, th.r { padding: 0 12px; height: 36px; border-top: 1px solid var(--border); text-align: start; font-weight: 400;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr:first-child td, tbody tr:first-child th.r { border-top: 0; }
+  tbody tr:hover td, tbody tr:hover th.r { background: var(--bg-subtle); }
+  .name { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text-1); }
+  .flag { width: 16px; height: 11px; border-radius: 1px; display: inline-flex; flex-direction: column; overflow: hidden;
+    border: 1px solid var(--border); flex: none; }
+  .flag i { flex: 1; display: block; }
+  .flag.row i { }
+  .flag.v { flex-direction: row; }
+  .muted { color: var(--text-2); }
+  .faint { color: var(--text-3); }
+  .l-hard { color: var(--text-1); font-weight: 600; }
+  .l-normal { color: var(--text-1); }
+  .l-easy { color: var(--text-2); }
+  .l-recovery { color: var(--text-2); }
+  .l-rest { color: var(--text-3); }
+  .l-race { color: var(--text-1); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+  .count { padding: 10px 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-3); }
+  /* hover-kort (P18): eneste sted med skygge */
+  .hc { position: absolute; width: 384px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 5px;
+    box-shadow: 0 8px 24px rgba(14,15,21,.12); padding: 14px 16px; z-index: 5; }
+  .hc h3 { margin: 0 0 2px; font: 700 16px "Inter Tight", system-ui, sans-serif; }
+  .hc .lab { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); margin: 10px 0 4px; }
+  .hc table td { height: 26px; border-top: 1px solid var(--border); padding: 0 6px; }
+  .hc table tr:first-child td { border-top: 0; }
+  .hc .open { margin-top: 10px; font-size: 12px; font-weight: 500; color: rgb(var(--accent-t)); display: inline-flex; align-items: center; gap: 4px; }
+  .wraprel { position: relative; }
+
+  /* "før": genskabt fra AllRidersTable i PR #8827 (text-xs, py-2, align-top, ul med 5 linjer) */
+  .before td, .before th.r { height: auto; padding: 8px 12px; vertical-align: top; font-size: 12px; white-space: normal; }
+  .before th.h { font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--text-2); background: var(--bg-subtle); }
+  .before ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .before li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .before .sub { display: block; font-size: 11px; color: var(--text-2); font-weight: 400; }
+
+  @media (max-width: 767px) {
+    .page { padding: 16px 16px 32px; }
+    header.ph h1 { font-size: 20px; }
+    .titleline { padding: 6px 12px; gap: 12px; }
+    td, th.r { padding: 0 8px; height: 44px; white-space: normal; }
+    th.h { padding: 8px 6px; letter-spacing: .02em; }
+    td, th.r { padding: 0 6px; text-overflow: clip; }
+    td.c { white-space: normal; line-height: 1.2; }
+    .name { white-space: normal; align-items: flex-start; line-height: 1.25; }
+    .name .flag { margin-top: 3px; }
+  }
+</style>
+</head>
+<body>
+<div class="page" id="app"></div>
+<script>
+// --- data: programkataloget fra preview-mocken (uddrag), opdigtede ryttere ----------------
+const INTENSITY = { rest: "rest", recovery: "recovery", technique: "easy", aero: "easy", loebslaere: "easy", endurance: "easy",
+  tempo: "normal", vo2max: "hard", vo2max_climb: "hard", vo2max_punch: "hard", threshold: "hard", sprint: "hard",
+  cobbled_sectors: "hard", echelon_drills: "hard", attack_repeats: "hard" };
+const SESSION = { rest: "Rest", recovery: "Active recovery", technique: "Technique", aero: "Aero", loebslaere: "Race craft",
+  endurance: "Endurance", tempo: "Tempo", vo2max: "VO2max", vo2max_climb: "VO2max (climbing)", vo2max_punch: "VO2max (punch)",
+  threshold: "Threshold", sprint: "Sprint", cobbled_sectors: "Cobbled Sectors", echelon_drills: "Echelon Drills", attack_repeats: "Attack Repeats" };
+const LOAD = { rest: "Rest", recovery: "Recovery", easy: "Easy", normal: "Medium", hard: "Hard", race: "Race" };
+const RANK = { rest: 0, recovery: 1, easy: 2, normal: 3, hard: 4, race: 5 };
+const PROGRAMS = {
+  sprinter: ["Sprinter", { mon: "sprint", tue: "endurance", wed: "echelon_drills", thu: "recovery", fri: "sprint", sat: "endurance", sun: "rest" }],
+  hill_climber: ["Hill climber", { mon: "vo2max", tue: "vo2max_climb", wed: "recovery", thu: "vo2max", fri: "vo2max_climb", sat: "endurance", sun: "rest" }],
+  cobbles_rider: ["Cobbles rider", { mon: "technique", tue: "endurance", wed: "technique", thu: "endurance", fri: "technique", sat: "cobbled_sectors", sun: "rest" }],
+  gc_rider: ["GC rider", { mon: "vo2max", tue: "threshold", wed: "vo2max_climb", thu: "recovery", fri: "vo2max", sat: "endurance", sun: "rest" }],
+  puncheur: ["Puncheur", { mon: "vo2max_punch", tue: "attack_repeats", wed: "recovery", thu: "vo2max", fri: "attack_repeats", sat: "endurance", sun: "rest" }],
+  breakaway: ["Breakaway rider", { mon: "threshold", tue: "loebslaere", wed: "endurance", thu: "attack_repeats", fri: "recovery", sat: "tempo", sun: "rest" }],
+  time_trial: ["Time triallist", { mon: "threshold", tue: "aero", wed: "recovery", thu: "threshold", fri: "endurance", sat: "echelon_drills", sun: "rest" }],
+  build_base: ["Build base", { mon: "endurance", tue: "technique", wed: "endurance", thu: "recovery", fri: "endurance", sat: "tempo", sun: "rest" }],
+  recovery_week: ["Recovery week", { mon: "recovery", tue: "recovery", wed: "technique", thu: "recovery", fri: "rest", sat: "recovery", sun: "rest" }],
+  youth_development: ["Youth development", { mon: "technique", tue: "endurance", wed: "aero", thu: "endurance", fri: "loebslaere", sat: "tempo", sun: "rest" }],
+};
+const FLAGS = { // simple stripes (kun wireframe; appen bruger sine egne flag-SVG'er)
+  dk: ["v", "#c8102e", "#fff", "#c8102e"], fr: ["v", "#0055a4", "#fff", "#ef4135"], it: ["v", "#009246", "#fff", "#ce2b37"],
+  be: ["v", "#000", "#fdda24", "#ef3340"], nl: ["h", "#ae1c28", "#fff", "#21468b"], es: ["h", "#aa151b", "#f1bf00", "#aa151b"],
+  de: ["h", "#000", "#dd0000", "#ffce00"], no: ["v", "#ba0c2f", "#fff", "#00205b"], co: ["h", "#fcd116", "#003893", "#ce1126"],
+};
+// opdigtede navne, nation, type, gruppe, plan
+const RIDERS = [
+  ["Mads Kjærgaard", "dk", "Climber", "Climbers", "group", "hill_climber"],
+  ["Lucien Moreau", "fr", "GC rider", "Climbers", "own", "gc_rider"],
+  ["Tomas Vandenberghe", "be", "Cobbles rider", "Classics", "group", "cobbles_rider"],
+  ["Matteo Rinaldi", "it", "Sprinter", "Sprinters", "group", "sprinter"],
+  ["Joris van Leeuwen", "nl", "Time triallist", null, "own", "time_trial"],
+  ["Álvaro Ibarguren", "es", "Climber", "Climbers", "group", "hill_climber"],
+  ["Felix Brandauer", "de", "Rouleur", "Classics", "group", "cobbles_rider"],
+  ["Sondre Hauge", "no", "Puncheur", "Classics", "own", "puncheur"],
+  ["Julián Mosquera", "co", "Climber", "Climbers", "group", "hill_climber"],
+  ["Rasmus Lindholt", "dk", "Sprinter", "Sprinters", "group", "sprinter"],
+  ["Bastien Ferrand", "fr", "Breakaway rider", null, "own", "breakaway"],
+  ["Pieter Claessens", "be", "Cobbles rider", "Classics", "group", "cobbles_rider"],
+  ["Davide Ferraresi", "it", "Puncheur", "Classics", "group", "cobbles_rider"],
+  ["Sem Hoogendijk", "nl", "Rouleur", "Sprinters", "group", "sprinter"],
+  ["Iker Arrieta", "es", "GC rider", "Climbers", "group", "hill_climber"],
+  ["Lukas Pfeiffer", "de", "Time triallist", null, "own", "time_trial"],
+  ["Emil Thorsager", "dk", "Rouleur", null, "none", null],
+  ["Noah Lindqvist", "no", "Climber", "Youth", "group", "youth_development"],
+  ["Anders Brix", "dk", "Puncheur", "Youth", "group", "youth_development"],
+  ["Hugo Delacroix", "fr", "Sprinter", "Youth", "group", "youth_development"],
+  ["Santiago Restrepo", "co", "Climber", "Climbers", "group", "hill_climber"],
+  ["Wout Peeters", "be", "Rouleur", "Classics", "own", "recovery_week"],
+  ["Lorenzo Gatti", "it", "Breakaway rider", null, "own", "breakaway"],
+  ["Thijs Bakker", "nl", "Sprinter", "Sprinters", "group", "sprinter"],
+  ["Mikel Zubeldia", "es", "Puncheur", "Classics", "group", "cobbles_rider"],
+  ["Jonas Wendland", "de", "Rouleur", null, "own", "build_base"],
+  ["Kasper Ravn", "dk", "GC rider", "Climbers", "group", "hill_climber"],
+  ["Arthur Lemaître", "fr", "Climber", "Climbers", "group", "hill_climber"],
+  ["Eirik Solberg", "no", "Time triallist", null, "own", "time_trial"],
+  ["Viktor Hansen", "dk", "Rouleur", "Sprinters", "group", "sprinter"],
+];
+// I dag = onsdag (som preview-kalenderen: loeb paa dag 0, 2, 4 og 5 for hver tredje rytter)
+const WEEK = ["wed", "thu", "fri", "sat", "sun", "mon", "tue"];
+const DAYNAME = { mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday", fri: "Friday", sat: "Saturday", sun: "Sunday" };
+const RACE_DAYS = { 0: [0, 1, 2, 3, 4], 2: [2], 4: [1, 3], 5: [0, 2, 4] };
+
+function riderRows() {
+  return RIDERS.map(([name, nat, type, group, via, key], idx) => {
+    const days = {};
+    WEEK.forEach((w, i) => {
+      const races = (idx % 3 === 0 && RACE_DAYS[i]) ? RACE_DAYS[i] : [];
+      const base = key ? PROGRAMS[key][1][w] : null;
+      // 5 felter pr. dag: programmets pas i felt 1-3, rolige pas i 4-5 (som en typisk ugeplan i v2)
+      const slots = [0, 1, 2, 3, 4].map((s) => {
+        if (races.includes(s)) return "race";
+        if (!base) return null;
+        if (base === "rest") return "rest";
+        return s < 3 ? base : (s === 3 ? "endurance" : "recovery");
+      });
+      days[w] = slots;
+    });
+    return { name, nat, type, group, via, key, days };
+  });
+}
+function dayLoad(slots) {
+  let best = null;
+  for (const s of slots) {
+    if (!s) continue;
+    const l = s === "race" ? "race" : INTENSITY[s];
+    if (best === null || RANK[l] > RANK[best]) best = l;
+  }
+  return best;
+}
+function dayText(slots) { // som dayText() i PR #8827: alle pas, sat sammen med " · "
+  const races = slots.filter((s) => s === "race").length;
+  const list = slots.filter((s) => s && s !== "race").map((s) => SESSION[s]);
+  const parts = [...(races ? ["Race"] : []), ...list];
+  return parts.length ? parts.join(" · ") : "–";
+}
+const ICON = {
+  chev: '<svg class="i" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="m6 9 6 6 6-6"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  cols: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M9 4v16M15 4v16"/></svg>',
+  flag: '<svg class="i" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+  right: '<svg class="i" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="m9 6 6 6-6 6"/></svg>',
+};
+function flag(nat) {
+  const [dir, a, b, c] = FLAGS[nat];
+  return `<span class="flag ${dir === "v" ? "v" : ""}"><i style="background:${a}"></i><i style="background:${b}"></i><i style="background:${c}"></i></span>`;
+}
+const planLabel = (r) => r.via === "none" ? "No program" : r.via === "own" ? "Own plan" : "Group plan";
+const progLabel = (r) => r.key ? PROGRAMS[r.key][0] : "No program";
+function loadCell(slots, cls = "") {
+  const l = dayLoad(slots);
+  if (!l) return `<td class="c ${cls} faint">No session</td>`;
+  if (l === "race") return `<td class="c ${cls}"><span class="l-race">${ICON.flag}Race</span></td>`;
+  return `<td class="c ${cls}"><span class="l-${l}">${LOAD[l]}</span></td>`;
+}
+
+const params = new URLSearchParams(location.search);
+const state = params.get("state") === "before" ? "before" : "after";
+const mobile = window.innerWidth < 768;
+const rows = riderRows();
+
+function shell(inner, stamp) {
+  return `<div class="stamp">${stamp}</div>
+  <header class="ph"><h1>Training</h1><button class="btn-gold">Save plan</button></header>
+  <nav class="tabs"><span>Overview</span><span class="on">Program</span><span>Groups</span><span>Development</span>${mobile ? "" : "<span>History</span>"}</nav>
+  ${inner}`;
+}
+
+function after() {
+  const titleline = mobile
+    ? `<div class="titleline"><span class="pick">All riders ${ICON.chev}</span><span class="grow"></span>
+        <span class="colbtn">${ICON.search}</span><span class="colbtn">${ICON.cols}<span class="num">3/11</span></span></div>`
+    : `<div class="titleline"><span class="pick">All riders ${ICON.chev}</span><span class="sep">·</span><span class="pick">This week ${ICON.chev}</span>
+        <span class="grow"></span><span class="search">${ICON.search}Search riders</span><span class="colbtn">${ICON.cols}<span class="num">11/11</span></span></div>`;
+  let head, body;
+  if (mobile) {
+    head = `<tr><th class="h" style="width:36%">Rider</th><th class="h today" style="width:17%">Today</th><th class="h" style="width:20%">Tomorrow</th><th class="h">Program</th></tr>`;
+    body = rows.map((r) => `<tr><th class="r" scope="row"><span class="name">${flag(r.nat)}${r.name}</span></th>
+      ${loadCell(r.days[WEEK[0]], "today")}${loadCell(r.days[WEEK[1]])}<td class="muted">${progLabel(r)}</td></tr>`).join("");
+  } else {
+    head = `<tr><th class="h" style="width:190px">Rider</th><th class="h" style="width:120px">Type</th><th class="h" style="width:96px">Group</th>
+      <th class="h" style="width:96px">Plan</th><th class="h" style="width:136px">Program</th>
+      ${WEEK.map((w, i) => `<th class="h ${i === 0 ? "today" : ""}">${i === 0 ? "Today" : i === 1 ? "Tomorrow" : DAYNAME[w]}</th>`).join("")}</tr>`;
+    body = rows.map((r) => `<tr><th class="r" scope="row"><span class="name">${flag(r.nat)}${r.name}</span></th>
+      <td class="muted">${r.type}</td><td class="muted">${r.group ?? "No group"}</td><td class="muted">${planLabel(r)}</td>
+      <td class="muted">${progLabel(r)}</td>${WEEK.map((w, i) => loadCell(r.days[w], i === 0 ? "today" : "")).join("")}</tr>`).join("");
+  }
+  // hover-kort (P18) paa computeren: dagens fem pas i fuld tekst for en rytter
+  const r = rows[1];
+  const hc = mobile ? "" : `<div class="hc" style="left:330px;top:118px">
+      <h3>${r.name}</h3><div class="muted">${r.type} · ${planLabel(r)}: ${progLabel(r)}</div>
+      <div class="lab">Today, five sessions</div>
+      <table>${r.days[WEEK[0]].map((s, i) => `<tr><td class="faint num" style="width:56px">Field ${i + 1}</td><td>${s === "race" ? "Race" : s ? SESSION[s] : "No session"}</td></tr>`).join("")}</table>
+      <span class="open">Open the week ${ICON.right}</span></div>`;
+  const table = `<div class="frame">${titleline}<div class="wraprel"><table><thead>${head}</thead><tbody>${body}</tbody></table>${hc}</div>
+    <div class="count num">${rows.length} riders · ${mobile ? "Tap a name to open his week" : "Hover a day for the sessions, click a name to open the week"}</div></div>`;
+  return shell(table, `<b>After</b> · proposal #8827 · one line per rider · ${mobile ? "390" : "1440"} px`);
+}
+
+function before() {
+  let head, body;
+  if (mobile) {
+    head = `<tr><th class="h" style="width:44%">Rider</th><th class="h">Today</th><th class="h">Tomorrow</th></tr>`;
+    body = rows.map((r) => `<tr><th class="r" scope="row"><b>${r.name}</b>
+      <span class="sub">${[r.group ?? "No group", r.via === "own" ? "Own plan: " + progLabel(r) : progLabel(r)].join(" · ")}</span></th>
+      <td>${dayText(r.days[WEEK[0]])}</td><td>${dayText(r.days[WEEK[1]])}</td></tr>`).join("");
+  } else {
+    head = `<tr><th class="h" style="width:18%">Rider</th><th class="h" style="width:12%">Group</th><th class="h" style="width:16%">Program</th>
+      <th class="h">Today</th><th class="h">Tomorrow</th><th class="h" style="width:26%">Next days</th></tr>`;
+    body = rows.map((r) => `<tr><th class="r" scope="row"><b>${r.name}</b></th><td class="muted">${r.group ?? "No group"}</td>
+      <td class="muted">${r.via === "own" ? "Own plan: " + progLabel(r) : progLabel(r)}</td>
+      <td>${dayText(r.days[WEEK[0]])}</td><td>${dayText(r.days[WEEK[1]])}</td>
+      <td class="muted"><ul>${WEEK.slice(2).map((w) => `<li><span class="faint">${DAYNAME[w]}</span> ${dayText(r.days[w])}</li>`).join("")}</ul></td></tr>`).join("");
+  }
+  const table = `<div class="frame before"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+  return shell(table, `<b>Before</b> · PR #8827 as it is (AllRidersTable rebuilt from the PR's markup, same data) · ${mobile ? "390" : "1440"} px`);
+}
+
+document.getElementById("app").innerHTML = state === "before" ? before() : after();
+</script>
+</body>
+</html>
