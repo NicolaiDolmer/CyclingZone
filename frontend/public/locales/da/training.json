@@ -509,7 +509,7 @@
     "dayTypeNote_recovery": "Trætheden falder lidt. Lidt vækst på restitution.",
     "dayTypeNote_skill": "Lav belastning. Kun håndværk, og det bygges langsomt.",
     "dayTypeNote_training": "Fysiske evner, på sessionens niveau.",
-    "noSession_rest": "En hviledag har ingen session. Rytteren træner ikke, og trætheden falder hurtigere end på nogen anden dag. Den session han stod på bliver bevaret, så ét klik sætter ham tilbage på den.",
+    "noSession_rest": "En hviledag har ingen session. Rytteren træner ikke, og trætheden falder hurtigere end på nogen anden dag. Den session han stod på bliver bevaret, så ét klik sætter ham tilbage på den. Hvile sænker trætheden, men formen bygges kun af træning med passende belastning.",
     "noSession_recovery": "Aktiv restitution har ingen session. Rytteren ruller let: trætheden falder, dog mindre end på en hel hviledag, og han får en smule på restitution. Det er den eneste dag der både sænker træthed og udvikler noget.",
     "level_easy": "Let",
     "level_normal": "Mellem",

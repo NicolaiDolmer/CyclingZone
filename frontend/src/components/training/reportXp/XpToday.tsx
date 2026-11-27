@@ -11,6 +11,7 @@ import { riderShortName } from "../../../lib/riderName.ts";
 import { useMediaQuery } from "../../../hooks/useMediaQuery.ts";
 import { filterTodayRiders, xpOfPrice, STRIP_DAYS, type TodayFilter, type XpAbilityRow, type XpRiderType, type XpTodayRider, type XpTodayView } from "../../../lib/trainingReportXp.ts";
 import { Swatch, XpBar, XpLegend } from "./XpBar.tsx";
+import SessionName from "./SessionName.tsx";
 import type { RatingChange } from "../../../lib/xpRatingChange.ts";
 
 // #7627 · "Today" in XP. Computer: the riders as a table on the left and the
@@ -173,12 +174,14 @@ export function RiderDetail({ rider, panel = false }: { rider: XpTodayRider; pan
         <div className="flex items-baseline justify-between gap-2"><dt className="text-cz-2">{t("xpReport.paidOut")}</dt><dd className="font-semibold text-cz-1">{t("xpReport.pointsShort", { count: rider.paid })}</dd></div>
       </dl>
       {rider.paid > 0 && <PaidNote className="mb-3" />}
-      <ol className="mb-3 grid grid-cols-5 gap-1.5" aria-label={t("xpReport.sessions")}>
+      {/* #8856: one line per session, so the concrete session ("Klatreintervaller") is never cut
+          to its ability family ("VO2max (…"). Its name opens a tooltip on hover, focus or tap. */}
+      <ol className="mb-3 border-b border-cz-border" aria-label={t("xpReport.sessions")} data-testid="xp-sessions">
         {rider.sessions.map((s, i) => (
-          <li key={i} className={`min-w-0 rounded-cz border px-1.5 py-1.5 ${s.kind === "race" ? "border-cz-border-strong" : "border-cz-border"}`} data-kind={s.kind}>
-            <p className="flex items-center gap-1 truncate text-xs font-medium text-cz-1">{s.kind === "race" && <Swatch part="race" />}{sessionLabel(s.kind)}</p>
-            {/* #7947 (owner 20/11): no training score in the XP report; the session's focus, when it has one. */}
-            <p className="truncate text-3xs text-cz-3">{s.focus ? tRider(`training.focus_${s.focus}`) : " "}</p>
+          <li key={i} className="grid min-h-9 grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-2 border-t border-cz-border py-1" data-kind={s.kind}>
+            <span className="flex min-w-0 items-center gap-1 text-xs text-cz-2">{s.kind === "race" && <Swatch part="race" />}{sessionLabel(s.kind)}</span>
+            {/* #7947 (owner 20/11): no training score in the XP report; the session itself, when it has one. */}
+            <span className="min-w-0 text-xs font-medium text-cz-1">{s.focus ? <SessionName focus={s.focus} testId="xp-session-name" /> : null}</span>
           </li>
         ))}
       </ol>

@@ -40,6 +40,8 @@ on:
         type: boolean
         default: false
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'scripts/til-doers-draft*'
       - 'scripts/lib/til-doers.mjs'
@@ -61,7 +63,7 @@ concurrency:
 jobs:
   test:
     name: til-doers-draft tests
-    if: github.event_name == 'pull_request'
+    if: ${{ github.event_name == 'pull_request' && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

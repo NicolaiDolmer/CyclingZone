@@ -1,6 +1,8 @@
 name: Explicit table grants
 on:
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'database/**'
       - 'scripts/audit-table-grants*'
@@ -23,6 +25,7 @@ concurrency:
 
 jobs:
   table-grants:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

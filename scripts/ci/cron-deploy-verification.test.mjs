@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { affectedCronJobs, registryCadenceSeconds, changedFiles, deploymentImpact, evaluateCheckins, evaluateUnreadable, railwayDrainSeconds, safeReason, waitingSummary,
+import { affectedCronJobs, createAffectedCronJobs, registryCadenceSeconds, changedFiles, deploymentImpact, evaluateCheckins, evaluateUnreadable, railwayDrainSeconds, safeReason, waitingSummary,
   verifyCronCheckins, SHORT_CADENCE_SECONDS, MAX_COHORT_SHIFT_SECONDS } from './cron-deploy-verification.mjs';
 import { ALL_CRON_MONITORS } from '../../backend/lib/cronMonitorRegistry.js';
 
@@ -490,4 +490,19 @@ test('#6860 (Codex P2): a weekly fixed-time job is due at its next Copenhagen sl
   assert.equal(new Date(due).toISOString(), '2026-10-25T14:15:00.000Z');
   const interval = { schedule: { type: 'interval', value: 5, unit: 'minute' } };
   assert.equal(dueAtMs(interval, 0, 300, 600), 900000);
+});
+
+test('a planner snapshot traces each cron source only once across PR classifications', () => {
+  const map = { commonSourcePaths: [], sourcePathsBySlug: { task: ['backend/task.js'] } };
+  const source = new Map([['backend/task.js', 'export const task = () => true;']]);
+  let reads = 0;
+  const classify = createAffectedCronJobs({
+    monitors: [['task', {}]], map,
+    read: (path) => { reads++; return source.get(path); },
+    exists: (path) => source.has(path),
+  });
+  assert.deepEqual(classify([{ filename: 'frontend/src/App.jsx', status: 'modified' }]), []);
+  assert.deepEqual(classify([{ filename: 'backend/task.js', status: 'modified' }]), ['task']);
+  assert.throws(() => classify([{ filename: '../unknown', status: 'modified' }]), /Invalid changed-file path/);
+  assert.equal(reads, 1);
 });

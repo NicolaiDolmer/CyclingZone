@@ -186,12 +186,12 @@ describe('#8331 eet samlet tog + deploy-reglen', () => {
     assert.deepEqual(selectTrain([unknown, evalWith({ number: 8 }, { deploy: DEPLOYS })]), [7]);
   });
   it('deployImpact bruger koeens fil-regler (merge-queue-files.mjs)', () => {
-    assert.deepEqual(deployImpact([{ path: 'docs/GITHUB_WORKFLOW.md' }, { path: 'pr-screens/a.png' }]), { deploys: false, solo: false });
+    assert.deepEqual(deployImpact([{ path: 'docs/GITHUB_WORKFLOW.md' }, { path: 'pr-screens/a.png' }]), { deploys: false, solo: false, needRailway: false, touchesVercel: false });
     assert.equal(deployImpact([{ path: 'backend/lib/economy.js' }]).deploys, true);
     assert.equal(deployImpact(['scripts/x.mjs']).deploys, true, 'Railway bygger igen');
-    assert.deepEqual(deployImpact([{ path: 'database/2026-11-17-x.sql' }]), { deploys: true, solo: true });
-    assert.deepEqual(deployImpact([]), { deploys: true, solo: true });
-    assert.deepEqual(deployImpact(null), { deploys: true, solo: true });
+    assert.deepEqual(deployImpact([{ path: 'database/2026-11-17-x.sql' }]), { deploys: true, solo: true, needRailway: true, touchesVercel: false });
+    assert.deepEqual(deployImpact([]), { deploys: true, solo: true, needRailway: true, touchesVercel: true });
+    assert.deepEqual(deployImpact(null), { deploys: true, solo: true, needRailway: true, touchesVercel: true });
   });
   it('queueArgs: eet tog, hoved pr. PR, CI-frist 90 min og op til TRAIN_MAX_DEPLOY deploy-PRer pr. tog', () => {
     const args = queueArgs({ script: 'q.ps1', train: [11, 13, 10], repo: 'o/r', expectHeads: ['a'.repeat(40), 'b'.repeat(40), 'c'.repeat(40)] });
@@ -1009,4 +1009,60 @@ it('admits REST mergeable true only for the same open PR head and base', () => {
     return {state:'open', head:{sha:'b'.repeat(40)}, base:{ref:'main'}, mergeable:true};
   }}});
   assert.equal(raced.reason, 'mergeable=UNKNOWN');
+});
+
+describe('selectTrain deploy verification coverage', () => {
+  const evaluation = (number, needRailway, touchesVercel, extras = {}) => ({
+    number, needRailway, touchesVercel, eligible: true, deploys: true, solo: false, ...extras,
+  });
+
+  it('puts the PR that covers both targets last', () => {
+    const railway = evaluation(41, true, false);
+    const combined = evaluation(40, true, true);
+    assert.deepEqual(selectTrain([combined, railway]), [41, 40]);
+  });
+
+  // #8719, PC1 23–25/11: original request order and deploy targets reconstructed
+  // from the reported starts, GitHub PR files and actual merge timestamps.
+  for (const { label, original, expected } of [
+    { label: '23/11 15:23', original: [[8621, true, true], [8622, false, true], [8628, false, true]], expected: [8622, 8628, 8621] },
+    { label: '23/11 23:04', original: [[8643, true, true], [8647, false, true]], expected: [8647, 8643] },
+    { label: '24/11 15:03', original: [[8652, true, true], [8666, true, true], [8674, false, true]], expected: [8674, 8652, 8666] },
+    { label: '25/11 19:43', original: [[8695, false, true], [8697, false, true], [8699, false, false]], expected: [8699, 8695, 8697] },
+    { label: '25/11 20:43', original: [[8705, false, true], [8707, false, true], [8713, false, false]], expected: [8713, 8705, 8707] },
+  ]) {
+    it(`replays the deploy split at ${label} as one compatible train`, () => {
+      const candidates = original.map(([number, railway, vercel]) => evaluation(number, railway, vercel));
+      const selected = selectTrain(candidates);
+      assert.deepEqual(selected, expected);
+      const byNumber = new Map(candidates.map((entry) => [entry.number, entry]));
+      let railway = false;
+      let vercel = false;
+      for (const number of selected) {
+        const entry = byNumber.get(number);
+        assert.ok(!railway || entry.needRailway, 'prefix lost Railway verification');
+        assert.ok(!vercel || entry.touchesVercel, 'prefix lost Vercel verification');
+        railway ||= entry.needRailway;
+        vercel ||= entry.touchesVercel;
+      }
+    });
+  }
+  it('keeps all prefixes verifiable if the final covering PR is skipped', () => {
+    const railway = evaluation(41, true, false);
+    const vercel = evaluation(42, false, true);
+    const combined = evaluation(43, true, true);
+    assert.deepEqual(selectTrain([combined, vercel, railway]), [41, 43]);
+    assert.deepEqual(selectTrain([railway, vercel]), [41]);
+  });
+
+  it('fills remaining capacity with later eligible PRs that cover the same target', () => {
+    const candidates = [
+      evaluation(41, false, true),
+      evaluation(42, true, false),
+      evaluation(43, false, true, { eligible: false }),
+      evaluation(44, false, true),
+      evaluation(45, false, true),
+    ];
+    assert.deepEqual(selectTrain(candidates), [41, 44, 45]);
+  });
 });

@@ -45,6 +45,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "fatigue_now_7801", area: "training", label: "Træthed lige nu — flader og regler" },
   // #6110 ejer 19/11: "hold uden division skal ikke træne". Seedet off; ejer-only flip.
   { key: "training_calendar_tick_ai_only", area: "training", label: "Kalenderdagens tick kun for AI-hold uden division" },
+  // #8614 ejer 23/11 + 26/11 (valg B): AI-hold fast træthed og form, intet tick, ingen skader. Seedet off; ejer-only flip.
+  { key: "ai_team_frozen_state_8614", area: "training", label: "AI-hold: fast træthed og form, intet tick, ingen skader" },
   // #7947: alle træninger på Let/Mellem/Hård. Seedet off; kun "on" tænder (trainingEffortLevels.js). Ejer-only flip.
   { key: "training_effort_levels", area: "training", label: "Alle træninger på Let/Mellem/Hård" },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },

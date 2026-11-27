@@ -509,7 +509,7 @@
     "dayTypeNote_recovery": "La fatiga baja un poco. Un poco de crecimiento en recuperación.",
     "dayTypeNote_skill": "Carga baja. Solo oficio, y se desarrolla despacio.",
     "dayTypeNote_training": "Habilidades físicas, al nivel de la sesión.",
-    "noSession_rest": "Un día de descanso no tiene sesión. Tu ciclista no entrena y su fatiga baja más rápido que en cualquier otro día. La sesión que tuviera se conserva, así que con un clic vuelve a ella.",
+    "noSession_rest": "Un día de descanso no tiene sesión. Tu ciclista no entrena y su fatiga baja más rápido que en cualquier otro día. La sesión que tuviera se conserva, así que con un clic vuelve a ella. El descanso baja la fatiga, pero la forma solo se construye entrenando con una carga adecuada.",
     "noSession_recovery": "La recuperación activa no tiene sesión. Tu ciclista rueda suave: la fatiga baja, aunque menos que en un día de descanso completo, y gana un poco en recuperación. Es el único día que baja la fatiga y aun así desarrolla algo.",
     "level_easy": "Suave",
     "level_normal": "Medio",

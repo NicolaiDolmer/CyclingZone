@@ -1474,7 +1474,7 @@ function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = n
     // #8830: ungdommen (U23/junior) har egne vaegte, ogsaa i mini-GT'erne.
     // Kun fra S6 (isS6Race); S3-S5 bruger S5-tabellen uaendret.
     const s6 = !isS6Race(race) ? null : youthFinishWeightsFor(terrain, race?.squad)
-      ?? (isStageRace && race?.terrain_archetype === "grand_tour" ? null : roadFinishWeightsFor(terrain, targetType));
+      ?? (isStageRace && race?.terrain_archetype === "grand_tour" ? null : roadFinishWeightsFor(terrain, targetType, race?.race_class ?? null));
     const weights = /** @type {any} */ (s6 ?? /** @type {Record<string, any>} */ (S5_FINISH_WEIGHTS)[terrain]);
     if (summit === true) return "long_climb";
     if (summit === false) return pickByQuantile(weights.filter((/** @type {any} */ it) => it.value !== "long_climb"), u);
@@ -1530,14 +1530,16 @@ export function grandTourTypeFor(race) {
  *
  * @param {string} gtType
  * @param {number} stages
- * @param {{ allowTtt?: boolean }} [opts]
+ * @param {{ allowTtt?: boolean, maxTimeTrials?: number|null }} [opts]
  * @returns {{ types: string[], summits: number }}
  */
-export function grandTourQuotaTypes(gtType, stages, { allowTtt = false } = {}) {
+export function grandTourQuotaTypes(gtType, stages, { allowTtt = false, maxTimeTrials = null } = {}) {
   /** @type {Record<string, number>} */
   const q = /** @type {Record<string, any>} */ (S5_GRAND_TOUR_QUOTAS)[gtType] ?? S5_GRAND_TOUR_QUOTAS.tour;
-  const itt = q.itt + (allowTtt ? 0 : q.ttt);
-  const ttt = allowTtt ? q.ttt : 0;
+  // #8830 (ejer 27/11): junior-mini-GT'en har kun een enkeltstart; ingen holdtidskoersel.
+  const capTt = Number.isInteger(maxTimeTrials);
+  const ttt = allowTtt && !capTt ? q.ttt : 0;
+  const itt = capTt ? Math.min(q.itt + q.ttt, /** @type {number} */ (maxTimeTrials)) : q.itt + (allowTtt ? 0 : q.ttt);
   const roadTarget = Math.max(0, stages - itt - ttt);
   const roadTotal = S5_QUOTA_ROAD_TYPES.reduce((s, t) => s + q[t], 0);
   const exact = S5_QUOTA_ROAD_TYPES.map((t) => (q[t] * roadTarget) / roadTotal);
@@ -1564,7 +1566,7 @@ export function grandTourQuotaTypes(gtType, stages, { allowTtt = false } = {}) {
  * @param {string[]} types
  * @returns {string[]}
  */
-export function orderGrandTourS5(rng, types, { s6 = false } = {}) {
+export function orderGrandTourS5(rng, types, { s6 = false, lastTtOnly = false } = {}) {
   const n = types.length;
   const pool = types.slice();
   const take = (/** @type {string} */ t) => { const i = pool.indexOf(t); if (i === -1) return null; pool.splice(i, 1); return t; };
@@ -1579,9 +1581,11 @@ export function orderGrandTourS5(rng, types, { s6 = false } = {}) {
   const roll = rng(); // altid forbrugt
   const ttCount = pool.filter(isTimeTrial).length;
 
-  if (ttCount >= 1) slots[0] = take("ttt") ?? take("itt");
+  // #8830 (ejer 27/11): junior-mini-GT'ens ene enkeltstart er den SIDSTE etape (ikke den foerste).
+  if (lastTtOnly && ttCount === 1 && n >= 2) slots[n - 1] = take("itt") ?? take("ttt");
+  else if (ttCount >= 1) slots[0] = take("ttt") ?? take("itt");
   const ittLast = ttCount >= 2 && (mini || roll >= GT_FLAT_FINISH_CHANCE);
-  if (n >= 2) slots[n - 1] = ittLast ? take("itt") : (take("flat") ?? take("rolling") ?? null);
+  if (n >= 2 && slots[n - 1] == null) slots[n - 1] = ittLast ? take("itt") : (take("flat") ?? take("rolling") ?? null);
 
   const lateTt = pool.find(isTimeTrial);
   if (lateTt) {
@@ -1654,9 +1658,10 @@ export function assignGrandTourFinishes(rng, ordered, summits, squad = null, { s
 
 /** @param {S5Rng} rng @param {number} stages @param {any} race @param {{ allowTtt?: boolean }} [opts] */
 function buildGrandTourS5(rng, stages, race, { allowTtt = false } = {}) {
-  const { types, summits } = grandTourQuotaTypes(grandTourTypeFor(race), stages, { allowTtt });
   const s6 = isS6Race(race); // #8830: mini-GT, S6-GT-vaegte og ungdommens vaegte kun fra S6
-  const ordered = orderGrandTourS5(rng, types, { s6 });
+  const juniorMini = s6 && race?.squad === "junior" && stages < GRAND_TOUR_MIN_STAGES;
+  const { types, summits } = grandTourQuotaTypes(grandTourTypeFor(race), stages, { allowTtt, maxTimeTrials: juniorMini ? 1 : null });
+  const ordered = orderGrandTourS5(rng, types, { s6, lastTtOnly: juniorMini });
   const finishes = assignGrandTourFinishes(rng, ordered, summits, s6 && youthFinishWeightsFor("hilly", race?.squad) ? race.squad : null, { s6 });
   return ordered.map((t, i) => toStageS5(rng, t, i + 1, race, true, {
     finish: finishes[i],

@@ -1,5 +1,77 @@
 export const PATCHES = [
 {
+  "version": "7.534",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "Your own riders show their potential from day one",
+        "body": "Some of your own riders showed a question mark instead of their potential, often riders you had just bought. Now every rider on your team shows the scout's estimate of his potential from the day he joins. The forecast still learns from his training with you."
+      },
+      "da": {
+        "title": "Dine egne ryttere viser deres potentiale fra første dag",
+        "body": "Nogle af dine egne ryttere viste et spørgsmålstegn i stedet for deres potentiale, ofte ryttere du lige havde købt. Nu viser alle ryttere på dit hold spejderens skøn over deres potentiale fra den dag, de kommer til holdet. Prognosen lærer stadig af hans træning hos dig."
+      },
+      "refs": [
+        8855
+      ]
+    }
+  ]
+},
+{
+  "version": "7.533",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "See exactly what each session trained",
+        "body": "The training report shows each session on its own line with the name from the day picker. Hover or tap the name to see the ability, level and note."
+      },
+      "da": {
+        "title": "Se præcis, hvad hvert pas trænede",
+        "body": "Træningsrapporten viser hvert pas på sin egen linje med navnet fra dagsvælgeren. Hold musen over navnet, eller tryk på det, for at se evne, niveau og note."
+      },
+      "refs": [
+        8856
+      ]
+    }
+  ]
+},
+{
+  "version": "7.532",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Help",
+      "area": "help",
+      "en": {
+        "title": "Help explains Form on rest days correctly",
+        "body": "Help now describes Rest days as days when the rider is set to Rest in the training plan. Rest lowers Fatigue, but Form is only built by training."
+      },
+      "da": {
+        "title": "Hjælp forklarer Form på hviledage rigtigt",
+        "body": "Hjælp beskriver nu hviledage som dage, hvor rytteren står på Hvile i træningsplanen. Hvile sænker Trætheden, men Form bygges kun af træning."
+      },
+      "refs": [
+        8789
+      ]
+    }
+  ]
+},
+{
   "version": "7.531",
   "date": "2026-11-27",
   "changes": [

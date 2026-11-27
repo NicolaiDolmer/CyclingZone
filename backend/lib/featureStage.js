@@ -83,6 +83,7 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "training_settle_race_session", // #7982: løbets session afregnes efter etapen
   "training_peak_from_ticks_6490", // #6490 trin c: peak-signalets kilde (motorens input)
   "training_calendar_tick_ai_only", // #6110 ejer 19/11: hold uden division traener ikke (motorens input)
+  "ai_team_frozen_state_8614", // #8614: AI-hold fast traethed og form, intet tick, ingen skader (motorens input)
   "training_effort_levels", // #7947: indsats pr. programfelt (motorens input)
   "training_week_priority",
   "training_rotation",

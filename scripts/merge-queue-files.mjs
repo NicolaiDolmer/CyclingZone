@@ -61,9 +61,9 @@ export function mustRunAlone(paths) {
 // deploymentImpact): backend-stier ELLER filer der paavirker cron-jobs. Et merge-tog
 // maa kun fortsaette, hvis den sidste PR selv kraever Railway-verifikation, naar toget gor.
 // Ukendt filliste = true (fail-safe).
-export function needsRailwayVerification(paths) {
+export function needsRailwayVerification(paths, { affected } = {}) {
   if (!Array.isArray(paths) || paths.length === 0 || paths.some((p) => typeof p !== 'string')) return true;
-  try { return deploymentImpact(paths.map((filename) => ({ filename, status: 'modified' }))).needRailway; } catch { return true; }
+  try { return deploymentImpact(paths.map((filename) => ({ filename, status: 'modified' })), { affected }).needRailway; } catch { return true; }
 }
 
 // Ukendt filliste = true (samme fail-safe som ovenfor).

@@ -171,6 +171,12 @@ try {
   node scripts/check-required-ci-jobs.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "required-ci-jobs-guard" }
 
+  # #8802: CI'ens kopi koerer ikke paa kladder (ops-script-tests springes over),
+  # saa lanen faar besked her, foer PR'en markeres klar.
+  Write-Host "== workflow-draft-skip-guard (kladder uden tung CI, #8802) ==" -ForegroundColor Cyan
+  node scripts/check-workflow-draft-skip.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "workflow-draft-skip-guard" }
+
   Write-Host "== retired-route-links-guard (#8398) ==" -ForegroundColor Cyan
   node --test scripts/check-retired-route-links.test.mjs frontend/src/App.racesLegacyRedirect.test.js
   if ($LASTEXITCODE -ne 0) { $failed += "retired-route-links-guard (selvtest)" }

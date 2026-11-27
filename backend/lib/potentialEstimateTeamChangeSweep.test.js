@@ -76,11 +76,18 @@ test("det nye hold får sit eget skøn med den viden, det havde i forvejen", asy
   assert.equal(estimates(sb)[0].knowledge_key, "s2t3");
 });
 
-test("et hold der intet ved om rytteren, får intet tal før grænsen", async () => {
-  const sb = client({ riders: [rider()] });
+test("#8855: et hold der intet ved om rytteren, får et skøn fra dag ét med sin egen scout", async () => {
+  const sb = client({ riders: [rider()], team_staff: [{ team_id: "t1", role: "scouting", status: "active", tier: 4 }] });
   const result = await run(sb);
-  assert.equal(result.written, 0);
-  assert.equal(estimates(sb).length, 0);
+  assert.equal(result.written, 1);
+  assert.equal(estimates(sb)[0].write_reason, "team_change");
+  assert.equal(estimates(sb)[0].knowledge_key, "s1t4");
+});
+
+test("#8855: uden scout på holdet er dag ét-skønnet standardscoutens ene kig", async () => {
+  const sb = client({ riders: [rider()] });
+  assert.equal((await run(sb)).written, 1);
+  assert.equal(estimates(sb)[0].knowledge_key, `s1t${PARAMS.scout.defaultTier}`);
 });
 
 test("rytter uden talent_ceiling, uden hold eller uden for vinduet springes over", async () => {
