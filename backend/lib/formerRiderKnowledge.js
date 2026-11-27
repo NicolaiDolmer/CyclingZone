@@ -116,6 +116,16 @@ export function applyFormerRiderStepsToReport(report, stepsLost) {
 }
 
 /**
+ * Rute-indgangen for én rytter (scouting-rapport og development-projection): læser
+ * afgangen og lægger faldet på svaret. Egne ryttere slår intet op.
+ */
+export async function withFormerRiderDecay(supabase, teamId, rider, own, report, { clock = new Date() } = {}) {
+  if (own || !rider?.id || !report?.potentialView || report.potentialView.hidden) return report;
+  const steps = await loadFormerRiderSteps(supabase, { teamId, riderIds: [rider.id], clock });
+  return applyFormerRiderStepsToReport(report, steps.get(rider.id) ?? 0);
+}
+
+/**
  * Tidligere ryttere pr. hold, til engangs-backfill'en. Ren funktion.
  *   events      : alle ejerskabshændelser
  *   teamIds     : holdene der kan se et skøn (loadEstimateTeamIds)

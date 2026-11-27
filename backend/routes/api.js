@@ -358,7 +358,7 @@ import { academyEstimate, loadAcademyPrognoses, isAcademyKnowledgeEnabled } from
 import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
 import { isPotentialEstimateDisplayEnabled } from "../lib/potentialEstimateFlag.js"; // #7684
 import { buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView, sortScoutedRiderPage } from "../lib/potentialEstimateRead.js"; // #7684
-import { applyFormerRiderStepsToEstimates, applyFormerRiderStepsToReport, loadFormerRiderSteps } from "../lib/formerRiderKnowledge.js"; // #7455
+import { applyFormerRiderStepsToEstimates, loadFormerRiderSteps, withFormerRiderDecay } from "../lib/formerRiderKnowledge.js"; // #7455
 import { saveAcademyProfile } from "../lib/academyIntakeProfile.ts"; // #6666
 import { createAcademyV2Router } from "../lib/academyAgeFocus.ts"; // #8081
 import { computeFrozenSalary } from "../lib/contractSeed.js";
@@ -2940,14 +2940,11 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
     const own = rider.team_id != null && rider.team_id === req.team.id;
     const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
     if (await isPotentialEstimateOn(req)) {
-      const report = await buildScoutingReportFromView(supabase, {
+      return res.json(await withFormerRiderDecay(supabase, req.team.id, rider, own, await buildScoutingReportFromView(supabase, { // #7455
         teamId: req.team.id, rider, own, level, maxLevel: state.maxLevel, looks: state.levels[rider.id] ?? 0,
         age: ageForSeason(rider.birthdate, await getActiveSeasonNumber()), scout: scoutMeta, generatedAt,
         bandScout: scout, loadDevelopmentXp: () => loadEstimateDevelopmentXp(supabase), // #6110: prognose pr. ryttertype
-      });
-      // #7455: tidligere rytter - ordet falder ét trin pr. sæson efter afgangssæsonen.
-      const formerSteps = own ? null : await loadFormerRiderSteps(supabase, { teamId: req.team.id, riderIds: [rider.id] });
-      return res.json(applyFormerRiderStepsToReport(report, formerSteps?.get(rider.id) ?? 0));
+      })));
     }
     if (!own && level <= 0) {
       return res.json({ hidden: true, level: 0, maxLevel: state.maxLevel, own: false });
@@ -3081,13 +3078,10 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
     const own = rider.team_id != null && rider.team_id === req.team.id;
     const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
     if (await isPotentialEstimateOn(req)) {
-      const projection = await buildProjectionFromView(supabase, {
+      return res.json(await withFormerRiderDecay(supabase, req.team.id, rider, own, await buildProjectionFromView(supabase, {
         teamId: req.team.id, rider, own, level, maxLevel: state.maxLevel,
         age: scoutBandAge(rider.birthdate, await resolveScoutBandSeasonNumber(supabase)),
-      });
-      // #7455: samme fald som estimates og rapporten, så fladerne viser samme ord.
-      const formerSteps = own ? null : await loadFormerRiderSteps(supabase, { teamId: req.team.id, riderIds: [rider.id] });
-      return res.json(applyFormerRiderStepsToReport(projection, formerSteps?.get(rider.id) ?? 0));
+      })));
     }
     if (own && rider.is_academy && await isAcademyKnowledgeEnabled(supabase)) {
       return res.json({ own: true, capsMissing: true });

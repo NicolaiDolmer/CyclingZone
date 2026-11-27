@@ -1,10 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   applyFormerRiderStepsToEstimates, applyFormerRiderStepsToReport, formerRiderStepsFrom, formerRidersByTeam,
-  latestDepartures, loadFormerRiderSteps,
+  latestDepartures, loadFormerRiderSteps, withFormerRiderDecay,
 } from "./formerRiderKnowledge.js";
+
+test("#7455 ruterne lægger faldet på alle tre flader, der viser skønnet", () => {
+  const api = readFileSync(new URL("../routes/api.js", import.meta.url), "utf8");
+  const routeBlock = (marker, length) => api.slice(api.indexOf(marker), api.indexOf(marker) + length);
+  assert.match(routeBlock('router.post("/scouting/estimates"', 2500), /applyFormerRiderStepsToEstimates\(/);
+  assert.match(routeBlock('"/riders/:id/scouting-report"', 4500), /withFormerRiderDecay\([^)]*buildScoutingReportFromView\(/);
+  assert.match(routeBlock('"/riders/:id/development-projection"', 3500), /withFormerRiderDecay\([^)]*buildProjectionFromView\(/);
+});
 
 const TEAM = "team-a";
 const OTHER = "team-b";
@@ -115,4 +124,20 @@ test("#7455 loadFormerRiderSteps: læser hændelser + sæsoner og springer rytte
   const steps = await loadFormerRiderSteps(supabase, { teamId: TEAM, riderIds: ["r1", "r2"], clock: new Date("2026-11-27T12:00:00Z") });
   assert.deepEqual(Object.fromEntries(steps), { r1: 1 });
   assert.equal((await loadFormerRiderSteps(supabase, { teamId: TEAM, riderIds: [] })).size, 0);
+});
+
+test("#7455 withFormerRiderDecay: egen rytter og skjult skøn slår intet op; tidligere rytter falder", async () => {
+  const clock = new Date("2026-11-27T12:00:00Z");
+  const throwing = { from() { throw new Error("må ikke slå op"); } };
+  const report = { potentialView: { hidden: false, value: 70, certainty: "sure" } };
+  assert.equal(await withFormerRiderDecay(throwing, TEAM, { id: "r1" }, true, report, { clock }), report);
+  const hidden = { potentialView: { hidden: true, reason: "unscouted" } };
+  assert.equal(await withFormerRiderDecay(throwing, TEAM, { id: "r1" }, false, hidden, { clock }), hidden);
+  const supabase = fakeSupabase({
+    rider_ownership_events: [{ id: 1, ...ev("r1", TEAM, OTHER, "2026-09-02T10:00:00Z") }],
+    seasons: SEASONS,
+    riders: [{ id: "r1", team_id: OTHER }],
+  });
+  const out = await withFormerRiderDecay(supabase, TEAM, { id: "r1" }, false, report, { clock });
+  assert.equal(out.potentialView.certainty, "unsure");
 });
