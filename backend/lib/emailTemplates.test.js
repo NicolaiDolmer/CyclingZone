@@ -901,9 +901,9 @@ for (const edition of ["before-start", "started"]) {
           // Hero: hosted PNG with an absolute URL, real alt text, and the file exists.
           const hero = mail.html.match(/<img class="cz-hero" src="([^"]+)" alt="([^"]+)"/);
           assert.ok(hero, "hero image");
-          assert.equal(hero[1], `https://cyclingzone.org/email/s6/s6-hero-${language}-v2.png`);
+          assert.equal(hero[1], `https://cyclingzone.org/email/s6/s6-hero-${language}-v3.png`);
           assert.ok(hero[2].length > 60);
-          assert.ok(existsSync(new URL(`s6-hero-${language}-v2.png`, S6_HERO_FILES)));
+          assert.ok(existsSync(new URL(`s6-hero-${language}-v3.png`, S6_HERO_FILES)));
           for (const img of mail.html.match(/<img\b[^>]*>/g)) assert.match(img, /\salt="[^"]+"/);
 
           // Personal fields: team name in the greeting and the team line with the division.
@@ -912,8 +912,8 @@ for (const edition of ["before-start", "started"]) {
             // #8396 ejer 26/11: the S6 division is unknown before the switch, so mail 1 names none.
             assert.ok(!mail.html.includes("Division 2"), "before-start names no division");
             assert.ok(!mail.text.includes("Division 2"), "before-start text names no division");
-            assert.match(mail.html, /<h2[^>]*>(What&#39;s new in the game|De nyeste funktioner i spillet)<\/h2>/);
-            assert.match(mail.text, /(udviklingssystem|development system)/);
+            assert.match(mail.html, /<h2[^>]*>(What you can do now|Det kan du nu)<\/h2>/);
+            assert.match(mail.text, /(Lofterne er væk|No more caps)/);
             assert.match(mail.text, /(Planlægning|Planning)\./);
           } else {
             assert.match(mail.html, /Hold A (starts|starter|rides|kører) (Season|sæson) 6 i?n? ?Division 2\./);
@@ -927,8 +927,8 @@ for (const edition of ["before-start", "started"]) {
           assert.match(buttons[0], /font-size:16px;line-height:20px/);
           assert.match(mail.html, /class="cz-body"[^>]*font-size:16px;/);
 
-          // List: four news items before the start (#8396 ejer 26/11), three steps once it is underway.
-          assert.equal((mail.html.match(/<li\b/g) ?? []).length, isStart ? 3 : 4);
+          // List: six news items before the start (#8396 ejer 27/11: training and development first), three steps once it is underway.
+          assert.equal((mail.html.match(/<li\b/g) ?? []).length, isStart ? 3 : 6);
           assert.match(mail.html, isStart ? /<ol\b/ : /<ul\b/);
 
           // Links: the deep-linked CTA, the roadmap vote and the unsubscribe, all with UTM.
