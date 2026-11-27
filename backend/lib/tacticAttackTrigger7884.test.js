@@ -315,10 +315,10 @@ test("D18: en stigning uden navn vises som kategori + km (toppens km); en navngi
 
 test("D19: fakta fra ruten: foden, antal stigninger efter, topankomst", () => {
   assert.deepEqual(PLACES.map((p) => placeFacts7884(p, PLACES)), [
-    { foot_km: 58, climbs_after: 2, summit_finish: false },
-    { foot_km: 119, climbs_after: 1, summit_finish: false },
-    { foot_km: 160, climbs_after: 0, summit_finish: true },
-    { foot_km: 165, climbs_after: 0, summit_finish: false },
+    { foot_km: 58, climbs_after: 2, summit_finish: false, valley_after_km: 53, category: "2" }, // #8828: dalen til naeste fod
+    { foot_km: 119, climbs_after: 1, summit_finish: false, valley_after_km: 32, category: "1" },
+    { foot_km: 160, climbs_after: 0, summit_finish: true, valley_after_km: null, category: "HC" },
+    { foot_km: 165, climbs_after: 0, summit_finish: false, valley_after_km: null, category: null },
   ]);
   const view = attackPlacesView7884(MOUNTAIN);
   assert.equal(view.fingerprint, attackRouteFingerprint7884(PLACES));

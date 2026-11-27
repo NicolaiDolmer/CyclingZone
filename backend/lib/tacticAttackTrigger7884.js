@@ -246,7 +246,19 @@ export function placeFacts7884(place, places) {
   if (!place || typeof place !== "object") return null;
   const list = Array.isArray(places) ? places : [];
   const after = list.filter((p) => p.kind === "climb" && p.foot_km > place.foot_km).length;
-  return { foot_km: Math.round(place.foot_km), climbs_after: after, summit_finish: place.summit_finish === true };
+  return { foot_km: Math.round(place.foot_km), climbs_after: after, summit_finish: place.summit_finish === true, valley_after_km: valleyAfterKm7884(place, list), category: place.category ?? null };
+}
+
+/**
+ * #8828 (wireframet: "dal bagefter"): km fra toppen til foden af naeste stigning, eller til maal.
+ * null for finalen og topankomsten. Rutens egen geometri; fladen goer det til ord.
+ */
+function valleyAfterKm7884(place, list) {
+  if (place.kind !== "climb" || place.summit_finish === true || !Number.isFinite(place.crest_km)) return null;
+  const finale = list.find((p) => p.kind === "finale");
+  const feet = list.filter((p) => p.kind === "climb" && p.foot_km >= place.crest_km).map((p) => p.foot_km);
+  const end = feet.length ? Math.min(...feet) : finale ? finale.foot_km + STAGE_PLAN_FINAL_KM : null;
+  return end === null ? null : Math.max(0, Math.round(end - place.crest_km));
 }
 
 /** Stederne som fladen faar dem: noegle, skiftepunkt, etiket og fakta, plus rutens fingeraftryk. */
