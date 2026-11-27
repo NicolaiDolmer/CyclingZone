@@ -13,6 +13,7 @@ import {
 } from "./stagePageV2Model.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
+import I18nReadyGate from "../../I18nReadyGate.jsx";
 import YourDayCard, { type CareerEvent, type RowWhy } from "./YourDayCard.tsx";
 import { riderWhy, routeFitsAtRaceTime } from "../../../lib/riderWhyModel.ts"; // #7717
 import { stageRouteMatch } from "../../../lib/lineupInsight.js"; // #7717
@@ -161,18 +162,20 @@ export default function StageTabV2({
     return (
       <SectionStack>
         {stageErrorSlot ?? (spoiler.active ? null : (
-          <YourDayCard
-            results={results}
-            stageNumber={stageNumber}
-            isStageRace={isStageRace}
-            loaded={stageLoaded}
-            myTeamId={myTeamId}
-            careerEvents={careerEvents}
-            dnfRows={outRows}
-            primaryAction={tacticsAction}
-            onOpenStandings={onOpenStandings}
-            why={why}
-          />
+          <I18nReadyGate ns="dashboard">
+            <YourDayCard
+              results={results}
+              stageNumber={stageNumber}
+              isStageRace={isStageRace}
+              loaded={stageLoaded}
+              myTeamId={myTeamId}
+              careerEvents={careerEvents}
+              dnfRows={outRows}
+              primaryAction={tacticsAction}
+              onOpenStandings={onOpenStandings}
+              why={why}
+            />
+          </I18nReadyGate>
         ))}
         {story ? (
           <RaceStoryCard

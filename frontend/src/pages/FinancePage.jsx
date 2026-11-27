@@ -6,6 +6,7 @@ import { formatNumber } from "../lib/intl";
 import LockedSaleEscrows, { LockedSalesLine } from "../components/finance/LockedSaleEscrows.tsx"; // #6181
 import { renderBackendMessage } from "../lib/backendMessage";
 import { resolveLegacyFinanceMessage } from "../lib/legacyFinanceMessage";
+import I18nReadyGate from "../components/I18nReadyGate.jsx";
 import FinanceForecastCard from "../components/FinanceForecastCard";
 import SeasonFinanceReportPanel from "../components/SeasonFinanceReportPanel";
 import SponsorContractPanel from "../components/SponsorContractPanel";
@@ -661,16 +662,18 @@ export default function FinancePage() {
               kolonnerne — undefined indtil egen fetch lander, hvorefter
               kortet selv skifter til to-kolonne-visning (progressive
               enhancement, ingen ekstra loading-gate her). */}
-          <FinanceForecastCard
-            forecast={forecast}
-            loading={forecastLoading}
-            seasonsAhead={seasonsAhead}
-            onSeasonsAheadChange={(value) => {
-              setSeasonsAhead(value);
-              refetchForecast(value);
-            }}
-            seasonSwitch={seasonSwitch}
-          />
+          <I18nReadyGate ns="dashboard">
+            <FinanceForecastCard
+              forecast={forecast}
+              loading={forecastLoading}
+              seasonsAhead={seasonsAhead}
+              onSeasonsAheadChange={(value) => {
+                setSeasonsAhead(value);
+                refetchForecast(value);
+              }}
+              seasonSwitch={seasonSwitch}
+            />
+          </I18nReadyGate>
 
           {/* Løbspræmier — #3808: sorterbar tabel, default nyeste først (matcher
               Historik-fanens dato-orden i stedet for at modsige den med beløbs-orden). */}

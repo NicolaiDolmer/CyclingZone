@@ -661,7 +661,7 @@ export function buildSweepPlan({
  * @returns {Promise<{closed: boolean, reason: string, gameDays: number[], pending: number}>}
  */
 export async function resolveDayCloseStatus({
-  supabase, seasonId, now = new Date(), divisionId = null, seasonNumber = undefined,
+  supabase, seasonId, now = new Date(), divisionId = null, seasonNumber = undefined, includeStages = false,
 }) {
   const empty = { closed: false, reason: "unknown", gameDays: [], pending: 0 };
   if (!supabase?.from || !seasonId) return { ...empty, reason: "bad_args" };
@@ -728,10 +728,16 @@ export async function resolveDayCloseStatus({
       [...spansByDivision.values()].flatMap((s) => s.gameDays),
     )].sort((a, b) => a - b);
 
+    const stageContext = includeStages ? {
+      stages: todaysStages,
+      divisionRaceIds: [...raceById.keys()],
+      hasRecordedStage: todaysStages.some((stage) =>
+        Number(raceById.get(stage.race_id)?.stages_completed) >= Number(stage.stage_number)),
+    } : {};
     if (pending.length > 0) {
-      return { closed: false, reason: "awaiting_finalization", gameDays, pending: pending.length };
+      return { closed: false, reason: "awaiting_finalization", gameDays, pending: pending.length, ...stageContext };
     }
-    return { closed: true, reason: "closed", gameDays, pending: 0 };
+    return { closed: true, reason: "closed", gameDays, pending: 0, ...stageContext };
   } catch {
     // best-effort: en netvaerks-/synkron fejl maa ALDRIG kunne AABNE knappen eller
     // sweepen. En ukendt tilstand svarer "ikke lukket"; naeste cron-tick (5 min)

@@ -108,7 +108,11 @@ test("#8357 a failed reservation read must not look like an unlocked balance", a
 
 test("#8357 resolveBalanceDisplay: known reservation shows available as the big number and the locked amount", () => {
   assert.deepEqual(resolveBalanceDisplay(1000, 300), { mode: "available", value: 700, locked: 300 });
-  assert.deepEqual(resolveBalanceDisplay(1000, 0), { mode: "available", value: 1000, locked: 0 });
+});
+
+test("#8661: confirmed zero reservation shows the raw balance, including zero cash", () => {
+  assert.deepEqual(resolveBalanceDisplay(1000, 0), { mode: "balance", value: 1000, locked: 0 });
+  assert.deepEqual(resolveBalanceDisplay(0, 0), { mode: "balance", value: 0, locked: 0 });
 });
 
 test("#8357 resolveBalanceDisplay: while the reservation loads the surface shows a skeleton, not a wrong number", () => {

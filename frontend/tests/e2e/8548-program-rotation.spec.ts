@@ -65,7 +65,13 @@ test("R5 switches between week blocks and rotation and sends edits, jumps and co
   }));
   const baseForecast = { fatigue: 35, band: "ok", raceSlots: [4] };
   const rotationDays = ROTATION_DAYS;
-  const dailyRotation = { ...baseForecast, ...rotationDays[0] };
+  const dailyRotation = {
+    ...baseForecast,
+    ...rotationDays[0],
+    raceSlots: [4],
+    pendingSlots: [1],
+    pendingNonStarterSessions: { 1: "tempo" },
+  };
   await page.route("**/api/training/programs/forecast", (route) => mock(route, {
     available: true, tickDate: "2026-11-23", riders: {
       [first.id]: on && mode === "week"
@@ -150,7 +156,20 @@ test("R5 switches between week blocks and rotation and sends edits, jumps and co
   await expect(count).toHaveText("10 passes");
   await expect(page.getByRole("button", { name: "Fill to 35 passes" })).toBeVisible();
   const day = (name: string) => page.getByRole("heading", { name, exact: true }).locator("..");
-  await expect(day("Mon").getByTestId("program-r5-rotation-index")).toHaveText(["7/10", "8/10", "9/10"]);
+  const monday = day("Mon");
+  await expect(monday.getByTestId("program-r5-rotation-index")).toHaveText(["7/10", "8/10", "9/10"]);
+  const pendingField = monday.locator("ol > li").nth(1);
+  const captureRotation = async (version: "before" | "after") => {
+    if (process.env.CZ_8678_ROTATION_SHOTS !== version || testInfo.project.name === "mobile-webkit") return;
+    await pendingField.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: evidenceShotPath("pr-screens/8678/" + width + "-rotation-" + version + ".png"),
+      animations: "disabled", scale: "css",
+    });
+  };
+  await captureRotation("before");
+  await expect(pendingField).toHaveText("Did not start · Tempo");
+  await captureRotation("after");
   await expect(day("Tue").getByText("Rest", { exact: true })).toHaveCount(5);
   await expect(day("Tue").getByTestId("program-r5-rotation-index")).toHaveCount(0);
   await expect(day("Wed").getByTestId("program-r5-rotation-index")).toHaveText(["10/10", "1/10", "2/10", "3/10"]);

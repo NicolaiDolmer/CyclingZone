@@ -173,12 +173,18 @@ export const STAGE_FLAGS = Object.freeze([
   // #7733: fra etape 2 afgoer pulje og trup ikke laengere hvem der er i loebet (kun loeb der ikke er startet).
   // Seedet off; kun "on" taender, "beta" laeses som off; "stop" er noedstop for loeb i gang. Ejer-only flip.
   { key: "started_field_lock_7733", area: "race-engine", label: "Etapeløb — startfeltet holder til mål" },
+  // #8180: formtoppens optakt læser alle træningsrækker for alle hold (kun løb der ikke er startet). Seedet off;
+  // kun "on" tænder, "beta" læses som off; "stop" er nødstop for løb i gang (peakLeadupAllRows8180Flag.js). Ejer-only flip.
+  { key: "peak_leadup_all_rows_8180", area: "race-engine", label: "Formtop — optakten læser alle hold" },
   // #7730: jagten afgøres af de hold der jager (kun s5_profiles_v3, kun løb der ikke er startet). Seedet off;
   // kun "on" tænder, "beta" læses som off; "stop" er nødstop for løb i gang (teamChase7730Flag.js). Ejer-only flip.
   { key: "team_chase_7730", area: "race-engine", label: "Jagten — afgøres af de hold der jager" },
   // #7855: troejejagt i etapeplanen (Hent point / Hent bjergpoint), kun s5_profiles_v3 og kun loeb der ikke er startet.
   // Seedet off; kun "on" taender, "beta" laeses som off; "stop" er noedstop for loeb i gang (jerseyHunt7855Flag.js). Ejer-only flip.
   { key: "jersey_hunt_7855", area: "race-engine", label: "Taktik — trøjejagt (Hent point / Hent bjergpoint)" },
+  // #8799: selektion på kuperet og mellembjerg (#7645) + afslutninger på kuperet og bølget (#8189), kun s5_profiles_v3
+  // og kun løb der ikke er startet. Seedet off; kun "on" tænder; "stop" er nødstop for løb i gang (hillySelection8799Flag.js). Ejer-only flip.
+  { key: "hilly_selection_8799", area: "race-engine", label: "Kuperet — selektion og afslutninger (S6)" },
   // #7715: meget traette ryttere paa en haard etape risikerer tidsgraensen, med maerke foer etapen (kun s5_profiles_v3 og kun
   // loeb der ikke er startet). Ikke seedet = off; kun "on" taender (timeLimitFatigue7715.js). Ejer-only flip.
   { key: "time_limit_fatigue_7715", area: "race-engine", label: "Tidsgrænsen — meget trætte ryttere" },

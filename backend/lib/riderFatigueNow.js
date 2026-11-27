@@ -10,7 +10,7 @@
 
 import { enteringFatigueV2, settleDateFatigueV2 } from "./conditionModelV2.js";
 import { CONDITION_MODEL_V2_FLAG_KEY, isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
-import { copenhagenDateString, copenhagenWallTimeToUTC } from "./copenhagenTime.js";
+import { copenhagenDateString, copenhagenHour, copenhagenWallTimeToUTC } from "./copenhagenTime.js";
 import { medicalBonus } from "./medicalEffects.js";
 import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js";
 import { captureException } from "./sentry.js";
@@ -815,13 +815,26 @@ export async function fatigueOutlookForTeam({ supabase, team, seasonId, conditio
         tonight = await loadTeamFatigueForecast({ supabase, team, seasonId, now });
       }
     }
+    const overnightStageRiders = [...next].filter(([, stage]) =>
+      stage.tickDate === today && copenhagenHour(new Date(stage.scheduledAt)) < 2)
+      .map(([id]) => id);
+    let heldRiders = null;
+    if (overnightStageRiders.length) {
+      const { loadOvernightForecastHold } = await import("./trainingWeekPlanForecast.js");
+      heldRiders = await loadOvernightForecastHold({
+        supabase: reads, teamId: team?.id, seasonId, tickDate: today, riderIds: overnightStageRiders,
+      });
+    }
     for (const [id, n] of next) {
       const row = out.get(id);
       if (!row || instant.incompleteRiderIds.has(id)) continue;
       // Codex P2 (#8054): ukendt træthed lige nu (null, "—") giver også et ukendt skøn ved
       // start. Number(null) er 0, så tallet må ikke tvinges gennem Number() først.
       if (!isKnownFatigue(row.fatigue)) continue;
-      if (n.tickDate === today) row.fatigueAtStart = Number(row.fatigue);
+      if (n.tickDate === today) {
+        row.fatigueAtStart = Number(row.fatigue);
+        if (heldRiders?.has(id)) Object.assign(row, { fatigueAtStartIsForecast: true });
+      }
       else if (tonight?.available) row.fatigueAtStart = tonight.riders?.[id]?.fatigue ?? null;
     }
   } catch (err) {
