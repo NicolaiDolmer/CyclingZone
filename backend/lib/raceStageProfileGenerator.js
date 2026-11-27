@@ -1660,7 +1660,7 @@ export function assignGrandTourFinishes(rng, ordered, summits, squad = null, { s
 function buildGrandTourS5(rng, stages, race, { allowTtt = false } = {}) {
   const s6 = isS6Race(race); // #8830: mini-GT, S6-GT-vaegte og ungdommens vaegte kun fra S6
   const juniorMini = s6 && race?.squad === "junior" && stages < GRAND_TOUR_MIN_STAGES;
-  const { types, summits } = grandTourQuotaTypes(grandTourTypeFor(race), stages, { allowTtt, ...(juniorMini ? { maxTimeTrials: 1 } : {}) });
+  const { types, summits } = grandTourQuotaTypes(grandTourTypeFor(race), stages, { allowTtt, maxTimeTrials: juniorMini ? 1 : null });
   const ordered = orderGrandTourS5(rng, types, { s6, lastTtOnly: juniorMini });
   const finishes = assignGrandTourFinishes(rng, ordered, summits, s6 && youthFinishWeightsFor("hilly", race?.squad) ? race.squad : null, { s6 });
   return ordered.map((t, i) => toStageS5(rng, t, i + 1, race, true, {

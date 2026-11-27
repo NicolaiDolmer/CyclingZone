@@ -246,8 +246,10 @@ export const YOUTH_FINISH_WEIGHTS = Object.freeze({
     high_mountain: Object.freeze([{ value: "long_climb", weight: 92 }, { value: "descent", weight: 8 }]),
   }),
   junior: Object.freeze({
-    flat: Object.freeze([{ value: "flat_sprint", weight: 85 }, { value: "uphill_sprint", weight: 15 }]),
-    rolling: Object.freeze([{ value: "flat_sprint", weight: 50 }, { value: "uphill_sprint", weight: 15 }, { value: "punch", weight: 35 }]),
+    // #8830 (ejer 27/11): junior-GT'en har nu een enkeltstart; den frigjorte landevejsetape
+    // maa ikke traekke flad spurt over maalet, saa flad faar flere spurter op ad bakke.
+    flat: Object.freeze([{ value: "flat_sprint", weight: 56 }, { value: "uphill_sprint", weight: 44 }]),
+    rolling: Object.freeze([{ value: "flat_sprint", weight: 42 }, { value: "uphill_sprint", weight: 18 }, { value: "punch", weight: 40 }]),
     hilly: Object.freeze([
       { value: "flat_sprint", weight: 6 }, { value: "uphill_sprint", weight: 4 }, { value: "punch", weight: 44 },
       { value: "wall_finish", weight: 42 }, { value: "descent", weight: 4 },

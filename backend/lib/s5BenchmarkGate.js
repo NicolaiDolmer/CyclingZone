@@ -310,6 +310,10 @@ export function isGrandTourRace(race) {
  * landevejs-terraenerne skaleres med stoerste-rest-metoden (som generatoren). Ved kvotens
  * eget etapeantal (18/17/17) er resultatet kvoten selv.
  */
+/**
+ * @param {string} gtType @param {number} stageCount
+ * @param {{ maxTimeTrials?: number|null }} [opts]
+ */
 export function expectedGrandTourCounts(gtType, stageCount, { maxTimeTrials = null } = {}) {
   const q = S5_GT_QUOTAS[gtType] ?? S5_GT_QUOTAS.tour;
   // #8830: junior-mini-GT'en har een enkeltstart (ejer 27/11), samme regel som generatoren.
@@ -354,7 +358,7 @@ export function checkGrandTour(race, { s6 = false } = {}) {
   const n = stages.length;
   const gtType = grandTourTypeOf({ ...race, stages: n });
   const juniorMini = isYouthMiniGrandTour(race, n, s6) && race?.squad === "junior";
-  const expected = expectedGrandTourCounts(gtType, n, juniorMini ? { maxTimeTrials: 1 } : {});
+  const expected = expectedGrandTourCounts(gtType, n, { maxTimeTrials: juniorMini ? 1 : null });
   // #8830 U23 loesning A (ejer 27/11): en ungdoms-mini-GT ender bevidst paa toppen af alle
   // sine bjergtop-terraener (generatorens regel, raceStageProfileGenerator assignGrandTourFinishes),
   // saa dens bjergtop-kvote er summen af de skalerede bjergtop-terraener, ikke seniorens
