@@ -541,7 +541,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
                   key={`${band.date}-${i}`}
                   colSpan={band.days.length}
                   title={band.date ?? undefined}
-                  className={`border-b border-cz-border bg-cz-subtle px-1 py-1 text-2xs ${capsClass} text-cz-3 font-semibold whitespace-nowrap overflow-hidden text-ellipsis`}
+                  className={`border-b border-cz-border bg-cz-subtle px-1 py-1 text-2xs ${capsClass} text-cz-3 font-semibold ${embedded ? "whitespace-normal leading-tight align-bottom" : "whitespace-nowrap overflow-hidden text-ellipsis"}`}
                 >
                   {band.date ? formatBandDate(band.date, embedded ? i18n.language : null) : "—"}
                 </th>
@@ -559,19 +559,21 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
                       key={g.raceId}
                       colSpan={g.colSpan}
                       title={race?.name}
-                      className={`border-b px-1 py-1 text-3xs font-medium overflow-hidden whitespace-nowrap ${
+                      className={`border-b px-1 py-1 text-3xs font-medium overflow-hidden ${embedded && g.colSpan > 1 ? "whitespace-normal align-top" : "whitespace-nowrap"} ${
                         hasError ? "border-cz-danger bg-cz-danger/10 text-cz-danger" : `border-cz-border ${race ? raceGroupTint(race) : ""}`
                       }`}
                     >
                       {race ? (
-                        <span className="flex items-center justify-between gap-1">
+                        // Ejer 27/11 (#8826): paa den nye planlaegningsside bryder datoer og navne paa loeb over flere
+                        // dage over linjer i stedet for at blive skaaret af; et endagsloeb har sit fulde navn i tooltip'en.
+                        <span className={embedded && g.colSpan > 1 ? "flex flex-col items-start gap-0.5 leading-tight" : "flex items-center justify-between gap-1"}>
                           {hasError && <AlertTriangleIcon size={10} className="shrink-0" aria-hidden="true" />}
                           {/* #5301: afmeldt løb bærer sit eget mærke i headeren, så
                               spilleren ser det uden at klikke en celle op — og ser
                               HVORFOR den bevarede opstilling står tonet ned. Samme
                               ord som Race Hub-kolonnen (selection.status.withdrawn). */}
                           {race.withdrawn && <LockIcon size={9} className="shrink-0 text-cz-3" aria-hidden="true" />}
-                          <span className="truncate">{race.name}</span>
+                          <span className={embedded && g.colSpan > 1 ? "break-words" : "truncate"}>{race.name}</span>
                           <span className="tabular-nums text-cz-3 shrink-0">
                             {race.withdrawn
                               ? t(race.didNotStart ? "racehub.status.didNotStart" : "racehub.status.withdrawn")
