@@ -1,4 +1,10 @@
 {
+  "raceLevel": {
+    "u23": "U23",
+    "junior": "Junior",
+    "u23Title": "U23 race",
+    "juniorTitle": "Junior race"
+  },
   "racePageV6": {
     "tab": {
       "results": "Results",

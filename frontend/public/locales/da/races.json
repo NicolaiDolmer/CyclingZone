@@ -1,4 +1,10 @@
 {
+  "raceLevel": {
+    "u23": "U23",
+    "junior": "Junior",
+    "u23Title": "U23-løb",
+    "juniorTitle": "Juniorløb"
+  },
   "racePageV6": {
     "tab": {
       "results": "Resultater",

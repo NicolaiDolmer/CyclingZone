@@ -11,6 +11,7 @@ import { logFirstEvent } from "../lib/logEvent";
 import { pickFirstRaceResultPayload } from "../lib/firstRaceResult";
 import SortableTh from "./ui/SortableTh";
 import { isHiddenYouthClassificationRow } from "../lib/youthClassification.ts";
+import RaceLevelBadge from "./race/RaceLevelBadge.tsx";
 
 // #824 (Discord-feedback): Holdets resultatliste, med rytternavn pr. resultat.
 // Attribution = race_results.team_id (holdet på løbstidspunktet — samme felt
@@ -220,6 +221,7 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
                     ) : (
                       <p className="text-cz-1">{r.race?.name || "—"}</p>
                     )}
+                    <RaceLevelBadge squad={r.race?.squad} className="ms-1.5" />{/* #8853 */}
                     {seasonFilter === "all" && r.race?.season?.number != null && (
                       <p className="text-cz-3 text-3xs">{t("results.seasonRow", { n: r.race.season.number })}</p>
                     )}

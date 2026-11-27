@@ -21,6 +21,7 @@ import { supabase } from "../../../lib/supabase.js";
 import I18nReadyGate from "../../I18nReadyGate.jsx";
 import CareerFirstMomentRow from "../../CareerFirstMomentRow.jsx";
 import { isHiddenYouthCareerEvent } from "../../../lib/youthClassification.ts";
+import RaceLevelBadge from "../../race/RaceLevelBadge.tsx";
 
 // #3398 (Maiden Win Engine) — permanent palmarès-spor: en "first" skal kunne
 // genfindes på rytterens egen profil, ikke kun dashboardet/løbssiden i det
@@ -216,12 +217,16 @@ export default function RiderPalmaresTab({ riderId, seasonRows, loadFailed = fal
               {entry.races.map((race) => (
                 <div key={race.raceId} className="flex items-start justify-between gap-2 flex-wrap min-h-[28px]">
                   {/* #2526: samme klikbar-løbsnavn-mønster som Resultater-fanen. */}
-                  <Link
-                    to={`/races/${race.raceId}`}
-                    className="text-[12.5px] text-cz-1 font-semibold truncate hover:text-cz-accent-t transition-colors"
-                  >
-                    {race.name ?? t("results.fallbackDash")}
-                  </Link>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <Link
+                      to={`/races/${race.raceId}`}
+                      className="text-[12.5px] text-cz-1 font-semibold truncate min-w-0 hover:text-cz-accent-t transition-colors"
+                    >
+                      {race.name ?? t("results.fallbackDash")}
+                    </Link>
+                    {/* #8853: U23-/juniorløb skal stå tydeligt i palmarès. */}
+                    <RaceLevelBadge squad={race.squad} className="shrink-0" />
+                  </span>
                   <div className="flex items-center gap-1 flex-wrap justify-end">
                     {race.achievements.map((a, i) => (
                       <AchievementChip

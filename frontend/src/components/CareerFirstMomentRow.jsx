@@ -1,6 +1,7 @@
 import RiderLink from "./RiderLink";
 import RaceLink from "./RaceLink";
 import { TrophyIcon, ChevronRightIcon } from "./ui";
+import RaceLevelBadge from "./race/RaceLevelBadge.tsx";
 
 // #3398 (Maiden Win Engine) — DEN ene editorial moment-kort-visning, delt
 // mellem dashboardet (MaidenWinMomentCard.jsx) og løbssiden (RaceDetailPage.jsx),
@@ -28,6 +29,7 @@ export default function CareerFirstMomentRow({ event, t, isNew = false, showRace
         <h3 className="font-display text-sm tracking-[0.04em] uppercase text-cz-1 m-0">
           {t(`dashboard:cards.maidenWin.headline.${labelKey}`)}
         </h3>
+        <RaceLevelBadge squad={event.race?.squad} />{/* #8853 */}
         {isNew && (
           <span className="text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 shrink-0">
             {t("dashboard:cards.myResult.newBadge")}
