@@ -206,6 +206,7 @@ export async function runPrognosisTrendBatch({ supabase, now = new Date(), io = 
     try {
       summaries.push(await summarizeTeam({ io: dataIo, teamId, season, seasons, params, today, since, onlyMissing: !full }));
     } catch (err) {
+      // best-effort: holdet tages igen ved næste kørsel; fail() samler ét Sentry-event pr. kørsel.
       fail(teamId, err);
     }
   }
@@ -219,6 +220,7 @@ export async function runPrognosisTrendBatch({ supabase, now = new Date(), io = 
       totals.teams += 1;
       for (const key of Object.keys(counts)) totals[key] += counts[key];
     } catch (err) {
+      // best-effort: holdet tages igen ved næste kørsel; fail() samler ét Sentry-event pr. kørsel.
       fail(summary.teamId, err);
     }
   }

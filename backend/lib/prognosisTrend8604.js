@@ -125,7 +125,12 @@ export function settledXpDates(ticks, { seasonNumberById, birthdate }) {
 }
 
 function safeJson(text) {
-  try { return JSON.parse(text); } catch { return null; } // catch-ok: en ulæselig rapport er en dato uden XP
+  try {
+    return JSON.parse(text);
+  } catch {
+    // best-effort: en ulæselig rapport er en dato uden XP, ikke en fejl i kørslen.
+    return null;
+  }
 }
 
 /**
