@@ -1474,7 +1474,7 @@ function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = n
     // #8830: ungdommen (U23/junior) har egne vaegte, ogsaa i mini-GT'erne.
     // Kun fra S6 (isS6Race); S3-S5 bruger S5-tabellen uaendret.
     const s6 = !isS6Race(race) ? null : youthFinishWeightsFor(terrain, race?.squad)
-      ?? (isStageRace && race?.terrain_archetype === "grand_tour" ? null : roadFinishWeightsFor(terrain, targetType));
+      ?? (isStageRace && race?.terrain_archetype === "grand_tour" ? null : roadFinishWeightsFor(terrain, targetType, race?.race_class ?? null));
     const weights = /** @type {any} */ (s6 ?? /** @type {Record<string, any>} */ (S5_FINISH_WEIGHTS)[terrain]);
     if (summit === true) return "long_climb";
     if (summit === false) return pickByQuantile(weights.filter((/** @type {any} */ it) => it.value !== "long_climb"), u);

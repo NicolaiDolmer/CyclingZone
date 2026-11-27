@@ -3,12 +3,10 @@
 // Foer rettelsen sendte seedRaceFor ikke `squad` med, saa en U23-/junior-mini-GT fik seniorens
 // GT-afslutninger. Her koeres materializeTierCalendars mod en skrivbar falsk supabase.
 //
-// KENDT KONFLIKT (fundet 27/11 nat, ejer-beslutning): ungdomsreglen "topmaal paa alle bjerg- og
-// hoejbjergetaper" i en mini-GT giver flere bjergtoppe end S5-benchmark-gatens GT-kvote, saa
-// apply AFVISES (fail-closed, intet skrives). Testen doemmer derfor (1) at squad naar generatoren
-// i de profiler apply ville indsaette (tierProfiles = dry-runnens profilesByPoolRaceId, #5405),
-// og (2) at gaten stopper apply i stedet for at skrive en halv kalender. Naar ejeren har valgt
-// (gate-kvote for mini-GT eller faerre ungdoms-bjergtoppe), skal (2) vendes til en groen apply.
+// U23 LOESNING A (ejer 27/11): ungdommens mini-GT'er doemmes i S5-benchmark-gaten mod deres egen
+// bjergtop-kvote (summen af bjergtop-terraenerne, eksakt). Testen doemmer (1) at squad naar
+// generatoren i de profiler apply indsaetter (tierProfiles = dry-runnens profilesByPoolRaceId, #5405),
+// og (2) at apply nu SKRIVER for baade U23 og junior med ungdommens bjergtoppe.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
