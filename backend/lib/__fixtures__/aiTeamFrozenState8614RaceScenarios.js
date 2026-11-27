@@ -4,6 +4,8 @@
 // en frossen kopi af merge-base-koden (#7587). Scenariet faar motorfunktionen udefra, saa samme
 // input kan koeres mod baade base og ny kode. Udfaldet er motorens egne skrivninger og hvad den
 // laeste, ikke tal der er skrevet i haanden.
+import { createHash } from "node:crypto";
+import { gunzipSync } from "node:zlib";
 import { ABILITY_KEYS } from "../raceSimulator.js";
 import { DEMAND_VECTORS } from "../raceStageProfileGenerator.js";
 
@@ -110,6 +112,33 @@ export function normalizeUuids(value) {
     return seen.get(m);
   });
   return JSON.parse(json);
+}
+
+/**
+ * #8808: motor-input-snapshottet gemmes gzip'et. De komprimerede bytes afhaenger af platformen
+ * (gzip-headerens OS-felt og zlib-buildet), saa en golden fra Windows aldrig matcher Linux-CI.
+ * Bytes erstattes af sha256 over det UDPAKKEDE indhold (platform-uafhaengigt, samme indhold),
+ * og den komprimerede laengde fjernes. Alt andet i raekken (inkl. input_sha256) bevares.
+ */
+export function normalizeCompressedSnapshots(value) {
+  if (Array.isArray(value)) return value.map(normalizeCompressedSnapshots);
+  if (!value || typeof value !== "object") return value;
+  const out = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (k === "input_gzip_b64" && typeof v === "string") {
+      out[k] = `gunzip-sha256:${createHash("sha256").update(gunzipSync(Buffer.from(v, "base64"))).digest("hex")}`;
+    } else if (k === "stored_bytes" && typeof value.input_gzip_b64 === "string") {
+      out[k] = null;
+    } else {
+      out[k] = normalizeCompressedSnapshots(v);
+    }
+  }
+  return out;
+}
+
+/** Hele normaliseringen af et motor-udfald foer hash: platform-uafhaengige snapshots + faste uuid'er. */
+export function normalizeRaceOutcome(value) {
+  return normalizeUuids(normalizeCompressedSnapshots(value));
 }
 
 /** Uden noeglen for denne kontakt: det eneste nye opslag kontakten maa koste. */

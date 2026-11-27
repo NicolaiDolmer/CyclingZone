@@ -22,7 +22,7 @@ import { findStageFlag } from "./stageFlagCatalog.js";
 import { runSweepScenario, flagClient } from "./__fixtures__/aiTeamFrozenState8614Scenarios.js";
 import { loadEntrantsForRace, simulateStageByIndex } from "./raceRunner.js";
 import {
-  runLoadEntrantsScenario, runCrashStageScenario, normalizeUuids, readsWithoutFrozenFlag, AI_FROZEN_FLAG_READ,
+  runLoadEntrantsScenario, runCrashStageScenario, normalizeRaceOutcome, readsWithoutFrozenFlag, AI_FROZEN_FLAG_READ,
 } from "./__fixtures__/aiTeamFrozenState8614RaceScenarios.js";
 import * as readiness from "./seasonTransitionReadiness.js";
 
@@ -474,7 +474,7 @@ const sha = (value) => createHash("sha256").update(JSON.stringify(value)).digest
 async function raceOutcome(flags) {
   const entrants = await runLoadEntrantsScenario({ loadEntrantsForRace, flags });
   const stage = await runCrashStageScenario({ simulateStageByIndex, flags });
-  const outcome = normalizeUuids({
+  const outcome = normalizeRaceOutcome({
     load_entrants: { entrants: entrants.entrants, reads: readsWithoutFrozenFlag(entrants.reads), writes: entrants.writes, rpcCalls: entrants.rpcCalls },
     crash_stage: { stageRows: stage.stageRows, reads: readsWithoutFrozenFlag(stage.reads), writes: stage.writes, rpcCalls: stage.rpcCalls },
   });
