@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { planFlips, parseArgs, formatPlan } from "./roadmap-flip.mjs";
+import { planFlips, parseArgs, formatPlan, deliveryGate, checkDelivery } from "./roadmap-flip.mjs";
 
 const NOW = "2026-10-06T10:00:00.000Z";
 
@@ -55,4 +55,27 @@ test("formatPlan er læsbar for tom og ikke-tom plan", () => {
   }));
   assert.match(text, /roadmap_items/);
   assert.match(text, /planned -> shipped/);
+});
+
+// #8793: #7892 stod som leveret på roadmappet efter en docs-PR (masterplan + undersøgelse).
+test("deliveryGate afviser docs-only og manglende levering, og godtager spillervendt levering", () => {
+  const merged = [{ number: 7894, state: "closed", merged: true }];
+  assert.equal(deliveryGate({ prs: merged, internalOnly: true }).ok, false);
+  assert.match(deliveryGate({ prs: merged, internalOnly: true }).reason, /interne stier/);
+  assert.equal(deliveryGate({ prs: [], commits: [] }).ok, false);
+  assert.equal(deliveryGate({ prs: [{ number: 1, state: "open", merged: false }] }).ok, false, "en åben PR er ikke levering");
+  assert.equal(deliveryGate({ prs: merged, internalOnly: false }).ok, true);
+  assert.equal(deliveryGate({ commits: [{ sha: "abc", subject: "x" }], internalOnly: false }).ok, true);
+  assert.equal(deliveryGate().ok, false);
+});
+
+test("checkDelivery bruger issuets bundle og afviser fixturen for #7892", () => {
+  const seen = [];
+  const fetchBundle = ({ number }) => {
+    seen.push(number);
+    return { prs: [{ number: 7894, state: "closed", merged: true }], commits: [], internalOnly: true };
+  };
+  assert.equal(checkDelivery({ issue: 7892, fetchBundle }).ok, false);
+  assert.deepEqual(seen, [7892]);
+  assert.throws(() => checkDelivery({ issue: 7892, fetchBundle: () => { throw new Error("gh nede"); } }), /gh nede/);
 });
