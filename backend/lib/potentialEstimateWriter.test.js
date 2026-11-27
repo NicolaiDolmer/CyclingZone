@@ -45,7 +45,10 @@ const client = ({ flag = "on", params = PARAMS, ...tables } = {}) => createFakeS
   ...tables,
 });
 
-const planOne = ({ rider, stored = null, looks = 0, dates = 0, scoutTier = null, trigger, teamId = "t1", staffSpeed = 0 }) => planTeamEstimates({
+const planOne = ({
+  rider, stored = null, looks = 0, dates = 0, scoutTier = null, trigger, teamId = "t1", staffSpeed = 0, fromDayOne = undefined,
+}) => planTeamEstimates({
+  ...(fromDayOne === undefined ? {} : { fromDayOne }),
   teamId,
   riders: [rider],
   storedByRider: new Map(stored ? [[rider.id, stored]] : []),
@@ -124,26 +127,46 @@ test("egen rytter får sit første skøn ved grænsen", () => {
   assert.equal(rows[0].team_id, "t1");
 });
 
+// #8604-reglerne gælder kun med prognosis_model2 tændt (#8810: fromDayOne fra konfigurationen).
 test("#8604: egen rytter uden for akademiet får sit første skøn fra dag ét", () => {
   for (const trigger of ["team_change", "backfill", "sunday"]) {
-    const { rows } = planOne({ rider: { ...own, is_academy: false }, dates: 0, trigger });
+    const { rows } = planOne({ rider: { ...own, is_academy: false }, dates: 0, trigger, fromDayOne: true });
     assert.equal(rows.length, 1, trigger);
     assert.equal(rows[0].knowledge_key, "own0");
   }
 });
 
+test("#8810: uden prognosis_model2 venter egen rytter uden for akademiet på grænsen som før", () => {
+  for (const fromDayOne of [undefined, false]) {
+    for (const trigger of ["team_change", "backfill", "sunday"]) {
+      assert.equal(planOne({ rider: { ...own, is_academy: false }, dates: 0, trigger, fromDayOne }).counts.noKnowledge, 1, `${trigger} ${fromDayOne}`);
+      assert.equal(planOne({ rider: { ...own, is_academy: false }, dates: 4, trigger, fromDayOne }).counts.noKnowledge, 1, `${trigger} ${fromDayOne}`);
+    }
+  }
+});
+
 test("#8604: akademitalentet læres stadig først, og et ukendt akademifelt følger den gamle regel", () => {
-  assert.equal(planOne({ rider: { ...own, is_academy: true }, dates: 4, trigger: "backfill" }).counts.noKnowledge, 1);
-  assert.equal(planOne({ rider: { ...own, is_academy: true }, dates: 5, trigger: "backfill" }).rows.length, 1);
-  assert.equal(planOne({ rider: own, dates: 0, trigger: "backfill" }).counts.noKnowledge, 1);
+  const on = { fromDayOne: true };
+  assert.equal(planOne({ rider: { ...own, is_academy: true }, dates: 4, trigger: "backfill", ...on }).counts.noKnowledge, 1);
+  assert.equal(planOne({ rider: { ...own, is_academy: true }, dates: 5, trigger: "backfill", ...on }).rows.length, 1);
+  assert.equal(planOne({ rider: own, dates: 0, trigger: "backfill", ...on }).counts.noKnowledge, 1);
 });
 
 test("#8604: dag ét gælder kun egne ryttere, aldrig en fremmed uden kig", () => {
-  assert.equal(planOne({ rider: { ...foreign, is_academy: false }, trigger: "sunday" }).counts.noKnowledge, 1);
+  assert.equal(planOne({ rider: { ...foreign, is_academy: false }, trigger: "sunday", fromDayOne: true }).counts.noKnowledge, 1);
 });
 
 test("#8604: dag ét ændrer ikke trinnet for en rytter med mange datoer", () => {
-  assert.equal(planOne({ rider: { ...own, is_academy: false }, dates: 25, trigger: "sunday" }).rows[0].knowledge_key, "own2");
+  assert.equal(planOne({ rider: { ...own, is_academy: false }, dates: 25, trigger: "sunday", fromDayOne: true }).rows[0].knowledge_key, "own2");
+});
+
+test("#8810: konfigurationen bærer fromDayOne kun med prognosis_model2 on", async () => {
+  for (const [model2, expected] of [[null, undefined], ["off", undefined], ["beta", undefined], ["on", true]]) {
+    const sb = client(model2 == null ? {} : { app_config: [{ key: "potential_estimate_writes", value: "on" }, { key: "prognosis_model2", value: model2 }] });
+    const config = await loadEstimateWriteConfig(sb, { now: new Date(NOW) });
+    assert.equal(config.enabled, true, String(model2));
+    assert.equal(config.fromDayOne, expected, String(model2));
+  }
 });
 
 test("trænerstaben fremskynder viden om egne ryttere", () => {

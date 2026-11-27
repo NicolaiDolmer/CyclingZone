@@ -22,8 +22,12 @@ const ticks = (riderId, teamId, n) => Array.from({ length: n }, (_, i) => ({
   rider_id: riderId, team_id: teamId, season_id: "s1", game_day: i + 1, tick_date: `2026-11-${String(10 + i).padStart(2, "0")}`,
 }));
 
-const client = ({ flag = "on", ...tables } = {}) => createFakeSupabase({
-  app_config: [{ key: "potential_estimate_writes", value: flag }],
+// #8810: timesweepet ligger bag prognosis_model2; testene af selve sweepet kører med den tændt.
+const client = ({ flag = "on", model2 = "on", ...tables } = {}) => createFakeSupabase({
+  app_config: [
+    { key: "potential_estimate_writes", value: flag },
+    ...(model2 == null ? [] : [{ key: "prognosis_model2", value: model2 }]),
+  ],
   private_config: [{ key: POTENTIAL_ESTIMATE_PARAMS_KEY, value: PARAMS }],
   teams: [{ id: "t1", is_ai: false, is_bank: false }, { id: "ai", is_ai: true, is_bank: false }],
   [POTENTIAL_ESTIMATES_TABLE]: [],
@@ -76,6 +80,18 @@ test("slukket skrivekontakt: intet læses ud over kontakten, intet skrives", asy
   assert.deepEqual([...new Set(tables)], ["app_config"]);
 });
 
+test("#8810: prognosis_model2 slukket, manglende eller beta: kun kontakten læses, intet skrives", async () => {
+  for (const model2 of ["off", "beta", null]) {
+    const sb = client({ model2, riders: [rider("bought"), rider("youth5", { is_academy: true })], training_rider_ticks: ticks("youth5", "t1", 5) });
+    const tables = [];
+    const from = sb.from;
+    sb.from = (table) => { tables.push(table); return from(table); };
+    assert.deepEqual(await runPotentialEstimateMissingSweep({ supabase: sb, now: NOW }), { ran: false, skipped: "model2_off" }, String(model2));
+    assert.deepEqual([...new Set(tables)], ["app_config"], String(model2));
+    assert.deepEqual(sb.state[POTENTIAL_ESTIMATES_TABLE], [], String(model2));
+  }
+});
+
 test("tick: et fejlende hold giver ét samlet Sentry-event og vælter ikke kørslen", async () => {
   const sb = client({ riders: [rider("bought")] });
   const from = sb.from;
@@ -90,8 +106,11 @@ test("tick: et fejlende hold giver ét samlet Sentry-event og vælter ikke kørs
   assert.match(captured[0], /potential-estimate-missing: 1 teams failed/);
 });
 
-test("læsningen: eget akademitalent uden skøn står i Læres, også efter grænsen", () => {
-  assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: 2 }), { hidden: true, reason: "learning", trainings: 2, trainingsNeeded: 5 });
-  assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: 9 }), { hidden: true, reason: "learning", trainings: 5, trainingsNeeded: 5 });
-  assert.deepEqual(buildPotentialView({ learningYouth: false, trainings: 9 }), { hidden: true, reason: "unscouted" });
+test("læsningen: med Model 2 står eget akademitalent uden skøn i Læres, også efter grænsen", () => {
+  const on = { learningUntilWritten: true };
+  assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: 2, ...on }), { hidden: true, reason: "learning", trainings: 2, trainingsNeeded: 5 });
+  assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: 9, ...on }), { hidden: true, reason: "learning", trainings: 5, trainingsNeeded: 5 });
+  assert.deepEqual(buildPotentialView({ learningYouth: false, trainings: 9, ...on }), { hidden: true, reason: "unscouted" });
+  // #8810: slukket er reglen som før #8604.
+  assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: 9 }), { hidden: true, reason: "unscouted" });
 });

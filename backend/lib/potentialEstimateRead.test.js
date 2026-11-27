@@ -118,8 +118,10 @@ test("buildPotentialView: egen ungdomsrytter læres indtil grænsen", () => {
   assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: 2 }), {
     hidden: true, reason: "learning", trainings: 2, trainingsNeeded: TRAININGS_NEEDED,
   });
-  // #8604: efter grænsen og før skønnet er skrevet, står han på x af x, aldrig uden tekst.
-  assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: TRAININGS_NEEDED }), {
+  // #8810: uden prognosis_model2 er reglen som før #8604.
+  assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: TRAININGS_NEEDED }), { hidden: true, reason: "unscouted" });
+  // #8604 (bag prognosis_model2): efter grænsen og før skønnet er skrevet, står han på x af x.
+  assert.deepEqual(buildPotentialView({ learningYouth: true, trainings: TRAININGS_NEEDED, learningUntilWritten: true }), {
     hidden: true, reason: "learning", trainings: TRAININGS_NEEDED, trainingsNeeded: TRAININGS_NEEDED,
   });
 });
@@ -143,6 +145,24 @@ test("loadPotentialViews: læser kun holdets egne rækker og aldrig de skjulte k
 test("loadPotentialViews: træninger tælles som datoer på holdet, ikke rækker", async () => {
   const views = await loadPotentialViews(world(), { teamId: TEAM, riderIds: ["youth"] });
   assert.deepEqual(views.get("youth"), { hidden: true, reason: "learning", trainings: 2, trainingsNeeded: TRAININGS_NEEDED });
+});
+
+test("#8810: Læres efter grænsen kun med prognosis_model2 on, og kontakten læses kun da", async () => {
+  const fiveDates = ["01", "02", "03", "04", "05"].map((d, i) => ({
+    rider_id: "youth", team_id: TEAM, tick_date: `2026-11-${d}`, season_id: "s", game_day: i + 1,
+  }));
+  for (const [config, expected] of [
+    [[], { hidden: true, reason: "unscouted" }],
+    [[{ key: "prognosis_model2", value: "off" }], { hidden: true, reason: "unscouted" }],
+    [[{ key: "prognosis_model2", value: "beta" }], { hidden: true, reason: "unscouted" }],
+    [[{ key: "prognosis_model2", value: "on" }], { hidden: true, reason: "learning", trainings: TRAININGS_NEEDED, trainingsNeeded: TRAININGS_NEEDED }],
+  ]) {
+    const views = await loadPotentialViews(world({ training_rider_ticks: fiveDates, app_config: config }), { teamId: TEAM, riderIds: ["youth"] });
+    assert.deepEqual(views.get("youth"), expected, JSON.stringify(config));
+  }
+  const under = world({ app_config: [{ key: "prognosis_model2", value: "on" }] });
+  await loadPotentialViews(under, { teamId: TEAM, riderIds: ["youth", "scouted", "veteran"] });
+  assert.ok(!under.reads.some((read) => read.table === "app_config"), "under grænsen læses kontakten ikke");
 });
 
 test("loadPotentialViews: tæller kun træninger, når en ungdomsrytter mangler et skøn", async () => {
