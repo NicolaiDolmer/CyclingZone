@@ -182,6 +182,31 @@ export const ROAD_FINISH_WEIGHTS = Object.freeze({
   ]),
 });
 
+/**
+ * #8830 (ejer 27/11, "Ret D1 nu"): D1's World Tour-loeb (klassen OtherWorldTourA findes kun i
+ * D1) ender oftere op ad bakke end resten af kalenderen; med de faelles vaegte ramte D1 ikke
+ * afslutningsmaalet i prods katalog (maaling i balance-internals/). Klassen er fast pr. loeb, saa samme
+ * loeb har stadig samme parcours i alle divisioner (#2276). Kun flad og boelget; resten som ROAD.
+ */
+export const WORLD_TOUR_A_FINISH_WEIGHTS = Object.freeze({
+  flat: Object.freeze([{ value: "flat_sprint", weight: 55 }, { value: "uphill_sprint", weight: 45 }]),
+  rolling: Object.freeze([{ value: "flat_sprint", weight: 14 }, { value: "uphill_sprint", weight: 20 }, { value: "punch", weight: 66 }]),
+});
+
+/**
+ * #8830 (ejer 27/11, "ret gerne D3's spurt med"): ProSeries (D3's loeb) faar lidt flere flade
+ * etaper med spurt op ad bakke; spurten er stadig den hyppigste afslutning paa flad.
+ */
+export const PRO_SERIES_FINISH_WEIGHTS = Object.freeze({
+  flat: Object.freeze([{ value: "flat_sprint", weight: 64 }, { value: "uphill_sprint", weight: 36 }]),
+});
+
+/** #8830: klasse-vaegte uden for Grand Tours (klassen er fast pr. loeb, #2276). */
+export const CLASS_FINISH_WEIGHTS = Object.freeze({
+  OtherWorldTourA: WORLD_TOUR_A_FINISH_WEIGHTS,
+  ProSeries: PRO_SERIES_FINISH_WEIGHTS,
+});
+
 /** Brosten (profile_type cobbles): spurten og de korte ramper dominerer, nedkoersel er sjaelden. */
 export const COBBLES_FINISH_WEIGHTS = Object.freeze({
   flat: ROAD_FINISH_WEIGHTS.flat,
@@ -246,12 +271,12 @@ export const YOUTH_FINISH_WEIGHTS = Object.freeze({
  */
 export const GT_FINISH_WEIGHTS_S6 = Object.freeze({
   hilly: Object.freeze([
-    { value: "flat_sprint", weight: 18 }, { value: "uphill_sprint", weight: 16 }, { value: "punch", weight: 5 },
-    { value: "wall_finish", weight: 6 }, { value: "descent", weight: 22 },
+    { value: "flat_sprint", weight: 8 }, { value: "uphill_sprint", weight: 20 }, { value: "punch", weight: 10 },
+    { value: "wall_finish", weight: 7 }, { value: "descent", weight: 22 },
   ]),
   medium_mountain: Object.freeze([
-    { value: "flat_sprint", weight: 8 }, { value: "punch", weight: 1 }, { value: "wall_finish", weight: 1 },
-    { value: "long_climb", weight: 9 }, { value: "descent", weight: 8 },
+    { value: "flat_sprint", weight: 4 }, { value: "punch", weight: 2 }, { value: "wall_finish", weight: 1 },
+    { value: "long_climb", weight: 12 }, { value: "descent", weight: 8 },
   ]),
 });
 
@@ -270,9 +295,12 @@ export function youthFinishWeightsFor(terrain, squad) {
  * hoejbjerg, ukendt terraen): kalderen bruger S5-tabellen uaendret.
  * @param {string} terrain  B+-terraenet for etapens stigninger
  * @param {string | null | undefined} profileType  etapens profile_type (brosten har egen tabel)
+ * @param {string | null} [raceClass]  loebets klasse (#8830: OtherWorldTourA har egne vaegte)
  * @returns {ReadonlyArray<{ value: string, weight: number }> | null}
  */
-export function roadFinishWeightsFor(terrain, profileType) {
+export function roadFinishWeightsFor(terrain, profileType, raceClass = null) {
+  const byClass = profileType !== "cobbles" && raceClass ? /** @type {any} */ (CLASS_FINISH_WEIGHTS)[raceClass] : null;
+  if (byClass?.[terrain]) return byClass[terrain];
   const table = profileType === "cobbles" ? COBBLES_FINISH_WEIGHTS : ROAD_FINISH_WEIGHTS;
   return /** @type {Record<string, ReadonlyArray<{ value: string, weight: number }>>} */ (table)[terrain] ?? null;
 }
