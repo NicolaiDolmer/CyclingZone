@@ -322,7 +322,9 @@ export function simulateTrend(rider, pace, params, career = STANDARD_CAREER) {
   const entries = Object.entries(pace ?? {}).filter(([ability, xp]) => ability in state && xp > 0);
   const ratings = [bestRatingRaw(state)];
   let topIndex = 0;
-  for (let age = age0; age <= career.endAge; age++) {
+  // Mindst et år frem, også for en rytter forbi karrierens sidste sæson, så "om et år" altid kan regnes.
+  const lastAge = Math.max(career.endAge, age0 + 1);
+  for (let age = age0; age <= lastAge; age++) {
     const dates = age === age0 ? Math.round((1 - progress) * perSeason) : perSeason;
     const shares = entries.map(([ability, xp]) => [ability, xp * shareFor(ability, age, params)]);
     for (let d = 0; d < dates; d++) {
