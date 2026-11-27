@@ -4,21 +4,28 @@
 // mærket (mærket er en tilføjelse, ikke en forudsætning for at læse beskeden).
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { collectNotificationRaceIds, youthSquadMap } from "./notificationRaceSquad.js";
+import {
+  collectNotificationRaceIds,
+  youthSquadMap,
+  type NotificationLike,
+  type YouthRaceSquad,
+} from "./notificationRaceSquad.ts";
 
 const CHUNK = 50;
 
-export function useNotificationRaceSquads(notifications) {
+export function useNotificationRaceSquads(
+  notifications: NotificationLike[] | null | undefined,
+): Map<string, YouthRaceSquad> {
   const ids = useMemo(() => collectNotificationRaceIds(notifications), [notifications]);
   const key = ids.join(",");
-  const [squads, setSquads] = useState(() => new Map());
+  const [squads, setSquads] = useState<Map<string, YouthRaceSquad>>(() => new Map());
 
   useEffect(() => {
     if (!key) return undefined;
     let cancelled = false;
     const list = key.split(",");
     (async () => {
-      const rows = [];
+      const rows: Array<{ id: string; squad: string | null }> = [];
       for (let i = 0; i < list.length; i += CHUNK) {
         const { data, error } = await supabase
           .from("races")
@@ -28,7 +35,7 @@ export function useNotificationRaceSquads(notifications) {
           console.warn("notification race squads lookup failed:", error.message);
           return;
         }
-        rows.push(...(data || []));
+        rows.push(...((data || []) as Array<{ id: string; squad: string | null }>));
       }
       if (!cancelled) setSquads(youthSquadMap(rows));
     })();

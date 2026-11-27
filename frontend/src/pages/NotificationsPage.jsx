@@ -18,8 +18,8 @@ import { resolveAggregateLink } from "../components/notifications/aggregateLink.
 import { notifyUnreadChanged, subscribeUnreadSync } from "../components/notifications/unreadSync.js"; // #6473
 import { findSupersededUnreadIds } from "../components/notifications/supersededUnread.js"; // #6385
 import SeasonSquadPromotions from "../components/notifications/SeasonSquadPromotions.js";
-import { useNotificationRaceSquads } from "../components/notifications/useNotificationRaceSquads.js"; // #8853
-import { aggregateRaceId, notificationRaceId } from "../components/notifications/notificationRaceSquad.js"; // #8853
+import { useNotificationRaceSquads } from "../components/notifications/useNotificationRaceSquads.ts"; // #8853
+import { aggregateRaceId, notificationRaceId } from "../components/notifications/notificationRaceSquad.ts"; // #8853
 import RaceLevelBadge from "../components/race/RaceLevelBadge.tsx"; // #8853
 import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
