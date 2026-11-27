@@ -598,6 +598,14 @@ function Workbench() {
   };
   // Formtop-board'et én gang for siden: formtop i Trup, maerket i loebslisten og Formtop-visningen.
   const peakData = usePeakBoardData(load.state === "ready");
+  // Codex P2 (#8871): Saeson -> Form kan oprette, fjerne eller flytte en formtop i en anden planner-instans.
+  // Tilbage paa Uge hentes formtop-board'et igen, saa Trup-maerkerne og Formtop-fanen ikke viser de gamle planer.
+  const { reload: reloadPeakBoard } = peakData;
+  const wasWeekForPeaks = useRef(weekShown);
+  useEffect(() => {
+    if (weekShown && !wasWeekForPeaks.current) reloadPeakBoard();
+    wasWeekForPeaks.current = weekShown;
+  }, [weekShown, reloadPeakBoard]);
 
   const upcomingNeed = allRaces.filter(
     (r) => !isRacePast(r) && (raceStartDate(r, dates) ?? "9999") <= addDays(today, 8) && raceReadiness(r, counts.get(r.id) ?? 0, shownWithdrawn).state === "missing",

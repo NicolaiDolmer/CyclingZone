@@ -122,7 +122,10 @@ test("form lens data: only drafts with a target count, seasons resolve to the ac
 test("view contract: default export with onOpenRace, the old matrix stays mounted and embedded", () => {
   assert.match(viewSrc, /export default function SeasonMatrixView\(\{\s*onOpenRace,\s*onDirtyChange,\s*needSquadCount,\s*\}: \{\s*onOpenRace\?: \(raceId: string\) => void;/);
   assert.match(viewSrc, /<div hidden=\{!lensShowsMatrix\(lens\)\}/, "the matrix is hidden, not unmounted, so a draft survives a lens switch");
-  assert.match(viewSrc, /<SeasonMatrix[\s\S]*?embedded[\s\S]*?onOpenRace=\{onOpenRace\}[\s\S]*?onData=\{onData\}/);
+  assert.match(viewSrc, /<SeasonMatrix[\s\S]*?embedded[\s\S]*?onOpenRace=\{openRace\}[\s\S]*?onData=\{onData\}/);
+  // Codex P2 (#8871): et loeb kan kun aabnes i Uge fra den aktive saeson (Uge henter kun den).
+  assert.match(viewSrc, /const openRace = seasonChoice == null \|\| seasonChoice === activeNumber \? onOpenRace : undefined;/);
+  assert.match(viewSrc, /<RouteMatchLens snapshot=\{snapshot\} onOpenRace=\{openRace\} \/>/);
   assert.match(viewSrc, /window\.confirm\(t\("matrix\.leaveUnsaved"\)\)/, "a season switch with unsaved changes asks first");
   // Ingen nye endpoints: data kommer fra matrixen og Formplan-fanens board.
   assert.doesNotMatch(viewSrc, /\bfetch\(|apiFetch|VITE_API_URL/);
