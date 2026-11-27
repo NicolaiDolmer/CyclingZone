@@ -42,7 +42,7 @@ import { useRiderNames } from "../../../lib/useRiderNames.js";
 import { useUiPref } from "../../../lib/userUiPrefs.ts";
 import {
   tacticsCta, v6NamesFromResults, v6ResultsPhase, v6RouteProfile, v6SavedStages, v6SavedStagesRefreshKey, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6TabButtonFor, v6TabButtons,
-  v6OneDayDayResults, v6TacticsResults, v6TacticsStage, v6WinnerIdsByStage, v6WinnersByStage,
+  v6OneDayDayResults, v6StageOpenForTactics, v6TacticsResults, v6TacticsStage, v6WinnerIdsByStage, v6WinnersByStage,
   type RacePageV6Tab, type StageResultsState, type V6ResultRow,
 } from "./racePageV6Model.ts";
 import V6StageStrip from "./V6StageStrip.tsx";
@@ -154,7 +154,9 @@ export default function RacePageV6(props: RacePageV6Props) {
   // #7865: Taktik-fanens etape. Siden ejer den seneste eksplicitte navigation (striben
   // og hovedets guld-knap går samme vej) og glemmer den, når fanen forlades.
   const openTactics = tacticsCta({ stagesCompleted, totalStages, raceFinished, schedule, riders, overrides, nowMs });
-  const tacticsStage = v6TacticsStage({ requested: tacticsStageRequest, ctaStage: openTactics?.stage, selectedStage });
+  // #8800: en valgt etape der kan få taktik åbner fanen på sig selv (intet hop til guld-knappens).
+  const selectedOpen = v6StageOpenForTactics({ stage: selectedStage, stagesCompleted, totalStages, raceFinished, schedule, nowMs });
+  const tacticsStage = v6TacticsStage({ requested: tacticsStageRequest, ctaStage: openTactics?.stage, selectedStage, selectedOpen });
   // En kørt etape: planen mod det der skete, når etapens resultater er hentet.
   const tacticsRouteProfile = v6RouteProfile(profileByStage, tacticsStage); // Taktik-fanens farvede rute
   const tacticsResults = v6TacticsResults({ activeTab, stage: tacticsStage, stagesCompleted, stateFor: stageStateFor });
