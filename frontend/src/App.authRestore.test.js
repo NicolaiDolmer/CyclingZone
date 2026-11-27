@@ -50,3 +50,9 @@ test("loader-gaten er session === undefined → LoadingScreen (#1347)", () => {
     "loader-gaten skal være session === undefined; ellers ville setSession(null) ikke afslutte spinneren",
   );
 });
+
+
+test("Layout gets the restored account on its first protected render", () => {
+  const layoutRoutes = [...appSource.matchAll(/<Layout\s+viewerId=\{session\?\.user\?\.id\}\s*\/>/g)];
+  assert.equal(layoutRoutes.length, 2, "the protected and public layout routes must both receive the current session's account");
+});

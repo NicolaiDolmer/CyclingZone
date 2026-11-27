@@ -29,10 +29,7 @@ const TRAINING_PLAN_ROWS = Array.from({ length: 12 }, (_, i) => ({ rider_id: `ri
 
 async function installSeasonStartMocks(page) {
   // Akademiet skal være synligt for holdet, ellers udelades akademi-punktet.
-  // Samme cache-nøgle som Layout.jsx skriver (lib/academyNavVisibility.js).
-  await page.addInitScript(() => {
-    window.localStorage.setItem("cz:academyNavEnabled", "1");
-  });
+  await page.route("**/api/academy/visibility", (route) => json(route, { visible: true }));
 
   // Registreres EFTER installNetworkMocks, så disse handlers vinder.
   await page.route("**/rest/v1/seasons**", (route) => {

@@ -26,7 +26,8 @@ import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
 import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
 import Skeleton from "./ui/Skeleton";
-import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
+import { readAcademyMenuVisibility } from "../lib/featureFlagRequests.ts";
+import { readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
 import { facilitiesNavItem } from "../lib/facilitiesNavVisibility";
 import { useFacilities } from "../lib/useFacilities";
 import { scoutingNavItem } from "../lib/scoutingNavVisibility";
@@ -533,11 +534,12 @@ function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineC
   );
 }
 
-export default function Layout() {
+/** @param {{ viewerId?: string }} [props] */
+export default function Layout({ viewerId } = {}) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const location = useLocation();
-  const [session, setSession]               = useState(null);
+  const [session, setSession]               = useState(/** @type {import("@supabase/supabase-js").Session | null} */ (null));
   const [team, setTeam]                     = useState(null);
   const [balance, setBalance]               = useState(null);
   // #8357: én kilde. Sidemenuen viser den delte holdsaldo (samme som dashboard og
@@ -575,7 +577,16 @@ export default function Layout() {
   const [setupPrefill, setSetupPrefill]     = useState({ teamName: "", managerName: "" });
   // Init fra cache (#1792-klasse): vis akademiet med det samme hvis brugeren har
   // set det før, så et forbigående fetch-hikke ikke skjuler et fungerende akademi.
-  const [academyEnabled, setAcademyEnabled] = useState(readCachedAcademyNav);
+  const academyViewer = viewerId;
+  const academyProfile = /** @type {{ role?: string | null, is_beta_tester?: boolean | null } | null} */ (profile);
+  const [legacyAcademyEnabled] = useState(() => Boolean(readCachedAcademyNav()));
+  const [legacyAcademyViewer, setLegacyAcademyViewer] = useState(() => academyViewer ?? null);
+  const [academyMenu, setAcademyMenu] = useState(/** @type {{ viewer: string, visible: boolean } | null} */ (null));
+  const academyEnabled = academyMenu && academyMenu.viewer === academyViewer
+    ? academyMenu.visible
+    : academyViewer
+      ? readCachedAcademyNav(academyViewer) ?? (academyViewer === legacyAcademyViewer && legacyAcademyEnabled)
+      : false;
   // #1441 A3: Klub-nav gater på API'ets `enabled` (403 facilities_disabled →
   // false), samme flag-kilde som selve /klub-siden. Skjult i prod indtil ejer-flip.
   const { enabled: facilitiesEnabled } = useFacilities();
@@ -675,6 +686,7 @@ export default function Layout() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return;
+      setLegacyAcademyViewer((viewer) => viewer ?? session.user.id);
       setSession(session);
 
       const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).maybeSingle();
@@ -749,21 +761,6 @@ export default function Layout() {
       // fire returnere 401.
       if (!h) return;
       fetchForumUnread(h).then((hasUnread) => { if (hasUnread != null) setForumUnread(hasUnread); });
-      // Akademi-nav-synlighed (#1308): bestem via /api/academy/me, men fejl LUKKER
-      // ikke punktet. Kun 200/409 er autoritative (opdater state + cache); 401
-      // (udløbet/fornyende session, #1792), 5xx og netværksfejl bevarer sidst kendte.
-      apiFetch(`${API}/api/academy/me`, { headers: h }, { source: "academy-me" })
-        .then(res => {
-          const data = res.status === 200 ? res.data : null;
-          const visible = resolveAcademyNavVisible({
-            status: res.status,
-            enabled: data?.enabled,
-            lastKnown: readCachedAcademyNav(),
-          });
-          setAcademyEnabled(visible);
-          if (res.status === 200 || res.status === 409) writeCachedAcademyNav(visible);
-        })
-        .catch(() => { /* netværksfejl: behold sidst kendte (state uændret) */ });
       // #5242: 401 håndteres nu centralt af apiFetch->networkErrorGuards
       // (afløser den lokale expireSessionIfRejected, #5233 fund 2).
       sendPresence(h, "presence");
@@ -776,6 +773,20 @@ export default function Layout() {
       }).catch(() => {});
     });
   }, []);
+
+  useEffect(() => {
+    if (!academyViewer) return;
+    let active = true;
+    void authHeaders({ json: false }).then(async (headers) => {
+      if (!headers || !active) return;
+      const visible = await readAcademyMenuVisibility(headers);
+      if (active && visible !== null) {
+        writeCachedAcademyNav(visible, academyViewer);
+        setAcademyMenu({ viewer: academyViewer, visible });
+      }
+    }).catch((error) => console.error("academy visibility read failed:", error));
+    return () => { active = false; };
+  }, [academyViewer, academyProfile?.role, academyProfile?.is_beta_tester]);
 
   useEffect(() => {
     if (!session) return;

@@ -29,18 +29,27 @@ export function resolveAcademyNavVisible({ status, enabled, lastKnown = false } 
   return Boolean(lastKnown);                   // 401/5xx/netværk → fejl lukker ikke punktet
 }
 
-export function readCachedAcademyNav() {
+/**
+ * @param {string} [viewer]
+ * @returns {boolean | null} A scoped miss is distinct from a cached hidden menu.
+ */
+export function readCachedAcademyNav(viewer) {
   try {
-    return globalThis.localStorage?.getItem(ACADEMY_NAV_CACHE_KEY) === "1";
+    const key = viewer ? `${ACADEMY_NAV_CACHE_KEY}:${viewer}` : ACADEMY_NAV_CACHE_KEY;
+    const raw = globalThis.localStorage?.getItem(key);
+    return viewer && raw !== "0" && raw !== "1" ? null : raw === "1";
   } catch {
-    return false; // private mode / storage afvist
+    return viewer ? null : false;
   }
 }
 
-export function writeCachedAcademyNav(visible) {
+/** @param {boolean} visible @param {string} [viewer] */
+export function writeCachedAcademyNav(visible, viewer) {
   try {
-    globalThis.localStorage?.setItem(ACADEMY_NAV_CACHE_KEY, visible ? "1" : "0");
+    const key = viewer ? `${ACADEMY_NAV_CACHE_KEY}:${viewer}` : ACADEMY_NAV_CACHE_KEY;
+    globalThis.localStorage?.setItem(key, visible ? "1" : "0");
+    if (viewer) globalThis.localStorage?.removeItem(ACADEMY_NAV_CACHE_KEY);
   } catch {
-    /* private mode / storage afvist — ignorer */
+    /* private mode / storage afvist */
   }
 }

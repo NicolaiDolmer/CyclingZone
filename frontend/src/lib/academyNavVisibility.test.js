@@ -13,6 +13,7 @@ function stubStorage(initial = {}) {
   globalThis.localStorage = {
     getItem: k => (k in store ? store[k] : null),
     setItem: (k, v) => { store[k] = String(v); },
+    removeItem: k => { delete store[k]; },
   };
   return store;
 }
@@ -55,4 +56,17 @@ test("write + read round-trip", () => {
 
 test("read uden storage → false (ingen crash i private mode)", () => {
   assert.equal(readCachedAcademyNav(), false);
+});
+
+test("scoped academy caches distinguish a known hidden menu from a miss", () => {
+  stubStorage({ "cz:academyNavEnabled": "1" });
+  assert.equal(readCachedAcademyNav(), true);
+  assert.equal(readCachedAcademyNav("viewer-a"), null);
+  writeCachedAcademyNav(false, "viewer-a");
+  assert.equal(readCachedAcademyNav(), false);
+  assert.equal(readCachedAcademyNav("viewer-a"), false);
+  assert.equal(readCachedAcademyNav("viewer-b"), null);
+  writeCachedAcademyNav(true, "viewer-b");
+  assert.equal(readCachedAcademyNav("viewer-a"), false);
+  assert.equal(readCachedAcademyNav("viewer-b"), true);
 });

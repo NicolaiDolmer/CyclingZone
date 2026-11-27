@@ -69,7 +69,7 @@ test("mergeProfilePatch: virker fra en tom/null cache (fx lige efter login, før
 // --- Ét kald i stedet for tre --------------------------------------------
 
 test("PROFILE_COLUMNS dækker alle fire felter i ét select", () => {
-  assert.equal(PROFILE_COLUMNS, "language, role, username, consent_preferences");
+  assert.equal(PROFILE_COLUMNS, "language, role, username, consent_preferences, is_beta_tester");
 });
 
 test("userProfile.jsx laver præcis ét users-opslag (PROFILE_COLUMNS) — ikke tre", () => {

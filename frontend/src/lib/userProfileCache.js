@@ -6,7 +6,7 @@
 
 // De fire felter der før blev hentet med tre separate Supabase-kald
 // (language.jsx, consent.jsx, Layout.jsx) — nu ét fælles opslag.
-export const PROFILE_COLUMNS = "language, role, username, consent_preferences";
+export const PROFILE_COLUMNS = "language, role, username, consent_preferences, is_beta_tester";
 
 // Afgør om cachen skal ryddes ved et auth-event. Bruges SYNKRONT (samme tick
 // som userId opdateres) for at forhindre at næste bruger på samme

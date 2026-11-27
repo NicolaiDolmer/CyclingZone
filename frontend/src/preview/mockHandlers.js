@@ -1558,6 +1558,7 @@ export function apiResponse(pathname, search = "") {
     };
   }
 
+  if (pathname.endsWith("/api/academy/visibility")) return { visible: SEED_ACADEMY.enabled === true };
   if (pathname.endsWith("/api/academy/me")) return previewPotentialEstimateEnabled() ? previewAcademy(SEED_ACADEMY) : SEED_ACADEMY; // #8523
   if (pathname.endsWith("/api/academy/pnl")) return SEED_ACADEMY_PNL;
 
