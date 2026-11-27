@@ -51,7 +51,7 @@ test("#8830 S6: hver division og hvert ungdomsniveau ligger i afslutningsmaalet 
     for (const [key, [lo, hi]] of /** @type {Array<[string, number[]]>} */ (Object.entries(target))) {
       const v = /** @type {any} */ (sh)[key];
       // #8870: testkataloget er fra 14/10 og har flere D1-loeb med opad-afslutninger end prods
-      // katalog. D1's vaegte er kalibreret mod prod 27/11 (opad 32,6 % / spurt 31,9 %, PR #8868).
+      // katalog. D1's vaegte er kalibreret mod prods katalog 27/11 (PR #8868; maaling i balance-internals/).
       // Offline doemmes D1 derfor kun i den retning, ejeren bad om (nok opad, ikke for meget
       // spurt). Fjernes, naar fixturen er genopfrisket (#8870).
       if (level === "D1" && key === "up" && v > hi + tol) continue;

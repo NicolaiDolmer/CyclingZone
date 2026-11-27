@@ -184,9 +184,9 @@ export const ROAD_FINISH_WEIGHTS = Object.freeze({
 
 /**
  * #8830 (ejer 27/11, "Ret D1 nu"): D1's World Tour-loeb (klassen OtherWorldTourA findes kun i
- * D1) ender oftere op ad bakke end resten af kalenderen; maalt med prods katalog gav de faelles
- * vaegte D1 36-41 % flad spurt mod maalet 25-32 %. Klassen er fast pr. loeb, saa samme loeb har
- * stadig samme parcours i alle divisioner (#2276). Kun flad og boelget; resten som ROAD.
+ * D1) ender oftere op ad bakke end resten af kalenderen; med de faelles vaegte ramte D1 ikke
+ * afslutningsmaalet i prods katalog (maaling i balance-internals/). Klassen er fast pr. loeb, saa samme
+ * loeb har stadig samme parcours i alle divisioner (#2276). Kun flad og boelget; resten som ROAD.
  */
 export const WORLD_TOUR_A_FINISH_WEIGHTS = Object.freeze({
   flat: Object.freeze([{ value: "flat_sprint", weight: 55 }, { value: "uphill_sprint", weight: 45 }]),
