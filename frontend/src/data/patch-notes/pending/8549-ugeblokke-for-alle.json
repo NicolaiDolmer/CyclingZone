@@ -3,7 +3,7 @@
     {
       "category": "new",
       "audience": "player",
-      "rollout": "live",
+      "rollout": "beta_to_live",
       "flag": "training_week_priority",
       "replaces": "7.523#0",
       "topic": "Training",
