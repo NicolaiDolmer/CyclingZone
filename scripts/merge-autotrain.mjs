@@ -58,6 +58,7 @@ import { deploymentAttemptState, handedOffRunVerdict } from './ci/deploy-verific
 import { classifyPrFiles, mustRunAlone, needsRailwayVerification, touchesVercel } from './merge-queue-files.mjs';
 import { createAffectedCronJobs } from './ci/cron-deploy-verification.mjs';
 import { latestOwnerMarkerSha, runMergeGuard } from './merge-guard.mjs';
+import { runStallComments } from './merge-stall-comment.mjs';
 import { CODEX_LOGIN, EXEMPT_AUTHORS, evaluateCodex } from './review-gate.mjs';
 
 export const LOG_RELATIVE = join('.claude', 'run', 'merge-autotrain.log');
@@ -609,6 +610,7 @@ export async function run({
   checkMain = defaultCheckMain,
   blockFile = null,
   guard = runMergeGuard,
+  notifyStalls = runStallComments,
   requestReviews = requestStaleCodexReviews,
   out =(line) => process.stdout.write(`${line}\n`),
 } = {}) {
@@ -652,6 +654,8 @@ export async function run({
   for (const e of evaluations.filter((x) => x.ready)) log(`  #${e.number} klar: ${e.reason}${e.classification ? ` [${e.classification}]` : ''}`);
   // Merge-vagten (#8331): PR'er med ejer-markoer der staar stille; fail-soft.
   try { guard({ evaluations, repo: opts.repo, repoRoot, now, dryRun: opts.dryRun, log }); } catch (err) { log(`  MERGE-VAGT fejlede (${err?.message ?? err}).`); }
+  try { notifyStalls({ evaluations, repo: opts.repo, repoRoot, now, dryRun: opts.dryRun, log }); }
+  catch { log('  Stilstandsbeskeder kunne ikke afstemmes.'); }
   // Gen-bestilling af Codex-review paa et flyttet hoved (#7654); fail-soft, flytter aldrig en markoer.
   try { requestReviews({ evaluations, repo: opts.repo, now, dryRun: opts.dryRun, log }); } catch (err) { log(`  gen-bestilling af review fejlede (${err?.message ?? err}).`); }
   const train = selectTrain(evaluations);
