@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6OneDayDayResults, v6ResultsPhase, v6RouteProfile, v6StageTabFor, v6Strip, v6TabButtonFor, v6TabButtons, v6Tabs, v6TacticsResults, v6TacticsStage,
+  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6OneDayDayResults, v6ResultsPhase, v6RouteProfile, v6StageTabFor, v6Strip, v6TabButtonFor, v6TabButtons, v6Tabs, v6StageOpenForTactics, v6TacticsResults, v6TacticsStage,
 } from "./racePageV6Model.ts";
 import { yourDay } from "../stagePageV2/stagePageV2Model.ts";
 import { SEED_STAGE_PROFILES } from "../../../preview/seedData.js";
@@ -201,6 +201,38 @@ test("Taktik: den seneste eksplicitte navigation vinder, ogsaa guld-knappen efte
   // Fanen åbnet direkte: guld-knappens etape, ellers den valgte.
   assert.equal(v6TacticsStage({ requested: null, ctaStage: 2, selectedStage: 1 }), 2);
   assert.equal(v6TacticsStage({ requested: null, ctaStage: null, selectedStage: 3 }), 3);
+});
+
+test("#8800: en valgt etape der kan faa taktik vinder over guld-knappens etape (intet hop 16 -> 14)", () => {
+  const nowMs = Date.parse("2026-11-26T12:00:00Z");
+  const day = 24 * 3600 * 1000;
+  const schedule = Array.from({ length: 21 }, (_, i) => ({ stage_number: i + 1, scheduled_at: new Date(nowMs + (i + 1 - 13) * day).toISOString() }));
+  const open = (stage: number, extra: Partial<{ raceFinished: boolean; nowMs: number }> = {}) =>
+    v6StageOpenForTactics({ stage, stagesCompleted: 13, totalStages: 21, raceFinished: false, schedule, nowMs, ...extra });
+  assert.equal(open(16), true, "ukoert og ikke startet");
+  assert.equal(open(13), false, "koert etape");
+  assert.equal(open(14, { nowMs: nowMs + 2 * day }), false, "startet etape er laast");
+  assert.equal(open(16, { raceFinished: true }), false);
+  assert.equal(open(22), false, "uden for loebet");
+  assert.equal(v6StageOpenForTactics({ stage: 16, stagesCompleted: 13, totalStages: 21, raceFinished: false, schedule: [], nowMs }), true, "ukendt skema: aaben");
+
+  // Fejlen: rollerne lander, guld-knappen faar etape 14, og fanen sprang fra 16 til 14.
+  assert.equal(v6TacticsStage({ requested: null, ctaStage: null, selectedStage: 16, selectedOpen: open(16) }), 16, "foer rollerne");
+  assert.equal(v6TacticsStage({ requested: null, ctaStage: 14, selectedStage: 16, selectedOpen: open(16) }), 16, "efter rollerne");
+  // En koert valgt etape (sidens standard under loebet) aabner stadig guld-knappens etape.
+  assert.equal(v6TacticsStage({ requested: null, ctaStage: 14, selectedStage: 13, selectedOpen: open(13) }), 14);
+  // Den seneste eksplicitte navigation vinder stadig over den valgte etape.
+  assert.equal(v6TacticsStage({ requested: 17, ctaStage: 14, selectedStage: 16, selectedOpen: open(16) }), 17);
+  assert.equal(v6TacticsStage({ requested: 14, ctaStage: 14, selectedStage: 16, selectedOpen: open(16) }), 14, "guld-knappen");
+});
+
+test("#8800: siden giver Taktik den valgte etapes aabenhed, og fanen lader den styrede etape vinde i load()", () => {
+  const page = read("./RacePageV6.tsx");
+  assert.match(page, /const selectedOpen = v6StageOpenForTactics\(\{ stage: selectedStage, stagesCompleted, totalStages, raceFinished, schedule, nowMs \}\)/);
+  assert.match(page, /v6TacticsStage\(\{ requested: tacticsStageRequest, ctaStage: openTactics\?\.stage, selectedStage, selectedOpen \}\)/);
+  const tab = read("../RaceTacticsTab.jsx");
+  assert.match(tab, /const stageRef = useRef\(stage\);/);
+  assert.match(tab, /setActiveStage\(\(current\) => \{\n[^\n]*\n\s+if \(stageRef\.current != null && stageNumbers\.includes\(stageRef\.current\)\) return stageRef\.current;/);
 });
 
 test("Taktik: valget i striben og guld-knappen gaar gennem samme sidetilstand (ingen lokal kopi der vinder)", () => {
