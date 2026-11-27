@@ -2038,7 +2038,7 @@ function RiderStats({ tab, setTab, training, trainingHistory, initialRoster, onR
       <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"
+          className="cz-profile-back-target inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors"
         >
           <ChevronLeftIcon size={13} aria-hidden="true" />
           {t("page.back")}
