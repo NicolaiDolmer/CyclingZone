@@ -391,6 +391,7 @@ export function trendView(row, { currentRating = null } = {}) {
   return {
     hidden: false,
     value,
+    basis: "trend",
     ...(row.learning === true ? { learning: true } : {}),
     ...(top ? {} : { horizon: "year" }),
   };

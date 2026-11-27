@@ -40,8 +40,8 @@ test("golden: slukket læser aldrig trend-tabellen", async () => {
 
 test("tændt: egne ryttere læser trend-rækken på alle flader, modstandere får ingen prognose", async () => {
   const on = await goldenSurfaces("on");
-  assert.deepEqual(on.estimates.young.prognosisView, { hidden: false, value: 81, learning: true });
-  assert.deepEqual(on.estimates.veteran.prognosisView, { hidden: false, value: 83, learning: true, horizon: "year" });
+  assert.deepEqual(on.estimates.young.prognosisView, { hidden: false, value: 81, basis: "trend", learning: true });
+  assert.deepEqual(on.estimates.veteran.prognosisView, { hidden: false, value: 83, basis: "trend", learning: true, horizon: "year" });
   assert.equal(on.estimates.rival.prognosisView, undefined);
   assert.deepEqual(on.projection.young.prognosisView, on.estimates.young.prognosisView);
   assert.deepEqual(on.academy.roster[0].prognosisView, on.estimates.youth.prognosisView);
@@ -244,8 +244,8 @@ test("trend-farten vægter de seneste datoer mest", () => {
 });
 
 test("visningen: gulv ved ratingen nu før toppen, intet gulv efter toppen, kun mærker", () => {
-  assert.deepEqual(trendView({ value: 60, learning: true, horizon: "top" }, { currentRating: 64 }), { hidden: false, value: 64, learning: true });
-  assert.deepEqual(trendView({ value: 60, learning: false, horizon: "year" }, { currentRating: 64 }), { hidden: false, value: 60, horizon: "year" });
+  assert.deepEqual(trendView({ value: 60, learning: true, horizon: "top" }, { currentRating: 64 }), { hidden: false, value: 64, basis: "trend", learning: true });
+  assert.deepEqual(trendView({ value: 60, learning: false, horizon: "year" }, { currentRating: 64 }), { hidden: false, value: 60, basis: "trend", horizon: "year" });
   assert.equal(trendView(null), null);
 });
 
