@@ -1082,6 +1082,19 @@ features:
     decision: taend
     decide_by: 2026-12-06
 
+  - id: prognosis-trend-8604
+    area: training
+    title_en: "Trend prognosis"
+    title_da: "Trend-prognose"
+    state: building
+    flag: prognosis_trend_8604
+    ssot: docs/PROGRESSION_RULES.md
+    epic: 6110
+    verified: 2026-11-27
+    note: "Seedet off (#8604). Slukket = uændret."
+    decision: goer-faerdigt
+    decide_by: 2026-12-06
+
   # --- academy -------------------------------------------------------------
   - id: academy
     area: academy
