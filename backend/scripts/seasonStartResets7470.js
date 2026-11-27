@@ -23,6 +23,7 @@ import { applySeasonFatigueReset } from "../lib/seasonFatigueReset.js";
 import { applySeasonInjuryReset, SEASON_INJURY_RESET_DEFAULTS } from "../lib/seasonInjuryReset.js";
 import { loadFinalTrainingDate } from "../lib/seasonTransitionReadiness.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
+import { fetchAllRows } from "../lib/supabasePagination.js";
 import { applySeasonFormReset, readSeasonFormResetConfig } from "../lib/seasonFormReset.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -72,7 +73,14 @@ export async function runSeasonStartResets({ supabase, toSeason, execute, injury
   if (!work?.length || open.length) {
     throw new Error(`Sæson ${from.number}s ${tickDate} er ikke afregnet: ${work?.length ?? 0} registreringer, ${open.length} åbne`);
   }
-  const settlement = { tick_date: tickDate, registered: work.length };
+  // Fable-gentjek 2: et hold, kørslen aldrig nåede, har ingen række. Sammenlign med holdene,
+  // der havde ryttere på datoen (oplysning til operatøren; afgørelsen tages i drejebogen).
+  const teamRows = await fetchAllRows(() => supabase.from("riders").select("team_id")
+    .eq("is_retired", false).not("team_id", "is", null).lt("created_at", `${tickDate}T23:00:00Z`).order("id"));
+  const registeredTeams = new Set(work.map((row) => row.team_id));
+  const unregistered = [...new Set((teamRows ?? []).map((row) => row.team_id))].filter((id) => !registeredTeams.has(id));
+  log(`Hold med ryttere uden registrering for ${tickDate}: ${unregistered.length}${unregistered.length ? " (tjek: nye hold efter skiftet, bank/test/frosne hold)" : ""}`);
+  const settlement = { tick_date: tickDate, registered: work.length, unregistered: unregistered.length };
   log(`✅ Sæson ${from.number}s sidste træningsdato ${tickDate}: ${work.length} hold afregnet, 0 åbne.`);
 
   const dryRun = !execute;
@@ -94,6 +102,10 @@ export async function runSeasonStartResets({ supabase, toSeason, execute, injury
   const formConfig = { ...(await readSeasonFormResetConfig(supabase)), mode: formMode };
   const form = await applySeasonFormReset({ supabase, dryRun, now, season: to.number, config: formConfig });
   log(`Form: ${JSON.stringify(form)}`);
+  // Fable-gentjek 1: en form-nulstilling, der ikke kørte, må ikke ende i "✅ skrevet".
+  if (formMode !== "off" && form?.ran === false && !(dryRun && form?.reason === "already_ran")) {
+    throw new Error(`Form-nulstillingen kørte ikke (${form.reason}): træthed/skader er ${dryRun ? "ikke skrevet (dry-run)" : "skrevet"}, form skal håndteres`);
+  }
   if (injury.ran === false && injury.reason !== "already_applied") {
     throw new Error(`Skadenulstillingen kørte ikke: ${injury.reason}`);
   }
@@ -108,6 +120,5 @@ if (isMain) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error("⚠ Missing SUPABASE creds"); process.exit(2); }
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   runSeasonStartResets({ supabase, toSeason: args.toSeason, execute: args.execute, injuryMode: args.injuryMode, formMode: args.formMode })
-    .then(() => process.exit(0))
-    .catch((err) => { console.error(`❌ ${err.message}`); process.exit(1); });
+    .catch((err) => { console.error(`❌ ${err.message}`); process.exitCode = 1; });
 }
