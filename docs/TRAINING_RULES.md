@@ -83,6 +83,19 @@ deres starttilstand er den nulstillede, og datoens træning lægges oven på den
 og alle senere dage kræves bevis som før, fordi uafregnet arbejde så betyder en fejl i
 kørslen. Læsefejl og manglende kalender fejler fortsat lukket.
 
+### Sidste dato afregnes, så snart alle løb er kørt (#7470, ejer 27/11)
+
+Ejer 27/11: "Træning burde intet have at gøre med sæsonskifte". Løbssessionen (#7982)
+registrerer sidste dato for næsten alle hold, så `deferred`-vejen ovenfor dækker dem ikke.
+Derfor er den aktive sæsons sidste træningsdato klar til afregning (`loadTrainingDateIndex`)
+samme dag, så snart sæsonens løb alle er afviklet (`assessSeasonEndBlockers`, samme tælling
+som "Afslut sæson"), også før kl. 20. 5-minutters-kørslen afregner da datoen i sin egen
+sæson for alle hold, også hold med registreret `partial`-arbejde. En etape, der er kørt men
+ikke færdigfinaliseret, venter som altid i `resolveTrainingDateReadiness`. Gaten er
+uændret: når datoen er `complete`, kan sæsonen afsluttes med det samme, og sæsonstartens
+nulstilling kommer efter datoens træning, som ved S4→S5. Træning efter det hører til næste
+sæson (brodatoer, #7282). Alle andre datoer afregnes fortsat fra kl. 20.
+
 ## Kompensationsinfrastruktur #6061 (#6219, verificeret 6/10)
 
 Ejeren har godkendt beregning af dokumenterede manglende slots med nuværende

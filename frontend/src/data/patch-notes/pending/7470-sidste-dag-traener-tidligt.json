@@ -1,0 +1,14 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": { "title": "The season's last day trains right after the last race", "body": "On the last day of a season, training no longer waits for the evening run. It runs as soon as the season's last race is done, so the new season can start the same afternoon. Training after that counts in the new season." },
+      "da": { "title": "Sæsonens sidste dag træner lige efter sidste løb", "body": "På sæsonens sidste dag venter træningen ikke længere på aftenkørslen. Den kører, så snart sæsonens sidste løb er kørt, så den nye sæson kan starte samme eftermiddag. Træning derefter tæller i den nye sæson." },
+      "refs": [7470]
+    }
+  ]
+}

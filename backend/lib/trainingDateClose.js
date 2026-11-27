@@ -4,7 +4,7 @@ import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { fetchAllRows } from './supabasePagination.js';
 import { refreshRankingsAfterTrainingSettlement } from './refreshRankingMatviews.js';
 import { isTrainingDateTeam, loadTrainingDateContext, loadTrainingDateTeams, nextCivilDate, resolveTrainingDateReadiness, trainingDateDeadline, trainingDateBounds } from './trainingDateReadiness.js';
-import { loadFinalTrainingDate, TRAINING_DATE_SETTLEMENT_HOUR } from './seasonTransitionReadiness.js';
+import { assessSeasonEndBlockers, loadFinalTrainingDate, TRAINING_DATE_SETTLEMENT_HOUR } from './seasonTransitionReadiness.js';
 import { ADMIN_ACTION_TYPE } from './economyConstants.js';
 import { TRANSITION_PHASE_LOG_SOURCE, TRANSITION_PHASE_STATUS } from './seasonTransitionPhaseLog.js';
 import { createTrainNowPressMemory } from './trainNowPressMemory.js';
@@ -151,6 +151,14 @@ function existedAt(row, cutoff, keys) {
   return keys.every(key => !row?.[key] || new Date(row[key]) < cutoff);
 }
 
+// #7470: today is the active season's final training date and no race of the season is
+// left to run (the same count as the season-end gate). Unresolved stages still wait in
+// resolveTrainingDateReadiness, so a race that is run but not finalised settles later.
+async function activeFinalDateDue({ supabase, season, today }) {
+  if ((await loadFinalTrainingDate({ supabase, seasonId: season.id })) !== today) return false;
+  return !(await assessSeasonEndBlockers({ supabase, seasonId: season.id })).blocked;
+}
+
 export async function loadTrainingDateIndex({ supabase, now }) {
   const today = copenhagenDateString(now);
   const [active, activation, unfinished] = await Promise.all([
@@ -164,10 +172,16 @@ export async function loadTrainingDateIndex({ supabase, now }) {
     if (!seasons.has(id)) seasons.set(id, await checked(supabase.from('seasons').select('id,number,start_date,end_date').eq('id', id).single(), 'unfinished season'));
   }
   const due = copenhagenHour(now) >= TRAINING_DATE_SETTLEMENT_HOUR;
+  // #7470 (ejer 27/11: "Træning burde intet have at gøre med sæsonskifte"): the active
+  // season's final date is due as soon as every race of the season is run, not at 20:00.
+  // It then settles in its own season before "Afslut sæson" and the season-start resets,
+  // so the season-end gate passes in the afternoon and nothing is settled after the resets.
+  const finalDue = !due && active ? await activeFinalDateDue({ supabase, season: active, today }) : false;
   for (const row of unfinished) {
-    if (row.tick_date < today || due) jobs.set(`${row.season_id}:${row.tick_date}`, { season: seasons.get(row.season_id), tickDate: row.tick_date, forceRetry: true });
+    const finalRow = finalDue && row.season_id === active.id && row.tick_date === today;
+    if (row.tick_date < today || due || finalRow) jobs.set(`${row.season_id}:${row.tick_date}`, { season: seasons.get(row.season_id), tickDate: row.tick_date, forceRetry: true });
   }
-  const end = due ? today : previousCivilDate(today);
+  const end = due || finalDue ? today : previousCivilDate(today);
   if (active) {
     const first = activation?.value;
     if (typeof first !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(first)) throw new Error('Missing authoritative condition activation date');

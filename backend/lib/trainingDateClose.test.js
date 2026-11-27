@@ -388,6 +388,7 @@ function memoryClient(db) {
         select() { return query; },
         eq(key, value) { filters.push(row => row[col(key)] === value); return query; },
         in(key, values) { filters.push(row => values.includes(row[col(key)])); return query; },
+        neq(key, value) { filters.push(row => row[col(key)] !== value); return query; },
         is(key) { filters.push(row => row[col(key)] == null); return query; },
         contains(key, value) { filters.push(row => Object.entries(value).every(([k, v]) => row[key]?.[k] === v)); return query; },
         not(key) { filters.push(row => row[col(key)] != null); return query; },
@@ -513,6 +514,57 @@ test('#6924: season ends at 18:00, the evening run at 20:00 settles the final da
   await runNormalizedTrainingDateSweep({ ...options, now: at('2026-10-27T19:00:00Z') });
   assert.equal(settled.length, 3);
   assert.equal(db.training_date_work.length, 3);
+});
+
+// #7470 (ejer 27/11): "Træning burde intet have at gøre med sæsonskifte". The final
+// date settles in its own season as soon as every race is run, so "Afslut sæson" can
+// run in the afternoon and the season-start resets come after the date's training.
+const finishRaces = (db, ids = ['r4-1', 'r4-2']) => db.races.forEach(race => { if (ids.includes(race.id)) race.status = 'completed'; });
+const jobDates = index => index.jobs.map(job => `${job.season.id}:${job.tickDate}`);
+
+test('#7470: the final date is due in the afternoon once every race is run', async () => {
+  const { db, options } = cutoverWorld();
+  const load = iso => loadTrainingDateIndex({ supabase: options.supabase, now: at(iso) }).then(jobDates);
+  assert.ok(!(await load('2026-10-25T15:00:00Z')).includes(`s4:${FINAL}`), 'a race still to run: waits for 20:00');
+  finishRaces(db, ['r4-1']);
+  assert.ok(!(await load('2026-10-25T15:00:00Z')).includes(`s4:${FINAL}`), 'one race left is enough to wait');
+  finishRaces(db);
+  assert.ok((await load('2026-10-25T15:00:00Z')).includes(`s4:${FINAL}`), 'all run: due at 16:00');
+  // Registered race-session work (partial) on the final date is picked up as well.
+  db.training_date_work.push({ team_id: 'B', season_id: 's4', tick_date: FINAL, game_days: [41], expected_rider_ids: ['b1'], status: 'partial' });
+  const job = (await loadTrainingDateIndex({ supabase: options.supabase, now: at('2026-10-25T15:00:00Z') })).jobs.find(row => row.tickDate === FINAL);
+  assert.equal(job.season.id, 's4');
+  assert.equal(job.finalSeasonDate, undefined, 'an ordinary date of the active season, not the post-season path');
+});
+
+test('#7470: an ordinary date is still due at 20:00, even with every race run', async () => {
+  const { db, options } = cutoverWorld();
+  finishRaces(db);
+  const dates = await loadTrainingDateIndex({ supabase: options.supabase, now: at('2026-10-24T15:00:00Z') }).then(jobDates);
+  assert.ok(dates.includes('s4:2026-10-23'));
+  assert.ok(!dates.includes('s4:2026-10-24'), 'not the final date: the evening rule is unchanged');
+});
+
+test('#7470: settle at 16:00, season-end at 16:30, nothing more at 20:00', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const { db, settled, quarantined, options, endSeasonAndTransition } = cutoverWorld();
+  const s4 = db.seasons.find(row => row.id === 's4');
+  db.training_date_work.push({ team_id: 'B', season_id: 's4', tick_date: FINAL, game_days: [41], expected_rider_ids: ['b1'], status: 'partial' });
+  const before = await assessFinalTrainingDateSettlement({ supabase: options.supabase, season: s4, now: at('2026-10-25T15:30:00Z') });
+  assert.equal(before.blocked, true, 'registered partial work blocks season-end until it settles');
+  finishRaces(db);
+  await runNormalizedTrainingDateSweep({ ...options, now: at('2026-10-25T15:00:00Z') }); // 16:00
+  assert.deepEqual(settled.map(row => row.key).sort(), [`A:s4:${FINAL}:40`, `B:s4:${FINAL}:41`, `P:s4:${FINAL}:41`]);
+  assert.ok(db.training_date_work.filter(row => row.tick_date === FINAL).every(row => row.season_id === 's4' && row.status === 'complete'));
+  const gate = await assessFinalTrainingDateSettlement({ supabase: options.supabase, season: s4, now: at('2026-10-25T15:30:00Z') });
+  assert.equal(gate.blocked, false, 'season-end at 16:30 passes');
+  assert.ok(!gate.deferred, 'settled, not deferred');
+  endSeasonAndTransition();
+  __resetNormalizedTrainingDateCacheForTests();
+  await runNormalizedTrainingDateSweep({ ...options, now: at('2026-10-25T19:00:00Z') }); // 20:00
+  await runNormalizedTrainingDateSweep({ ...options, now: at('2026-10-26T09:00:00Z') });
+  assert.equal(settled.filter(row => row.key.includes(`:s4:${FINAL}:`)).length, 3, 'exactly once');
+  assert.deepEqual(quarantined, []);
 });
 
 test('#6924: unfinished final-date work is settled the next day, then becomes historical', async () => {
