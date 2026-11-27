@@ -153,7 +153,7 @@ export default function RaceHistoryPage() {
         title={raceName}
         subtitle={editions.length > 0 ? (
           <>
-            <RaceLevelBadge squad={editions[0].squad} className="me-2" />{/* #8853 */}
+            <RaceLevelBadge squad={/** @type {{ squad?: string | null }} */ (editions[0]).squad} className="me-2" />{/* #8853 */}
             {editions[0].race_type === "stage_race"
               ? t("raceType.stageRaceWithStages", { count: editions[0].stages })
               : t("raceType.oneDay")}
