@@ -910,7 +910,7 @@ export default function NotificationsPage() {
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${n.is_read ? "text-cz-2" : "text-cz-1"}`}>
                           {renderNotificationTitle(n, tBackend)}
-                          <RaceLevelBadge squad={raceSquads.get(notificationRaceId(n))} className="ms-1.5" />{/* #8853 */}
+                          <RaceLevelBadge squad={raceSquads.get(notificationRaceId(n) ?? "")} className="ms-1.5" />{/* #8853 */}
                         </p>
                         <p className={`text-cz-2 text-xs mt-0.5 leading-relaxed${messageBreaksLines(n) ? " whitespace-pre-line" : ""}`}>
                           {/* #1486: rytter-notifikationer linker beskeden til rytterprofilen
@@ -990,7 +990,7 @@ export default function NotificationsPage() {
                           {entry.race_name
                             ? t("aggregate.raceResultTitle", { race: entry.race_name })
                             : renderNotificationTitle({ metadata: entry.sample_metadata, title: entry.sample_title }, tBackend)}
-                          <RaceLevelBadge squad={raceSquads.get(aggregateRaceId(entry))} className="ms-1.5" />{/* #8853 */}
+                          <RaceLevelBadge squad={raceSquads.get(aggregateRaceId(entry) ?? "")} className="ms-1.5" />{/* #8853 */}
                           {!isRaceCompleted && (
                             <> <span className="text-cz-3 font-normal">{t("aggregate.countSuffix", { count: entry.count })}</span></>
                           )}
