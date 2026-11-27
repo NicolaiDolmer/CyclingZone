@@ -18,6 +18,9 @@ import { resolveAggregateLink } from "../components/notifications/aggregateLink.
 import { notifyUnreadChanged, subscribeUnreadSync } from "../components/notifications/unreadSync.js"; // #6473
 import { findSupersededUnreadIds } from "../components/notifications/supersededUnread.js"; // #6385
 import SeasonSquadPromotions from "../components/notifications/SeasonSquadPromotions.js";
+import { useNotificationRaceSquads } from "../components/notifications/useNotificationRaceSquads.js"; // #8853
+import { aggregateRaceId, notificationRaceId } from "../components/notifications/notificationRaceSquad.js"; // #8853
+import RaceLevelBadge from "../components/race/RaceLevelBadge.tsx"; // #8853
 import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -418,6 +421,7 @@ export default function NotificationsPage() {
 
   // Mine tab
   const [notifications, setNotifications] = useState([]);
+  const raceSquads = useNotificationRaceSquads(notifications); // #8853
   const [notifLoading, setNotifLoading] = useState(true);
   // #6473: en stille genindlaesning der blev startet FOER en mark-read/slet maa ikke
   // overskrive den nyere lokale tilstand med gamle raekker (og to stille loads kan
@@ -906,6 +910,7 @@ export default function NotificationsPage() {
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${n.is_read ? "text-cz-2" : "text-cz-1"}`}>
                           {renderNotificationTitle(n, tBackend)}
+                          <RaceLevelBadge squad={raceSquads.get(notificationRaceId(n))} className="ms-1.5" />{/* #8853 */}
                         </p>
                         <p className={`text-cz-2 text-xs mt-0.5 leading-relaxed${messageBreaksLines(n) ? " whitespace-pre-line" : ""}`}>
                           {/* #1486: rytter-notifikationer linker beskeden til rytterprofilen
@@ -985,6 +990,7 @@ export default function NotificationsPage() {
                           {entry.race_name
                             ? t("aggregate.raceResultTitle", { race: entry.race_name })
                             : renderNotificationTitle({ metadata: entry.sample_metadata, title: entry.sample_title }, tBackend)}
+                          <RaceLevelBadge squad={raceSquads.get(aggregateRaceId(entry))} className="ms-1.5" />{/* #8853 */}
                           {!isRaceCompleted && (
                             <> <span className="text-cz-3 font-normal">{t("aggregate.countSuffix", { count: entry.count })}</span></>
                           )}
