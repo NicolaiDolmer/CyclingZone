@@ -50,6 +50,7 @@ import {
   chooseA2FlatStage,
   buildA2FlatStage,
   ensureFlatStageS5,
+  A2_MIN_STAGES_FOR_FLAT,
   chooseStageOrderVariation,
   applyStageOrder,
   varyStageOrderS5,
@@ -1188,6 +1189,9 @@ const FLAT_FAM = new Set(["flat", "rolling"]);
 
 // Fingeraftryk af v5- og S5-output for løb UDEN identitet, målt på main FØR #6928 (samme
 // procedure som nedenfor). "v5 og S5-stien uden type skal være bit-identiske" (design §2).
+// #8830: S6-parcoursreglerne (afslutninger, nedkoerselsvindue, faste ruter, §7e) gaelder kun
+// fra S6 (season_number >= 6). Uden saeson er S5-aftrykket derfor PRAECIS main's, og det er
+// beviset for at en pulje der aktiveres i S5 faar samme parcours som sine soesterpuljer (#2276).
 const PRE_6928_FINGERPRINT = Object.freeze({ races: 516, v5: "6cd254d21e6cd125", s5: "3700d8d4d7414afe" });
 function fingerprint({ withIdentity }) {
   const races = [];
@@ -1882,4 +1886,18 @@ test("#2757 kvoten: s5StageRaceFillerSlots og divisionens kvote er uændrede af 
       assert.deepEqual(varied, [...slots.guaranteed, ...slots.natural].sort(), `${type} s${s}`);
     }
   }
+});
+
+test("#8830 §7e fra S6: etapeloeb med 5 etaper eller faerre faar ingen tvungen flad etape; foer S6 som foer", () => {
+  let short = 0;
+  for (const type of RACE_IDENTITY_TYPES) for (let stages = 3; stages <= 8; stages++) for (let s = 0; s < 20; s++) {
+    const race = idRace(type, stages, s);
+    const before = generateRaceStageProfiles({ ...race, season_number: 6 }, S5_PRE_A2);
+    const s6 = generateRaceStageProfiles({ ...race, season_number: 6 }, S5);
+    if (before.length < A2_MIN_STAGES_FOR_FLAT) { short += 1; assert.deepEqual(s6, before, `${type}/${stages}: kort etapeloeb roeres ikke i S6`); }
+    else assert.deepEqual(s6, ensureFlatStageS5({ ...race, season_number: 6 }, before), `${type}/${stages}: 6+ etaper som foer`);
+    // Foer S6 (season_number 5 eller ukendt) er generatoren uaendret.
+    assert.deepEqual(generateRaceStageProfiles({ ...race, season_number: 5 }, S5), generateRaceStageProfiles(race, S5), `${type}/${stages}: S5 = uden saeson`);
+  }
+  assert.ok(short > 0, "testen daekker korte etapeloeb");
 });

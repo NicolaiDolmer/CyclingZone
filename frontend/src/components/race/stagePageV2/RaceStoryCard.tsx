@@ -215,7 +215,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
               </g>
             ) : undefined}
           />
-          <div className="mt-2"><GradientLegend /></div>
+          <div className="mt-2"><GradientLegend profile={profile} /></div>
         </div>
       )}
       <div className="flex items-center gap-3">

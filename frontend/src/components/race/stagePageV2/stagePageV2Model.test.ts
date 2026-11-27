@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   elevationSeries, elevationAt, gradeBand, colouredSegments, climbDetail, sortedClimbs,
-  surfaceOf, dayDemands, defaultStage, stagePhase, shortName, formatGap, myBestByStage,
+  surfaceOf, sectorKindsOf, dayDemands, defaultStage, stagePhase, shortName, formatGap, myBestByStage,
   yourDay, DAY_TOP_COUNT, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage, todaysStage, todaysStages,
   activeRiders, profileScale, favouriteTerrain, perKmGradeCeil, PER_KM_GRADE_CEIL_PCT,
   type StageProfile, type ResultRow,
@@ -84,6 +84,13 @@ test("surfaceOf: kun naar der er sektorer (ikke asfalt)", () => {
   assert.equal(surfaceOf(MOUNTAIN), null);
   assert.deepEqual(surfaceOf({ sectors: [{ kind: "gravel", length_km: 2.5 }, { kind: "gravel", length_km: 1 }] }), { kind: "gravel", count: 2, km: 3.5 });
   assert.equal(surfaceOf({ sectors: [{ kind: "cobbles", length_km: 1 }] })?.kind, "cobbles");
+});
+
+test("#8259 sectorKindsOf: profilens underlag til forklaringen, fast rækkefølge, tom for asfalt", () => {
+  assert.deepEqual(sectorKindsOf(MOUNTAIN), []);
+  assert.deepEqual(sectorKindsOf(null), []);
+  assert.deepEqual(sectorKindsOf({ sectors: [{ kind: "gravel" }, { kind: "cobbles" }, { kind: "gravel" }] }), ["cobbles", "gravel"]);
+  assert.deepEqual(sectorKindsOf({ sectors: [{ kind: "cobbles" }] }), ["cobbles"]);
 });
 
 test("dayDemands: rang i ord, uden randomness", () => {

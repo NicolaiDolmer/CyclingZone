@@ -12937,6 +12937,9 @@ router.get("/admin/seasons/:id/generate-calendar/preview", requireAdmin, async (
     const { tierPlans } = buildTierMaterializationPlan({
       pools: poolsWithCounts, catalog: catalog || [], from, realDays, baseSeed,
       raceDayTarget: SEASON_RACE_DAY_TARGET[Number(season.number)] ?? null,
+      // #5841: SAMME sæsonnummer som materializeTierCalendars (resolvedSeasonNumber), så
+      // S6+-previewet pakkes med placeringsreglerne og viser de samme invariant-brud.
+      seasonNumber: Number(season.number),
     });
 
     // Flad tier-planen ud til den pulje-orienterede form admin-UI'et renderer.

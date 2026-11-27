@@ -17,7 +17,8 @@
 // naar migrationen database/2026-10-13-6369-s5-stage-profile-types.sql er applied
 // (post-merge via auto-migrate.yml, #2642).
 //
-// REN: ingen IO, ingen RNG, ingen tal. Kun ordforraad + spec'ens matrix som data.
+// REN: ingen IO, ingen RNG. Kun ordforraad + spec'ens matrix som data, og (afsnit 5, #8259)
+// de afslutnings-vaegte og det nedkoersels-vindue generator og benchmark-gate deler.
 
 // ── 1. DB-vaerdier (race_stage_profiles CHECK-constraints) ─────────────────────────
 
@@ -149,4 +150,143 @@ export function withS5ProfilePlaceholders(byProfileType) {
     if (!(type in out) && source in out) out[type] = out[source];
   }
   return out;
+}
+
+// ── 5. S6-afslutningerne (#8259, ejerbeslutninger 26/11 paa #5841) ─────────────────
+//
+// RODAARSAGEN. S5-generatorens afslutnings-vaegte (S5_FINISH_WEIGHTS) er talt op af
+// benchmarkens Grand Tour-etaper og blev brugt paa ALLE etaper. En kuperet GT-etape er
+// oftest en overgangsetape til en spurt eller et udbrud ned ad bakke, men en kuperet
+// klassiker eller etape i et kort etapeloeb ender langt oftere op ad en bakke eller mur.
+// Resultatet i S5: for mange kuperede etaper endte i flad spurt eller nedkoersel, og
+// klassikerne endte for ofte i en nedkoersel langt efter den sidste stigning.
+//
+// REGLEN NU. Grand Tours beholder benchmarkens vaegte (benchmark-gatens del 3 maaler dem
+// mod rigtige Grand Tours). Alle andre landevejsetaper traekker fra vaegtene herunder.
+// Bjerg og hoejbjerg er uaendrede (ejer: "Bjerg og hoejbjerg er uaendret"): de har ingen
+// raekke her, og generatoren bruger dem fra S5-tabellen. Brosten faar sin egen tabel, saa
+// en brostensetape naesten aldrig ender i en nedkoersel. Tallene og maalingen bag dem
+// ligger i balance-internals/2026-11-26-8259/.
+//
+// Hver vaerdi ligger inden for FINISH_MATRIX for terraenet; testen holder det fast.
+export const ROAD_FINISH_WEIGHTS = Object.freeze({
+  flat: Object.freeze([{ value: "flat_sprint", weight: 76 }, { value: "uphill_sprint", weight: 24 }]),
+  rolling: Object.freeze([{ value: "flat_sprint", weight: 44 }, { value: "uphill_sprint", weight: 24 }, { value: "punch", weight: 32 }]),
+  hilly: Object.freeze([
+    { value: "flat_sprint", weight: 8 }, { value: "uphill_sprint", weight: 12 }, { value: "punch", weight: 34 },
+    { value: "wall_finish", weight: 32 }, { value: "descent", weight: 14 },
+  ]),
+  medium_mountain: Object.freeze([
+    { value: "flat_sprint", weight: 10 }, { value: "punch", weight: 16 }, { value: "wall_finish", weight: 12 },
+    { value: "long_climb", weight: 46 }, { value: "descent", weight: 16 },
+  ]),
+});
+
+/** Brosten (profile_type cobbles): spurten og de korte ramper dominerer, nedkoersel er sjaelden. */
+export const COBBLES_FINISH_WEIGHTS = Object.freeze({
+  flat: ROAD_FINISH_WEIGHTS.flat,
+  rolling: Object.freeze([{ value: "flat_sprint", weight: 72 }, { value: "uphill_sprint", weight: 20 }, { value: "punch", weight: 8 }]),
+  hilly: Object.freeze([
+    { value: "flat_sprint", weight: 42 }, { value: "uphill_sprint", weight: 16 }, { value: "punch", weight: 18 },
+    { value: "wall_finish", weight: 16 }, { value: "descent", weight: 8 },
+  ]),
+  medium_mountain: Object.freeze([
+    { value: "flat_sprint", weight: 40 }, { value: "punch", weight: 22 }, { value: "wall_finish", weight: 20 },
+    { value: "long_climb", weight: 10 }, { value: "descent", weight: 8 },
+  ]),
+});
+
+/**
+ * #8830 (ejer 26/11): afslutningsmaal pr. niveau. Senior og U23: opad (punch, mur,
+ * bjergtop) 33-40 %, flad spurt 25-32 %; junior: opad 28-35 %, flad spurt 30-37 %.
+ * Ungdommens kalender er mini-udgaver af D1 (#7471), saa dens Grand Tours er korte (7/4
+ * etaper) og bruger IKKE benchmarkens GT-vaegte: tabellerne her gaelder alle ungdommens
+ * landevejsetaper, ogsaa mini-GT'ernes. Junior er fladere end U23 (ejer). Senior-reglen
+ * "bjerg og hoejbjerg uaendret" gaelder senior; ungdommens bjergetaper ender oftere paa
+ * toppen, saa opad-maalet kan naas med mini-GT'ernes to tidskoersler. Maalingen: PR #8836.
+ */
+export const YOUTH_FINISH_WEIGHTS = Object.freeze({
+  u23: Object.freeze({
+    flat: Object.freeze([{ value: "flat_sprint", weight: 75 }, { value: "uphill_sprint", weight: 25 }]),
+    rolling: Object.freeze([{ value: "flat_sprint", weight: 35 }, { value: "uphill_sprint", weight: 15 }, { value: "punch", weight: 50 }]),
+    hilly: Object.freeze([
+      { value: "flat_sprint", weight: 6 }, { value: "uphill_sprint", weight: 6 }, { value: "punch", weight: 40 },
+      { value: "wall_finish", weight: 38 }, { value: "descent", weight: 10 },
+    ]),
+    medium_mountain: Object.freeze([
+      { value: "flat_sprint", weight: 6 }, { value: "punch", weight: 16 }, { value: "wall_finish", weight: 14 },
+      { value: "long_climb", weight: 58 }, { value: "descent", weight: 6 },
+    ]),
+    mountain: Object.freeze([{ value: "long_climb", weight: 92 }, { value: "descent", weight: 8 }]),
+    high_mountain: Object.freeze([{ value: "long_climb", weight: 92 }, { value: "descent", weight: 8 }]),
+  }),
+  junior: Object.freeze({
+    flat: Object.freeze([{ value: "flat_sprint", weight: 85 }, { value: "uphill_sprint", weight: 15 }]),
+    rolling: Object.freeze([{ value: "flat_sprint", weight: 50 }, { value: "uphill_sprint", weight: 15 }, { value: "punch", weight: 35 }]),
+    hilly: Object.freeze([
+      { value: "flat_sprint", weight: 6 }, { value: "uphill_sprint", weight: 4 }, { value: "punch", weight: 44 },
+      { value: "wall_finish", weight: 42 }, { value: "descent", weight: 4 },
+    ]),
+    medium_mountain: Object.freeze([
+      { value: "flat_sprint", weight: 14 }, { value: "punch", weight: 16 }, { value: "wall_finish", weight: 14 },
+      { value: "long_climb", weight: 50 }, { value: "descent", weight: 6 },
+    ]),
+    mountain: Object.freeze([{ value: "long_climb", weight: 92 }, { value: "descent", weight: 8 }]),
+    high_mountain: Object.freeze([{ value: "long_climb", weight: 92 }, { value: "descent", weight: 8 }]),
+  }),
+});
+
+/**
+ * #8830 (ejer 26/11, afslutningsmaal pr. division): D1's Grand Tours ender i spurt paa 43 %
+ * af de kuperede etaper (benchmarkens vaegte), og det loefter D1's flade spurt over 32 %.
+ * Fra S6 flyttes en del af GT'ernes kuperede og mellembjergs-spurter mest til spurt op ad
+ * bakke, lidt til bakke og mur; begge holdes lave, for rigtige GT'er ender sjaeldent paa en mur.
+ * Benchmark-gatens del (3) maaler GT-afslutningerne mod rigtige Grand Tours (flad spurt
+ * 33,7 % +-13,1 pp, mur 2,5 % +-4,4 pp). Bjerg, hoejbjerg og flad er uaendrede.
+ */
+export const GT_FINISH_WEIGHTS_S6 = Object.freeze({
+  hilly: Object.freeze([
+    { value: "flat_sprint", weight: 18 }, { value: "uphill_sprint", weight: 16 }, { value: "punch", weight: 5 },
+    { value: "wall_finish", weight: 6 }, { value: "descent", weight: 22 },
+  ]),
+  medium_mountain: Object.freeze([
+    { value: "flat_sprint", weight: 8 }, { value: "punch", weight: 1 }, { value: "wall_finish", weight: 1 },
+    { value: "long_climb", weight: 9 }, { value: "descent", weight: 8 },
+  ]),
+});
+
+/**
+ * #8830: ungdommens afslutnings-vaegte for terraenet, eller null (senior, ukendt terraen): kalderen bruger saa senior-reglen.
+ * @param {string} terrain @param {string | null | undefined} squad
+ * @returns {ReadonlyArray<{ value: string, weight: number }> | null}
+ */
+export function youthFinishWeightsFor(terrain, squad) {
+  const table = squad ? /** @type {any} */ (YOUTH_FINISH_WEIGHTS)[squad] : null;
+  return table?.[terrain] ?? null;
+}
+
+/**
+ * Afslutnings-vaegtene for en etape uden for en Grand Tour. null = ingen S6-raekke (bjerg,
+ * hoejbjerg, ukendt terraen): kalderen bruger S5-tabellen uaendret.
+ * @param {string} terrain  B+-terraenet for etapens stigninger
+ * @param {string | null | undefined} profileType  etapens profile_type (brosten har egen tabel)
+ * @returns {ReadonlyArray<{ value: string, weight: number }> | null}
+ */
+export function roadFinishWeightsFor(terrain, profileType) {
+  const table = profileType === "cobbles" ? COBBLES_FINISH_WEIGHTS : ROAD_FINISH_WEIGHTS;
+  return /** @type {Record<string, ReadonlyArray<{ value: string, weight: number }>>} */ (table)[terrain] ?? null;
+}
+
+/**
+ * Nedkoersel (ejer 26/11, punkt 6): sidste top kort foer maal, kat. 3 eller haardere.
+ * Foer var vinduet saa bredt, at en etape med sidste bakke langt fra maal hed
+ * "nedkoersel". Bjerg og hoejbjerg beholder det gamle vindue (en lang nedkoersel fra et
+ * stort bjerg ER en nedkoerselsafslutning).
+ */
+export const DESCENT_LAST_TOP_WINDOW_KM = Object.freeze([5, 12]);
+export const MOUNTAIN_DESCENT_LAST_TOP_WINDOW_KM = Object.freeze([5, 25]);
+
+/** [min, max] km fra sidste top til maal for en nedkoersel paa terraenet. */
+export function descentTopWindowFor(terrain) {
+  return terrain === "mountain" || terrain === "high_mountain" ? MOUNTAIN_DESCENT_LAST_TOP_WINDOW_KM : DESCENT_LAST_TOP_WINDOW_KM;
 }

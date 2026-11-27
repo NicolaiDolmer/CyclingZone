@@ -4,11 +4,11 @@
 //
 // Tegnes i pixel-koordinater ud fra beholderens maalte bredde (ResizeObserver),
 // saa tekst aldrig straekkes. Efter etapen vises den som et smalt baand.
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
 import {
-  colouredSegments, elevationAt, gradePct, gradeBand, profileScale,
+  colouredSegments, elevationAt, gradePct, gradeBand, profileScale, sectorKindsOf,
   type Climb, type ElevationSeries, type GradeBand, type StageProfile,
 } from "./stagePageV2Model.ts";
 
@@ -104,6 +104,10 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
   }, [floor, ceil]);
 
   const sprints = (Array.isArray(profile.sprints) ? profile.sprints : []).filter((s) => s.kind === "intermediate");
+  // #8259 (ejer 26/11, punkt 8): brosten og grus er synlige paa alle etapeprofiler.
+  const sectors = (Array.isArray(profile.sectors) ? profile.sectors : [])
+    .filter((s) => Number.isFinite(Number(s?.start_km)) && Number(s?.length_km) > 0);
+  const patternId = `sec-${useId().replace(/:/g, "")}`;
   const finishH = Math.round(series.hs[series.hs.length - 1]);
   // Maal paa toppen: stigningens eget maerke bærer hoejden, saa maal-teksten udelades.
   const summitFinish = climbs.length > 0 && D - Number(climbs[climbs.length - 1].crest_km) < 1;
@@ -176,6 +180,16 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
           onPointerLeave={() => setHoverKm(null)}
         >
           {grid.map((v) => <line key={v} x1={0} x2={W} y1={Y(v)} y2={Y(v)} stroke="var(--border)" strokeWidth={1} />)}
+          {sectors.length > 0 && (
+            <defs>
+              <pattern id={`${patternId}-cobbles`} width={6} height={6} patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+                <line x1={0} y1={0} x2={0} y2={6} stroke="var(--text-2)" strokeWidth={1.6} />
+              </pattern>
+              <pattern id={`${patternId}-gravel`} width={5} height={5} patternUnits="userSpaceOnUse">
+                <circle cx={2.5} cy={2.5} r={1} fill="var(--text-2)" />
+              </pattern>
+            </defs>
+          )}
           {selectedClimb !== null && climbs[selectedClimb] && !band && (
             <rect
               x={X(Math.max(0, Number(climbs[selectedClimb].crest_km) - Number(climbs[selectedClimb].length_km)))}
@@ -207,6 +221,18 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
             strokeWidth={1.6}
             strokeLinejoin="round"
           />
+          {sectors.map((s, i) => {
+            const x0 = X(Number(s.start_km));
+            const w = Math.max(2, X(Number(s.start_km) + Number(s.length_km)) - x0);
+            const fill = `url(#${patternId}-${s.kind === "gravel" ? "gravel" : "cobbles"})`;
+            return (
+              <g key={`sec-${i}`} data-sector={s.kind === "gravel" ? "gravel" : "cobbles"}>
+                <title>{`${s.name ?? ""} · ${kmFmt(Number(s.length_km))} km`}</title>
+                <rect x={x0} y={TOP - 30} width={w} height={H - BOT - TOP + 30} fill={fill} opacity={0.22} />
+                <rect x={x0} y={H - BOT - 5} width={w} height={5} fill={fill} opacity={0.9} />
+              </g>
+            );
+          })}
           {grid.map((v, gi) => (grid.length - 1 - gi) % gridLabelEvery === 0 && (
             // Tegnes efter profilen (#6643), med kortets baggrund som kontur, saa maerket kan laeses oven paa den.
             <text key={`gl-${v}`} x={4} y={Y(v) - 4} fontSize={10} fill="var(--text-3)" stroke="var(--bg-card)" strokeWidth={3} paintOrder="stroke" className="font-data tabular-nums">{`${formatNumber(v)} m`}</text>
@@ -299,7 +325,8 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
   );
 }
 
-export function GradientLegend() {
+// #8259: brosten/grus-felterne i profilen faar en forklaring, naar etapen har sektorer.
+export function GradientLegend({ profile = null }: { profile?: StageProfile | null } = {}) {
   const { t } = useTranslation("races");
   const items: Array<[GradeBand, string]> = [
     ["flat", "flat"], [2, "band2"], [3, "band3"], [4, "band4"], [5, "band5"], ["down", "down"],
@@ -315,6 +342,16 @@ export function GradientLegend() {
           </span>
         );
       })}
+      {sectorKindsOf(profile).map((kind) => (
+        <span key={kind} className="inline-flex items-center gap-1.5 font-data text-2xs text-cz-2">
+          <svg width={16} height={8} aria-hidden="true">
+            {kind === "gravel"
+              ? [2, 6, 10, 14].map((x) => <circle key={x} cx={x} cy={4} r={1} fill="var(--text-2)" />)
+              : [1, 5, 9, 13].map((x) => <line key={x} x1={x} y1={8} x2={x + 4} y2={0} stroke="var(--text-2)" strokeWidth={1.4} />)}
+          </svg>
+          {t(`stagePageV2.profile.legend.${kind}`)}
+        </span>
+      ))}
     </div>
   );
 }
