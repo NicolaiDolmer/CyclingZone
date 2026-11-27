@@ -1,3 +1,5 @@
+import { SENTENCE_CASE } from "./sentenceCase.ts";
+
 // #2849 bølge 0 — cz-table-recipen (T2 wide data, docs/design/PAGE_TEMPLATES.md).
 // Sticky første kolonne = opak cellebaggrund + 1px højre-rule; erstatter den rå
 // `shadow-[10px_0_16px_-16px_…]`-skygge der var copy-pastet i 8+ filer.
@@ -125,7 +127,7 @@ function gutter(compact, tight) {
 // scroller. Desktop og mobil-standardtilstanden er uaendrede (default true).
 export function thClass({ numeric = false, sticky = false, compact = false, tight = false, dense = false, stickyHeader = true, wrap = false } = {}) {
   const base =
-    `${wrap ? "wrap-break-word" : "whitespace-nowrap"} bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3 ${stickyHeader ? "sticky top-0 z-table-head" : ""}`;
+    `${wrap ? "wrap-break-word" : "whitespace-nowrap"} bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3 ${SENTENCE_CASE} ${stickyHeader ? "sticky top-0 z-table-head" : ""}`;
   return [base, numeric ? "text-right" : "text-left", sticky ? STICKY : ""]
     .filter(Boolean)
     .join(" ");
@@ -171,5 +173,5 @@ export function mergeRowProps(zone, rowProps) {
 // text-3xs uppercase zone-/status-pill (radius 4px, tone-bg + tone-tekst).
 export function zonePillClass(tone = "neutral") {
   const toneCls = ZONES[tone]?.pill ?? "bg-cz-subtle text-cz-2";
-  return `inline-block whitespace-nowrap rounded px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.06em] ${toneCls}`;
+  return `inline-block whitespace-nowrap rounded px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.06em] ${SENTENCE_CASE} ${toneCls}`;
 }

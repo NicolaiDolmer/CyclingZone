@@ -1,5 +1,6 @@
 import Card from "./Card.jsx";
 import { ChevronRightIcon } from "./icons/index.jsx";
+import { SENTENCE_CASE } from "./sentenceCase.ts";
 
 // #2849 bølge 0 — DEN kanoniske section-card-recipe (docs/design/PAGE_TEMPLATES.md).
 // Padding 20px (16px på mobil), ingen skygge — chrome renderer altid; kun body
@@ -46,7 +47,7 @@ export function SectionHeader({ title, as: Heading = "h2", action = null, meta =
       <Heading className="text-[15px] font-semibold text-cz-1">{title}</Heading>
       {action}
       {!action && meta && (
-        <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">{meta}</span>
+        <span className={`font-data text-2xs uppercase tracking-[.08em] text-cz-3 ${SENTENCE_CASE}`}>{meta}</span>
       )}
     </div>
   );

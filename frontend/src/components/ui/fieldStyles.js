@@ -1,3 +1,5 @@
+import { SENTENCE_CASE } from "./sentenceCase.ts";
+
 const CONTROL_BASE =
   "w-full rounded-cz border bg-cz-card text-cz-1 placeholder:text-cz-3 " +
   "cz-field-target " +
@@ -18,7 +20,7 @@ export function controlClass({ size = "md", error = false } = {}) {
 }
 
 export function labelClass() {
-  return "mb-1.5 block font-data text-2xs font-semibold uppercase tracking-[.12em] text-cz-2";
+  return `mb-1.5 block font-data text-2xs font-semibold uppercase tracking-[.12em] text-cz-2 ${SENTENCE_CASE}`;
 }
 
 export function helperClass({ error = false } = {}) {

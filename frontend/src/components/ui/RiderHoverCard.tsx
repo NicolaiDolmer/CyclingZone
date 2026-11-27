@@ -20,6 +20,7 @@ import { Link } from "react-router";
 import Portal from "./Portal.jsx";
 import { XIcon, StarIcon, JerseyIcon } from "./icons/index.jsx";
 import { buttonClass } from "./buttonStyles.js";
+import { SENTENCE_CASE } from "./sentenceCase.ts";
 import { useModalA11y } from "../../hooks/useModalA11y.js";
 import { useActiveSeasonYear } from "../../hooks/useActiveSeasonYear.js";
 import { useMyTeamId } from "../../hooks/useMyTeamId.js";
@@ -286,7 +287,7 @@ export function useRiderCardData(riderId: string): LoadState & { viewerTeamId: s
 }
 
 // ── Indholdet (samme i popover og bundark) ───────────────────────────────────
-const LABEL = "font-data text-3xs font-semibold uppercase tracking-widest text-cz-3";
+const LABEL = `font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 ${SENTENCE_CASE}`;
 const VALUE = "font-data text-sm font-semibold tabular-nums text-cz-1";
 
 const JERSEY_VAR: Record<JerseyDayType, string> = {

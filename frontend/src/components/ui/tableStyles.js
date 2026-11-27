@@ -1,4 +1,6 @@
-const HEADER = "px-3 py-2 font-data text-2xs font-semibold uppercase tracking-widest text-cz-3";
+import { SENTENCE_CASE } from "./sentenceCase.ts";
+
+const HEADER = `px-3 py-2 font-data text-2xs font-semibold uppercase tracking-widest text-cz-3 ${SENTENCE_CASE}`;
 const CELL = "px-3 py-2.5 text-sm text-cz-1 border-t border-cz-border";
 
 export function cellClass({ numeric = false, header = false } = {}) {
