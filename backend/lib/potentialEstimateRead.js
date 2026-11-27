@@ -34,6 +34,7 @@ import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { PROGNOSIS_PACE_DAYS, pacePrognosis } from "./riderPrognosis.js";
 import { resolveScoutBandSeasonNumber, scoutBandAge } from "./scoutBandAge.js";
 import { roleOutputRaw } from "./weights/displayRecipes.js";
+import { isPrognosisModel2Enabled, loadModel2Prognoses, model2View } from "./prognosisModel2_8604.js"; // #8604
 
 // Spec §3.4 + S18: egen ungdomsrytter får sit første skøn efter så mange afregnede
 // datoer på holdet. Står i spillerens tekst ("Læres · x af 5"), så tallet er offentligt.
@@ -58,8 +59,11 @@ export function buildPotentialView({ row = null, currentRating = null, learningY
     const view = publicEstimateView(row, { currentRating });
     if (!view.hidden) return view;
   }
-  if (learningYouth && trainings < TRAININGS_NEEDED) {
-    return { hidden: true, reason: "learning", trainings, trainingsNeeded: TRAININGS_NEEDED };
+  // #8604: et eget akademitalent forbliver i Læres, til skønnet er skrevet. Før faldt han
+  // efter grænsen til "uscoutet" (intet tal, ingen tekst) indtil søndagen; nu skriver
+  // timesweepet skønnet, og imens står han på x af x.
+  if (learningYouth) {
+    return { hidden: true, reason: "learning", trainings: Math.min(trainings, TRAININGS_NEEDED), trainingsNeeded: TRAININGS_NEEDED };
   }
   return aiTeam ? AI_TEAM : UNSCOUTED;
 }
@@ -249,6 +253,24 @@ async function loadPaceSnapshots(supabase, { riderIds, today }) {
   return byRider;
 }
 
+// #8604 Model 2 (kontakten prognosis_model2): egne ryttere med en forberedt række læser den,
+// klemt ind mellem ratingen nu og skønnet nu, med intervallet til Udvikling. "Forbi toppen"
+// følger sæsonskiftets aldring, ikke en fast alder. Ryttere uden række beholder den
+// nuværende prognose, så ingen står uden tal. Slukket: intet læses ud over kontakten.
+async function applyModel2Prognoses(supabase, { teamId, context, ready, ages, clock, out }) {
+  if (!ready.length || !(await isPrognosisModel2Enabled(supabase))) return;
+  const rows = await loadModel2Prognoses(supabase, { teamId, riderIds: ready.map((rider) => rider.id) });
+  if (!rows.size) return;
+  const aging = await loadPastPeakAging(supabase, { now: clock });
+  for (const rider of ready) {
+    const row = rows.get(rider.id);
+    if (!row) continue;
+    if (pastPeakFromAging(ages.get(rider.id), aging)) { out.set(rider.id, PAST_PEAK); continue; }
+    const view = model2View(row, { estimate: context.views.get(rider.id)?.value, currentRating: context.ratings.get(rider.id) });
+    if (view) out.set(rider.id, view);
+  }
+}
+
 // prognosisView pr. egen rytter. Andres ryttere er ikke med i resultatet.
 // `preloaded` (valgfri): evne-billeder der allerede er hentet, så rapporten ikke læser dem to gange.
 async function loadPrognosisViews(supabase, { teamId, context, clock = new Date(), preloaded = null }) {
@@ -263,7 +285,8 @@ async function loadPrognosisViews(supabase, { teamId, context, clock = new Date(
   const seasonNumber = await resolveScoutBandSeasonNumber(supabase);
   const today = isoDay(clock);
   const ages = new Map(ready.map((rider) => [rider.id, scoutBandAge(rider.birthdate, seasonNumber)]));
-  const growing = ready.filter((rider) => {
+  await applyModel2Prognoses(supabase, { teamId, context, ready, ages, clock, out });
+  const growing = ready.filter((rider) => !out.has(rider.id)).filter((rider) => {
     const age = ages.get(rider.id);
     if (age == null) out.set(rider.id, NO_ESTIMATE);
     else if (age > PEAK_AGE) out.set(rider.id, PAST_PEAK);
@@ -363,11 +386,15 @@ export async function buildScoutingReportFromView(supabase, { teamId, rider, own
   const today = isoDay(clock);
   const snapshots = bands.length ? await loadPaceSnapshots(supabase, { riderIds: [rider.id], today }) : null;
   const prognoses = await loadPrognosisViews(supabase, { teamId, context, clock, preloaded: snapshots });
-  const types = bands.length
+  const typesBase = bands.length
     ? buildTypePrognoses({
       bands, rider, liveAbilities, snapshots: snapshots.get(rider.id), today, estimate: potentialView.value, age: typesAge,
     })
     : [];
+  // #8604: under Model 2 har den bedste rolle samme prognose i Scouting som på kortet.
+  const model2 = prognoses.get(rider.id);
+  const bestKey = model2?.model === 2 && liveAbilities ? bestRoleOf(rider, liveAbilities) : null;
+  const types = bestKey ? typesBase.map((type) => (type.key === bestKey ? { ...type, prog: model2.value } : type)) : typesBase;
   return {
     potentialView,
     ...(prognoses.has(rider.id) ? { prognosisView: prognoses.get(rider.id) } : {}),

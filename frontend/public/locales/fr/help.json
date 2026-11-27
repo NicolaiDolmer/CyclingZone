@@ -1390,6 +1390,10 @@
         "title": "Le potentiel dans tout le jeu",
         "text": "Partout dans le jeu, le potentiel d'un coureur s'appelle Potentiel, avec le sous-titre estimation du scout. Il s'affiche comme un nombre et un mot, par exemple Potentiel 74 · Correct. Le nombre est l'estimation de ton équipe de ce qu'il peut atteindre dans son rôle naturel, sur la même échelle que sa note, et le mot dit à quel point tu peux t'y fier : Incertain, Correct ou Sûr, Sûr étant le plus haut. Quand le mot est Incertain, le nombre s'affiche comme env. 74 dans une couleur atténuée. Le vrai nombre n'est jamais affiché. Pour tes propres coureurs, la colonne Pronostic montre une seule note : où il finira autour de son pic s'il garde son rythme actuel, basée sur ses 30 derniers jours. Plus d'observations, un meilleur recruteur et, pour tes propres coureurs, plus d'entraînement dans ton équipe rendent l'estimation plus sûre. Elle ne bouge que quand ton équipe apprend quelque chose de nouveau, à la mise à jour du dimanche ou quand il change d'équipe. Aucun autre endroit du jeu n'annonce un changement ; l'explication est ici."
       },
+      "potentialAndPrognosis": {
+        "title": "Potentiel et pronostic",
+        "text": "Le potentiel est l'estimation du scout de jusqu'où le coureur peut aller, et le mot à côté du chiffre indique à quel point l'estimation est sûre. Le pronostic indique où ton propre coureur devrait finir à son sommet s'il continue comme maintenant, et il ne dépasse jamais son potentiel. Un nouveau coureur dans ton équipe reçoit les deux chiffres dès son premier jour, et un talent de l'académie affiche En apprentissage jusqu'à ce que ton équipe le connaisse."
+      },
       "potentialBestRole": {
         "title": "Le potentiel dans tout le jeu",
         "text": "Mon équipe, l'académie, le profil du coureur et l'onglet Recrutement affichent le potentiel de la même façon. Il est affiché pour le rôle où il peut aller le plus haut, avec une petite case à côté qui indique ce rôle. Ça reste une estimation : un meilleur recruteur, ou plus de jours d'entraînement dans ton équipe pour tes propres coureurs, la rend plus précise."

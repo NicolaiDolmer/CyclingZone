@@ -1390,6 +1390,10 @@
         "title": "Potentieel in het hele spel",
         "text": "Overal in het spel heet het potentieel van een renner Potentieel, met de ondertitel inschatting van de scout. Het wordt getoond als één getal en één woord, bijvoorbeeld Potentieel 74 · Redelijk. Het getal is de schatting van je team van hoe hoog hij kan komen in zijn natuurlijke rol, op dezelfde schaal als zijn rating, en het woord zegt hoeveel je erop kunt vertrouwen: Onzeker, Redelijk of Zeker, waarbij Zeker het hoogste is. Is het woord Onzeker, dan staat het getal als ca. 74 in een gedempte kleur. Het echte getal wordt nooit getoond. Bij je eigen renners toont de kolom Prognose één rating: waar hij rond zijn hoogtepunt uitkomt als hij zijn huidige tempo vasthoudt, gebaseerd op zijn laatste 30 dagen. Meer blikken, een betere scout en, bij je eigen renners, meer training bij je team maken de schatting zekerder. Ze beweegt alleen als je team iets nieuws leert, bij de zondagse update of als hij van team wisselt. Nergens anders in het spel wordt een wijziging aangekondigd; hier staat de uitleg."
       },
+      "potentialAndPrognosis": {
+        "title": "Potentieel en prognose",
+        "text": "Potentieel is de inschatting van de scout van hoe hoog de renner kan komen, en het woord naast het getal laat zien hoe zeker de inschatting is. De prognose is waar je eigen renner naar verwachting eindigt op zijn top als hij doorgaat zoals nu, en ze komt nooit boven zijn potentieel. Een nieuwe renner in je team krijgt beide getallen vanaf zijn eerste dag, en een academietalent toont Leert tot je team hem kent."
+      },
       "potentialBestRole": {
         "title": "Potentieel in het hele spel",
         "text": "Mijn ploeg, de academie, het rennersprofiel en het tabblad Scouting tonen het potentieel op dezelfde manier. Het wordt getoond voor de rol waarin hij het hoogst kan komen, met een klein vakje ernaast dat zegt welke rol dat is. Het blijft een schatting: een betere scout, of meer trainingsdagen bij je ploeg voor je eigen renners, maakt het scherper."

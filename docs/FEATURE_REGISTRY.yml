@@ -1082,6 +1082,19 @@ features:
     decision: taend
     decide_by: 2026-12-06
 
+  - id: prognosis-model2-8604
+    area: training
+    title_en: "Prognosis model 2: where he ends up if he keeps training as now"
+    title_da: "Prognose model 2: hvor han ender, hvis han træner som nu"
+    state: building
+    flag: prognosis_model2
+    ssot: docs/PROGRESSION_RULES.md
+    epic: 6110
+    verified: 2026-11-26
+    note: "Bag prognosis_model2 (seedet off, #8604/#8810): Model 2-prognosen og første skøn fra dag ét. Slukket = uændret."
+    decision: goer-faerdigt
+    decide_by: 2026-12-06
+
   # --- academy -------------------------------------------------------------
   - id: academy
     area: academy

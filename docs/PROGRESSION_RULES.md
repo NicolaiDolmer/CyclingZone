@@ -301,3 +301,8 @@ XP-modellen ([spec 6/11](superpowers/specs/2026-11-06-6110-xp-udvikling-design.m
 
 Prøvekørslen (`backend/scripts/dev/tenSeasonSim6110.mjs`, #7757) læser dagsvariationen samme sted som motoren (`xp.variation`) og regner løbsdage som motoren, inklusive R15b, så R16 også måles på løbsdatoer og enkeltstart, før der tændes.
 
+
+### 11.2 Potentiale, prognose og første skøn (#8604)
+
+- **Første skøn (live med rettelsen):** en egen rytter uden for akademiet får holdets bredeste egne skøn fra første dag. Et akademitalent står på Læres, indtil grænsen for egne datoer er nået, og står aldrig uden tekst imens. Et timesweep skriver det første skøn for egne ryttere uden række (årsag backfill) og rører aldrig en gemt række, så skønnet stadig kun ændres om søndagen, ved et kig eller ved holdskifte.
+- **Model 2 (bag `prognosis_model2`, seedet off):** prognosen er, hvor rytteren ender ved toppen, hvis han træner som nu. En batch uden for anmodningen simulerer motorens trænings- og løbsgrene, pointkøb, aldersandel og sæsonskiftets tilbagegang med rytterens mix: hans seneste afregnede datoer på holdet, og holdets plan for de datoer, der endnu mangler. Optjeningen kalibreres mod holdets synlige skøn, så skjult potentiale aldrig indgår. Prognosen ligger mellem ratingen nu og skønnet, er ét tal på alle flader og har et interval i Udvikling, der kun snævrer ind. Forbi toppen følger sæsonskiftets aldringsregel. Uden en forberedt række vises den nuværende prognose.

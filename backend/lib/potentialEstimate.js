@@ -123,9 +123,11 @@ export function deviation(riderId, teamId, levelKey, params) {
 // ---------------------------------------------------------------------------
 
 // Vidensniveau fra egne træninger (egen rytter). null under grænsen for første skøn.
+// #8604: `fromDayOne` (egen rytter uden for akademiet, ejervalg 12/11) springer grænsen
+// over: han får holdets bredeste egne skøn fra første dag, og træningen gør det skarpere.
 function ownLevel(k, params) {
   const dates = Math.max(0, Number(k.trainingDates) || 0);
-  if (dates < params.own.firstEstimateDates) return null;
+  if (dates < params.own.firstEstimateDates && k.fromDayOne !== true) return null;
   const effective = dates * (1 + Math.max(0, Number(k.staffSpeed) || 0) * params.own.staffSpeedWeight);
   const steps = params.own.steps; // [{ fromDates, u }] stigende fromDates
   let idx = 0;
@@ -152,6 +154,7 @@ function scoutLevel(k, params) {
 // knowledge:
 //   own                 true for holdets egen rytter
 //   trainingDates       antal rigtige datoer med afregnet træning på holdet (S18)
+//   fromDayOne          egen rytter uden for akademiet: første skøn venter ikke på datoerne (#8604)
 //   staffSpeed          >= 0, hvor meget træner/facilitet fremskynder egen viden
 //   looks               antal kig (scout-niveau, capped af params)
 //   bestScoutTier       scoutens niveau ved det bedste kig (1-5), null = standardscout
