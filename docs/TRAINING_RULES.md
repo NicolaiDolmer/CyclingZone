@@ -1518,9 +1518,9 @@ Kontakt `training_week_forecast` (off | beta | on), seedet off; tænding er ejer
 - **Bindinger og udgang af løb** genbruger motorens regel (`forecastBindingsFromEntryDays`, #5949). Et løb i divisionen, som rytteren ikke er udtaget til, er ikke hans felt (UGE-4).
 - **Kontakten off** (eller et svar uden ugen): `{ available:false, reason:"disabled", days:[] }`, og I dag-fanen er præcis som før.
 
-### 13.10 Week blocks: prioritet pr. felt og ét låst pas pr. dag (#8549 PR 2; bag slukket kontakt)
+### 13.10 Week blocks: prioritet pr. felt og ét låst pas pr. dag (#8549 PR 2; on for alle fra 27/11)
 
-Kontakt `training_week_priority` (off | beta | on), seedet off; tænding er ejer-only. Design: `docs/audits/undersoegelse-docs-8549-prioritet-laast-pas-design.md` §5. Dommer-scenarier: `docs/audits/7456-program-dommer-scenarier.md` §2 (WB-1..10). Kode: `backend/lib/trainingWeekBlocks.js` (kernen) og `backend/lib/trainingWeekPriority.js` (motorens og prognosens fælles indgang).
+Kontakt `training_week_priority` (off | beta | on), seedet off; beta 26/11, on 27/11 (ejer-go). Sæt den aldrig tilbage til off, og genkør aldrig migrationen `2026-11-26-8549-ugeblokke-opt-in.sql` (den sletter ægte valg uden lås). Design: `docs/audits/undersoegelse-docs-8549-prioritet-laast-pas-design.md` §5. Dommer-scenarier: `docs/audits/7456-program-dommer-scenarier.md` §2 (WB-1..10). Kode: `backend/lib/trainingWeekBlocks.js` (kernen) og `backend/lib/trainingWeekPriority.js` (motorens og prognosens fælles indgang).
 
 - **Gælder kun rækker med `plan_kind = 'week'`** (sættes af den nye Program-fane, K-9). **Opt-in (ejer 26/11, #8776):** kun managerens eget valg sætter mærket, dvs. en Week blocks-skrivning (prioritet/lås) eller et skift fra Rotation til Ugeblokke i Plantype. Et almindeligt felt eller et program sat på lader `plan_kind` være, som det var, også når klienten sender `planKind`. `NULL` = gammel felt-plan med dagens regel (OLD-1). `'rotation'` hører til §13.8 (OFF-2).
 - **Kildefeltet omdirigeres, ikke træningsstien:** session og indsats kommer fra kildefeltet (`resolveDayProgram` med kildefeltet), træthedsgrænsen vurderes på feltets eget tidspunkt og vinder over låsen (WB-7, ejer 19/11).
