@@ -130,7 +130,7 @@ test("loadPotentialViews: læser kun holdets egne rækker og aldrig de skjulte k
   const views = await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted", "stranger", "youth", "veteran", "ghost"] });
   assert.equal(views.get("scouted").value, 74);
   assert.deepEqual(views.get("stranger"), { hidden: true, reason: "unscouted" }, "et andet holds skøn må aldrig bruges");
-  assert.deepEqual(views.get("veteran"), { hidden: true, reason: "unscouted" });
+  assert.deepEqual(views.get("veteran"), { hidden: true, reason: "learning", trainings: 0, trainingsNeeded: TRAININGS_NEEDED });
   assert.equal(views.has("ghost"), false);
   const estimateRead = supabase.reads.find((read) => read.table === "rider_potential_estimates");
   assert.doesNotMatch(estimateRead.columns, FORBIDDEN);
@@ -142,9 +142,30 @@ test("loadPotentialViews: træninger tælles som datoer på holdet, ikke rækker
   assert.deepEqual(views.get("youth"), { hidden: true, reason: "learning", trainings: 2, trainingsNeeded: TRAININGS_NEEDED });
 });
 
-test("loadPotentialViews: tæller kun træninger, når en ungdomsrytter mangler et skøn", async () => {
-  const supabase = world();
-  await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted", "veteran"] });
+test("loadPotentialViews: tæller kun træninger, når en egen rytter mangler et skøn", async () => {
+  const supabase = world({ rider_potential_estimates: [estimateRow({ rider_id: "veteran" })] });
+  await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted", "stranger", "veteran"] });
+  assert.ok(!supabase.reads.some((read) => read.table === "training_rider_ticks"));
+});
+
+// #8855: en købt eller hentet seniorrytter uden skøn er i læretiden som et akademitalent.
+// Før stod han som "?" uden Læres-teksten.
+test("loadPotentialViews: egen seniorrytter uden skøn læres og tæller sine datoer på holdet", async () => {
+  const views = await loadPotentialViews(world({
+    training_rider_ticks: [
+      { rider_id: "veteran", team_id: TEAM, tick_date: "2026-11-21", season_id: "s", game_day: 1 },
+      { rider_id: "veteran", team_id: TEAM, tick_date: "2026-11-21", season_id: "s", game_day: 2 },
+      { rider_id: "veteran", team_id: TEAM, tick_date: "2026-11-22", season_id: "s", game_day: 3 },
+      { rider_id: "veteran", team_id: OTHER_TEAM, tick_date: "2026-11-01", season_id: "s", game_day: 0 },
+    ],
+  }), { teamId: TEAM, riderIds: ["veteran"] });
+  assert.deepEqual(views.get("veteran"), { hidden: true, reason: "learning", trainings: 2, trainingsNeeded: TRAININGS_NEEDED });
+});
+
+test("loadPotentialViews: en andens rytter uden skøn er aldrig i læretiden", async () => {
+  const supabase = world({ rider_potential_estimates: [] });
+  const views = await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted"] });
+  assert.deepEqual(views.get("scouted"), { hidden: true, reason: "unscouted" });
   assert.ok(!supabase.reads.some((read) => read.table === "training_rider_ticks"));
 });
 

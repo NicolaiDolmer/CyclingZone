@@ -115,18 +115,22 @@ async function loadEstimateContext(supabase, { teamId, riderIds }) {
   const abilities = new Map(abilityRows.map((row) => [row.rider_id, row]));
   const ratings = new Map(riderRows.map((rider) => [rider.id, currentRating(rider, abilities.get(rider.id))]));
   const rows = new Map(estimateRows.map((row) => [row.rider_id, row]));
-  const isLearningYouth = (rider) => rider.team_id === teamId && rider.is_academy === true;
+  // #8855: alle egne ryttere uden et gemt skøn er i læretiden, ikke kun akademitalenter.
+  // Writeren giver enhver egen rytter sit første skøn efter samme grænse for egne datoer
+  // (potentialEstimate.js ownLevel), så en købt eller hentet seniorrytter lærer på samme
+  // måde. Før stod han som "?" uden Læres-teksten, til skønnet kom.
+  const isLearningOwn = (rider) => rider.team_id === teamId;
   const [dates, aiTeamIds] = await Promise.all([
     loadTrainingDates(supabase, {
       teamId,
-      riderIds: riderRows.filter((rider) => isLearningYouth(rider) && !rows.has(rider.id)).map((rider) => rider.id),
+      riderIds: riderRows.filter((rider) => isLearningOwn(rider) && !rows.has(rider.id)).map((rider) => rider.id),
     }),
     loadAiTeamIds(supabase, { teamId, riderRows: riderRows.filter((rider) => !rows.has(rider.id)) }),
   ]);
   const views = new Map(riderRows.map((rider) => [rider.id, buildPotentialView({
     row: rows.get(rider.id),
     currentRating: ratings.get(rider.id),
-    learningYouth: isLearningYouth(rider),
+    learningYouth: isLearningOwn(rider),
     trainings: dates.get(rider.id)?.size ?? 0,
     aiTeam: aiTeamIds.has(rider.team_id),
   })]));
