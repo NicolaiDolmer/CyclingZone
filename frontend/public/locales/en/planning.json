@@ -312,5 +312,19 @@
     "toFinish": "To the finish",
     "showOnProfile": "Show {name} on the profile",
     "mobileFacts": "Top at km {km} · {length} km · {average} % · {toFinish} km to the finish"
+  },
+  "sectorList": {
+    "titleCobbles": "The cobbled sectors",
+    "titleGravel": "The gravel sectors",
+    "titleMixed": "Cobbles and gravel",
+    "kind": { "cobbles": "Cobbles", "gravel": "Gravel" },
+    "sector": "Sector",
+    "from": "Km",
+    "length": "Length",
+    "toFinish": "To the finish",
+    "range": "{from}-{to}",
+    "showOnProfile": "Show on the profile: {text}",
+    "mobileFacts": "Km {from}-{to} · {length} km · {toFinish} km to the finish",
+    "full": "{kind} · {name} · {length} km · km {from}-{to} · {toFinish} km to the finish"
   }
 }

@@ -12,6 +12,9 @@
 //
 // #8857: under finaledetaljerne staar alle etapens stigninger (StageClimbList, genbrugelig under enhver
 // etapeprofil); et klik paa en raekke vaelger stigningen paa profilen og omvendt.
+//
+// #8609: etapens brostens- og grussektorer staar under stigningerne (StageSectorList) med fuld tekst;
+// profilen tegner dem i forvejen (StageProfileV2), og et klik paa en sektor rammer den ind paa profilen.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -28,6 +31,8 @@ import {
 } from "./primitives.ts";
 import StageProfileV2 from "../race/stagePageV2/StageProfileV2.tsx";
 import StageClimbList from "./StageClimbList.tsx"; // #8857
+import StageSectorList, { SectorHighlight } from "./StageSectorList.tsx"; // #8609
+import { sectorRows } from "./stageSectorRows.ts";
 import { climbDetail, elevationSeries, sortedClimbs, type Climb, type ElevationSeries, type StageProfile } from "../race/stagePageV2/stagePageV2Model.ts";
 import { finaleLabelKey } from "../../lib/stageProfileConfig.js";
 import { formatNumber } from "../../lib/intl.js";
@@ -82,13 +87,24 @@ function BigProfile({ profile }: { profile: StageProfile }) {
   const climbs = useMemo(() => sortedClimbs(profile), [profile]);
   const [selectedClimb, setSelectedClimb] = useState(() => Math.max(0, climbs.length - 1));
   useEffect(() => setSelectedClimb(Math.max(0, climbs.length - 1)), [climbs]);
+  const sectors = useMemo(() => sectorRows(profile), [profile]);
+  const [selectedSector, setSelectedSector] = useState<number | null>(null);
   if (!series) return null;
   const index = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
+  const sectorRow = selectedSector != null ? sectors[selectedSector] ?? null : null;
   return (
     <div data-testid="planning-big-profile">
-      <StageProfileV2 profile={profile} series={series} climbs={climbs} selectedClimb={index} onSelectClimb={setSelectedClimb} />
+      <StageProfileV2
+        profile={profile}
+        series={series}
+        climbs={climbs}
+        selectedClimb={index}
+        onSelectClimb={setSelectedClimb}
+        overlay={sectorRow ? (geo) => <SectorHighlight geo={geo} row={sectorRow} /> : undefined}
+      />
       <FinaleFacts profile={profile} series={series} climb={climbs[index] ?? null} />
       <StageClimbList profile={profile} series={series} climbs={climbs} selected={index} onSelect={setSelectedClimb} />
+      <StageSectorList rows={sectors} selected={selectedSector} onSelect={setSelectedSector} />
     </div>
   );
 }
@@ -206,6 +222,7 @@ export default function RouteProfile({
               />
               <FinaleFacts profile={profile as StageProfile} series={null} climb={sortedClimbs(profile as StageProfile).at(-1) ?? null} />
               <StageClimbList profile={profile as StageProfile} climbs={sortedClimbs(profile as StageProfile)} />
+              <StageSectorList rows={sectorRows(profile as StageProfile)} />
             </>
           ) : (
             <LegacyStageProfileCard profile={profile} stageLabel={t("profile.stageOf", { n: safe + 1, total })} />

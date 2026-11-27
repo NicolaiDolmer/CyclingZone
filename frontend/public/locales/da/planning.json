@@ -312,5 +312,19 @@
     "toFinish": "Til mål",
     "showOnProfile": "Vis {name} på profilen",
     "mobileFacts": "Top ved km {km} · {length} km · {average} % · {toFinish} km til mål"
+  },
+  "sectorList": {
+    "titleCobbles": "Brostenssektorerne",
+    "titleGravel": "Grussektorerne",
+    "titleMixed": "Brosten og grus",
+    "kind": { "cobbles": "Brosten", "gravel": "Grus" },
+    "sector": "Sektor",
+    "from": "Km",
+    "length": "Længde",
+    "toFinish": "Til mål",
+    "range": "{from}-{to}",
+    "showOnProfile": "Vis på profilen: {text}",
+    "mobileFacts": "Km {from}-{to} · {length} km · {toFinish} km til mål",
+    "full": "{kind} · {name} · {length} km · km {from}-{to} · {toFinish} km til mål"
   }
 }
