@@ -234,10 +234,22 @@ export async function deleteExpiredOverrides({ supabase, teamId, today }) {
   // #8834 Fable punkt 3: en dato uden nogen training_date_work-række for holdet (holdet trænede
   // ikke den dato, fx uden for sæsonen) bliver aldrig "complete". Den ryddes, når den er ældre
   // end vinduet, så rækken ikke står for evigt. Datoer med pending/partial venter som før.
+  // Fable-gentjek 27/11: kun når motoren beviseligt er forbi datoen (holdet har en arbejdsrække
+  // på en SENERE dato). Står motoren stille, oprettes rækken dovent ved indhentning, og valget
+  // skal da stadig bruges.
   const orphanBefore = addDaysYmd(today, -DAY_OVERRIDE_WINDOW_DAYS);
+  const orphans = dates.filter((date) => !byDate.get(date)?.length && date < orphanBefore);
+  let latestWork = null;
+  if (orphans.length) {
+    // pagination-safe: one row, the team's latest training date.
+    const { data: latest, error: latestError } = await supabase.from("training_date_work").select("tick_date")
+      .eq("team_id", teamId).order("tick_date", { ascending: false }).limit(1);
+    if (latestError) throw new Error(`training day overrides cleanup latest (team ${teamId}): ${latestError.message ?? latestError}`);
+    latestWork = latest?.[0]?.tick_date ?? null;
+  }
   const settled = dates.filter((date) => {
     const statuses = byDate.get(date);
-    if (!statuses?.length) return date < orphanBefore;
+    if (!statuses?.length) return orphans.includes(date) && latestWork !== null && latestWork > date;
     return statuses.every((status) => status === "complete");
   });
   if (settled.length === 0) return;

@@ -588,12 +588,16 @@ function stubFlagClient({ flagError = false, flag = "on", tables = {} } = {}) {
         in(k, vs) { filters.push((r) => vs.includes(r[k])); return q; },
         lt(k, v) { filters.push((r) => r[k] < v); return q; },
         delete() { q.deleting = true; return q; },
+        order(k) { q.ord = k; return q; },
+        limit(n) { q.lim = n; return q; },
         async maybeSingle() {
           if (name === "app_config" && flagError) return { data: null, error: { message: "boom" } };
           return { data: rowsFor(name).filter((r) => filters.every((f) => f(r)))[0] ?? null, error: null };
         },
         then(resolve) {
-          const rows = rowsFor(name).filter((r) => filters.every((f) => f(r)));
+          let rows = rowsFor(name).filter((r) => filters.every((f) => f(r)));
+          if (q.ord) rows = [...rows].sort((a, b) => String(b[q.ord]).localeCompare(String(a[q.ord])));
+          if (q.lim) rows = rows.slice(0, q.lim);
           if (q.deleting) { tables[name] = (tables[name] ?? []).filter((r) => !rows.includes(r)); resolve({ data: null, error: null }); return; }
           resolve({ data: rows, error: null });
         },
@@ -622,6 +626,13 @@ test("#8834 Fable 3: valg på en dato uden arbejdsrække ryddes, når datoen er 
   };
   await deleteExpiredOverrides({ supabase: stubFlagClient({ tables }), teamId: "team-a", today: "2026-11-27" });
   assert.deepEqual(tables.training_day_overrides.map((r) => r.rider_id).sort(), ["r2", "r3"]);
+  // Fable-gentjek: står motoren stille (ingen arbejdsrække efter datoen), bevares valget.
+  const stalled = {
+    training_day_overrides: [{ team_id: "team-a", rider_id: "r1", override_date: "2026-11-10" }],
+    training_date_work: [{ team_id: "team-a", tick_date: "2026-11-05", status: "complete" }],
+  };
+  await deleteExpiredOverrides({ supabase: stubFlagClient({ tables: stalled }), teamId: "team-a", today: "2026-11-27" });
+  assert.equal(stalled.training_day_overrides.length, 1);
 });
 
 test("#8834 Fable 4: API'et afgør beta på holdets ejer som motoren; fejl = off", async () => {

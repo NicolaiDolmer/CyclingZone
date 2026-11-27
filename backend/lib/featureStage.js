@@ -126,14 +126,6 @@ async function queryFlagValue(supabase, key) {
 }
 
 /**
- * Læs app_config-værdien for `key`. Fejl → null (fail-safe = off).
- *
- * @param {any} supabase  supabase-klient (eller fake med `.from`)
- * @param {string} key
- * @param {{ fresh?: boolean, now?: () => number }} [opts]
- *   `fresh: true` springer cachen over for dette ene opslag.
- */
-/**
  * #8834 Fable punkt 1: som readFlagStage med fresh, men et fejlet opslag kaster i stedet for at
  * give null (= off). Til motorveje, hvor "off ved læsefejl" ville tabe en spillers valg i stilhed:
  * kaldet fejler, og datoen prøves igen.
@@ -145,6 +137,14 @@ export async function readFlagStageStrict(supabase, key) {
   return result.value;
 }
 
+/**
+ * Læs app_config-værdien for `key`. Fejl → null (fail-safe = off).
+ *
+ * @param {any} supabase  supabase-klient (eller fake med `.from`)
+ * @param {string} key
+ * @param {{ fresh?: boolean, now?: () => number }} [opts]
+ *   `fresh: true` springer cachen over for dette ene opslag.
+ */
 export async function readFlagStage(supabase, key, { fresh = false, now = Date.now } = {}) {
   if (!supabase?.from) return null;
 
