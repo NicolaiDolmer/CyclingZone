@@ -111,6 +111,8 @@ To flader viser udtagelsesmatrixen, og de har ikke samme linser. Begge bruger `r
 
 "Kun problemer" står kun på Udtagelser og Belastning (problemerne handler om udtagelserne). Matrixen bliver monteret på tværs af linserne, så en ugemt kladde overlever et linseskift; et sæsonskift med ugemte ændringer spørger først. Et skift af visning (Uge, Måned), "Tilbage til ugen" og et løb åbnet fra Sæson spørger også først, når matrixen eller dags-tavlen har en ugemt kladde (#8811). Ingen nye endpoints.
 
+#8848: matrixen åbner ved i dag (første løbsdag fra i dag; mobilens løbsvælger på det første løb, der ikke er slut). Linjen under matrixen bruger sidehovedets eget tal for løb uden fuld trup de næste 8 dage og nævner det sammen med konflikterne, så de to aldrig modsiger hinanden; "Ingen problemer" kun når begge er nul (kun den aktive sæson). Under linjen forklares cellernes rollebogstaver og mobilens "+" med fuld tekst. #8857: under etapeprofilen står alle etapens stigninger (kategori, navn, top ved km, længde, gennemsnit, km til mål) i den genbrugelige `StageClimbList`.
+
 **Den gamle flade (`/planning?tab=selection` > Sæson, `racehub/SeasonView.jsx`).** Uændret, så længe den findes:
 
 | Linse | Datagrundlag |
