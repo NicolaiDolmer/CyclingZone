@@ -4,11 +4,13 @@
 // kørsel + condition + progress) fra backend, og eksponerer setPlan/clearPlan/runToday.
 // Spejler useScouting (#1138). Effekten lander ved sæson-skift (gated bag #1137).
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
 import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { logEvent } from "./logEvent";
 import { aggregateTrainingRuns } from "./trainingDailyReceipt.ts";
+
+import { TrainingPlanWrites } from "./instantFeedback.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -51,11 +53,18 @@ export function useTraining() {
   // Feltet `effortLevels` mangler indtil API'et sender det; saa er det false = som i dag.
   const [effortLevels, setEffortLevels] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
+  const [savingIds, setSavingIds] = useState(() => new Set());
+  const [pendingChoices, setPendingChoices] = useState(() => new Map());
+  const [planWrites] = useState(() => new TrainingPlanWrites());
+  const readGeneration = useRef(0);
+  const queuePlanWrite = useCallback((ids, action) =>
+    planWrites.enqueue(ids, action, () => setSavingIds(planWrites.savingIds)), [planWrites]);
   const [running, setRunning] = useState(false);  // runToday kører
   const [bulkApplying, setBulkApplying] = useState(false); // bulk-apply kører (#1480)
 
   const refresh = useCallback(async () => {
+    const read = ++readGeneration.current;
+    const revision = planWrites.revision;
     const headers = await authHeaders();
     if (!headers) { setLoading(false); return; }
     try {
@@ -63,10 +72,12 @@ export function useTraining() {
       // overskrive den viste state; "limited"/"unauthorized" beholder den bare.
       const res = await apiFetch(`${API}/api/training/me`, { headers });
       if (res.limited || res.unauthorized) return;
-      if (res.ok) {
+      if (res.ok && read === readGeneration.current) {
         const data = res.data;
-        setSlots(data.slots ?? null);
-        setPlans(data.plans ?? {});
+        if (planWrites.acceptsRead(revision)) {
+          setSlots(data.slots ?? null);
+          setPlans(data.plans ?? {});
+        }
         setTeamId(data.teamId ?? null);
         setEnabled(data.enabled ?? false);
         setDailyReceiptEnabled(data.dailyReceiptEnabled === true);
@@ -103,7 +114,7 @@ export function useTraining() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [planWrites]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -116,36 +127,43 @@ export function useTraining() {
   // #7947 PR 3: `effort` ("easy" | "normal" | "hard") sendes KUN naar indsatsvaelgeren valgte
   // et niveau; uden den er kaldet praecis som foer.
   const setPlan = useCallback(async (riderId, dayType, session = null, effort = null) => {
-    const headers = await authHeaders();
-    if (!headers) return { ok: false, error: "auth" };
-    setSavingId(riderId);
+    const draft = { choice: session ?? dayType };
+    setPendingChoices((previous) => new Map(previous).set(riderId, draft));
     try {
-      const res = await apiFetch(`${API}/api/training/${riderId}`, {
-        method: "POST", headers, body: JSON.stringify(effort ? { dayType, session, effort } : { dayType, session }),
+      return await queuePlanWrite([riderId], async () => {
+        const headers = await authHeaders();
+        if (!headers) return { ok: false, error: "auth" };
+        const res = await apiFetch(`${API}/api/training/${riderId}`, {
+          method: "POST", headers, body: JSON.stringify(effort ? { dayType, session, effort } : { dayType, session }),
+        });
+        const data = res.data || {};
+        if (!res.ok) return { ok: false, error: data.error || "failed" };
+        if (data.slots) setSlots(data.slots);
+        // Serveren returnerer det par den faktisk skrev — vi gætter ikke på det
+        // lokalt, netop fordi udledningen (fx hvilket fokus en hviledag bevarer)
+        // bor server-side.
+        if (data.plan) setPlans((prev) => ({ ...prev, [riderId]: data.plan }));
+        // Pillar-event (#1168): trænings-funnellen til go/no-go. Consent-gated i logEvent.
+        logEvent("training_focus_set", { dayType, session });
+        return { ok: true };
       });
-      const data = res.data || {};
-      if (!res.ok) return { ok: false, error: data.error || "failed" };
-      if (data.slots) setSlots(data.slots);
-      // Serveren returnerer det par den faktisk skrev — vi gætter ikke på det
-      // lokalt, netop fordi udledningen (fx hvilket fokus en hviledag bevarer)
-      // bor server-side.
-      if (data.plan) setPlans((prev) => ({ ...prev, [riderId]: data.plan }));
-      // Pillar-event (#1168): trænings-funnellen til go/no-go. Consent-gated i logEvent.
-      logEvent("training_focus_set", { dayType, session });
-      return { ok: true };
     } catch {
       return { ok: false, error: "network" };
     } finally {
-      setSavingId(null);
+      setPendingChoices((previous) => {
+        if (previous.get(riderId) !== draft) return previous;
+        const next = new Map(previous);
+        next.delete(riderId);
+        return next;
+      });
     }
-  }, []);
+  }, [queuePlanWrite]);
 
   // Fjern en træningsfokus (frigør slottet). Returnerer { ok, error? }.
-  const clearPlan = useCallback(async (riderId) => {
-    const headers = await authHeaders();
-    if (!headers) return { ok: false, error: "auth" };
-    setSavingId(riderId);
+  const clearPlan = useCallback((riderId) => queuePlanWrite([riderId], async () => {
     try {
+      const headers = await authHeaders();
+      if (!headers) return { ok: false, error: "auth" };
       const res = await apiFetch(`${API}/api/training/${riderId}`, { method: "DELETE", headers });
       const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
@@ -154,10 +172,8 @@ export function useTraining() {
       return { ok: true };
     } catch {
       return { ok: false, error: "network" };
-    } finally {
-      setSavingId(null);
     }
-  }, []);
+  }), [queuePlanWrite]);
 
   // Bulk-anvend samme fokus+intensitet på flere ryttere (#1480/#1885). ÉT POST
   // mod /api/training/bulk — backend partitionerer mod ejerskab + slots og
@@ -170,39 +186,41 @@ export function useTraining() {
   // null (hvile/restitution har ingen) eller "smart" (assistenten vaelger pr.
   // rytter, server-side, og roerer aldrig en rytter der har sit eget valg).
   const setPlanBulk = useCallback(async (riderIds, dayType, session = null, effort = null) => {
-    const headers = await authHeaders();
-    if (!headers) return { ok: false, applied: 0, failed: [], error: "auth" };
     const ids = Array.isArray(riderIds) ? riderIds : [];
     if (ids.length === 0) return { ok: true, applied: 0, failed: [] };
     setBulkApplying(true);
     try {
-      const res = await apiFetch(`${API}/api/training/bulk`, {
-        method: "POST", headers, body: JSON.stringify(effort ? { riderIds: ids, dayType, session, effort } : { riderIds: ids, dayType, session }),
+      return await queuePlanWrite(ids, async () => {
+        const headers = await authHeaders();
+        if (!headers) return { ok: false, applied: 0, failed: [], error: "auth" };
+        const res = await apiFetch(`${API}/api/training/bulk`, {
+          method: "POST", headers, body: JSON.stringify(effort ? { riderIds: ids, dayType, session, effort } : { riderIds: ids, dayType, session }),
+        });
+        const data = res.data || {};
+        if (!res.ok) {
+          // Hele requestet fejlede (auth/validering/rate/5xx) → alle markeres fejlet,
+          // så UI'et beholder dem valgt til et nyt forsøg.
+          const error = data.error || "failed";
+          return { ok: false, applied: 0, failed: ids.map((riderId) => ({ riderId, error })), error };
+        }
+        if (data.plans) setPlans(data.plans);
+        if (data.slots) setSlots(data.slots);
+        const applied = data.applied ?? 0;
+        const skippedHasPlan = (data.skipped?.hasPlan) ?? []; // #1894 smart-mode: har allerede en plan
+        const skipped = [
+          ...((data.skipped?.notOwned) ?? []),
+          ...((data.skipped?.noSlots) ?? []),
+        ];
+        const failed = skipped.map((riderId) => ({ riderId, error: "skipped" }));
+        if (applied > 0) logEvent("training_focus_set_bulk", { dayType, session, applied });
+        return { ok: failed.length === 0, applied, failed, skippedHasPlan };
       });
-      const data = res.data || {};
-      if (!res.ok) {
-        // Hele requestet fejlede (auth/validering/rate/5xx) → alle markeres fejlet,
-        // så UI'et beholder dem valgt til et nyt forsøg.
-        const error = data.error || "failed";
-        return { ok: false, applied: 0, failed: ids.map((riderId) => ({ riderId, error })), error };
-      }
-      if (data.plans) setPlans(data.plans);
-      if (data.slots) setSlots(data.slots);
-      const applied = data.applied ?? 0;
-      const skippedHasPlan = (data.skipped?.hasPlan) ?? []; // #1894 smart-mode: har allerede en plan
-      const skipped = [
-        ...((data.skipped?.notOwned) ?? []),
-        ...((data.skipped?.noSlots) ?? []),
-      ];
-      const failed = skipped.map((riderId) => ({ riderId, error: "skipped" }));
-      if (applied > 0) logEvent("training_focus_set_bulk", { dayType, session, applied });
-      return { ok: failed.length === 0, applied, failed, skippedHasPlan };
     } catch {
       return { ok: false, applied: 0, failed: ids.map((riderId) => ({ riderId, error: "network" })), error: "network" };
     } finally {
       setBulkApplying(false);
     }
-  }, []);
+  }, [queuePlanWrite]);
 
   const planFor = useCallback((riderId) => plans[riderId] ?? null, [plans]);
 
@@ -316,7 +334,7 @@ export function useTraining() {
 
   return {
     slots, plans, teamId, enabled, todayRun, condition, progress, capped, xpBar, trainability, smartDefaultFocus, trainingScore,
-    weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
+    weekPlan, savingWeekPlan, loading, savingIds, pendingChoices, running, bulkApplying,
     riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, decisionCard, fatigueDays70, dailyReceiptEnabled, effortLevels,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,
     setRiderWeekPlan, clearRiderWeekPlan,

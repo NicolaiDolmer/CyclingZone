@@ -47,6 +47,11 @@ test(loseResponse ? "manager ser gemt efter mistet svar på udtagelsen" : "manag
   await stabilizePage(page);
   await installNetworkMocks(page);
 
+  const phase = process.env.CZ_8714_PHASE === "before" ? "before" : "after";
+  const measureSave = Boolean(process.env.CZ_8714_PHASE) && !loseResponse;
+  if (measureSave) await page.setViewportSize({ width: 1440, height: 950 });
+  if (measureSave) await page.setViewportSize({ width: 1440, height: 950 });
+
   // Override races-tabellen så RaceDetailPage finder SCHEDULED_RACE.
   // Følger race-detail.spec.js: registreres efter installNetworkMocks → vinder (LIFO).
   await page.route("**/rest/v1/races**", (route) => {
@@ -83,6 +88,7 @@ test(loseResponse ? "manager ser gemt efter mistet svar på udtagelsen" : "manag
         capturedBody = {};
       }
       if (loseResponse) return route.abort("failed");
+      if (measureSave) await new Promise((resolve) => setTimeout(resolve, 900));
       return route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -154,7 +160,19 @@ test(loseResponse ? "manager ser gemt efter mistet svar på udtagelsen" : "manag
   // Tekst er "Gem udtagelse" i DA-locale.
   const saveBtn = panel.getByRole("button", { name: /gem udtagelse/i });
   await expect(saveBtn).toBeEnabled();
+  if (measureSave) await saveBtn.evaluate((element) => {
+    element.addEventListener("click", () => performance.mark("lineup-save"), { once: true });
+  });
   await saveBtn.click();
+  if (measureSave) {
+    await expect(panel.getByRole("button", { name: /^Gemmer/ })).toBeDisabled();
+    const ms = await page.evaluate(() => {
+      const start = performance.getEntriesByName("lineup-save").at(-1)?.startTime;
+      if (start == null) throw new Error("Missing lineup save event");
+      return Math.round(performance.now() - start);
+    });
+    console.log("8714 " + JSON.stringify({ phase, width: page.viewportSize()?.width, action: "lineup-save", samples: [ms] }));
+  }
 
   // Succesbesked vises: "Udtagelsen er gemt." i DA-locale.
   await expect(panel.getByText(/udtagelsen er gemt/i)).toBeVisible();

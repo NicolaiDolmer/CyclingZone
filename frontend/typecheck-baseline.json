@@ -2375,11 +2375,11 @@
   "src/pages/NotificationsPage.jsx": {
     "TS18048": 1,
     "TS2322": 3,
-    "TS2339": 27,
-    "TS2345": 19,
+    "TS2339": 20,
+    "TS2345": 12,
     "TS2362": 2,
     "TS2363": 2,
-    "TS2698": 6,
+    "TS2698": 3,
     "TS2741": 1
   },
   "src/pages/PatchNotesPage.jsx": {

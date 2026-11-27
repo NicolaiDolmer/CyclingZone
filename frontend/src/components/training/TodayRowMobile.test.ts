@@ -71,7 +71,7 @@ test("#6123 'Back to team program': raekken og tabellen rummer slottet, siden ka
   assert.match(page, /await clearRiderWeekPlan\(riderId\)/);
   assert.match(page, /await clearPlan\(riderId\)/);
   // Laasen og fejlteksten kommer fra de eksisterende kilder.
-  assert.match(page, /locked=\{rowLocked\(\{ trainedToday: runGate\.trainedToday \}\)\}\s+busy=\{savingId === riderId/);
+  assert.match(page, /locked=\{rowLocked\(\{ trainedToday: runGate\.trainedToday \}\)\}\s+busy=\{savingIds\.has\(riderId\)/);
   assert.match(reset, /trainNowSaveErrorKey\(error, "resetProgram\.error"\)/);
   assert.match(reset, /disabled=\{locked \|\| busy \|\| working\}/);
   assert.match(reset, /role="status"/);

@@ -118,7 +118,8 @@ export type TodayR5Props = {
   fatigueDays70: Record<string, number> | null | undefined;
   smartDefaultFocus: Record<string, string | null | undefined>;
   trainedToday: boolean;
-  savingId: string | null;
+  savingIds: ReadonlySet<string>;
+  pendingChoices: ReadonlyMap<string, { choice: string }>;
   bulkApplying: boolean;
   justSaved: ReadonlySet<string>;
   planError: { riderId: string; error: string } | null;
@@ -470,7 +471,7 @@ function AssistantMark({ row, r5, onUse, full = false }: { row: Row; r5: TodayR5
     );
   }
   const session = name(v.choice);
-  const busy = r5.savingId === row.id || r5.bulkApplying;
+  const busy = r5.savingIds.has(row.id) || r5.bulkApplying;
   return (
     <button type="button" disabled={busy} onClick={() => onUse(v.choice)} title={tR5("row.assistantUse", { session })}
       aria-label={tR5("row.assistantUse", { session })} data-testid="r5-assistant" data-verdict="suggests"
@@ -487,7 +488,7 @@ function AssistantMark({ row, r5, onUse, full = false }: { row: Row; r5: TodayR5
 function RowMenu({ row, r5, open, onToggleDetails, phone = false }: { row: Row; r5: TodayR5Props; open: boolean; onToggleDetails: () => void; phone?: boolean }) {
   const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const locked = r5.trainedToday;
-  const busy = r5.savingId === row.id || r5.bulkApplying;
+  const busy = r5.savingIds.has(row.id) || r5.bulkApplying;
   return (
     <Dropdown
       align="right"
@@ -981,7 +982,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
               const sel = selected.has(row.id);
               const load = dayLoad(row.fields, row.efforts);
               const w = rowWrites(row, r5, choices);
-              const busy = r5.savingId === row.id || r5.bulkApplying;
+              const busy = r5.savingIds.has(row.id) || r5.bulkApplying;
               const noteId = `r5-note-${row.id}`;
               return (
                 <Fragment key={row.id}>
@@ -1011,7 +1012,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     ) : (
                       <>
                         <td className={`relative ${CELL}`} data-tour={tourAnchor()}>
-                          <TrainingPicker value={row.choice} programSession={row.rotationSession} onPick={w.pickTraining} disabled={busy} full prefix={false}
+                          <TrainingPicker value={r5.pendingChoices.get(row.id)?.choice ?? row.choice} programSession={row.rotationSession} onPick={w.pickTraining} disabled={busy} full prefix={false}
                             label={tR5("training.aria", { name: row.name })} describedBy={noteId} testId="r5-row-training" />
                           {/* "Din dag ..." er ingen boble oven paa naeste raekke (ejer 23/11 aften): teksten staar skjult for skaermlaeseren her og synligt i den udfoldede raekke. */}
                           <span className="sr-only"><RowNote row={row} r5={r5} levelsOn={levelsOn} id={noteId} /></span>
@@ -1020,7 +1021,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                           <span className="flex items-center gap-1.5">
                             <EffortControl levelsOn={levelsOn} scope={row.name} value={row.ownEffort} onPick={w.pickEffort} disabled={busy} compact testId="r5-row-effort" />
                             {levelsOn && showsInjuryRisk(row.effective) && <HardRiskIcon />}
-                            {r5.justSaved.has(row.id) && <SavedMark iconOnly />}
+                            {!busy && r5.planError?.riderId !== row.id && r5.justSaved.has(row.id) && <SavedMark iconOnly />}
                           </span>
                           <RowError row={row} r5={r5} />
                         </td>
@@ -1095,7 +1096,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
               const o = !pickMode && isOpen(row.id);
               const sel = selected.has(row.id);
               const w = rowWrites(row, r5, choices);
-              const busy = r5.savingId === row.id || r5.bulkApplying;
+              const busy = r5.savingIds.has(row.id) || r5.bulkApplying;
               const hardRisk = levelsOn && showsInjuryRisk(row.effective);
               return (
                 <li key={row.id} className={`border-t border-cz-border first:border-t-0 ${sel ? "bg-cz-subtle/60" : ""}`} data-testid="r5-row">
@@ -1129,7 +1130,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     <div className="flex flex-col gap-1.5 px-3 pb-2" data-testid="r5-onetap">
                       {locked ? <TrainedMark row={row} /> : (
                         <div className="grid gap-1.5 @[34rem]:grid-cols-[minmax(0,1fr)_auto]" data-tour={tourAnchor()}>
-                          <TrainingPicker value={row.choice} programSession={row.rotationSession} onPick={w.pickTraining} disabled={busy} full
+                          <TrainingPicker value={r5.pendingChoices.get(row.id)?.choice ?? row.choice} programSession={row.rotationSession} onPick={w.pickTraining} disabled={busy} full
                             label={tR5("training.aria", { name: row.name })} testId="r5-row-training" />
                           <EffortControl levelsOn={levelsOn} scope={row.name} value={row.ownEffort} onPick={w.pickEffort} disabled={busy} full testId="r5-row-effort" />
                         </div>
@@ -1138,7 +1139,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
                           {row.verdict?.kind === "suggests" && <AssistantMark row={row} r5={r5} onUse={w.useSuggestion} full />}
                           {hardRisk && <HardRiskLine />}
-                          {r5.justSaved.has(row.id) && <SavedMark />}
+                          {!busy && r5.planError?.riderId !== row.id && r5.justSaved.has(row.id) && <SavedMark />}
                         </div>
                       )}
                       <RowError row={row} r5={r5} />

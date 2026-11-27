@@ -187,7 +187,7 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError, levelsOn = fa
           <EffortPickerR5
             value={planEffort(plan)}
             onPick={onPickEffort}
-            disabled={training.savingId === rider.id}
+            disabled={training.savingIds.has(rider.id)}
             scope={`${rider.firstname} ${rider.lastname}`}
             full
             testId="profile-training-effort"
@@ -714,7 +714,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
         intensity={plan?.intensity ?? "normal"}
         trainability={training.trainability?.[rider.id] ?? null}
         assistantFocus={training.smartDefaultFocus?.[rider.id] ?? null}
-        saving={training.savingId === rider.id}
+        saving={training.savingIds.has(rider.id)}
         error={actionError}
         onSave={handlePanelSave}
         onClear={handlePanelClear}

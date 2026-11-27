@@ -68,19 +68,23 @@ test("RiderStatsPage.toggleWatchlist læser { error } fra begge writes", () => {
   assert.match(fn, /if \(error\) \{/);
 });
 
-test("NotificationsPage: alle fem mutationer læser { error } og ruller tilbage", () => {
+test("NotificationsPage: separate mutationer bruger fælles fejlhåndtering og målrettet rollback", () => {
   const src = read("../pages/NotificationsPage.jsx");
+  const shared = body(src, "async function changeNotifications(", "async function markRead(", "changeNotifications");
+  assert.match(shared, /const error = await write\(\);\s*if \(error\) throw error/);
+  assert.match(shared, /catch \(error\) \{\s*notifyMutationFailed\(action, error, context\);/);
+  assert.match(shared, /finally \{[\s\S]*setPendingNotificationChanges\(\(pending\) => pending\.filter\(\(entry\) => entry !== change\)\)/);
   for (const [start, end, label] of [
     ["async function markRead(", "async function markManyRead(", "markRead"],
     ["async function markManyRead(", "async function deleteMany(", "markManyRead"],
     ["async function deleteMany(", "function toggleAggregate(", "deleteMany"],
+    ["async function markAllRead(", "async function deleteNotif(", "markAllRead"],
     ["async function deleteNotif(", "async function deleteAllRead(", "deleteNotif"],
     ["async function deleteAllRead(", "const unreadCount", "deleteAllRead"],
   ]) {
     const fn = body(src, start, end, label);
     assert.match(fn, /const \{ error \} = await supabase\.from\("notifications"\)/, `${label}: mangler { error }-læsning`);
-    assert.match(fn, /if \(error\) \{/, `${label}: mangler if (error)`);
-    assert.match(fn, /setNotifications\(prev\)/, `${label}: ruller ikke optimistisk state tilbage`);
+    assert.match(fn, /changeNotifications\([\s\S]+return error;/, `${label}: afleverer ikke skrivefejlen til fælles håndtering`);
   }
 });
 

@@ -42,6 +42,7 @@ const SAVED_VISIBLE_MS = 4000;
 export default function TrainingDaySelect({
   riderName,
   plan,
+  pendingChoice,
   busy = false,
   error = null,
   onChoose,
@@ -51,6 +52,7 @@ export default function TrainingDaySelect({
 }: {
   riderName: string;
   plan: DayPlan;
+  pendingChoice?: string;
   busy?: boolean;
   error?: string | null;
   // Resolver til true naar valget er gemt. Siden ejer mutationen og fejlen.
@@ -64,7 +66,7 @@ export default function TrainingDaySelect({
 }) {
   const { t } = useTranslation("training");
   const sessionsByLevel = sessionsByLevelFor({ catalogV3: useTrainingCatalogV3() }) as Record<string, readonly string[]>; // #5319
-  const value = dayChoiceForPlan(plan);
+  const value = pendingChoice ?? dayChoiceForPlan(plan);
   const [saved, setSaved] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -130,7 +132,7 @@ export default function TrainingDaySelect({
             className="pointer-events-none absolute inset-e-2.5 top-1/2 -translate-y-1/2 text-cz-3"
           />
         </div>
-        {(saved || justSaved) && (
+        {!busy && !error && (saved || justSaved) && (
           <span role="status" className="inline-flex flex-none items-center gap-1 text-2xs font-semibold text-cz-success">
             <CheckIcon size={12} aria-hidden="true" />
             {t("daySelect.saved")}
