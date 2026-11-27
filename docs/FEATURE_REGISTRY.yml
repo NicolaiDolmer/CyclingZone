@@ -183,6 +183,31 @@ features:
     decision: ejer-beslutning
     decide_by: 2026-11-18
 
+  - id: race-hilly-selection-8799
+    area: race-engine
+    title_en: Hilly stages - selection and finishes decided by the day
+    title_da: Kuperet - selektion og afslutninger efter dagens hårdhed
+    state: dormant
+    flag: hilly_selection_8799
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 8799
+    verified: 2026-11-26
+    note: "Slukket; ejer 26/11: tændes før S6's første løb efter samlet måling og Fable-dom. Kun løb der starter efter tænding."
+    decision: ejer-beslutning
+    decide_by: 2026-11-28
+  - id: race-peak-leadup-all-rows-8180
+    area: race-engine
+    title_en: Form peak lead-up reads every team
+    title_da: Formtoppens optakt læser alle hold
+    state: dormant
+    flag: peak_leadup_all_rows_8180
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 8180
+    verified: 2026-11-26
+    note: "Slukket; tændes af ejeren efter Fable-dom. Kun løb der starter efter tænding."
+    decision: ejer-beslutning
+    decide_by: 2026-12-10
+
   - id: race-team-chase-7730
     area: race-engine
     title_en: The chase is decided by the teams chasing
@@ -205,6 +230,18 @@ features:
     note: "Nøgle time_limit_fatigue_7715 uden række (off)."
     decision: ejer-beslutning
     decide_by: 2026-11-20
+
+  - id: race-long-attack-7884
+    area: race-engine
+    title_en: Attack on a climb of your choice
+    title_da: Angrib på den stigning du vælger
+    state: building
+    ssot: docs/superpowers/specs/2026-11-12-7884-langt-angreb-design.md
+    epic: 7884
+    verified: 2026-11-26
+    note: "Nøgle long_attack_7884 uden række (off). Kun kontrakten (backend/lib/tacticAttackTrigger7884.js); motor og flade mangler."
+    decision: goer-faerdigt
+    decide_by: 2026-11-30
 
   - id: race-official-times-v1
     area: race-engine
@@ -1010,13 +1047,13 @@ features:
     area: training
     title_en: Rotation plans that wait on rest and races
     title_da: Rotation, der venter ved hvile og løb
-    state: building
+    state: live
     flag: training_rotation
     ssot: docs/TRAINING_RULES.md
     epic: 7456
-    verified: 2026-11-22
-    note: "Data, API, afregning og prognose bag training_rotation. Pladsen fortsætter over sæsonskift. Beta i to dage med aftenverifikation før ejerens go til on."
-    decision: goer-faerdigt
+    verified: 2026-11-26
+    note: "On 26/11 kl. 23:09 efter ejer-go 26/11 (#8549): beta → on for alle, efter #8779 + #8787 og 0 automatisk mærkede week-rækker. Data, API, afregning og prognose bag training_rotation; pladsen fortsætter over sæsonskift."
+    decision: taend
     decide_by: 2026-12-06
 
   - id: training-week-priority-8549
@@ -1027,8 +1064,8 @@ features:
     flag: training_week_priority
     ssot: docs/TRAINING_RULES.md
     epic: 7456
-    verified: 2026-11-22
-    note: "Motor, prognose og Program R5 bag training_week_priority. Feltprioritet og lås gemmes med weekBlock på celle-API'et for ryttere og grupper."
+    verified: 2026-11-26
+    note: "Beta 26/11 kl. 23:09 efter ejer-go (#8549): off → beta, opt-in (kun planer hvor manageren selv har valgt Ugeblokke, #8779). Motor, prognose og Program R5 bag training_week_priority; feltprioritet og lås gemmes med weekBlock på celle-API'et."
     decision: goer-faerdigt
     decide_by: 2026-12-06
 
@@ -1054,7 +1091,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 7456
     verified: 2026-11-26
-    note: "Datotabel training_day_overrides, motor, prognose og dagsvælgeren bag training_day_override_8592 (seedet off). Løb, binding og skade vinder altid; rotationen venter på datoen. Virker også uden program, og et valg truffet efter træthedsgrænsens markering går forud for grænsen (#8819). Fable-dom før merge, preview før tænding."
+    note: "Bag flaget (seedet off). Løb, binding og skade vinder; virker uden program (#8819)."
     decision: goer-faerdigt
     decide_by: 2026-12-10
 
@@ -1073,13 +1110,13 @@ features:
     area: academy
     title_en: Academy page with tabs and age focus
     title_da: Akademisiden med faner og aldersfokus
-    state: building
+    state: live
     flag: academy_page_v2_8081
     ssot: docs/YOUTH_RULES.md
     epic: 8081
-    verified: 2026-11-16
-    note: Slukket. Ugens træk læser aktivt aldersfokus med gyldig privat konfiguration. Aktivering er en særskilt ejerbeslutning.
-    decision: ejer-beslutning
+    verified: 2026-11-26
+    note: "On 26/11 kl. 23:09 efter ejer-go 26/11 (#8549/#8081). Ugens træk læser aktivt aldersfokus med gyldig privat konfiguration."
+    decision: taend
     decide_by: 2026-11-30
 
   - id: scout-system

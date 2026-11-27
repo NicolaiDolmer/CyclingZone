@@ -327,8 +327,10 @@ export function createTrainingProgramsRouter({
       else if (riderIds.includes(target)) targets = [target];
       else return res.status(403).json({ error: "not_own_rider" });
       if (targets.length === 0) return res.json({ ok: true, applied: 0 });
-      const markWeek = req.body?.planKind === "week" && target !== "squad"
-        && (await rotationOn(req) || await isWeekPriorityEditorEnabled(supabase, await isViewerBetaTester(req)));
+      // #8776 (ejer 26/11): ugeprioritet er opt-in. At saette et program paa roerer aldrig
+      // plan_kind; kun en Week blocks-skrivning (PUT /cell med weekBlock) eller et eksplicit
+      // skift i Plantype (PUT /rotation { planKind }) saetter markoeren. Et `planKind` i
+      // body'en (ogsaa fra en gammel klient) ignoreres her.
       // #6000: en rytter-tildeling er rytterens egen plan (vinder over gruppen). Foer skrivningen.
       if (target !== "squad") await markRidersOwnPlan(supabase, teamId, targets);
 
@@ -344,7 +346,7 @@ export function createTrainingProgramsRouter({
         // En NY kopi pr. rytter — ingen delte objekter mellem raekkerne.
         const days = programWeekDaysFor(program.key);
         const existingId = existingByRider.get(riderId);
-        const patch = { days, program_key: program.key, updated_at: now, ...(markWeek ? { plan_kind: "week" } : {}) };
+        const patch = { days, program_key: program.key, updated_at: now };
         if (existingId) updates.push({ id: existingId, patch });
         else inserts.push({ team_id: teamId, rider_id: riderId, ...patch });
       }
@@ -389,7 +391,7 @@ export function createTrainingProgramsRouter({
     }
     try {
       if (!(await cellsOn(req))) return res.status(404).json({ error: "not_found" });
-      const weekEnabled = req.body?.planKind === "week" || req.body?.weekBlock !== undefined
+      const weekEnabled = req.body?.weekBlock !== undefined
         ? await isWeekPriorityEditorEnabled(supabase, await isViewerBetaTester(req))
         : false;
       const blockWrite = await weekBlockDayWrite(supabase, req.body ?? {}, {
@@ -425,8 +427,9 @@ export function createTrainingProgramsRouter({
       if (!days) return res.status(400).json({ error: "invalid_cell" });
       await markRidersOwnPlan(supabase, teamId, [riderId]); // #6000: egen plan vinder over gruppen. Foer skrivningen.
       const now = clock().toISOString();
-      const markWeek = blockWrite.block || (req.body?.planKind === "week" && (weekEnabled || await rotationOn(req)));
-      const patch = { days, updated_at: now, ...(markWeek ? { plan_kind: "week" } : {}) };
+      // #8776: kun en Week blocks-skrivning (prioritet/laas) er managerens valg af ugeprioritet;
+      // et almindeligt felt lader plan_kind vaere, som det var.
+      const patch = { days, updated_at: now, ...(blockWrite.block ? { plan_kind: "week" } : {}) };
       const { error } = row
         ? await updateRow(supabase, row.id, patch)
         : await insertRows(supabase, [{ team_id: teamId, rider_id: riderId, ...patch }]);

@@ -22,7 +22,6 @@ import auth from "../../public/locales/da/auth.json";
 import errors from "../../public/locales/da/errors.json";
 import auctions from "../../public/locales/da/auctions.json";
 import transfers from "../../public/locales/da/transfers.json";
-import dashboard from "../../public/locales/da/dashboard.json";
 import banners from "../../public/locales/da/banners.json";
 import feedback from "../../public/locales/da/feedback.json";
 import rider from "../../public/locales/da/rider.json";
@@ -35,7 +34,6 @@ import sponsor from "../../public/locales/da/sponsor.json";
 import headtohead from "../../public/locales/da/headtohead.json";
 import halloffame from "../../public/locales/da/halloffame.json";
 import races from "../../public/locales/da/races.json";
-import training from "../../public/locales/da/training.json";
 import academy from "../../public/locales/da/academy.json";
 import klub from "../../public/locales/da/klub.json";
 import staff from "../../public/locales/da/staff.json";
@@ -48,7 +46,6 @@ export default {
   errors,
   auctions,
   transfers,
-  dashboard,
   banners,
   feedback,
   rider,
@@ -61,7 +58,6 @@ export default {
   headtohead,
   halloffame,
   races,
-  training,
   academy,
   klub,
   staff,

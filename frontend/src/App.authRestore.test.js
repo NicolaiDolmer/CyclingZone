@@ -25,7 +25,9 @@ test("App's initial getSession() har en .catch() (#1347)", () => {
 test("catch-handleren sætter en terminal (ikke-undefined) session-state (#1347)", () => {
   // Loaderen vises mens session === undefined. catch SKAL sætte session til en
   // terminal værdi (null = unauthenticated) så <LoadingScreen /> forsvinder.
-  const catchBlock = appSource.match(/\.catch\(\([^)]*\)\s*=>\s*\{([\s\S]*?)\}\);/);
+  const catchBlock = appSource.match(
+    /supabase\.auth\.getSession\(\)\.then\([\s\S]*?\}\)\.catch\(\([^)]*\)\s*=>\s*\{([\s\S]*?)\}\);/,
+  );
   assert.ok(catchBlock, "kunne ikke finde catch-blokken på getSession()");
   assert.match(
     catchBlock[1],

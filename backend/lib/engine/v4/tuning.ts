@@ -1769,3 +1769,34 @@ export const BREAKAWAY_CURVE_6912_TUNING = deepFreeze({
   climbLossSecondsPerGradientKm: 2, // forventet tab pr. stignings-km pr. procent paa finalestigningen
   maxControlClosingSecondsPerKm: 25, // hoejeste lukning pr. km under styringen
 });
+
+// #8189 (KUN s5_profiles_v3 + kontakten hilly_selection_8799, SLUKKET): en flad spurt paa kuperet og
+// boelget afgoeres af hvor haard dagen var, ikke som en ren massespurt (mechanics/hillyFinish8189.ts).
+// Ejer 26/11 (#4596): boelget er en sprinterdag, men udbrud og reducerede spurter vinder en del;
+// jo haardere dagen, jo faerre rene sprintere. Dagens haardhed (0-1) laeses af de kategoriserede
+// stigninger foer maal, vaegtet efter kategori og naerhed til maal. Tre led: jagtens interesse og
+// lad-gaa-loftet (udbruddet), det sene angreb (kuperet) og placerings-kravet (reduceret spurt).
+// Den maalte effekt staar privat (balance-internals/8189/ og /8799/, hard rule 17).
+export const HILLY_FINISH_8189_TUNING = deepFreeze({
+  profiles: ["hilly", "rolling"] as readonly ProfileType[],
+  finales: ["flat_sprint"] as readonly import("./types.ts").FinaleType[],
+  // Dagens haardhed: kategori-vaegt pr. stigning, summen mappes lineaert fra `hardnessFloor` til
+  // `hardnessFull`. En stigning laengere fra maal end `nearFinishKm` taeller mindre, ned til
+  // `farWeight` ved `farFinishKm`.
+  categoryWeight: { "4": 1, "3": 2, "2": 4, "1": 6, HC: 8 } as Readonly<Record<string, number>>,
+  hardnessFloor: 1,
+  hardnessFull: 8,
+  nearFinishKm: 20,
+  farFinishKm: 80,
+  farWeight: 0.5,
+  // (kun kuperet) Udbruddet: sprinterholdenes interesse i at jage falder med haardheden;
+  // lad-gaa-loftet vokser med den.
+  chaseInterestCut: 1,
+  letGoGain: 1,
+  // Det sene angreb paa en kuperet spurtetape: chancen vokser med haardheden.
+  lateAttackChanceAtFull: 0.6,
+  // Reduceret spurt: en andel af sprint-vaegten flyttes til udholdenhed og punch i takt med
+  // haardheden. Alle vaegte >= 0, saa finale-scorens monotoni i hver evne bevares.
+  sprintShiftAtFull: 0.5,
+  shiftToDurability: 0.6,
+});
