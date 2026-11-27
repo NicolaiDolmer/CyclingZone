@@ -16,7 +16,7 @@
 // mangler, så holdet får rækken opdateret, hvis loftet har flyttet sig imens. Den
 // gemte viden står, og tidligere træning på holdet tæller med
 // (potentialEstimateWriter.loadTrainingDates). Holdet rytteren forlod, beholder sin
-// række: viden forfalder ikke (S19).
+// række; ordet falder ved visning efter S19 (7455, formerRiderKnowledge.js), rækken skrives ikke om.
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
