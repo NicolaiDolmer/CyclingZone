@@ -1710,7 +1710,7 @@
       },
       "prognosisTrainingEstimate": {
         "title": "Descubrir el potencial de una promesa",
-        "text": "Un ciclista joven nuevo aún no tiene número de potencial: muestra Aprendiendo y cuántos de sus primeros 5 entrenamientos ha hecho. Un entrenamiento cuenta cuando se liquida una fecha en tu equipo, con Train now o con el entrenamiento automático. Tras 5 recibes una primera estimación, y se vuelve más segura cuanto más tiempo entrena contigo. Un mejor cuerpo técnico e instalaciones lo aceleran, pero no cambian su talento."
+        "text": "Cada ciclista de tu equipo muestra una estimación del potencial desde el primer día, también un ciclista joven que acabas de incorporar o uno que acabas de comprar. La primera estimación es lo que tu ojeador ve en una observación, así que es aproximada. Se vuelve más segura cuanto más entrena contigo: un entrenamiento cuenta cuando se liquida una fecha en tu equipo, con Train now o con el entrenamiento automático. Un mejor cuerpo técnico y mejores instalaciones lo aceleran, pero no cambian su talento."
       },
       "prognosisTraining": {
         "title": "Descubrir el potencial de una promesa",

@@ -10,7 +10,7 @@
 // stjerne-estimat i intake-listen:
 //   { hidden:false, value, certainty, previousValue, previousCertainty, changedAt }
 //   { hidden:true, reason:'unscouted' }
-//   { hidden:true, reason:'learning', trainings, trainingsNeeded }
+// #8855: 'learning' sendes ikke længere for potentialet; frontend tåler den stadig.
 //
 // Gate H4: usikkerheden, vidensniveauet og det loft skønnet blev skrevet med forlader
 // aldrig serveren. Derfor læses de kolonner slet ikke her.

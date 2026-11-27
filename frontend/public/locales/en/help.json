@@ -1710,7 +1710,7 @@
       },
       "prognosisTrainingEstimate": {
         "title": "Learning a prospect's potential",
-        "text": "A new youth rider has no potential number yet: he shows Learning and how many of his first 5 trainings he has done. A training counts when a date on your team is settled, by Train now or the automatic training. After 5 you get a first estimate, and it gets more certain the longer he trains with you. Better coaching staff and facilities get you there sooner, but they do not change his talent."
+        "text": "Every rider on your team shows a potential estimate from day one, also a youth rider you just brought in or a rider you just bought. The first estimate is what your scout sees in one look, so it is rough. It gets more certain the longer he trains with you: a training counts when a date on your team is settled, by Train now or the automatic training. Better coaching staff and facilities get you there sooner, but they do not change his talent."
       },
       "prognosisTraining": {
         "title": "Learning a prospect's potential",
