@@ -149,7 +149,23 @@ og 5 i designets byggeplan og får egen PR, egen måling og Fable-dom før merge
 - M8 Én ejer af gevinsten: en rytter på langt angreb er ikke kandidat til "Alt ud"-gevinsten på
   samme segment.
 
-Tilslutningen til segment-loopet, jagten fra holdene (designets trin 5), regnskabet i trætheden
-(trin 6), kalibreringen mod benchmark (privat, `balance-internals/7884/`) og den uafhængige dommer
-er IKKE en del af denne PR; `LONG_ATTACK_7884_ENGINE_READY` forbliver `false`, så API'et ikke tager
-imod stederne, og intet løb kan få en ordre, motoren ikke kører.
+**Tilslutningen (trin 3, #8828)**, tests W0-W9 i `engine/v4/mechanics/longAttack7884Engine.test.ts` og
+startstemplet i `longAttack7884Flag.test.js`:
+- W0 Slukket OG tændt uden nogen "Angrib på"-ordre er bit-identiske med en frossen golden skrevet af
+  merge-basens kode i et separat checkout (#7587).
+- W1 Motorens steder har samme nøgler og fod som API'ets på de samme rå felter.
+- W2-W3 Ordre-adapteren bærer planen med stederne ved siden af; motoren kører den kun i et løb stemplet
+  til kontakten og kun, når den er gyldig mod motorens egne steder. Ellers planen uden stederne.
+- W4 Afsæt ved foden fra hans egen gruppe med samme hul; angrebet gælder stigningen (til toppen, eller
+  mål ved topankomst og finalen); indsatsen er ikke "Alt ud" (farten betales af reserven, M8 og valg 3 A),
+  men trætheden bagefter kender leddets pris.
+- W5 Hentet: ét forsøg, resten af leddet er "Følg med", senere led gælder. Over toppen uden at være
+  hentet: samme, uden nyt tillæg.
+- W6-W9 Topankomst og finalen holder til mål; et hold styrer aldrig et andet holds rytter; slukket
+  kører en gemt plan med steder som planen uden dem; tændt er afsættet ved foden og deterministisk.
+- Kontakten bindes til løbet ved første etape (`races.long_attack_7884`), og stemplet læses før
+  kontakten (#8801). API'et tager kun imod stederne, når løbet vil køre dem.
+
+Jagten fra holdene (designets trin 5), regnskabet i trætheden (trin 6) og kalibreringen mod benchmark
+(privat, `balance-internals/7884/`) er IKKE bygget. Kontakten må ikke tændes, før de er det, og før den
+uafhængige dommer og ejeren har set det.
