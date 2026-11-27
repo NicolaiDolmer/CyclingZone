@@ -13,7 +13,7 @@
 // Kontakt `training_day_override_8592` (off | beta | on), seedet off. Off = motoren læser
 // kontakten, men aldrig tabellen, og API'et afviser skrivning med 409 feature_disabled.
 import express from "express";
-import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
+import { readFlagStage, readFlagStageStrict, evaluateFlagStage } from "./featureStage.js";
 import { isProgramSession, programForSession } from "./trainingPrograms.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer } from "./trainingCatalogV3.js";
 import { applyFatigueRules } from "./trainingFatigueRules.ts";
@@ -39,12 +39,13 @@ export async function isDayOverrideEnabled(supabase, { isBetaTester = false } = 
 }
 
 /**
- * Motorens svar for holdet (som training_week_priority): kan kontakten ikke læses, er den off,
- * og planen kører. På beta kaster et fejlet ejer-opslag, så datoen prøves igen og aldrig
- * afregnes halvt med og halvt uden valget.
+ * Motorens svar for holdet. Kan kontakten ikke læses, kaster kaldet (#8834 Fable punkt 1): et
+ * "off ved læsefejl" ville lade planen køre og tabe spillerens valg i stilhed, så datoen prøves
+ * igen i stedet. På beta kaster et fejlet ejer-opslag af samme grund, så datoen aldrig afregnes
+ * halvt med og halvt uden valget.
  */
 export async function isDayOverrideEnabledForTeam(supabase, teamId) {
-  const stage = await readFlagStage(supabase, TRAINING_DAY_OVERRIDE_FLAG_KEY, { fresh: true });
+  const stage = await readFlagStageStrict(supabase, TRAINING_DAY_OVERRIDE_FLAG_KEY);
   if (stage === true || stage === "on") return true;
   if (stage !== "beta") return false;
   const { data: team, error: teamError } = await supabase.from("teams").select("user_id").eq("id", teamId).maybeSingle();
@@ -53,6 +54,22 @@ export async function isDayOverrideEnabledForTeam(supabase, teamId) {
   const { data: user, error: userError } = await supabase.from("users").select("role, is_beta_tester").eq("id", team.user_id).maybeSingle();
   if (userError) throw new Error(`training_day_override owner beta load (team ${teamId}): ${userError.message ?? userError}`);
   return user?.role === "admin" || user?.is_beta_tester === true;
+}
+
+/**
+ * #8834 Fable punkt 4: API'et afgør beta på samme måde som motoren, ud fra holdets ejer (admin
+ * eller beta-tester), så en skærm aldrig tilbyder et valg, motoren ikke bruger, eller omvendt.
+ * Fejl = off her: API'et afviser så skrivningen synligt (409), og intet valg gemmes.
+ */
+export async function isDayOverrideEnabledForRequest(supabase, req, isViewerBetaTester) {
+  const teamId = req?.team?.id;
+  if (!teamId) return isDayOverrideEnabled(supabase, { isBetaTester: await isViewerBetaTester(req) });
+  try {
+    return await isDayOverrideEnabledForTeam(supabase, teamId);
+  } catch {
+    // catch-ok: viewer-vejen er fail-safe off (afvist skrivning er synlig); motoren kaster selv.
+    return false;
+  }
 }
 
 // ── Datoerne ──────────────────────────────────────────────────────────────
@@ -214,7 +231,15 @@ export async function deleteExpiredOverrides({ supabase, teamId, today }) {
     if (!byDate.has(row.tick_date)) byDate.set(row.tick_date, []);
     byDate.get(row.tick_date).push(row.status);
   }
-  const settled = dates.filter((date) => byDate.get(date)?.length && byDate.get(date).every((status) => status === "complete"));
+  // #8834 Fable punkt 3: en dato uden nogen training_date_work-række for holdet (holdet trænede
+  // ikke den dato, fx uden for sæsonen) bliver aldrig "complete". Den ryddes, når den er ældre
+  // end vinduet, så rækken ikke står for evigt. Datoer med pending/partial venter som før.
+  const orphanBefore = addDaysYmd(today, -DAY_OVERRIDE_WINDOW_DAYS);
+  const settled = dates.filter((date) => {
+    const statuses = byDate.get(date);
+    if (!statuses?.length) return date < orphanBefore;
+    return statuses.every((status) => status === "complete");
+  });
   if (settled.length === 0) return;
   const { error: deleteError } = await supabase.from(DAY_OVERRIDE_TABLE).delete().eq("team_id", teamId).in("override_date", settled);
   if (deleteError) throw new Error(`training day overrides cleanup (team ${teamId}): ${deleteError.message ?? deleteError}`);
@@ -299,7 +324,7 @@ export function createDayOverrideRouter({
 }) {
   const router = express.Router();
   const today = () => copenhagenDateString(clock());
-  const enabled = async (req) => isDayOverrideEnabled(supabase, { isBetaTester: await isViewerBetaTester(req) });
+  const enabled = async (req) => isDayOverrideEnabledForRequest(supabase, req, isViewerBetaTester);
 
   async function ownRiderIds(teamId) {
     // pagination-safe: one team roster (senior + academy), far below the 1000-row cap.

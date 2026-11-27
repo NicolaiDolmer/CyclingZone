@@ -42,7 +42,7 @@ import { isTrainingRotationEnabled } from "../lib/trainingRotationFlag.js"; // #
 import { rotationWriteInput, rotationView } from "../lib/trainingRotationInput.js"; // #8548
 import { applyRotationWrite, rotationRevFloor } from "../lib/trainingRotation.js"; // #8548
 import { isWeekPriorityEditorEnabled, loadWeekPrioritySettled, setWeekBlockDay, weekBlockDayWrite } from "../lib/trainingWeekEditor.js";
-import { attachDayOverrides, createDayOverrideRouter, fatigueRuleMarksAhead, isDayOverrideEnabled, loadWeekDateOverrides } from "../lib/trainingDayOverride8592.js"; // #8592
+import { attachDayOverrides, createDayOverrideRouter, fatigueRuleMarksAhead, isDayOverrideEnabledForRequest, loadWeekDateOverrides } from "../lib/trainingDayOverride8592.js"; // #8592
 import { loadTeamFatigueRules } from "../lib/trainingFatigueRules.ts"; // #8819 DO-10
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 
@@ -112,7 +112,7 @@ export function createTrainingProgramsRouter({
   }
   router.use("/day-overrides", createDayOverrideRouter({ supabase, requireAuth, isViewerBetaTester, writeLimiter, readLimiter, captureExceptionFn, clock, fatigueRuleAhead }));
   async function dayOverridesFor(req, now) {
-    if (!(await isDayOverrideEnabled(supabase, { isBetaTester: await isViewerBetaTester(req) }))) return null;
+    if (!(await isDayOverrideEnabledForRequest(supabase, req, isViewerBetaTester))) return null; // #8834 Fable 4: ejer som motoren
     return loadWeekDateOverrides({ supabase, teamId: req.team.id, today: copenhagenDateString(now) });
   }
 

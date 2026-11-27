@@ -133,6 +133,18 @@ async function queryFlagValue(supabase, key) {
  * @param {{ fresh?: boolean, now?: () => number }} [opts]
  *   `fresh: true` springer cachen over for dette ene opslag.
  */
+/**
+ * #8834 Fable punkt 1: som readFlagStage med fresh, men et fejlet opslag kaster i stedet for at
+ * give null (= off). Til motorveje, hvor "off ved læsefejl" ville tabe en spillers valg i stilhed:
+ * kaldet fejler, og datoen prøves igen.
+ */
+export async function readFlagStageStrict(supabase, key) {
+  if (!supabase?.from) throw new Error(`flag ${key}: no client`);
+  const result = await queryFlagValue(supabase, key);
+  if (!result.ok) throw new Error(`flag ${key}: read failed`);
+  return result.value;
+}
+
 export async function readFlagStage(supabase, key, { fresh = false, now = Date.now } = {}) {
   if (!supabase?.from) return null;
 

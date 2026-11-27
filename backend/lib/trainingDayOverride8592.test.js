@@ -408,6 +408,9 @@ async function routeFixture(t, state, { betaTester = true, marks = new Map() } =
   const app = express();
   app.use(express.json());
   const asked = [];
+  // #8834 Fable 4: API'et afgør beta på holdets ejer som motoren; ejeren er viewer her.
+  state.teams ??= [{ id: "team-a", user_id: "u-a" }];
+  state.users ??= [{ id: "u-a", role: "manager", is_beta_tester: betaTester }];
   app.use("/o", createDayOverrideRouter({
     supabase: fakeSupabase(state),
     requireAuth: (req, _res, next) => { req.team = { id: "team-a" }; next(); },
@@ -571,4 +574,62 @@ test("DO-12b (Codex P2 på #8834): over 1000 kvitteringer læses alle sider, og 
   const last = body.recent.find((e) => e.date === dates.at(-1) && e.riderId === riders.at(-1));
   assert.deepEqual({ outcome: last.outcome, some: last.some }, { outcome: "race", some: true });
   assert.equal(body.recent.filter((e) => e.outcome !== "trained").length, 1);
+});
+
+// ── #8834 Fable-punkter 1, 3 og 4 ─────────────────────────────────────────
+function stubFlagClient({ flagError = false, flag = "on", tables = {} } = {}) {
+  const rowsFor = (name) => (name === "app_config" ? [{ key: TRAINING_DAY_OVERRIDE_FLAG_KEY, value: flag }] : tables[name] ?? []);
+  return {
+    from(name) {
+      const filters = [];
+      const q = {
+        select() { return q; },
+        eq(k, v) { filters.push((r) => r[k] === v); return q; },
+        in(k, vs) { filters.push((r) => vs.includes(r[k])); return q; },
+        lt(k, v) { filters.push((r) => r[k] < v); return q; },
+        delete() { q.deleting = true; return q; },
+        async maybeSingle() {
+          if (name === "app_config" && flagError) return { data: null, error: { message: "boom" } };
+          return { data: rowsFor(name).filter((r) => filters.every((f) => f(r)))[0] ?? null, error: null };
+        },
+        then(resolve) {
+          const rows = rowsFor(name).filter((r) => filters.every((f) => f(r)));
+          if (q.deleting) { tables[name] = (tables[name] ?? []).filter((r) => !rows.includes(r)); resolve({ data: null, error: null }); return; }
+          resolve({ data: rows, error: null });
+        },
+      };
+      return q;
+    },
+  };
+}
+
+test("#8834 Fable 1: motorens kontakt-læsning kaster ved læsefejl (valget tabes aldrig i stilhed)", async () => {
+  const { isDayOverrideEnabledForTeam } = await import("./trainingDayOverride8592.js");
+  await assert.rejects(() => isDayOverrideEnabledForTeam(stubFlagClient({ flagError: true }), "team-a"), /read failed/);
+  assert.equal(await isDayOverrideEnabledForTeam(stubFlagClient({ flag: "on" }), "team-a"), true);
+  assert.equal(await isDayOverrideEnabledForTeam(stubFlagClient({ flag: "off" }), "team-a"), false);
+});
+
+test("#8834 Fable 3: valg på en dato uden arbejdsrække ryddes, når datoen er ældre end vinduet", async () => {
+  const { deleteExpiredOverrides } = await import("./trainingDayOverride8592.js");
+  const tables = {
+    training_day_overrides: [
+      { team_id: "team-a", rider_id: "r1", override_date: "2026-11-10" }, // ingen arbejdsrække, gammel
+      { team_id: "team-a", rider_id: "r2", override_date: "2026-11-24" }, // ingen arbejdsrække, inden for vinduet
+      { team_id: "team-a", rider_id: "r3", override_date: "2026-11-12" }, // partial, venter
+    ],
+    training_date_work: [{ team_id: "team-a", tick_date: "2026-11-12", status: "partial" }],
+  };
+  await deleteExpiredOverrides({ supabase: stubFlagClient({ tables }), teamId: "team-a", today: "2026-11-27" });
+  assert.deepEqual(tables.training_day_overrides.map((r) => r.rider_id).sort(), ["r2", "r3"]);
+});
+
+test("#8834 Fable 4: API'et afgør beta på holdets ejer som motoren; fejl = off", async () => {
+  const { isDayOverrideEnabledForRequest } = await import("./trainingDayOverride8592.js");
+  const tables = { teams: [{ id: "team-a", user_id: "u-a" }], users: [{ id: "u-a", role: "manager", is_beta_tester: true }] };
+  const req = { team: { id: "team-a" } };
+  assert.equal(await isDayOverrideEnabledForRequest(stubFlagClient({ flag: "beta", tables }), req, async () => false), true);
+  tables.users[0].is_beta_tester = false;
+  assert.equal(await isDayOverrideEnabledForRequest(stubFlagClient({ flag: "beta", tables }), req, async () => true), false);
+  assert.equal(await isDayOverrideEnabledForRequest(stubFlagClient({ flagError: true }), req, async () => true), false);
 });
