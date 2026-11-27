@@ -1,7 +1,6 @@
 // #8807 -- campaign report for hand-run mail campaigns (S6 first).
 //
-// Answers, per arm (mailed / control group) x audience x language x subject
-// variant: how many were sent, delivered, bounced (hard/soft), complained,
+// Answers, per audience x language x subject variant: how many were sent, delivered, bounced (hard/soft), complained,
 // unsubscribed and clicked (unique), and how many were active 1, 3, 7 and 14
 // days after the mail: logged in, set training, picked a lineup, raced in the
 // campaign season, bought Pro.
@@ -27,11 +26,15 @@
 //   - training tables only keep the latest edit, so "set training" means the
 //     latest change falls in the window; an earlier change overwritten later
 //     is not seen.
-//   - the control group is rebuilt from the current population with the same
-//     deterministic rule as the sender, so the report must be given the share
-//     the send used.
+//   - "logged in" counts visit evidence only: users.last_seen and activity
+//     events a manager's own browser writes. Events the server writes without
+//     a visit (a checkout confirmation arriving by webhook) are left out.
+//   - "bought Pro" counts the completed-payment event (checkout_completed),
+//     not the subscription row, which is also written when checkout starts.
+//   - every manager who allows the mail gets it; there is no control group
+//     (owner 27/11), so activity is compared across groups, not against
+//     managers who were not mailed.
 
-import { holdoutBucket, normalizeHoldoutFraction } from "./emailHoldout.js";
 import { s6AudienceForDaysAway, S6_AUDIENCES } from "./emailTemplates.js";
 import { isHardBounce } from "./resendWebhook.js";
 import {
@@ -39,8 +42,7 @@ import {
   S6_MAIL_SUBJECT_VARIANT,
   s6MailLanguage,
   s6MailPrefsAllow,
-  selectS6MailCandidates,
-} from "./s6MailCampaign.js";
+}from "./s6MailCampaign.js";
 import { hasWinbackConsent } from "./winbackSegment.js";
 
 const DAY_MS = 86_400_000;
@@ -48,7 +50,18 @@ const HOUR_MS = 3_600_000;
 
 export const REPORT_WINDOWS_DAYS = Object.freeze([1, 3, 7, 14]);
 export const ACTIVITY_SIGNALS = Object.freeze(["login", "training", "lineup", "season_race", "pro_purchase"]);
-export const ARMS = Object.freeze(["mail", "control"]);
+
+/**
+ * Activity events the server writes on its own (payment webhooks). They say
+ * nothing about a manager being in the game, so they are not visit evidence.
+ */
+export const SERVER_WRITTEN_EVENT_NAMES = Object.freeze(["checkout_started", "checkout_completed", "checkout_paused"]);
+export const PRO_PURCHASE_EVENT_NAME = "checkout_completed";
+
+/** True when a player_events row is visit evidence for the "logged in" signal. */
+export function isVisitEvent(eventName) {
+  return !SERVER_WRITTEN_EVENT_NAMES.includes(eventName);
+}
 export const UNKNOWN_AUDIENCE = "unknown";
 
 /** Statuses that mean Resend accepted the mail (sendLoopEmail's dedupe set). */
@@ -59,17 +72,11 @@ export const WEBHOOK_GRACE_HOURS = 2;
 /** Below this share of sends with an event (after the grace), the report warns. */
 export const WEBHOOK_MIN_EVENT_SHARE = 0.9;
 
-/**
- * Campaigns the report knows. `salt` must equal the sender's holdout salt and
- * `selectCandidates` its recipient rule, so the control group is the same set
- * the sender dropped.
- */
+/** Campaigns the report knows. */
 export const REPORT_CAMPAIGNS = Object.freeze({
   [S6_MAIL_EMAIL_KIND]: Object.freeze({
-    salt: S6_MAIL_EMAIL_KIND,
     utmCampaignPrefix: "s6-",
     defaultVariant: S6_MAIL_SUBJECT_VARIANT,
-    selectCandidates: selectS6MailCandidates,
   }),
 });
 
@@ -336,7 +343,7 @@ export function summarizeTrafficUtm({ trafficRows = [], utmCampaign }) {
 }
 
 function groupKeyString(k) {
-  return `${k.arm}|${k.audience}|${k.language}|${k.variant}`;
+  return `${k.audience}|${k.language}|${k.variant}`;
 }
 
 /**
@@ -352,7 +359,6 @@ function groupKeyString(k) {
  * @param {object[]} [args.activityRows] {signal, user_id | team_id, at}
  * @param {object[]} [args.trafficRows]  {utm_campaign, visit_hash, is_bot}
  * @param {object[]|null} [args.posthogRows] [{utmContent, persons, sessions}] or null when not read
- * @param {number} [args.holdoutFraction]
  * @param {Date} args.now
  */
 export function buildCampaignReport({
@@ -365,12 +371,10 @@ export function buildCampaignReport({
   activityRows = [],
   trafficRows = [],
   posthogRows = null,
-  holdoutFraction = 0,
   now,
   graceHours = WEBHOOK_GRACE_HOURS,
 }) {
   const config = campaignConfig(campaign);
-  const share = normalizeHoldoutFraction(holdoutFraction);
   const nowMs = toMs(now);
   if (nowMs === null) throw new Error("buildCampaignReport needs now");
 
@@ -389,9 +393,8 @@ export function buildCampaignReport({
     if (!groups.has(id)) groups.set(id, emptyGroup(key));
     return groups.get(id);
   };
-  const noteSource = (arm, source) => {
-    audienceSources[arm] ??= {};
-    audienceSources[arm][source] = (audienceSources[arm][source] ?? 0) + 1;
+  const noteSource = (source) => {
+    audienceSources[source] = (audienceSources[source] ?? 0) + 1;
   };
 
   for (const send of sends) {
@@ -401,9 +404,8 @@ export function buildCampaignReport({
     const outcome = deliveryOutcome(send, events);
     const visitTimes = activity.get(send.user_id)?.get("login") ?? [];
     const { audience, source } = audienceAtSend({ user, sentAtMs, clickContent: events?.firstClickContent, visitTimesMs: visitTimes });
-    noteSource("mail", source);
+    noteSource(source);
     const group = groupFor({
-      arm: "mail",
       audience,
       language: s6MailLanguage(user?.language),
       variant: events?.firstClickContent?.variant || config.defaultVariant,
@@ -417,28 +419,8 @@ export function buildCampaignReport({
     addActivity(group, withLastSeen(activity.get(send.user_id), user), sentAtMs, nowMs);
   }
 
-  let controlTotal = 0;
-  if (share > 0 && firstSendMs !== null) {
-    // The control group never got a mail, so it has no email_log row; it is
-    // the sender's own recipient rule applied today, minus everyone mailed,
-    // kept where the user's bucket is under the share.
-    const candidates = config.selectCandidates({ teams, users, emailLogRows, edition, now: new Date(firstSendMs) });
-    for (const candidate of candidates) {
-      if (holdoutBucket(config.salt, candidate.userId) >= share) continue;
-      const user = userById.get(candidate.userId) ?? null;
-      const visitTimes = activity.get(candidate.userId)?.get("login") ?? [];
-      const { audience, source } = audienceAtSend({ user, sentAtMs: firstSendMs, visitTimesMs: visitTimes });
-      noteSource("control", source);
-      const group = groupFor({ arm: "control", audience, language: s6MailLanguage(user?.language), variant: "-" });
-      group.people += 1;
-      controlTotal += 1;
-      addActivity(group, withLastSeen(activity.get(candidate.userId), user), firstSendMs, nowMs);
-    }
-  }
-
   const sorted = [...groups.values()].sort((a, b) => {
     const order = (g) => [
-      ARMS.indexOf(g.arm),
       [...S6_AUDIENCES, UNKNOWN_AUDIENCE].indexOf(g.audience),
       g.language,
       g.variant,
@@ -455,8 +437,7 @@ export function buildCampaignReport({
     generatedAt: new Date(nowMs).toISOString(),
     firstSendAt: firstSendMs === null ? null : new Date(firstSendMs).toISOString(),
     lastSendAt: lastSendMs === null ? null : new Date(lastSendMs).toISOString(),
-    holdoutFraction: share,
-    totals: { sent: sends.length, failedOnly: failedUserIds.length, control: controlTotal },
+    totals: { sent: sends.length, failedOnly: failedUserIds.length },
     audienceSources,
     groups: sorted,
     webhook: checkWebhookHealth({ sends, eventsByProvider, nowMs, graceHours }),
@@ -485,7 +466,6 @@ const SIGNAL_LABEL = {
   season_race: "Kørt løb i sæsonen",
   pro_purchase: "Pro-køb",
 };
-const ARM_LABEL = { mail: "Mail", control: "Kontrol" };
 const AUDIENCE_LABEL = { active: "Aktiv", dormant: "Sovende", away: "Væk", unknown: "Ukendt" };
 
 function pct(part, whole) {
@@ -498,7 +478,7 @@ function cellRate(part, whole) {
 }
 
 function groupLabel(g) {
-  return `${ARM_LABEL[g.arm]} · ${AUDIENCE_LABEL[g.audience] ?? g.audience} · ${g.language.toUpperCase()} · ${g.variant === "-" ? "–" : g.variant.toUpperCase()}`;
+  return `${AUDIENCE_LABEL[g.audience] ?? g.audience} · ${g.language.toUpperCase()} · ${g.variant.toUpperCase()}`;
 }
 
 /** Markdown for the private handoff file. */
@@ -507,7 +487,7 @@ export function renderCampaignReport(report) {
     `# Kampagnerapport: ${report.campaign} / ${report.edition}`,
     "",
     `Hentet: ${report.generatedAt}. Første afsendelse: ${report.firstSendAt ?? "ingen"}. Sidste: ${report.lastSendAt ?? "ingen"}.`,
-    `Sendt: ${report.totals.sent}. Kun fejlet (aldrig accepteret af Resend): ${report.totals.failedOnly}. Kontrolgruppe: ${report.holdoutFraction > 0 ? `${report.totals.control} (andel ${report.holdoutFraction})` : "slukket"}.`,
+    `Sendt: ${report.totals.sent}. Kun fejlet (aldrig accepteret af Resend): ${report.totals.failedOnly}.`,
     "",
     `## Webhook-sundhed: ${report.webhook.status.toUpperCase()}`,
     "",
@@ -519,7 +499,7 @@ export function renderCampaignReport(report) {
     "| Gruppe | Sendt | Leveret | Bounce hård | Bounce blød | Bounce ukendt | Klage | Afmeldt | Klik (unik) |",
     "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
   ];
-  for (const g of report.groups.filter((x) => x.arm === "mail")) {
+  for (const g of report.groups) {
     lines.push(
       `| ${groupLabel(g)} | ${g.sent} | ${cellRate(g.delivered, g.sent)} | ${cellRate(g.bounceHard, g.sent)} | ${cellRate(g.bounceSoft, g.sent)} | ${cellRate(g.bounceUnknown, g.sent)} | ${cellRate(g.complained, g.sent)} | ${cellRate(g.unsubscribed, g.sent)} | ${cellRate(g.clicked, g.sent)} |`
     );
@@ -546,17 +526,15 @@ export function renderCampaignReport(report) {
     lines.push("PostHog: ikke læst (POSTHOG_PERSONAL_API_KEY eller POSTHOG_PROJECT_ID mangler).");
   }
   lines.push("", "## Kilder og forbehold", "");
-  const src = (arm) =>
-    Object.entries(report.audienceSources[arm] ?? {})
+  const src =
+    Object.entries(report.audienceSources)
       .map(([k, v]) => `${k} ${v}`)
       .join(", ") || "ingen";
-  lines.push(`- Gruppe ved afsendelse (mail): ${src("mail")}. Kontrol: ${src("control")}. click og last_seen er præcise, visit_event er et skøn.`);
+  lines.push(`- Gruppe ved afsendelse: ${src}. click og last_seen er præcise, visit_event er et skøn.`);
   lines.push("- Afmeldt = slået fra nu (egen afmelding, kampagnen, win-back eller samtykket trukket); ingen tidsstempel findes.");
   lines.push("- Sat træning = seneste ændring ligger i vinduet; en tidligere ændring der siden er overskrevet ses ikke.");
   lines.push("- \"ikke modent\" = vinduet er ikke gået for nogen i gruppen endnu.");
-  if (report.holdoutFraction > 0) {
-    lines.push("- Kontrolgruppen er genberegnet ud fra dagens population med samme regel som afsenderen; andelen skal være den samme som ved afsendelsen.");
-  }
+  lines.push("- Alle der må få mailen har fået den; der er ingen kontrolgruppe, så tallene sammenligner grupperne indbyrdes, ikke mail mod ingen mail.");
   lines.push("");
   return lines.join("\n");
 }

@@ -12,11 +12,12 @@ import {
   foldEmailEvents,
   indexActivity,
   isUnsubscribedNow,
+  isVisitEvent,
+  PRO_PURCHASE_EVENT_NAME,
   parseUtmContent,
   renderCampaignReport,
   summarizeTrafficUtm,
 } from "./emailCampaignReport.js";
-import { holdoutBucket } from "./emailHoldout.js";
 import { s6MailDedupeKey } from "./s6MailCampaign.js";
 
 const DAY_MS = 86_400_000;
@@ -256,18 +257,17 @@ function fixture() {
 test("report: every delivery count per group from fixtures", () => {
   const report = buildCampaignReport({ campaign: CAMPAIGN, edition: EDITION, ...fixture(), now: new Date(at(20)) });
   assert.equal(report.totals.sent, 4);
-  assert.equal(report.totals.control, 0);
   assert.equal(report.firstSendAt, at(0));
-  const byKey = Object.fromEntries(report.groups.map((g) => [`${g.arm}|${g.audience}|${g.language}|${g.variant}`, g]));
-  assert.deepEqual(Object.keys(byKey), ["mail|active|en|a", "mail|dormant|da|a"]);
-  const active = byKey["mail|active|en|a"];
+  const byKey = Object.fromEntries(report.groups.map((g) => [`${g.audience}|${g.language}|${g.variant}`, g]));
+  assert.deepEqual(Object.keys(byKey), ["active|en|a", "dormant|da|a"]);
+  const active = byKey["active|en|a"];
   assert.deepEqual(
     [active.people, active.sent, active.delivered, active.bounced, active.bounceHard, active.complained, active.unsubscribed, active.clicked],
     [3, 3, 3, 0, 0, 1, 1, 1]
   );
-  const dormant = byKey["mail|dormant|da|a"];
+  const dormant = byKey["dormant|da|a"];
   assert.deepEqual([dormant.sent, dormant.delivered, dormant.bounced, dormant.bounceHard, dormant.bounceSoft], [1, 0, 1, 1, 0]);
-  assert.deepEqual(report.audienceSources.mail, { click: 1, last_seen: 3 });
+  assert.deepEqual(report.audienceSources, { click: 1, last_seen: 3 });
   assert.equal(report.webhook.status, "ok");
 });
 
@@ -296,27 +296,19 @@ test("report: no event for any send fails the webhook check", () => {
   assert.equal(report.webhook.status, "fail");
 });
 
-test("report: control group is the sender's rule minus the mailed, kept by the same bucket", () => {
-  const base = fixture();
-  // Twenty extra eligible managers who were never mailed.
-  const extraTeams = Array.from({ length: 20 }, (_, k) => team(100 + k));
-  const extraUsers = Array.from({ length: 20 }, (_, k) => user(100 + k, { last_seen: at(-30) }));
-  const inputs = { ...base, teams: [...base.teams, ...extraTeams], users: [...base.users, ...extraUsers] };
-  const share = 0.5;
-  const expected = [5, ...Array.from({ length: 20 }, (_, k) => 100 + k)]
-    .map((i) => `user-${i}`)
-    .filter((id) => holdoutBucket(CAMPAIGN, id) < share);
-  assert.ok(expected.length > 0);
-  const report = buildCampaignReport({ campaign: CAMPAIGN, edition: EDITION, ...inputs, holdoutFraction: share, now: new Date(at(20)) });
-  assert.equal(report.totals.control, expected.length);
-  const control = report.groups.filter((g) => g.arm === "control");
-  assert.equal(control.reduce((sum, g) => sum + g.people, 0), expected.length);
-  for (const g of control) assert.equal(g.sent, 0, "the control group was never mailed");
-  assert.match(renderCampaignReport(report), /Kontrol/);
+test("report: payment webhooks are not visits, and a purchase is the completed-payment event", () => {
+  assert.equal(isVisitEvent("checkout_completed"), false);
+  assert.equal(isVisitEvent("checkout_started"), false);
+  assert.equal(isVisitEvent("session_started"), true);
+  assert.equal(PRO_PURCHASE_EVENT_NAME, "checkout_completed");
+});
 
-  const off = buildCampaignReport({ campaign: CAMPAIGN, edition: EDITION, ...inputs, now: new Date(at(20)) });
-  assert.equal(off.totals.control, 0);
-  assert.equal(off.groups.some((g) => g.arm === "control"), false);
+test("report: there is no control group; every group is a mailed group", () => {
+  const report = buildCampaignReport({ campaign: CAMPAIGN, edition: EDITION, ...fixture(), now: new Date(at(20)) });
+  assert.equal("control" in report.totals, false);
+  assert.equal("holdoutFraction" in report, false);
+  for (const g of report.groups) assert.ok(g.sent > 0, "every group holds mailed managers");
+  assert.equal(/kontrol/i.test(renderCampaignReport(report).replace("ingen kontrolgruppe", "")), false);
 });
 
 test("report: no sends gives an empty report with a pending webhook, and unknown campaigns are refused", () => {
@@ -324,7 +316,7 @@ test("report: no sends gives an empty report with a pending webhook, and unknown
   assert.equal(report.totals.sent, 0);
   assert.equal(report.webhook.status, "pending");
   assert.deepEqual(report.groups, []);
-  assert.throws(() => buildCampaignReport({ campaign: "nope", edition: EDITION, now: new Date() }), /unknown campaign/);
+  assert.throws(() => buildCampaignReport({ campaign: "nope", edition: EDITION, now: new Date(at(1)) }), /unknown campaign/);
   assert.throws(() => buildCampaignReport({ campaign: CAMPAIGN, edition: EDITION }), /needs now/);
 });
 
@@ -339,7 +331,7 @@ test("render: the private markdown holds counts, never addresses or ids", () => 
   });
   const md = renderCampaignReport(report);
   assert.match(md, /Webhook-sundhed: OK/);
-  assert.match(md, /\| Mail · Aktiv · EN · A \| 3 \|/);
+  assert.match(md, /\| Aktiv · EN · A \| 3 \|/);
   assert.match(md, /active-a \| 2 \| 3/);
   assert.equal(md.includes("@"), false);
   assert.equal(/user-\d|team-\d|re-\d/.test(md), false);

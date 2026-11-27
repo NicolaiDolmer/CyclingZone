@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // #8807 -- campaign report for a hand-run mail campaign (S6 first): delivery,
 // bounces, complaints, unsubscribes, unique clicks and activity 1/3/7/14 days
-// after the mail, per arm x audience x language x subject variant, plus
+// after the mail, per audience x language x subject variant, plus
 // webhook health. All counting lives in backend/lib/emailCampaignReport.js
 // (pure, unit-tested); this file only READS prod and writes one private file.
 //
@@ -11,12 +11,11 @@
 //
 // BRUG:
 //   infisical run --env=prod -- node scripts/email-campaign-report.mjs --campaign s6_season
-//   infisical run --env=prod -- node scripts/email-campaign-report.mjs --campaign s6_season --edition before-start --holdout 0.1
+//   infisical run --env=prod -- node scripts/email-campaign-report.mjs --campaign s6_season --edition before-start
 //
 // Flag:
 //   --campaign <type>   kun "s6_season" (default)
 //   --edition <navn>    "before-start" (default) eller "started"
-//   --holdout <andel>   SAMME andel som afsenderen brugte (default 0 = ingen kontrolgruppe)
 //   --out <fil>         default <OneDrive>/CyclingZone-context/private/email-kampagner/<kampagne>-<udgave>-<tid>.md
 //   --json              skriv JSON i stedet for markdown
 //   --grace-hours <t>   hvor gamle afsendelser skal vaere foer webhooken vurderes (default 2)
@@ -36,14 +35,15 @@ import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../backend/lib/supabasePagination.js";
 import {
+  PRO_PURCHASE_EVENT_NAME,
   REPORT_CAMPAIGNS,
   REPORT_WINDOWS_DAYS,
   WEBHOOK_GRACE_HOURS,
   buildCampaignReport,
   editionKeyPrefix,
+  isVisitEvent,
   renderCampaignReport,
 } from "../backend/lib/emailCampaignReport.js";
-import { normalizeHoldoutFraction } from "../backend/lib/emailHoldout.js";
 import { S6_EDITIONS } from "../backend/lib/emailTemplates.js";
 
 const DAY_MS = 86_400_000;
@@ -59,7 +59,7 @@ export function fail(message, exitCode = 1) {
 }
 
 export function parseOptions(argv) {
-  const options = { campaign: "s6_season", edition: "before-start", holdout: 0, out: null, json: false, graceHours: WEBHOOK_GRACE_HOURS };
+  const options = { campaign: "s6_season", edition: "before-start", out: null, json: false, graceHours: WEBHOOK_GRACE_HOURS };
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
     const value = () => {
@@ -70,13 +70,7 @@ export function parseOptions(argv) {
     };
     if (flag === "--campaign") options.campaign = value();
     else if (flag === "--edition") options.edition = value();
-    else if (flag === "--holdout") {
-      try {
-        options.holdout = normalizeHoldoutFraction(value());
-      } catch (err) {
-        throw fail(`--holdout: ${err.message}.`);
-      }
-    } else if (flag === "--out") options.out = value();
+    else if (flag === "--out") options.out = value();
     else if (flag === "--json") options.json = true;
     else if (flag === "--grace-hours") {
       const hours = Number(value());
@@ -185,13 +179,16 @@ async function loadInputs({ db, campaign, edition, now }) {
   const visits = await fetchAllRowsChunkedIn(userIds, (chunk) =>
     db
       .from("player_events")
-      .select("id, user_id, created_at")
+      .select("id, user_id, event_name, created_at")
       .in("user_id", chunk)
       .gte("created_at", iso(firstSendMs - VISIT_LOOKBACK_DAYS * DAY_MS))
       .lte("created_at", to)
       .order("id")
   );
-  for (const r of visits) activityRows.push({ signal: "login", user_id: r.user_id, at: r.created_at });
+  // Payment webhooks write player_events rows without a visit; only the rest is login evidence.
+  for (const r of visits) {
+    if (isVisitEvent(r.event_name)) activityRows.push({ signal: "login", user_id: r.user_id, at: r.created_at });
+  }
 
   for (const table of ["training_week_plans", "training_plans", "training_groups", "team_training_rules"]) {
     const rows = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
@@ -231,10 +228,18 @@ async function loadInputs({ db, campaign, edition, now }) {
     }
   }
 
-  const subs = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
-    db.from("subscriptions").select("id, team_id, created_at").in("team_id", chunk).gte("created_at", from).order("id")
+  // A completed payment, not the subscription row: that row is also written
+  // when checkout starts, and an existing row can be updated by a later buy.
+  const purchases = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
+    db
+      .from("player_events")
+      .select("id, team_id, created_at")
+      .eq("event_name", PRO_PURCHASE_EVENT_NAME)
+      .in("team_id", chunk)
+      .gte("created_at", from)
+      .order("id")
   );
-  for (const r of subs) activityRows.push({ signal: "pro_purchase", team_id: r.team_id, at: r.created_at });
+  for (const r of purchases) activityRows.push({ signal: "pro_purchase", team_id: r.team_id, at: r.created_at });
 
   const utmCampaign = `${REPORT_CAMPAIGNS[campaign].utmCampaignPrefix}${edition}`;
   const trafficRows = await fetchAllRows(() =>
@@ -299,7 +304,6 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     edition: options.edition,
     ...inputs,
     posthogRows,
-    holdoutFraction: options.holdout,
     graceHours: options.graceHours,
     now,
   });
