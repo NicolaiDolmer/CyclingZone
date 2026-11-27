@@ -89,7 +89,9 @@ export const REFERENCE_SEASON_RACE_DAYS = 31;
 // S4 = 28 loebsdatoer (man 28/9 -> soen 25/10), ejer-beslutning 3/9 (#4270). 31 findes ikke
 // som mulighed for en mandags-start (mandag + 30 dage = onsdag), og 35 blev maalt umulig:
 // D3 fik 18 kalenderdage uden loeb, altsaa §2's ejer-regel broedt i en hel division.
-export const SEASON_RACE_DAYS_DEFAULT = Object.freeze({ 4: 28 });
+// S6 = 27 loebsdatoer (man 30/11 -> loer 26/12, med loeb i julen), ejer-beslutning 26/11
+// (#5841): vinduet er LAAST, ikke laengere et forslag.
+export const SEASON_RACE_DAYS_DEFAULT = Object.freeze({ 4: 28, 6: 27 });
 
 // BYGGEDE saesoners loebsdatoer (#7412). Ikke et build-default: tabellen ovenfor styrer
 // kun hvad buildSeasonCalendar.js foreslaar, og S5 blev bygget med --last-day. Denne tabel
@@ -99,9 +101,10 @@ export const SEASON_RACE_DAYS_DEFAULT = Object.freeze({ 4: 28 });
 // og alle S5-skader faldt tavst tilbage til kalenderdage.
 //   S4 = 28 (man 28/9 -> soen 25/10, ejer 3/9, #4270).
 //   S5 = 32 (ons 28/10 -> loer 28/11, ejer 14/10, #5833).
+//   S6 = 27 (man 30/11 -> loer 26/12, ejer 26/11, #5841).
 // VAGT: en saeson med et loebsdagsmaal (SEASON_RACE_DAY_TARGET) SKAL staa her, ellers
-// fejler injuryRaceDays.test.js. Tilfoej S6 samtidig med S6's maal.
-export const SEASON_RACE_DATES = Object.freeze({ 4: SEASON_RACE_DAYS_DEFAULT[4], 5: 32 });
+// fejler injuryRaceDays.test.js. Naeste saeson tilfoejes samtidig med sit maal.
+export const SEASON_RACE_DATES = Object.freeze({ 4: SEASON_RACE_DAYS_DEFAULT[4], 5: 32, 6: SEASON_RACE_DAYS_DEFAULT[6] });
 
 /**
  * Alle §2-lovlige længder for en given første løbsdag: dem hvor sidste løbsdag ligger på

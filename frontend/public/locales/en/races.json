@@ -237,7 +237,7 @@
       "finish": "Finish · {m} m",
       "toGoAxis": "{km} km to go",
       "drawn": "Drawn from the climbs and the total climbing. Gradients between the climbs are approximate.",
-      "legend": { "flat": "under 3 %", "band2": "3-6 %", "band3": "6-8 %", "band4": "8-10 %", "band5": "over 10 %", "down": "downhill" },
+      "legend": { "flat": "under 3 %", "band2": "3-6 %", "band3": "6-8 %", "band4": "8-10 %", "band5": "over 10 %", "down": "downhill", "cobbles": "cobbles", "gravel": "gravel" },
       "sprint": "Sprint km {km}"
     },
     "axes": {

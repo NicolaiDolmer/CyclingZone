@@ -78,7 +78,7 @@ function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb, 
         ? <StageProfileV2 profile={profile} series={series} climbs={climbs} selectedClimb={band ? null : selectedClimb} onSelectClimb={onSelectClimb} band={band} />
         : null}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <GradientLegend />
+        <GradientLegend profile={profile} />
         {sprint && <span className="ml-auto font-data text-2xs tabular-nums text-cz-3">{t("stagePageV2.profile.sprint", { km: formatNumber(Math.round(Number(sprint.km))) })}</span>}
       </div>
       {series?.source === "synthetic" && !band && <p className="m-0 mt-2 text-xs text-cz-3">{t("stagePageV2.profile.drawn")}</p>}
