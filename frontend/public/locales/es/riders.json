@@ -20,8 +20,7 @@
     "prognosisLearningTitle": "El pronóstico se basa en su desarrollo hasta ahora y será más preciso cuanto más tiempo entrene contigo.",
     "aiTeamTitle": "Los ciclistas de equipos de la IA no se pueden ojear.",
     "potentialSubtitle": "estimación del ojeador",
-    "potentialTitle": "Potencial, la estimación del ojeador. Una estimación, no un hecho.",
-    "approx": "aprox. {value}"
+    "potentialTitle": "Potencial, la estimación del ojeador. Una estimación, no un hecho."
   },
   "table": {
     "nation": "País",

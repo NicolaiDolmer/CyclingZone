@@ -98,8 +98,9 @@ export function PrognosisValue({ view, size = "cell" }: { view: PrognosisView; s
       data-prognosis-value={view.value}
       {...(view.learning ? { "data-prognosis-learning": "true" } : {})}
     >
-      {/* #8604: mens trend-prognosen læres, står tallet som "ca." med usikkerheden i tooltip'en. */}
-      {view.learning ? t("riders:potentialNumber.approx", { value: view.value }) : view.value}
+      {/* #8604 + ejer 27/11 (#8873): talfelter viser altid kun tallet; usikkerheden mens
+          trend-prognosen læres står i tooltip'en (prognosisTitleKey). */}
+      {view.value}
     </span>
   );
 }
