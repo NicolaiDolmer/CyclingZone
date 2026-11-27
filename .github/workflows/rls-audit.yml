@@ -14,6 +14,8 @@ name: RLS audit
 
 on:
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'database/**'
       - 'frontend/src/**'
@@ -36,6 +38,7 @@ concurrency:
 
 jobs:
   audit:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - name: Skip secret-backed audit for Dependabot PRs
