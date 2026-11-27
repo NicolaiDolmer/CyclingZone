@@ -37,6 +37,7 @@ const { default: XpToday, shortName, nameParts } = await import("./XpToday.tsx")
 const { default: XpMonth } = await import("./XpMonth.tsx");
 const { xpReportMode, previewXpReport, previewXpReportState } = await import("./XpReportSwitch.tsx");
 const { default: TrainingReportXp } = await import("./TrainingReportXp.tsx");
+const { default: SessionName, sessionTextKeys } = await import("./SessionName.tsx");
 loader.deregister();
 const { buildXpReportFixture } = await import("./xpReportFixture.ts");
 const { buildMonthView, buildTodayView } = await import("../../../lib/trainingReportXp.ts");
@@ -265,4 +266,45 @@ test("phones use the owner's short name form (18/9)", () => {
   assert.equal(shortName("Mononym"), "Mononym");
   // The full name stays the link's accessible name when the short form shows (#5383).
   assert.deepEqual(nameParts("Iker Zubeldia Arregi"), { firstname: "Iker", lastname: "Zubeldia Arregi" });
+});
+
+test("#8856 the panel names the session he rode, one line each, with a tooltip on hover, focus or tap", () => {
+  const view = buildTodayView(fx.receipts, null, options)!;
+  const withVo2 = fx.receipts.map(r => r.tick_date).map(d => buildTodayView(fx.receipts, d, options)!)
+    .flatMap(v => v.riders).find(r => r.sessions.some(s => s.focus === "vo2max_climb"));
+  assert.ok(withVo2, "the fixture has a rider who rode climbing intervals");
+  const html = wrap(createElement(XpToday, { view: { ...view, riders: [withVo2!] }, onPickDate: () => {}, switcher: null }));
+  // The picker's own name, not the ability family cut to "VO2max (…".
+  assert.match(html, /data-testid="xp-session-name"[^>]*data-focus="vo2max_climb"[^>]*>(?:<span[^>]*>)Climbing intervals</);
+  // The tooltip text is always in the page for screen readers; a button, so a tap on Android focuses it.
+  assert.match(html, /<button type="button" data-testid="xp-session-name"/);
+  assert.match(html, /aria-describedby="[^"]+-desc"/);
+  assert.match(html, /Hard<\/span><span class="mt-1 block">Punch is not trained\. Climbing gains more instead\./);
+  // Never cut: one line per session, no truncate on the session list.
+  const list = html.slice(html.indexOf('data-testid="xp-sessions"'), html.indexOf("</ol>", html.indexOf('data-testid="xp-sessions"')));
+  assert.doesNotMatch(list, /truncate/, "the session name is never cut");
+  assert.doesNotMatch(list, /→|—|–/u);
+});
+
+test("#8856 sessionTextKeys: the picker's name, its level, its note; v3 renames two sessions", () => {
+  assert.deepEqual(sessionTextKeys("vo2max_climb", false), { name: "dayPanel.session_vo2max_climb", family: "rider:training.focus_vo2max_climb", level: "dayPanel.level_hard", note: "dayPanel.sessionNote_vo2max_climb" });
+  assert.equal(sessionTextKeys("vo2max_climb", true).name, "dayPanel.sessionV3_vo2max_climb");
+  assert.equal(sessionTextKeys("threshold", true).note, "dayPanel.sessionNoteV3_threshold");
+  assert.equal(sessionTextKeys("endurance", false).level, "dayPanel.level_easy");
+  assert.equal(sessionTextKeys("technique", false).level, "dayPanel.dayType_skill");
+  assert.equal(sessionTextKeys("restitution", false).name, "dayPanel.dayType_recovery");
+  // Every name key the panel can ask for exists in English and Danish.
+  for (const lang of ["en", "da"]) {
+    const dayPanel = locale(lang, "training").dayPanel;
+    for (const focus of ["vo2max", "vo2max_climb", "vo2max_punch", "threshold", "sprint", "tempo", "endurance", "cobbled_sectors", "echelon_drills", "attack_repeats", "technique", "aero", "loebslaere", "restitution"]) {
+      for (const v3 of [false, true]) {
+        const keys = sessionTextKeys(focus, v3);
+        assert.ok(dayPanel[keys.name.replace("dayPanel.", "")], `${lang}: ${keys.name}`);
+        if (keys.level) assert.ok(dayPanel[keys.level.replace("dayPanel.", "")], `${lang}: ${keys.level}`);
+      }
+    }
+  }
+  // A session with no family text falls back to its name; the tip still renders.
+  const html = wrap(createElement(SessionName, { focus: "tempo" }));
+  assert.match(html, />Tempo</);
 });
