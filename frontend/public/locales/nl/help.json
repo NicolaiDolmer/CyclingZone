@@ -1710,7 +1710,7 @@
       },
       "prognosisTrainingEstimate": {
         "title": "Het potentieel van een talent leren kennen",
-        "text": "Een nieuwe jeugdrenner heeft nog geen potentieelgetal: hij toont Leert en hoeveel van zijn eerste 5 trainingen hij heeft gedaan. Een training telt als een datum bij je team is afgerekend, met Train now of met de automatische training. Na 5 krijg je een eerste schatting, en ze wordt zekerder naarmate hij langer bij je traint. Betere trainersstaf en faciliteiten maken dat sneller, maar veranderen zijn talent niet."
+        "text": "Elke renner in je ploeg toont vanaf dag één een schatting van het potentieel, ook een jeugdrenner die je net hebt binnengehaald of een renner die je net hebt gekocht. De eerste schatting is wat je scout bij één observatie ziet, dus die is grof. Ze wordt zekerder naarmate hij langer bij je traint: een training telt wanneer een datum van je ploeg is afgerekend, met Train now of de automatische training. Betere trainers en faciliteiten maken het sneller, maar veranderen zijn talent niet."
       },
       "prognosisTraining": {
         "title": "Het potentieel van een talent leren kennen",

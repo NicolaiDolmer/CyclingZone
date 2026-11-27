@@ -1710,7 +1710,7 @@
       },
       "prognosisTrainingEstimate": {
         "title": "Découvrir le potentiel d'un jeune talent",
-        "text": "Un nouveau jeune coureur n'a pas encore de nombre de potentiel : il affiche En apprentissage et combien de ses 5 premiers entraînements il a faits. Un entraînement compte quand une date est réglée dans ton équipe, avec Train now ou avec l'entraînement automatique. Après 5, tu reçois une première estimation, et elle devient plus sûre à mesure qu'il s'entraîne chez toi. Un meilleur staff et de meilleures installations accélèrent les choses, mais ne changent pas son talent."
+        "text": "Chaque coureur de ton équipe affiche une estimation du potentiel dès le premier jour, y compris un jeune que tu viens d'accueillir ou un coureur que tu viens d'acheter. La première estimation correspond à ce que ton recruteur voit en une observation, elle est donc approximative. Elle devient plus sûre à mesure qu'il s'entraîne chez toi : un entraînement compte quand une date de ton équipe est réglée, avec Train now ou l'entraînement automatique. Un meilleur staff et de meilleures installations accélèrent les choses, mais ne changent pas son talent."
       },
       "prognosisTraining": {
         "title": "Découvrir le potentiel d'un jeune talent",
