@@ -237,7 +237,7 @@
       "finish": "Mål · {m} m",
       "toGoAxis": "{km} km til mål",
       "drawn": "Tegnet ud fra stigningerne og de samlede højdemeter. Procenterne mellem stigningerne er omtrentlige.",
-      "legend": { "flat": "under 3 %", "band2": "3-6 %", "band3": "6-8 %", "band4": "8-10 %", "band5": "over 10 %", "down": "nedkørsel" },
+      "legend": { "flat": "under 3 %", "band2": "3-6 %", "band3": "6-8 %", "band4": "8-10 %", "band5": "over 10 %", "down": "nedkørsel", "cobbles": "brosten", "gravel": "grus" },
       "sprint": "Spurt km {km}"
     },
     "axes": {

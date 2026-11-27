@@ -28,7 +28,9 @@ import { attachSegmentsAndWeather } from "./routeSegments.js";
 import { buildElevationProfile, elevationSeedKey } from "./routeElevationProfile.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 import { isAscendingOrder, REAL_STAGE_RACES, positionBucket, coarseClassOf } from "./stageOrderVariationGate.js";
-import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders, canonicalFinaleType, isFinishAllowed } from "./stageProfileTypes.js";
+import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders, canonicalFinaleType, isFinishAllowed, roadFinishWeightsFor, youthFinishWeightsFor, GT_FINISH_WEIGHTS_S6 } from "./stageProfileTypes.js";
+import { isFixedIconicRouteRace } from "./iconicRoutes8259.js";
+import { isS6Race } from "./calendarTierCaps.js";
 // #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
 // afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
 import { FINALE_CLASS_BY_TYPE, FINALE_CLASSES, OVERALL_FINALE_BAND, TERRAIN_FINALE_BANDS } from "./stageFinaleMetrics.js";
@@ -847,7 +849,10 @@ function chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages) {
 // kun i S5-modellen (make = toStageS5). v5 læser aldrig feltet.
 /** @param {S5Rng} rng @param {any} cfg @param {any} race @param {StageFactory} [make] */
 function buildSingle(rng, cfg, race, make = toStage) {
-  if (make === toStageS5 && race?.authored_route != null) return buildAuthoredSingle(race);
+  // #8830: de faste ikoniske ruter (#8259) gaelder fra S6. Foer S6 genereres et ikonisk loeb som
+  // foer migrationen (ruten ignoreres); enhver anden ikke-monument-rute afvises stadig (fail-closed).
+  const iconicBeforeS6 = race?.race_class !== "Monuments" && isFixedIconicRouteRace(race) && !isS6Race(race);
+  if (make === toStageS5 && race?.authored_route != null && !iconicBeforeS6) return buildAuthoredSingle(race);
   const weights = cfg?.kind === "single" ? cfg.weights : SINGLE_PROFILE_WEIGHTS;
   return [make(rng, weightedPick(rng, weights), 1, race, false)];
 }
@@ -1465,7 +1470,12 @@ function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = n
   // kald) = samme kvantil-træk som før; true = bjergtop; false = samme kvantil uden bjergtop.
   const chooseFinish = (/** @type {string} */ terrain, /** @type {{ summit?: boolean | null }} */ { summit = null } = {}) => {
     if (finish) return finish;
-    const weights = /** @type {Record<string, any>} */ (S5_FINISH_WEIGHTS)[terrain];
+    // #8259: uden for en Grand Tour gælder S6-vægtene (stageProfileTypes.js afsnit 5).
+    // #8830: ungdommen (U23/junior) har egne vaegte, ogsaa i mini-GT'erne.
+    // Kun fra S6 (isS6Race); S3-S5 bruger S5-tabellen uaendret.
+    const s6 = !isS6Race(race) ? null : youthFinishWeightsFor(terrain, race?.squad)
+      ?? (isStageRace && race?.terrain_archetype === "grand_tour" ? null : roadFinishWeightsFor(terrain, targetType));
+    const weights = /** @type {any} */ (s6 ?? /** @type {Record<string, any>} */ (S5_FINISH_WEIGHTS)[terrain]);
     if (summit === true) return "long_climb";
     if (summit === false) return pickByQuantile(weights.filter((/** @type {any} */ it) => it.value !== "long_climb"), u);
     return pickByQuantile(weights, u);
@@ -1554,18 +1564,23 @@ export function grandTourQuotaTypes(gtType, stages, { allowTtt = false } = {}) {
  * @param {string[]} types
  * @returns {string[]}
  */
-export function orderGrandTourS5(rng, types) {
+export function orderGrandTourS5(rng, types, { s6 = false } = {}) {
   const n = types.length;
   const pool = types.slice();
   const take = (/** @type {string} */ t) => { const i = pool.indexOf(t); if (i === -1) return null; pool.splice(i, 1); return t; };
   const slots = new Array(n).fill(null);
-  const firstThirdEnd = Math.floor(n / 3); // indeks < firstThirdEnd = første tredjedel
-  const lastThirdStart = n - Math.floor(n / 3); // indeks >= lastThirdStart = sidste tredjedel
+  // #8830: en mini-GT (ungdom, #7471) er kortere end en rigtig GT. Tredjedelene rundes op,
+  // og den sene enkeltstart er sidste etape, saa kongeetapen kan ligge naestsidst i sidste
+  // tredjedel. Samme regel i benchmark-gatens checkGrandTour. Rigtige GT'er er uroerte.
+  const mini = s6 && n < GRAND_TOUR_MIN_STAGES;
+  const third = mini ? Math.ceil(n / 3) : Math.floor(n / 3);
+  const firstThirdEnd = third; // indeks < firstThirdEnd = første tredjedel
+  const lastThirdStart = n - third; // indeks >= lastThirdStart = sidste tredjedel
   const roll = rng(); // altid forbrugt
   const ttCount = pool.filter(isTimeTrial).length;
 
   if (ttCount >= 1) slots[0] = take("ttt") ?? take("itt");
-  const ittLast = ttCount >= 2 && roll >= GT_FLAT_FINISH_CHANCE;
+  const ittLast = ttCount >= 2 && (mini || roll >= GT_FLAT_FINISH_CHANCE);
   if (n >= 2) slots[n - 1] = ittLast ? take("itt") : (take("flat") ?? take("rolling") ?? null);
 
   const lateTt = pool.find(isTimeTrial);
@@ -1603,11 +1618,15 @@ export function orderGrandTourS5(rng, types) {
  * @param {number} summits
  * @returns {Array<string | null>}
  */
-export function assignGrandTourFinishes(rng, ordered, summits) {
+export function assignGrandTourFinishes(rng, ordered, summits, squad = null, { s6 = false } = {}) {
   /** @type {Array<string | null>} */
   const finishes = ordered.map(() => null);
+  // #8830: en ungdoms-mini-GT bruger ungdommens vaegte paa de terraener der har en raekke;
+  // bjerg og hoejbjerg (og senior) bruger benchmarkens GT-vaegte som foer.
   /** @type {Record<string, ReadonlyArray<{ value: string, weight: number }>>} */
-  const finishWeights = S5_FINISH_WEIGHTS;
+  const finishWeights = !s6 ? S5_FINISH_WEIGHTS : Object.fromEntries(Object.entries(S5_FINISH_WEIGHTS).map(([t, w]) => [
+    t, (squad ? youthFinishWeightsFor(t, squad) : null) ?? /** @type {any} */ (GT_FINISH_WEIGHTS_S6)[t] ?? w,
+  ]));
   const shareOf = (/** @type {string} */ t) => {
     const w = finishWeights[t];
     const total = w.reduce((s, it) => s + it.weight, 0);
@@ -1615,7 +1634,9 @@ export function assignGrandTourFinishes(rng, ordered, summits) {
   };
   const eligible = ordered.map((t, i) => (S5_SUMMIT_CATEGORIES[t] ? i : -1)).filter((i) => i >= 0);
   const chosen = new Set();
-  const want = Math.min(summits, eligible.length);
+  // #8830: en ungdoms-mini-GT ender paa toppen af alle sine bjerg- og hoejbjergetaper (opad-
+  // maalet for U23/junior); senior-GT'er foelger benchmarkens bjergtop-kvote som foer.
+  const want = s6 && squad ? eligible.length : Math.min(summits, eligible.length);
   while (chosen.size < want) {
     const remaining = eligible.filter((i) => !chosen.has(i));
     const items = remaining.map((i) => ({ value: i, weight: shareOf(ordered[i]) }));
@@ -1634,8 +1655,9 @@ export function assignGrandTourFinishes(rng, ordered, summits) {
 /** @param {S5Rng} rng @param {number} stages @param {any} race @param {{ allowTtt?: boolean }} [opts] */
 function buildGrandTourS5(rng, stages, race, { allowTtt = false } = {}) {
   const { types, summits } = grandTourQuotaTypes(grandTourTypeFor(race), stages, { allowTtt });
-  const ordered = orderGrandTourS5(rng, types);
-  const finishes = assignGrandTourFinishes(rng, ordered, summits);
+  const s6 = isS6Race(race); // #8830: mini-GT, S6-GT-vaegte og ungdommens vaegte kun fra S6
+  const ordered = orderGrandTourS5(rng, types, { s6 });
+  const finishes = assignGrandTourFinishes(rng, ordered, summits, s6 && youthFinishWeightsFor("hilly", race?.squad) ? race.squad : null, { s6 });
   return ordered.map((t, i) => toStageS5(rng, t, i + 1, race, true, {
     finish: finishes[i],
     shortItt: i === 0 && t === "itt",
@@ -2022,8 +2044,8 @@ function authoredFinishRamp(r, race) {
  */
 function buildAuthoredSingle(race) {
   // #6857 (Codex P2): fail-closed i generatoren selv (databasen har ingen constraint): en
-  // håndskreven rute gælder kun et endags-monument.
-  if (race?.race_type !== "single" || race?.race_class !== "Monuments") {
+  // håndskreven rute gælder kun et endags-monument og (#8830) de faste ikoniske ruter.
+  if (race?.race_type !== "single" || (race?.race_class !== "Monuments" && !isFixedIconicRouteRace(race))) {
     throw new TypeError(`authored_route requires a single-day Monuments race, got ${race?.race_type ?? "?"} / ${race?.race_class ?? "?"} (${race?.name ?? race?.id}, #6857)`);
   }
   const r = race.authored_route;
@@ -2078,6 +2100,8 @@ function buildAuthoredSingle(race) {
 // first = etape 1, last = sidste etape, ellers etapens relative placering i tredjedele.
 export const A2_FLAT_POSITION_WEIGHTS = Object.freeze({ first: 9, early: 7, middle: 8, late: 8, last: 3 });
 /** Etapetyper en flad etape må erstatte (ejer 24/10: "på en bakket/kuperet etape"). */
+/** #8830 (ejer 26/11): kun etapeløb med mindst så mange etaper skal have en flad etape (§7e). */
+export const A2_MIN_STAGES_FOR_FLAT = 6;
 export const A2_REPLACEABLE_TYPES = Object.freeze(["rolling", "hilly"]);
 
 /**
@@ -2173,6 +2197,10 @@ export function buildA2FlatStage(race, stageNumber, { generatorVersion = S5_GENE
  * @param {any} race @param {any[]} stages
  */
 export function ensureFlatStageS5(race, stages) {
+  // #8830 (ejer 26/11, §7e ændret fra S6): et etapeløb på 5 etaper eller færre behøver ingen
+  // flad etape; 6+ har stadig mindst én. chooseA2FlatStage er uændret, så S5-scriptet
+  // s5FlatStageA2_2757.js (der arbejder på S5's skrevne ruter) dømmer som før.
+  if (isS6Race(race) && (stages?.length ?? 0) < A2_MIN_STAGES_FOR_FLAT) return stages;
   const { stageNumber } = chooseA2FlatStage(race, stages);
   if (stageNumber == null) return stages;
   return stages.map((s) => (s.stage_number === stageNumber

@@ -77,8 +77,14 @@
  * ikke jaevnt pr. dato, saa §1e's traeningsrytme gaar roed.
  * Med maalet saat doemmer scorecardet §1d for S5 (calendarScorecardReport.js), saa --apply
  * stopper hvis en division ikke rammer 160.
+ *
+ * S6 = 140: EJER-BESLUTNING 26/11 (#5841, PC1): "140 løbsdage står fast", på det låste
+ * vindue mandag 30/11 -> lørdag 26/12 (27 løbsdatoer, SEASON_RACE_DATES[6]). Uden tallet
+ * her fik divisionerne hver sit naturlige antal, og gaten meldte ikke fejl, fordi intet
+ * mål var sat (undersøgelsen 26/11). 140 går ikke op i 27, så nogle datoer bærer en
+ * løbsdag mere end andre; §1e's træningsrytme dømmer stadig fordelingen.
  */
-export const SEASON_RACE_DAY_TARGET = Object.freeze({ 4: 140, 5: 160 });
+export const SEASON_RACE_DAY_TARGET = Object.freeze({ 4: 140, 5: 160, 6: 140 });
 
 /**
  * Divisionerne der skal have samme antal loebsdage. Ikke udledt af TIER_DENSITY, fordi
