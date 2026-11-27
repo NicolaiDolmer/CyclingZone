@@ -4,7 +4,7 @@
 import {createHash} from 'node:crypto';
 
 export const SOURCE_HASH_FUNCTION='training_compensation_6061_source_hashes';
-export const SOURCE_HASH_TABLES=Object.freeze(['app_config','race_entry_days','race_results','race_simulation_runs','race_stage_profiles','race_stage_schedule','races','riders','seasons','staff_derived_abilities','team_facilities','team_staff','team_training_rules','teams','training_condition_settlements','training_date_work','training_group_members','training_groups','training_plans','training_race_loads','training_rider_ticks','training_week_plans','users']);
+export const SOURCE_HASH_TABLES=Object.freeze(['app_config','development_curve_b_transition_members','private_config','race_entry_days','race_results','race_simulation_runs','race_stage_profiles','race_stage_schedule','races','rider_ownership_events','riders','seasons','staff_derived_abilities','team_facilities','team_staff','team_training_rules','teams','training_condition_settlements','training_date_work','training_group_members','training_groups','training_plans','training_race_loads','training_rider_ticks','training_week_plans','users']);
 // The SQL writer refuses anything larger; the current plan is far below it.
 export const MAX_APPLY_PAYLOAD_BYTES=2*1024*1024;
 const HEX64=/^[a-f0-9]{64}$/;

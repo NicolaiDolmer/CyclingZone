@@ -22,12 +22,21 @@ export function buildRecoveryManifest(state) {
   for(const id of w.quarantined_rider_ids??[]){
    const rider=state.riders.find(r=>r.id===id);const condition=state.conditions.find(r=>r.rider_id===id);
    const ticks=state.ticks.filter(t=>t.rider_id===id);
+   const compensated=(state.compensations??[]).filter(c=>c.rider_id===id&&c.season_id===w.season_id&&w.game_days.includes(Number(c.game_day)));
    const blockers=[];
    if(!rider?.team_id || rider.is_retired) blockers.push('current_ownership_unavailable');
-   if(rider?.team_id && rider.team_id!==w.team_id) blockers.push('ownership_changed');
+   // #8606 (ejer 24/11): on an explicit rider-date list the training follows the rider, so a
+   // sold rider is compensated on his current team. A quarantine row keeps the old rule.
+   if(rider?.team_id && rider.team_id!==w.team_id && !w.follows_rider) blockers.push('ownership_changed');
    if(owners.get(`${id}:${w.season_id}:${w.tick_date}`).size>1) blockers.push('multiple_date_owners');
    if(!w.opening_conditions?.[id]) blockers.push('missing_opening_condition');
-   const days=w.game_days.filter(day=>!ticks.some(t=>t.season_id===w.season_id&&t.game_day===day));
+   if(w.follows_rider){
+    // A receipt on the date (training or compensation) means the date is not simply lost:
+    // the whole date is refused instead of topping it up, and a repeat run finds nothing new.
+    if(compensated.length || ticks.some(t=>t.season_id===w.season_id&&w.game_days.includes(Number(t.game_day)))) blockers.push('receipt_on_date');
+    if((state.dateRosters??[]).some(r=>r.season_id===w.season_id&&r.tick_date===w.tick_date&&(r.expected_rider_ids??[]).includes(id))) blockers.push('in_date_roster');
+   }
+   const days=w.game_days.filter(day=>!ticks.some(t=>t.season_id===w.season_id&&t.game_day===day)&&!compensated.some(c=>Number(c.game_day)===day));
    for(const day of days){const key=slotKey(id,w.season_id,day);lost.add(key);if(!byDate.has(w.tick_date))byDate.set(w.tick_date,new Set());byDate.get(w.tick_date).add(key);}
    const hasHistory=ticks.length || state.settlements.some(s=>s.rider_id===id) || state.legacyReports.some(r=>reportRiders(r).some(entry=>entry?.rider_id===id));
    const recorded=state.loads.filter(l=>l.rider_id===id&&l.season_id===w.season_id&&l.tick_date===w.tick_date&&days.includes(l.game_day));
@@ -39,7 +48,7 @@ export function buildRecoveryManifest(state) {
    blockers.push('missing_historical_training_inputs');
    const ownershipReview=blockers.some(b=>['ownership_changed','multiple_date_owners','current_ownership_unavailable'].includes(b));
    const category=ownershipReview?'ownership_review':condition?'existing_state_review':hasHistory?'missing_state_with_history_review':'first_use_recovery_candidate';
-   candidates.push({rider_id:id,team_id:w.team_id,season_id:w.season_id,tick_date:w.tick_date,category,missing_game_days:days,recorded_race_days:recorded,blockers,current_rider:rider??null,current_condition:condition??null,current_plans:plans,current_week_plans:weeks,opening_condition:w.opening_conditions?.[id]??null});
+   candidates.push({rider_id:id,team_id:w.team_id,season_id:w.season_id,tick_date:w.tick_date,category,...(w.follows_rider?{follows_rider:true}:{}),missing_game_days:days,recorded_race_days:recorded,blockers,current_rider:rider??null,current_condition:condition??null,current_plans:plans,current_week_plans:weeks,opening_condition:w.opening_conditions?.[id]??null});
   }
  }
  const summary={riders:new Set(candidates.map(c=>c.rider_id)).size,teams:new Set(candidates.map(c=>c.team_id)).size,rider_days:lost.size,first_use_candidates:new Set(candidates.filter(c=>c.category==='first_use_recovery_candidate'&&!c.blockers.includes('current_ownership_unavailable')).map(c=>c.rider_id)).size,by_date:[...byDate].sort(([a],[b])=>a.localeCompare(b)).map(([date,days])=>({date,rider_days:days.size})),apply_ready:false};
@@ -62,18 +71,58 @@ export function selectCaseWork(work,{team,tickDate}={}){
  if(quarantined.some(w=>w.team_id!==team&&keys.has(`${w.season_id}:${w.tick_date}`)&&w.quarantined_rider_ids.some(id=>riders.has(id))))throw new Error('Another team quarantined a selected rider on the same date; run the unfiltered review');
  return selected;
 }
-export async function loadRecoveryInputs(supabase,{through,asOf,team,tickDate}){
+// #8606: an explicit rider-date list (rider_id, team_id on the date, season_id, tick_date,
+// game_days) instead of quarantined work rows. It reaches riders who stood in no frozen roster
+// (late academy riders, purchases). Each row becomes a work row whose training follows the
+// rider; the list itself is private (balance-internals/), never committed.
+const LIST_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function workFromRiderDates(list){
+ if(!Array.isArray(list)||!list.length)throw new Error('Rider-date list must be a non-empty array');
+ const groups=new Map();const seen=new Set();
+ for(const row of list){
+  const ids=[row?.rider_id,row?.team_id,row?.season_id];
+  if(!ids.every(v=>typeof v==='string'&&LIST_UUID.test(v)))throw new Error('Rider-date row needs rider_id, team_id and season_id uuids');
+  if(!isCalendarDate(row.tick_date??''))throw new Error('Rider-date row needs tick_date YYYY-MM-DD');
+  const days=row.game_days;
+  if(!Array.isArray(days)||days.length!==5||new Set(days).size!==5||days.some(d=>!Number.isInteger(d)))throw new Error('Rider-date row needs five unique integer race days');
+  const riderKey=`${row.rider_id.toLowerCase()}:${row.season_id.toLowerCase()}:${row.tick_date}`;
+  if(seen.has(riderKey))throw new Error('Rider-date list names a rider twice on one date');
+  seen.add(riderKey);
+  const key=`${row.team_id.toLowerCase()}:${row.season_id.toLowerCase()}:${row.tick_date}`;
+  if(!groups.has(key))groups.set(key,{team_id:row.team_id.toLowerCase(),season_id:row.season_id.toLowerCase(),tick_date:row.tick_date,game_days:[...days].sort((a,b)=>a-b),quarantined_rider_ids:[],opening_conditions:{},follows_rider:true});
+  const group=groups.get(key);
+  if(JSON.stringify(group.game_days)!==JSON.stringify([...days].sort((a,b)=>a-b)))throw new Error('One team-date has one set of race days');
+  group.quarantined_rider_ids.push(row.rider_id.toLowerCase());
+ }
+ return [...groups.values()].sort((a,b)=>a.season_id.localeCompare(b.season_id)||a.tick_date.localeCompare(b.tick_date)||a.team_id.localeCompare(b.team_id))
+  .map(w=>({...w,quarantined_rider_ids:[...w.quarantined_rider_ids].sort()}));
+}
+export async function loadRecoveryInputs(supabase,{through,asOf,team,tickDate,riderDates}){
  // schema-columns-ok: date-work/settlement/tick columns come from the tested #5928 migrations and were checked through information_schema on 3/10.
- const work=await fetchAllRows(()=>{
+ const listWork=riderDates?workFromRiderDates(riderDates).filter(w=>w.tick_date<=through):null;
+ if(listWork&&team)throw new Error('A rider-date list cannot be combined with --team');
+ const work=listWork??await fetchAllRows(()=>{
   let q=supabase.from('training_date_work').select('team_id,season_id,tick_date,game_days,quarantined_rider_ids,opening_conditions,quarantine_evidence,updated_at').lte('tick_date',through);
   // Date only, not team: the ambiguity check above needs the other owners of that date.
   if(team)q=q.eq('tick_date',tickDate);
   return q.order('season_id').order('tick_date').order('team_id');
  });
- const relevant=selectCaseWork(work,{team,tickDate});const ids=[...new Set(relevant.flatMap(w=>w.quarantined_rider_ids))];const teamIds=[...new Set(relevant.map(w=>w.team_id))];
+ const relevant=listWork??selectCaseWork(work,{team,tickDate});const ids=[...new Set(relevant.flatMap(w=>w.quarantined_rider_ids))];let teamIds=[...new Set(relevant.map(w=>w.team_id))];
  const read=(table,columns,inColumn,wanted,orders)=>fetchAllRowsChunkedIn(wanted,chunk=>{
   let q=supabase.from(table).select(columns).in(inColumn,chunk);for(const col of orders)q=q.order(col);return q;
  });
+ let dateRosters=[],compensations=[];
+ if(listWork){
+  // The frozen rosters of the listed dates (a rider in any roster is not a late rider) and
+  // earlier compensation receipts (idempotence), plus the riders' current teams for their plans.
+  const dates=[...new Set(listWork.map(w=>w.tick_date))];
+  [dateRosters,compensations]=await Promise.all([
+   read('training_date_work','team_id,season_id,tick_date,expected_rider_ids','tick_date',dates,['team_id','tick_date']),
+   read('training_compensation_receipts','rider_id,season_id,game_day,tick_date','rider_id',ids,['rider_id','season_id','game_day']),
+  ]);
+  const current=await read('riders','id,team_id','id',ids,['id']);
+  teamIds=[...new Set([...teamIds,...current.map(r=>r.team_id).filter(Boolean)])];
+ }
  const [riders,conditions,ticks,settlements,loads,plans,weekPlans]=await Promise.all([
   read('riders','id,team_id,is_retired,created_at,acquired_at','id',ids,['id']),
   read('rider_condition','*','rider_id',ids,['rider_id']),
@@ -102,7 +151,7 @@ export async function loadRecoveryInputs(supabase,{through,asOf,team,tickDate}){
   for(const r of rows)byId.set(r.id,r);
  }
  const legacyReports=[...byId.values()].filter(r=>reportRiders(r).some(entry=>wanted.has(entry?.rider_id)));
- return {through,asOf,work:relevant,riders,conditions,ticks,settlements,loads,plans,weekPlans,legacyReports};
+ return {through,asOf,work:relevant,riders,conditions,ticks,settlements,loads,plans,weekPlans,legacyReports,...(listWork?{dateRosters,compensations}:{})};
 }
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isCalendarDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&new Date(`${s}T00:00:00Z`).toISOString().slice(0,10)===s;
