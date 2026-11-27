@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 
 import {
   applyFormerRiderStepsToEstimates, applyFormerRiderStepsToReport, formerRiderStepsFrom, formerRidersByTeam,
-  latestDepartures, loadFormerRiderSteps, withFormerRiderDecay,
+  knowledgeAnchors, latestDepartures, latestLooks, loadFormerRiderSteps, withFormerRiderDecay,
 } from "./formerRiderKnowledge.js";
 
 test("#7455 ruterne lægger faldet på alle tre flader, der viser skønnet", () => {
@@ -101,6 +101,7 @@ function fakeSupabase(tables) {
           filtered = filtered.filter((row) => ids.some(([col, id]) => row[col] === id));
           return q;
         },
+        eq(col, value) { filtered = filtered.filter((row) => row[col] === value); return q; },
         in(col, values) { filtered = filtered.filter((row) => values.includes(row[col])); return q; },
         order() { return q; },
         range() { return Promise.resolve({ data: filtered, error: null }); },
@@ -140,4 +141,48 @@ test("#7455 withFormerRiderDecay: egen rytter og skjult skøn slår intet op; ti
   });
   const out = await withFormerRiderDecay(supabase, TEAM, { id: "r1" }, false, report, { clock });
   assert.equal(out.potentialView.certainty, "unsure");
+});
+
+test("#7455 sag 2: latestLooks + knowledgeAnchors tager det seneste af afgang og kig", () => {
+  const looks = latestLooks([
+    { rider_id: "r1", created_at: "2026-09-05T10:00:00Z" },
+    { rider_id: "r1", created_at: "2026-10-05T10:00:00Z" },
+    { rider_id: "r2", created_at: "2026-09-05T10:00:00Z" },
+    { rider_id: null, created_at: "2026-09-05T10:00:00Z" },
+  ]);
+  assert.deepEqual(Object.fromEntries(looks), { r1: "2026-10-05T10:00:00Z", r2: "2026-09-05T10:00:00Z" });
+  const departures = new Map([["r2", "2026-11-01T10:00:00Z"], ["r3", "2026-09-01T10:00:00Z"]]);
+  const anchors = knowledgeAnchors(departures, new Map([...looks, ["r3", "2026-11-02T10:00:00Z"]]));
+  assert.deepEqual(Object.fromEntries(anchors), {
+    r1: "2026-10-05T10:00:00Z", // kun scoutet
+    r2: "2026-11-01T10:00:00Z", // kig før afgangen: afgangen er ankeret
+    r3: "2026-11-02T10:00:00Z", // kig efter afgangen: kigget er ny viden
+  });
+});
+
+test("#7455 sag 2: en scoutet rytter, der aldrig var på holdet, falder fra sæsonen efter seneste kig", async () => {
+  const supabase = fakeSupabase({
+    rider_ownership_events: [{ id: 1, ...ev("r8", TEAM, OTHER, "2026-09-02T10:00:00Z") }],
+    scout_actions: [
+      { id: 1, team_id: TEAM, rider_id: "s3", created_at: "2026-09-02T10:00:00Z" }, // kig i sæson 3
+      { id: 2, team_id: TEAM, rider_id: "s4", created_at: "2026-09-02T10:00:00Z" },
+      { id: 3, team_id: TEAM, rider_id: "s4", created_at: "2026-10-03T10:00:00Z" }, // seneste kig i sæson 4
+      { id: 4, team_id: TEAM, rider_id: "s5", created_at: "2026-11-20T10:00:00Z" }, // kig i denne sæson
+      { id: 5, team_id: OTHER, rider_id: "x", created_at: "2026-09-02T10:00:00Z" }, // andet holds kig
+      { id: 6, team_id: TEAM, rider_id: "r8", created_at: "2026-11-21T10:00:00Z" }, // tidligere rytter, kigget igen
+    ],
+    seasons: SEASONS,
+    riders: [
+      { id: "s3", team_id: OTHER }, { id: "s4", team_id: null }, { id: "s5", team_id: OTHER },
+      { id: "x", team_id: OTHER }, { id: "r8", team_id: OTHER },
+    ],
+  });
+  const steps = await loadFormerRiderSteps(supabase, {
+    teamId: TEAM, riderIds: ["s3", "s4", "s5", "x", "r8"], clock: new Date("2026-11-27T12:00:00Z"),
+  });
+  assert.deepEqual(Object.fromEntries(steps), { s3: 2, s4: 1 });
+  const report = { potentialView: { hidden: false, value: 66, certainty: "sure" } };
+  const out = await withFormerRiderDecay(supabase, TEAM, { id: "s3" }, false, report, { clock: new Date("2026-11-27T12:00:00Z") });
+  assert.equal(out.potentialView.certainty, "unsure");
+  assert.equal(out.potentialView.value, 66);
 });

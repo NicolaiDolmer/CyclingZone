@@ -242,7 +242,8 @@ export function buildScoutEstimate(rider, level, viewerTeamId, cfg = SCOUTING_CO
 // ─── Viden om en tidligere rytter (#7455, ejerens valg A 12/11) ────────────────
 //
 // Holdet beholder fuld viden om en rytter, der har forladt holdet, resten af den
-// sæson han forlod det i. Derefter falder viden ét trin pr. sæson, ned til det
+// sæson han forlod det i. Samme regel for en rytter, holdet har scoutet (ejer-scope
+// 27/11): fuld viden resten af sæsonen for det seneste kig. Derefter falder viden ét trin pr. sæson, ned til det
 // laveste trin, og den forsvinder aldrig helt. Et trin er ét sikkerhedsord på det
 // gemte skøn (#6110): Sikker → Rimelig → Usikker. Tallet står, som det var, da han
 // forlod holdet: holdet lærer ikke mere om ham, så kun ordet ændrer sig.

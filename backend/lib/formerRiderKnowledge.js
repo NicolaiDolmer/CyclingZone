@@ -1,14 +1,19 @@
-// #7455 (ejerens valg A 12/11): viden om en rytter, der har forladt holdet.
+// #7455 (ejerens valg A 12/11, scope 27/11): viden om en rytter, holdet ikke har nu.
+// Det dækker BÅDE (1) en tidligere rytter (solgt eller frigivet) OG (2) en rytter,
+// holdet har scoutet uden at have ham på holdet.
 //
-// Holdet beholder sit gemte skøn (#6110, rider_potential_estimates) om en tidligere
-// rytter. Resten af afgangssæsonen vises det uændret; derefter falder sikkerhedsordet
-// ét trin pr. sæson til det laveste trin (reglerne: scouting.js). Faldet regnes ved
-// visning, så intet gemt skøn skrives om, og en rytter, der kommer tilbage, straks
-// er holdets egen igen.
+// Holdet beholder sit gemte skøn (#6110, rider_potential_estimates). Resten af den
+// sæson, holdet sidst lærte noget om rytteren, vises det uændret; derefter falder
+// sikkerhedsordet ét trin pr. sæson til det laveste trin (reglerne: scouting.js).
+// Faldet regnes ved visning, så intet gemt skøn skrives om, og en rytter, der kommer
+// (tilbage) til holdet, straks er holdets egen igen.
 //
-// Afgangen læses fra rider_ownership_events: den seneste hændelse, hvor holdet indgår,
-// er en afgang fra holdet. Kommer rytteren tilbage, er den seneste hændelse en
-// ankomst, og han er ikke længere tidligere rytter.
+// Hvornår holdet sidst lærte noget (ankeret), pr. rytter, det seneste af:
+//   (1) afgangen fra holdet, læst fra rider_ownership_events: den seneste hændelse,
+//       hvor holdet indgår, er en afgang. Kommer rytteren tilbage, er den seneste
+//       hændelse en ankomst, og han er ikke længere tidligere rytter.
+//   (2) holdets seneste kig (scout_actions.created_at). Et nyt kig er ny viden, så
+//       det giver fuld viden resten af kiggets sæson, også for en tidligere rytter.
 //
 // Kobling (bevidst ikke i potentialEstimateRead.js, som et andet spor ejer): ruterne
 // lægger faldet på svaret fra buildEstimatesFromViews / buildScoutingReportFromView /
@@ -46,8 +51,36 @@ export function latestDepartures(events, teamId) {
 }
 
 /**
- * Tabte trin pr. tidligere rytter. Ren funktion.
- *   departures : Map<riderId, occurred_at> (latestDepartures)
+ * Seneste kig pr. rytter (sag 2). Ren funktion.
+ *   actions : [{ rider_id, created_at }] (holdets scout_actions)
+ * Returnerer Map<riderId, created_at>.
+ */
+export function latestLooks(actions) {
+  const out = new Map();
+  for (const action of actions ?? []) {
+    if (!action?.rider_id || !action.created_at) continue;
+    const prev = out.get(action.rider_id);
+    if (!prev || Date.parse(action.created_at) > Date.parse(prev)) out.set(action.rider_id, action.created_at);
+  }
+  return out;
+}
+
+/**
+ * Ankeret pr. rytter: det seneste af afgangen (sag 1) og det seneste kig (sag 2).
+ * Ren funktion; begge input er Map<riderId, tidspunkt>.
+ */
+export function knowledgeAnchors(departures, looks) {
+  const out = new Map(departures ?? []);
+  for (const [riderId, lookedAt] of looks ?? []) {
+    const prev = out.get(riderId);
+    if (!prev || Date.parse(lookedAt) > Date.parse(prev)) out.set(riderId, lookedAt);
+  }
+  return out;
+}
+
+/**
+ * Tabte trin pr. rytter, holdet ikke har nu. Ren funktion.
+ *   departures : Map<riderId, tidspunkt> (knowledgeAnchors; navnet er historisk)
  *   seasons    : [{ number, start_date, end_date }]
  *   today      : YYYY-MM-DD (København)
  * Kun ryttere med mindst ét tabt trin er med i resultatet.
@@ -65,29 +98,35 @@ export function formerRiderStepsFrom(departures, seasons, today) {
 }
 
 /**
- * Tabte trin for de af `riderIds`, som er tidligere ryttere på holdet.
- * To små opslag: holdets ejerskabshændelser (indekseret på from_team_id/to_team_id,
- * og få pr. hold) og sæsonerne. Returnerer en tom Map, når intet skal falde.
+ * Tabte trin for de af `riderIds`, som er tidligere ryttere på holdet eller scoutet
+ * af holdet. Tre små opslag: holdets ejerskabshændelser (indekseret på
+ * from_team_id/to_team_id), holdets kig (indekseret på team_id, få hundrede pr. hold)
+ * og sæsonerne. Returnerer en tom Map, når intet skal falde.
  */
 export async function loadFormerRiderSteps(supabase, { teamId, riderIds, clock = new Date() }) {
   const wanted = new Set((riderIds ?? []).filter(Boolean));
   if (!teamId || !wanted.size) return new Map();
-  const [events, seasons] = await Promise.all([
+  const [events, actions, seasons] = await Promise.all([
     fetchAllRows(() => supabase
       .from("rider_ownership_events")
       .select("id, rider_id, from_team_id, to_team_id, occurred_at")
       .or(`from_team_id.eq.${teamId},to_team_id.eq.${teamId}`)
       .order("id")),
+    fetchAllRows(() => supabase
+      .from("scout_actions").select("id, rider_id, created_at").eq("team_id", teamId).order("id")),
     fetchAllRows(() => supabase.from("seasons").select("number, start_date, end_date").order("number")),
   ]);
-  const departures = latestDepartures(events.filter((event) => wanted.has(event.rider_id)), teamId);
-  if (!departures.size) return new Map();
+  const anchors = knowledgeAnchors(
+    latestDepartures(events.filter((event) => wanted.has(event.rider_id)), teamId),
+    latestLooks(actions.filter((action) => wanted.has(action.rider_id))),
+  );
+  if (!anchors.size) return new Map();
   // Værn: en rytter, der står på holdet nu, er holdets egen, også hvis en ankomst
   // mangler i hændelserne (fx en ældre sti uden hændelse).
-  const back = await fetchAllRowsChunkedIn([...departures.keys()], (chunk) => supabase
+  const back = await fetchAllRowsChunkedIn([...anchors.keys()], (chunk) => supabase
     .from("riders").select("id, team_id").in("id", chunk).order("id"));
-  for (const rider of back) if (rider.team_id === teamId) departures.delete(rider.id);
-  return formerRiderStepsFrom(departures, seasons, copenhagenDateString(clock));
+  for (const rider of back) if (rider.team_id === teamId) anchors.delete(rider.id);
+  return formerRiderStepsFrom(anchors, seasons, copenhagenDateString(clock));
 }
 
 /** Svaret fra buildEstimatesFromViews med faldet lagt på. Ny objekt; input røres ikke. */
@@ -117,7 +156,7 @@ export function applyFormerRiderStepsToReport(report, stepsLost) {
 
 /**
  * Rute-indgangen for én rytter (scouting-rapport og development-projection): læser
- * afgangen og lægger faldet på svaret. Egne ryttere slår intet op.
+ * afgangen og kiggene og lægger faldet på svaret. Egne ryttere slår intet op.
  */
 export async function withFormerRiderDecay(supabase, teamId, rider, own, report, { clock = new Date() } = {}) {
   if (own || !rider?.id || !report?.potentialView || report.potentialView.hidden) return report;
