@@ -280,9 +280,10 @@ test("D15: slukket erstattes et angreb paa et sted af den forrige opgave; result
 });
 
 test("D16: taendt foer motorens trin findes = som slukket; kun taendt OG klar koerer stederne", () => {
-  assert.equal(LONG_ATTACK_7884_ENGINE_READY, false);
+  // #8828 trin 3: motorens trin er tilsluttet (stagePlanEngine + startstemplet); kontakten er stadig slukket.
+  assert.equal(LONG_ATTACK_7884_ENGINE_READY, true);
   const legs = [{ task: "stay_sheltered" }, { task: "attack", from: atClimb(1) }];
-  assert.deepEqual(effectivePlan7884({ flagValue: "on", legs }), [{ task: "stay_sheltered" }]);
+  assert.deepEqual(effectivePlan7884({ flagValue: "on", legs, engineReady: false }), [{ task: "stay_sheltered" }]);
   assert.equal(effectivePlan7884({ flagValue: "on", legs, engineReady: true }), legs);
   assert.deepEqual(effectivePlan7884({ flagValue: "off", legs, engineReady: true }), [{ task: "stay_sheltered" }]);
 });
@@ -355,15 +356,18 @@ test("D22: gem med et andet fingeraftryk (ruten er aendret) afvises neutralt; pl
 });
 
 test("D23: API'et tager kun imod stederne med kontakten on, etapeplanens revision OG motorens trin", async () => {
-  assert.equal(longAttack7884OpenForRace({ flagValue: "on", revisionOk: true }), false); // motorens trin mangler
+  assert.equal(longAttack7884OpenForRace({ flagValue: "on", revisionOk: true, engineReady: false }), false); // motorens trin mangler
   assert.equal(longAttack7884OpenForRace({ flagValue: "on", revisionOk: true, engineReady: true }), true);
   assert.equal(longAttack7884OpenForRace({ flagValue: "on", revisionOk: false, engineReady: true }), false);
   assert.equal(longAttack7884OpenForRace({ flagValue: "off", revisionOk: true, engineReady: true }), false);
-  // Ingen opslag, saa laenge motorens trin ikke er tilsluttet.
-  let reads = 0;
+  // #8828 trin 3: med motorens trin afgoer loebets stempel (longAttack7884Flag.longAttack7884OpenForRaceStamped);
+  // uden etapeplanens revision sker intet opslag.
+  let asked = 0;
+  const openForRace = async () => { asked += 1; return true; };
   const race = { engine_rules_revision: "s5_profiles_v3", stages_completed: 0 };
-  assert.equal(await stagePlanApi.longAttack7884OpenForRaceApi({ supabase: null, race, readStage: async () => { reads += 1; return "on"; } }), false);
-  assert.equal(reads, 0);
+  assert.equal(await stagePlanApi.longAttack7884OpenForRaceApi({ supabase: null, race, openForRace }), true);
+  assert.equal(await stagePlanApi.longAttack7884OpenForRaceApi({ supabase: null, race: { engine_rules_revision: "official_times_v5", stages_completed: 0 }, openForRace }), false);
+  assert.equal(asked, 1);
 });
 
 test("D24: med stederne aabne valideres og gemmes planen; et sted uden konteksten er et ukendt punkt som i dag", () => {

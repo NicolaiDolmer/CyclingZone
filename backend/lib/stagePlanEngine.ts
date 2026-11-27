@@ -107,7 +107,8 @@ type ResolvedLeg = {
  * segmentgraenserne. Udeladt paa runtime'en, naar ingen rytter har et gyldigt sted (bit-identisk).
  *  - pending: ryttere der skal saette af ved dette segments start (rider_id-orden).
  *  - active: rytter -> leddet han angriber paa (ét forsoeg pr. led).
- *  - caught: rytter -> leddet han blev hentet paa; resten af leddet koeres som "Foelg med".
+ *  - caught: rytter -> leddet hvor forsoeget er slut (hentet, eller over toppen); resten af leddet
+ *    koeres som "Foelg med".
  *  - entryGroups: gruppebilledet ved segmentets start, efter afsaettet (til "hentet").
  */
 export type LongAttack7884State = {
@@ -539,6 +540,11 @@ export function advanceStagePlan(
       la.active.delete(riderId);
       la.caught.set(riderId, cur);
       events.push({ km: Math.round(segment.from_km * 100) / 100, type: LONG_ATTACK_7884_CAUGHT_EVENT, params: { rider_id: riderId, leg: cur, task: LONG_ATTACK_7884_AFTER_CAUGHT_TASK } });
+    } else if (la && la.active.get(riderId) === cur && segment.from_km >= (legs[cur].longAttack?.untilKm ?? Infinity)) {
+      // Over toppen uden at vaere hentet: angrebet er koert, og han er en almindelig gruppe. Resten af
+      // leddet (til planens naeste punkt) koeres som efter et forsoeg: "Foelg med", intet nyt tillaeg.
+      la.active.delete(riderId);
+      la.caught.set(riderId, cur);
     }
 
     const droppedIdx = legs.findIndex((l) => l.fromDropped);

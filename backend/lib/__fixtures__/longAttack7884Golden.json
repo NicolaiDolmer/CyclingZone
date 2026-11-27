@@ -1,0 +1,680 @@
+{
+ "sourceCommit": "914a228711b4f2afad32ca12ae45aff94f7097dd",
+ "note": "Skrevet af merge-basen (foer Angrib paa blev tilsluttet motoren). Genereres aldrig med den nye kode (#7587). Kun hashes.",
+ "off": {
+  "flat#2:first:ai@8828-golden-a": {
+   "output": "5d4c5a78a8d354a180d3c34cac378bbf3636f896be4629394bc63492d884e293",
+   "exposure": "69c17e03980a6e175e24e52b0c5b4fdeab0c9d2bc941fc8bfb11968f68c90818"
+  },
+  "flat#2:first:ai@8828-golden-b": {
+   "output": "bf493fdbe1dce671003c0ff72f59cbc99c3e4d025dbd0e10bea660c17f060269",
+   "exposure": "c1e40f695b9b361793e3e2b7569143f5f499bbe3ee27ecfd74acc62c4ea3bfaf"
+  },
+  "flat#2:first:plans@8828-golden-a": {
+   "output": "f60bcc9dc3f8be39e9d0db057388479b4a386e01376e7d85216cab729a6ecdcc",
+   "exposure": "69c17e03980a6e175e24e52b0c5b4fdeab0c9d2bc941fc8bfb11968f68c90818"
+  },
+  "flat#2:first:plans@8828-golden-b": {
+   "output": "81b2f1216f95e188010d8483b5c9f323a02e69f5d5a63bed6576c7576ce322e5",
+   "exposure": "c61e5e93dabc6eadaa30a3e3f307f16d57987c1e2d30a6c8a4f9101ae85b9f30"
+  },
+  "flat#2:mid:ai@8828-golden-a": {
+   "output": "7b04b2fc9b9b84022d6d97c247633a0b99d13c332cac00f5e004c72bc596d1b8",
+   "exposure": "7e178e185a72660cc1f51a9c47787d1070b1f88513980b9b45b2dc4c31c305a2"
+  },
+  "flat#2:mid:ai@8828-golden-b": {
+   "output": "cd90b292c5dffd990522f0ef38d4d06e51a458b4c1c30a3f1285df0f867e387b",
+   "exposure": "929e0719f37cf88453f69356280904a15260fb3e433f60dfb14f31c14111fdd6"
+  },
+  "flat#2:mid:plans@8828-golden-a": {
+   "output": "f1faaa0af169a3080e8e69779e497b892fab7e2e5b6af8e96cafeedf95d6bc98",
+   "exposure": "059e7dbd5d5969c28a38281717ec7d17a6b3ff24acb7525e08652e7e8945b1be"
+  },
+  "flat#2:mid:plans@8828-golden-b": {
+   "output": "73a371e29409f6de023e79eb7cda3879dc79f0f400df75fe077c15c6e7cb0f36",
+   "exposure": "929e0719f37cf88453f69356280904a15260fb3e433f60dfb14f31c14111fdd6"
+  },
+  "flat#2:oneday:ai@8828-golden-a": {
+   "output": "62fbd56b558a6df46c7405e03132d59266fd6b4e93b9f3289a2b82d639df7f1e",
+   "exposure": "69c17e03980a6e175e24e52b0c5b4fdeab0c9d2bc941fc8bfb11968f68c90818"
+  },
+  "flat#2:oneday:ai@8828-golden-b": {
+   "output": "1ae89088c693a65da09c97cd37c699c0a9981d90a3a0899b95679d711fa352a4",
+   "exposure": "c1a700dc9efd94029ea1dffbccf11457c2cccc35b10b522a5d5b19c1d6d48399"
+  },
+  "flat#2:oneday:plans@8828-golden-a": {
+   "output": "985412eaf26658a35d4c26c5f9961ec54673df2d302f2ca5e6c205dcb2150b13",
+   "exposure": "cd8b2358904553303a70ba20ebc75a30ee13ec77f5d6708e1102f38be3f39150"
+  },
+  "flat#2:oneday:plans@8828-golden-b": {
+   "output": "f3f049b344824124864803d576e2dd2d464b2d10e26910efe7383d9311193239",
+   "exposure": "113efed616186de6acb1b885de4ccffccb5158224e15463f7f0855bf77ad59cd"
+  },
+  "rolling#3:first:ai@8828-golden-a": {
+   "output": "6427ad5b07e98cdddbe7df28cca36ab0a8f0a7811c274c2e65642da07fcf6faf",
+   "exposure": "6336495e9eab67caecd7d9f903f8adb1c8f0445990723d706a1fd8765e073ef2"
+  },
+  "rolling#3:first:ai@8828-golden-b": {
+   "output": "b65ed4bbaf7e0a39a817868e3807873fb1634607861c41602a02a3fa0c79e862",
+   "exposure": "393ffeaeb4783b9fe1c88b375b30bdbddf119cbc40b986d663f854418ab050c6"
+  },
+  "rolling#3:first:plans@8828-golden-a": {
+   "output": "f57abb67226806c643a88d8ab37148dff3e747ec7d97c2172f31683abecf2f30",
+   "exposure": "6677b292de56d3694d6a926563d074fa82b627456003f80582a4bab793f14446"
+  },
+  "rolling#3:first:plans@8828-golden-b": {
+   "output": "9ec96b121ef2f9764800bfad9a3b6d0e2970a8366ced5a52a8eac17be92dc8db",
+   "exposure": "639371fc327afaa72c8d4e08498e0f5b9d2790f1aead240108d3d707e1f0d7ab"
+  },
+  "rolling#3:mid:ai@8828-golden-a": {
+   "output": "b449dc030f93d465e65064bdc778ec8ef2e3afc20a909e007289d63c88a0d56f",
+   "exposure": "e6fd5cde5134008ba1e831ac838e03bee14e9b36d0afb2a2c44bf549e3101cea"
+  },
+  "rolling#3:mid:ai@8828-golden-b": {
+   "output": "bd2e82fe6a16c6af36a3e86cca35c7a472d89d7514c10160fd85e49844e348ab",
+   "exposure": "5c0e478e991472660921d5df944eada56cf6a3f6732d7359157309316d619464"
+  },
+  "rolling#3:mid:plans@8828-golden-a": {
+   "output": "998c11be528c680da34bccc2476088d5a55c95916e8d78e81f151206fb81f9c8",
+   "exposure": "75443092771eb9db13efa6f67683edca1eb1896cbca2a36a84848aa17e84e8b7"
+  },
+  "rolling#3:mid:plans@8828-golden-b": {
+   "output": "5b5ff52497ecceb9c1c64fb51885a083de0e47cc1751deb2cb39a069dab88024",
+   "exposure": "77d1360bcef80d773724e0953779827343f2fa2492183b100356d1a4edc83869"
+  },
+  "rolling#3:oneday:ai@8828-golden-a": {
+   "output": "55fcf1d754e71ba730ef540b78b8cc6beb40cb55b50add248825f9593d7e95d3",
+   "exposure": "6336495e9eab67caecd7d9f903f8adb1c8f0445990723d706a1fd8765e073ef2"
+  },
+  "rolling#3:oneday:ai@8828-golden-b": {
+   "output": "77abd2378b75544bd1643c9b27123b69e23654eb9f53c27fa084ffd1ca40ecb6",
+   "exposure": "393ffeaeb4783b9fe1c88b375b30bdbddf119cbc40b986d663f854418ab050c6"
+  },
+  "rolling#3:oneday:plans@8828-golden-a": {
+   "output": "4dcd8b232407931757cb721956903163721b72b5da834ad420c7ff3dc5172c09",
+   "exposure": "6677b292de56d3694d6a926563d074fa82b627456003f80582a4bab793f14446"
+  },
+  "rolling#3:oneday:plans@8828-golden-b": {
+   "output": "5377a166c3f6a13e3f22436b598bec529558dc8d1cb83a0b9977f108ad251f79",
+   "exposure": "c54c2adc6f81a5e4faf74606f5f408476fb5069506982ffa510a22601de8348f"
+  },
+  "hilly#6:first:ai@8828-golden-a": {
+   "output": "e074ce3fb9b2040b4130bbf2680d37fb9f0a1f1d864302334edb2d19c9c68122",
+   "exposure": "782c389bba0dfe2666c5a9d87634102e623a9c0abd8077a43a1e16c1ecdcb0e0"
+  },
+  "hilly#6:first:ai@8828-golden-b": {
+   "output": "daa604435c2859c3f6ff5d6a64bc4bca11878bc6f4d16bda125cd6aaf15b07ce",
+   "exposure": "2ef0ff1b91d44d93988cfec5c8118a7154cb8c0fbfcca01d1750ab5a43b588ed"
+  },
+  "hilly#6:first:plans@8828-golden-a": {
+   "output": "f8fa26542334516ec4a4e73067f6ee54c7b955319ca3e693b0c460a405f413b0",
+   "exposure": "f8f94f8d139f743a106aa49505e81230aa30af1d57ff0a1094aea3b7feaf3691"
+  },
+  "hilly#6:first:plans@8828-golden-b": {
+   "output": "c0ae85257abfa68592ea35193583e0c7387074925ac90278bdf3ab3213485536",
+   "exposure": "b1e70227f02d9f5dd336b2ea3bfcf195fec84e7f5544fa1e155f0fa2a91d4678"
+  },
+  "hilly#6:mid:ai@8828-golden-a": {
+   "output": "c647b206ebf72a8970b906ce9d2ae42cd231e73a88c69c9e7a0b60bb5cc0fe3d",
+   "exposure": "5ec9c916d1d7aa2806d0793d979b81cbd1413eda01cc74ca990f8d883e5d4c60"
+  },
+  "hilly#6:mid:ai@8828-golden-b": {
+   "output": "b320b4e4d8e7459a160e2311d2ca991fc46125754729e5e8b17ce114cf69d752",
+   "exposure": "770298654129bf527408b2fdfd60ff5aba92d677a745b78e83e84c31684c86fc"
+  },
+  "hilly#6:mid:plans@8828-golden-a": {
+   "output": "94b53f96c80d978053c383ff3ed793aa69e12e044b88ff8a6c0a820cc647fbf7",
+   "exposure": "b98c50689f56edb247a1110a61d53bb4b12c17b8e24e7a2aad0472e7310615a6"
+  },
+  "hilly#6:mid:plans@8828-golden-b": {
+   "output": "37adee8464f81fcee23cd819ff3dc0658fe04f890c75a37e594176b410213294",
+   "exposure": "8003e2706dcec3aa0a11874a721f1bc912d6b07be4b1f486cc2c32c33cd4b599"
+  },
+  "hilly#6:oneday:ai@8828-golden-a": {
+   "output": "32cccb13a20ebad4e5da39fc9716be68e19e6a891939406106572afdd1a109cb",
+   "exposure": "782c389bba0dfe2666c5a9d87634102e623a9c0abd8077a43a1e16c1ecdcb0e0"
+  },
+  "hilly#6:oneday:ai@8828-golden-b": {
+   "output": "c80deb80ed15e6423a19ea3def86ab05d494464bbdf697e0db1df5799963cc18",
+   "exposure": "fba997a3bc2a55fd094339c514b083c7e3f775288b8b560009b7fbd9395088c3"
+  },
+  "hilly#6:oneday:plans@8828-golden-a": {
+   "output": "38359019f6e8f9f61c2f85fff1cbb4489f2243ebc6539002d57271cf791886f1",
+   "exposure": "f8f94f8d139f743a106aa49505e81230aa30af1d57ff0a1094aea3b7feaf3691"
+  },
+  "hilly#6:oneday:plans@8828-golden-b": {
+   "output": "e241f9afccc1ddb5e277fa71ec9b492c43981dd137b217246477d2e8419a1a22",
+   "exposure": "4b6b670a5e32e72e17f052f5170057f219b42a1ebbe4165d187f461968c5905a"
+  },
+  "mountain#12:first:ai@8828-golden-a": {
+   "output": "819aaee3140a0fcdc33d100b07e4ea935f0be682b529a1ce80e03768fc672c6b",
+   "exposure": "b3e908baba786b4889c7bb51344e468915ce4f73d57ab77b71d3b5f4ce945442"
+  },
+  "mountain#12:first:ai@8828-golden-b": {
+   "output": "9c3e4a0bf5128ea5e6fb97c6fa6e7a42d45ab43e1b4b4a6bb551979d8475d614",
+   "exposure": "2d1a9d7b0c86c93dcd74982c06549ec40d0916d0fce004b24aeee18ffa592320"
+  },
+  "mountain#12:first:plans@8828-golden-a": {
+   "output": "73ed498a84e52527b161b35fbed06233c8aab6598c3d34a51a5ae593d64950f9",
+   "exposure": "78f88ffc946e982a7865f010cf41ba4307da854ac7380212fb06721934ec1a7e"
+  },
+  "mountain#12:first:plans@8828-golden-b": {
+   "output": "f370ff04c3509467f859400dec78d6b13984cb443ad4eea137dedf829d1b7981",
+   "exposure": "6c9f08afa639f199c18ae5e1abccb39eecdea1f1721bd85062e66351b0d312d9"
+  },
+  "mountain#12:mid:ai@8828-golden-a": {
+   "output": "c03c9920f9a1bcb87f84d01fc2cddc90b93b22d3acffe37ac4d4e048e37dc802",
+   "exposure": "a196494a7db3a53dee72a2be59444c16f6b9c20a22ac6c514b3d9b2c939de93f"
+  },
+  "mountain#12:mid:ai@8828-golden-b": {
+   "output": "fa83f29eeb89538eff65acc1fa6688e75e02dd8c8f2a1e77e81ffcfefa793e83",
+   "exposure": "140e918837fc1ea851bcbb6454e6990af9532354f07eccbb831162890b260ded"
+  },
+  "mountain#12:mid:plans@8828-golden-a": {
+   "output": "ce0b11fd66fa10e0962b3da9a96da34d21e7e204898df05df833c7fb0088faab",
+   "exposure": "c63abf4721eb3cf5f90ea0740bd5e2ac9705bf1e27e43ee434224158c46502fb"
+  },
+  "mountain#12:mid:plans@8828-golden-b": {
+   "output": "1a3581709bf6ad4ec0f81d778ca1d44c88e368b41b6802b8f57e6988111d491d",
+   "exposure": "b950384972ccc9a5523797801bd50ef471890ad21d609f9d68e334a21e177aa1"
+  },
+  "mountain#12:oneday:ai@8828-golden-a": {
+   "output": "d63b8a673a5f75a147e0d0f2e00e85e4bfb29bd4fbc7e123cc28e7ef903a17ad",
+   "exposure": "f57ec1ecf32c76627f0f25320bf13351532088914986978434e4558ebdb8e23a"
+  },
+  "mountain#12:oneday:ai@8828-golden-b": {
+   "output": "7ad58f592300a0f59338d294dd1ef6fc6a6df62ed1f237fecb507642e25c0df4",
+   "exposure": "a3c8f8cec74352e9fa896b7955433c7291c56f4201412d9acc5beb0891e7addc"
+  },
+  "mountain#12:oneday:plans@8828-golden-a": {
+   "output": "68a5d6b67fa90e998f0e771c7277d92f719fa7e1bdadc8a9acc88e3d54f287ce",
+   "exposure": "5b253e1702a4592f471f1626362cc5967aa7db61c45f0ae032b116fc63d3f512"
+  },
+  "mountain#12:oneday:plans@8828-golden-b": {
+   "output": "2db7e925bda2a6e1dc80fcbd666220686109c98fb2039ec9fb5df4cf93828599",
+   "exposure": "0b1347e5a28e12e654387761de9f0689037af78186e795d27008852627be7387"
+  },
+  "high_mountain#15:first:ai@8828-golden-a": {
+   "output": "820ec649de76958ea9de8a7515696da779c4293edbd32950b9c14743f369233b",
+   "exposure": "fb5b0d17373316d2b6bf1cf66c7abf1d5c20adad1605d8c2a74ea4f9e93b04c4"
+  },
+  "high_mountain#15:first:ai@8828-golden-b": {
+   "output": "4edcdbbc94a3673e9ec7873680d31ab0b069375db6db25faaff4163cbc51101c",
+   "exposure": "755a3ad2b47f84a04fad90deda5e4da768338e2c5760d0a7d9114973ad9bc9d5"
+  },
+  "high_mountain#15:first:plans@8828-golden-a": {
+   "output": "91846ff05b1bd9cd70f6bef0aa8cd66d1e50ce480eecf772b2a4ab06a1130a4f",
+   "exposure": "92710235878f7914bb6b081b4bc3c9d41b77a83da9665369f1110f656bc7cbeb"
+  },
+  "high_mountain#15:first:plans@8828-golden-b": {
+   "output": "830810fb46d378c6f9c6bdcf1e04998e4c3b59afa0ce65abe5d8d1670fff63a9",
+   "exposure": "85ad9fa77e387cb20ebcd86279650c23447b94fe337d5a69fabf5f382393bd0d"
+  },
+  "high_mountain#15:mid:ai@8828-golden-a": {
+   "output": "616f208ae1ead6cf66217141157b3474faedcf674220806831369ef241f07a0c",
+   "exposure": "04bba493ce7d0b4f7e112cfa66c0733281dc043f1deb06c977f8b089e6636c36"
+  },
+  "high_mountain#15:mid:ai@8828-golden-b": {
+   "output": "14c690bb49c3e3225a2eb8f4b0257eb1788b01bb181db4d8e0e8ba56372be1ff",
+   "exposure": "2a54bfa4a5e4084678398788ce7ee9ecdb24ac88fdc55a9476b990af964eb333"
+  },
+  "high_mountain#15:mid:plans@8828-golden-a": {
+   "output": "4c07140cff252fbb1c1d7697d9c5a76fec719384c496f5510a6aa09fbff7d5c7",
+   "exposure": "388bc38ec7852609a36f4bdd1b0a62c9068a3e253b5f1b4d253ab697a5641137"
+  },
+  "high_mountain#15:mid:plans@8828-golden-b": {
+   "output": "6bfcf788b90e8ea704aa822307113e5413059b1cf014cbdf7c37ed200ada6914",
+   "exposure": "e7336ace86016b9e5de33d92fdbcf2be48789aab06155c925d2ca83ce19c1e9b"
+  },
+  "high_mountain#15:oneday:ai@8828-golden-a": {
+   "output": "38d5929454562b6f4ca9231aaca0de90efd9bc25400489f679447c62507322e6",
+   "exposure": "27bd8b60b98a3a2facb2856e803bc410f781052a80328332ec0166244e3b124b"
+  },
+  "high_mountain#15:oneday:ai@8828-golden-b": {
+   "output": "71b44addd8a296a5f271ae6a0851b62ce675bbaaaa729706ded697441c0a693c",
+   "exposure": "396ebeeca85e234751dd2b7a4ee57f55501d7955f83e15ee25f0a3489e801be0"
+  },
+  "high_mountain#15:oneday:plans@8828-golden-a": {
+   "output": "7422ee7c9dfe89b957cd874b517352455ad1cd56a24db3d3f5149b1aa8fc2f58",
+   "exposure": "1a4578f0dc5fb62b030558a5a016c1c833e237d304da75c2a18c1f654074476d"
+  },
+  "high_mountain#15:oneday:plans@8828-golden-b": {
+   "output": "691c177e5bca8d22e88dd1c5738c29613a0b332047cbf9b9bbb3e70ec4e715b9",
+   "exposure": "518fa9effdf3974b04e963e294ddc0e580ed7c3ca0a50fe4d83b307049dc0ba3"
+  },
+  "cobbles#45:first:ai@8828-golden-a": {
+   "output": "f807f7c4a7e5a07dca5c141bccb370ab178635bade1fdca1feaf74a66d01daa3",
+   "exposure": "6736b1b590507c477e083330d92e1f3d603af81abefa6e949513fe88921335d7"
+  },
+  "cobbles#45:first:ai@8828-golden-b": {
+   "output": "302e4f29740594ddb973e1c153f8d0c55e725426328598d023bcc6b7c1bed168",
+   "exposure": "736f5decf45f924747ca9dc29545d2c95d55f128149c5cc4a2b24e4dcc2d6dae"
+  },
+  "cobbles#45:first:plans@8828-golden-a": {
+   "output": "ad19f73c3f3d592d739918e01a23fe71a84c575fdf5e4376486dacce62283255",
+   "exposure": "f002f10f66804f0ebf1cdfa536d8f559f785d4dfa6379cbd4d16c551cc9c2a31"
+  },
+  "cobbles#45:first:plans@8828-golden-b": {
+   "output": "cfd9b0444977604e50e273dcfa0a2f04c4ace31451812b82839624219fc85dac",
+   "exposure": "83342b6e22bf67bd414a85be11ad20b47cd4ce8cdcafe1812fff78b55668065f"
+  },
+  "cobbles#45:mid:ai@8828-golden-a": {
+   "output": "4d45ea450fa0e36209875c22e58b5f9d0eaa184338e0972affdc9a4aa4ac71aa",
+   "exposure": "474ca9977ac5de294e49e0006a3f87efd6f443c3236674cf9ac2d86a3de15a3c"
+  },
+  "cobbles#45:mid:ai@8828-golden-b": {
+   "output": "77214808a61fd22e36d8e75d5f23e60ecbd908e9ab51a1e6a257db24fdcf5231",
+   "exposure": "a4217888fbc07148705439c4e52bc53f993d9cd255a26977a7014ac047e7db3f"
+  },
+  "cobbles#45:mid:plans@8828-golden-a": {
+   "output": "6ddcebac4ea2efddbcd9820f806def55ffd829dbf46656ec872dbba27f4c0249",
+   "exposure": "4b781d36affcaf2b99593c3ad454b5d820d943d2af38083a5a2a121d56ab3fb7"
+  },
+  "cobbles#45:mid:plans@8828-golden-b": {
+   "output": "8254e79fac4b2519d5ea8aebc7b0c93425354d16c32066b825d31e33ad823038",
+   "exposure": "6ba22e0ace1f67adceae2d6354bdf65acb7528e4e2801fc9e6987f2012cae775"
+  },
+  "cobbles#45:oneday:ai@8828-golden-a": {
+   "output": "247a30b0fcfc5b97c565c5e16d41f9fdb534bad23b6b7ec7179953052cfa138a",
+   "exposure": "6736b1b590507c477e083330d92e1f3d603af81abefa6e949513fe88921335d7"
+  },
+  "cobbles#45:oneday:ai@8828-golden-b": {
+   "output": "8008c64fdf105eb7daefa987c3dfd04fc95a3c47e3a81a3c9b176ead1b8304b4",
+   "exposure": "736f5decf45f924747ca9dc29545d2c95d55f128149c5cc4a2b24e4dcc2d6dae"
+  },
+  "cobbles#45:oneday:plans@8828-golden-a": {
+   "output": "168582c49aa7daf0796dbc9215229bfb828eb89729a829910561b45619141174",
+   "exposure": "f002f10f66804f0ebf1cdfa536d8f559f785d4dfa6379cbd4d16c551cc9c2a31"
+  },
+  "cobbles#45:oneday:plans@8828-golden-b": {
+   "output": "94f412ccf17d98b8597e2181f215975e67f5485cc7629de08e5155476d359997",
+   "exposure": "83342b6e22bf67bd414a85be11ad20b47cd4ce8cdcafe1812fff78b55668065f"
+  },
+  "classic#93:first:ai@8828-golden-a": {
+   "output": "2ea9853ebb5ed3458604da1045503abc40570be20186bea46f94c59b2cfb9278",
+   "exposure": "860d4c76835482f9a3a1add0c9d5efa7770d23d4cdcb77867c43ce5df89eb3b2"
+  },
+  "classic#93:first:ai@8828-golden-b": {
+   "output": "375544d3c84409fa55d2eb67261510f9b1cbad5ed1605ceb34b75e8de16cf56c",
+   "exposure": "cd7c4fb0f2a8d2365df072784f4f669e41295743d11098795368dabac83680ac"
+  },
+  "classic#93:first:plans@8828-golden-a": {
+   "output": "b14aff1cb01ddb0c81f1d1037e63b858c9fac5526d9ade492cce88b317780dcc",
+   "exposure": "14e5f01cc7f9dc842969b9999dce2d03d5329b172d027f3f13ecc0137cc72b9c"
+  },
+  "classic#93:first:plans@8828-golden-b": {
+   "output": "a97bd4b02881b584224d5d5a142c33a10f715485058e6dfd38d63c2171ef6c47",
+   "exposure": "f47c2b2e0b2653e186be58faa404da7dc3d64deef58f188bdf23c6a91b65299c"
+  },
+  "classic#93:mid:ai@8828-golden-a": {
+   "output": "0f0a0da624e620cee2f00e53b78dfd9209d75601dbf27f44ffe69b93760066ba",
+   "exposure": "b77796d6df17f8b8444a62b4b1d9ef96d4b5d0fee5279c58705f9cce9b62c24f"
+  },
+  "classic#93:mid:ai@8828-golden-b": {
+   "output": "c557bc3781f010b11b19d78a6ea288bc0caab575e762c58b2373082ef414334d",
+   "exposure": "f4e5280e8a210e096d868656753b5b22c9d2f9ca105445fabda8970890b0bf10"
+  },
+  "classic#93:mid:plans@8828-golden-a": {
+   "output": "99007194d12d8c645dafd467c6fcf584dcbf0c57f4369241abe309dfb0e26dbc",
+   "exposure": "1a7fbdb4f99e9c9854fde096370620dd2456085752bbf5466b797f3a89ef263c"
+  },
+  "classic#93:mid:plans@8828-golden-b": {
+   "output": "9c7edfc9b17d5795fef37e035b517f00e8c914a75a3ce7c81a7932e84b725293",
+   "exposure": "95b433b2c13c0e46e7aef3c9c9ac1fe377f04d29afa7178bec7950eec6efd7b8"
+  },
+  "classic#93:oneday:ai@8828-golden-a": {
+   "output": "24c002c0f0ab88bb4887ec8cb6b66b7e1ec7e61d2aa265e9b69e7818e55da989",
+   "exposure": "8de542b88a109b477c2950a413519458857f415cec60a0d46f1ea55af9380001"
+  },
+  "classic#93:oneday:ai@8828-golden-b": {
+   "output": "47a93e86406ff7fca6409c9bce66d8b6fd4e855817339f81d9daa73f7a09af83",
+   "exposure": "66b97db30f31129d7df2d82e16f258157a0c6cc69417ee2e2377b59a44a08fea"
+  },
+  "classic#93:oneday:plans@8828-golden-a": {
+   "output": "68d79dccf4b7070102b7b1869e6c9f28e97551a36a370c95a10e4fa61d78ac40",
+   "exposure": "44acb3bb2625e07afcc7366a20af94db0d1ae23e7bf07302742a618a6125bc85"
+  },
+  "classic#93:oneday:plans@8828-golden-b": {
+   "output": "33b778e7eb2907d1508a79943420e166505f4351299bdacdad6cfac94611cb6f",
+   "exposure": "bf1bbd81d59610eca7830fe3569e93120c199919767522aa27c65c7176aef5e3"
+  }
+ },
+ "onNoPlaces": {
+  "flat#2:first:ai@8828-golden-a": {
+   "output": "5d4c5a78a8d354a180d3c34cac378bbf3636f896be4629394bc63492d884e293",
+   "exposure": "69c17e03980a6e175e24e52b0c5b4fdeab0c9d2bc941fc8bfb11968f68c90818"
+  },
+  "flat#2:first:ai@8828-golden-b": {
+   "output": "bf493fdbe1dce671003c0ff72f59cbc99c3e4d025dbd0e10bea660c17f060269",
+   "exposure": "c1e40f695b9b361793e3e2b7569143f5f499bbe3ee27ecfd74acc62c4ea3bfaf"
+  },
+  "flat#2:first:plans@8828-golden-a": {
+   "output": "f60bcc9dc3f8be39e9d0db057388479b4a386e01376e7d85216cab729a6ecdcc",
+   "exposure": "69c17e03980a6e175e24e52b0c5b4fdeab0c9d2bc941fc8bfb11968f68c90818"
+  },
+  "flat#2:first:plans@8828-golden-b": {
+   "output": "81b2f1216f95e188010d8483b5c9f323a02e69f5d5a63bed6576c7576ce322e5",
+   "exposure": "c61e5e93dabc6eadaa30a3e3f307f16d57987c1e2d30a6c8a4f9101ae85b9f30"
+  },
+  "flat#2:mid:ai@8828-golden-a": {
+   "output": "7b04b2fc9b9b84022d6d97c247633a0b99d13c332cac00f5e004c72bc596d1b8",
+   "exposure": "7e178e185a72660cc1f51a9c47787d1070b1f88513980b9b45b2dc4c31c305a2"
+  },
+  "flat#2:mid:ai@8828-golden-b": {
+   "output": "cd90b292c5dffd990522f0ef38d4d06e51a458b4c1c30a3f1285df0f867e387b",
+   "exposure": "929e0719f37cf88453f69356280904a15260fb3e433f60dfb14f31c14111fdd6"
+  },
+  "flat#2:mid:plans@8828-golden-a": {
+   "output": "f1faaa0af169a3080e8e69779e497b892fab7e2e5b6af8e96cafeedf95d6bc98",
+   "exposure": "059e7dbd5d5969c28a38281717ec7d17a6b3ff24acb7525e08652e7e8945b1be"
+  },
+  "flat#2:mid:plans@8828-golden-b": {
+   "output": "73a371e29409f6de023e79eb7cda3879dc79f0f400df75fe077c15c6e7cb0f36",
+   "exposure": "929e0719f37cf88453f69356280904a15260fb3e433f60dfb14f31c14111fdd6"
+  },
+  "flat#2:oneday:ai@8828-golden-a": {
+   "output": "62fbd56b558a6df46c7405e03132d59266fd6b4e93b9f3289a2b82d639df7f1e",
+   "exposure": "69c17e03980a6e175e24e52b0c5b4fdeab0c9d2bc941fc8bfb11968f68c90818"
+  },
+  "flat#2:oneday:ai@8828-golden-b": {
+   "output": "1ae89088c693a65da09c97cd37c699c0a9981d90a3a0899b95679d711fa352a4",
+   "exposure": "c1a700dc9efd94029ea1dffbccf11457c2cccc35b10b522a5d5b19c1d6d48399"
+  },
+  "flat#2:oneday:plans@8828-golden-a": {
+   "output": "985412eaf26658a35d4c26c5f9961ec54673df2d302f2ca5e6c205dcb2150b13",
+   "exposure": "cd8b2358904553303a70ba20ebc75a30ee13ec77f5d6708e1102f38be3f39150"
+  },
+  "flat#2:oneday:plans@8828-golden-b": {
+   "output": "f3f049b344824124864803d576e2dd2d464b2d10e26910efe7383d9311193239",
+   "exposure": "113efed616186de6acb1b885de4ccffccb5158224e15463f7f0855bf77ad59cd"
+  },
+  "rolling#3:first:ai@8828-golden-a": {
+   "output": "6427ad5b07e98cdddbe7df28cca36ab0a8f0a7811c274c2e65642da07fcf6faf",
+   "exposure": "6336495e9eab67caecd7d9f903f8adb1c8f0445990723d706a1fd8765e073ef2"
+  },
+  "rolling#3:first:ai@8828-golden-b": {
+   "output": "b65ed4bbaf7e0a39a817868e3807873fb1634607861c41602a02a3fa0c79e862",
+   "exposure": "393ffeaeb4783b9fe1c88b375b30bdbddf119cbc40b986d663f854418ab050c6"
+  },
+  "rolling#3:first:plans@8828-golden-a": {
+   "output": "f57abb67226806c643a88d8ab37148dff3e747ec7d97c2172f31683abecf2f30",
+   "exposure": "6677b292de56d3694d6a926563d074fa82b627456003f80582a4bab793f14446"
+  },
+  "rolling#3:first:plans@8828-golden-b": {
+   "output": "9ec96b121ef2f9764800bfad9a3b6d0e2970a8366ced5a52a8eac17be92dc8db",
+   "exposure": "639371fc327afaa72c8d4e08498e0f5b9d2790f1aead240108d3d707e1f0d7ab"
+  },
+  "rolling#3:mid:ai@8828-golden-a": {
+   "output": "b449dc030f93d465e65064bdc778ec8ef2e3afc20a909e007289d63c88a0d56f",
+   "exposure": "e6fd5cde5134008ba1e831ac838e03bee14e9b36d0afb2a2c44bf549e3101cea"
+  },
+  "rolling#3:mid:ai@8828-golden-b": {
+   "output": "bd2e82fe6a16c6af36a3e86cca35c7a472d89d7514c10160fd85e49844e348ab",
+   "exposure": "5c0e478e991472660921d5df944eada56cf6a3f6732d7359157309316d619464"
+  },
+  "rolling#3:mid:plans@8828-golden-a": {
+   "output": "998c11be528c680da34bccc2476088d5a55c95916e8d78e81f151206fb81f9c8",
+   "exposure": "75443092771eb9db13efa6f67683edca1eb1896cbca2a36a84848aa17e84e8b7"
+  },
+  "rolling#3:mid:plans@8828-golden-b": {
+   "output": "5b5ff52497ecceb9c1c64fb51885a083de0e47cc1751deb2cb39a069dab88024",
+   "exposure": "77d1360bcef80d773724e0953779827343f2fa2492183b100356d1a4edc83869"
+  },
+  "rolling#3:oneday:ai@8828-golden-a": {
+   "output": "55fcf1d754e71ba730ef540b78b8cc6beb40cb55b50add248825f9593d7e95d3",
+   "exposure": "6336495e9eab67caecd7d9f903f8adb1c8f0445990723d706a1fd8765e073ef2"
+  },
+  "rolling#3:oneday:ai@8828-golden-b": {
+   "output": "77abd2378b75544bd1643c9b27123b69e23654eb9f53c27fa084ffd1ca40ecb6",
+   "exposure": "393ffeaeb4783b9fe1c88b375b30bdbddf119cbc40b986d663f854418ab050c6"
+  },
+  "rolling#3:oneday:plans@8828-golden-a": {
+   "output": "4dcd8b232407931757cb721956903163721b72b5da834ad420c7ff3dc5172c09",
+   "exposure": "6677b292de56d3694d6a926563d074fa82b627456003f80582a4bab793f14446"
+  },
+  "rolling#3:oneday:plans@8828-golden-b": {
+   "output": "5377a166c3f6a13e3f22436b598bec529558dc8d1cb83a0b9977f108ad251f79",
+   "exposure": "c54c2adc6f81a5e4faf74606f5f408476fb5069506982ffa510a22601de8348f"
+  },
+  "hilly#6:first:ai@8828-golden-a": {
+   "output": "e074ce3fb9b2040b4130bbf2680d37fb9f0a1f1d864302334edb2d19c9c68122",
+   "exposure": "782c389bba0dfe2666c5a9d87634102e623a9c0abd8077a43a1e16c1ecdcb0e0"
+  },
+  "hilly#6:first:ai@8828-golden-b": {
+   "output": "daa604435c2859c3f6ff5d6a64bc4bca11878bc6f4d16bda125cd6aaf15b07ce",
+   "exposure": "2ef0ff1b91d44d93988cfec5c8118a7154cb8c0fbfcca01d1750ab5a43b588ed"
+  },
+  "hilly#6:first:plans@8828-golden-a": {
+   "output": "f8fa26542334516ec4a4e73067f6ee54c7b955319ca3e693b0c460a405f413b0",
+   "exposure": "f8f94f8d139f743a106aa49505e81230aa30af1d57ff0a1094aea3b7feaf3691"
+  },
+  "hilly#6:first:plans@8828-golden-b": {
+   "output": "c0ae85257abfa68592ea35193583e0c7387074925ac90278bdf3ab3213485536",
+   "exposure": "b1e70227f02d9f5dd336b2ea3bfcf195fec84e7f5544fa1e155f0fa2a91d4678"
+  },
+  "hilly#6:mid:ai@8828-golden-a": {
+   "output": "c647b206ebf72a8970b906ce9d2ae42cd231e73a88c69c9e7a0b60bb5cc0fe3d",
+   "exposure": "5ec9c916d1d7aa2806d0793d979b81cbd1413eda01cc74ca990f8d883e5d4c60"
+  },
+  "hilly#6:mid:ai@8828-golden-b": {
+   "output": "b320b4e4d8e7459a160e2311d2ca991fc46125754729e5e8b17ce114cf69d752",
+   "exposure": "770298654129bf527408b2fdfd60ff5aba92d677a745b78e83e84c31684c86fc"
+  },
+  "hilly#6:mid:plans@8828-golden-a": {
+   "output": "94b53f96c80d978053c383ff3ed793aa69e12e044b88ff8a6c0a820cc647fbf7",
+   "exposure": "b98c50689f56edb247a1110a61d53bb4b12c17b8e24e7a2aad0472e7310615a6"
+  },
+  "hilly#6:mid:plans@8828-golden-b": {
+   "output": "37adee8464f81fcee23cd819ff3dc0658fe04f890c75a37e594176b410213294",
+   "exposure": "8003e2706dcec3aa0a11874a721f1bc912d6b07be4b1f486cc2c32c33cd4b599"
+  },
+  "hilly#6:oneday:ai@8828-golden-a": {
+   "output": "32cccb13a20ebad4e5da39fc9716be68e19e6a891939406106572afdd1a109cb",
+   "exposure": "782c389bba0dfe2666c5a9d87634102e623a9c0abd8077a43a1e16c1ecdcb0e0"
+  },
+  "hilly#6:oneday:ai@8828-golden-b": {
+   "output": "c80deb80ed15e6423a19ea3def86ab05d494464bbdf697e0db1df5799963cc18",
+   "exposure": "fba997a3bc2a55fd094339c514b083c7e3f775288b8b560009b7fbd9395088c3"
+  },
+  "hilly#6:oneday:plans@8828-golden-a": {
+   "output": "38359019f6e8f9f61c2f85fff1cbb4489f2243ebc6539002d57271cf791886f1",
+   "exposure": "f8f94f8d139f743a106aa49505e81230aa30af1d57ff0a1094aea3b7feaf3691"
+  },
+  "hilly#6:oneday:plans@8828-golden-b": {
+   "output": "e241f9afccc1ddb5e277fa71ec9b492c43981dd137b217246477d2e8419a1a22",
+   "exposure": "4b6b670a5e32e72e17f052f5170057f219b42a1ebbe4165d187f461968c5905a"
+  },
+  "mountain#12:first:ai@8828-golden-a": {
+   "output": "819aaee3140a0fcdc33d100b07e4ea935f0be682b529a1ce80e03768fc672c6b",
+   "exposure": "b3e908baba786b4889c7bb51344e468915ce4f73d57ab77b71d3b5f4ce945442"
+  },
+  "mountain#12:first:ai@8828-golden-b": {
+   "output": "9c3e4a0bf5128ea5e6fb97c6fa6e7a42d45ab43e1b4b4a6bb551979d8475d614",
+   "exposure": "2d1a9d7b0c86c93dcd74982c06549ec40d0916d0fce004b24aeee18ffa592320"
+  },
+  "mountain#12:first:plans@8828-golden-a": {
+   "output": "73ed498a84e52527b161b35fbed06233c8aab6598c3d34a51a5ae593d64950f9",
+   "exposure": "78f88ffc946e982a7865f010cf41ba4307da854ac7380212fb06721934ec1a7e"
+  },
+  "mountain#12:first:plans@8828-golden-b": {
+   "output": "f370ff04c3509467f859400dec78d6b13984cb443ad4eea137dedf829d1b7981",
+   "exposure": "6c9f08afa639f199c18ae5e1abccb39eecdea1f1721bd85062e66351b0d312d9"
+  },
+  "mountain#12:mid:ai@8828-golden-a": {
+   "output": "c03c9920f9a1bcb87f84d01fc2cddc90b93b22d3acffe37ac4d4e048e37dc802",
+   "exposure": "a196494a7db3a53dee72a2be59444c16f6b9c20a22ac6c514b3d9b2c939de93f"
+  },
+  "mountain#12:mid:ai@8828-golden-b": {
+   "output": "fa83f29eeb89538eff65acc1fa6688e75e02dd8c8f2a1e77e81ffcfefa793e83",
+   "exposure": "140e918837fc1ea851bcbb6454e6990af9532354f07eccbb831162890b260ded"
+  },
+  "mountain#12:mid:plans@8828-golden-a": {
+   "output": "ce0b11fd66fa10e0962b3da9a96da34d21e7e204898df05df833c7fb0088faab",
+   "exposure": "c63abf4721eb3cf5f90ea0740bd5e2ac9705bf1e27e43ee434224158c46502fb"
+  },
+  "mountain#12:mid:plans@8828-golden-b": {
+   "output": "1a3581709bf6ad4ec0f81d778ca1d44c88e368b41b6802b8f57e6988111d491d",
+   "exposure": "b950384972ccc9a5523797801bd50ef471890ad21d609f9d68e334a21e177aa1"
+  },
+  "mountain#12:oneday:ai@8828-golden-a": {
+   "output": "d63b8a673a5f75a147e0d0f2e00e85e4bfb29bd4fbc7e123cc28e7ef903a17ad",
+   "exposure": "f57ec1ecf32c76627f0f25320bf13351532088914986978434e4558ebdb8e23a"
+  },
+  "mountain#12:oneday:ai@8828-golden-b": {
+   "output": "7ad58f592300a0f59338d294dd1ef6fc6a6df62ed1f237fecb507642e25c0df4",
+   "exposure": "a3c8f8cec74352e9fa896b7955433c7291c56f4201412d9acc5beb0891e7addc"
+  },
+  "mountain#12:oneday:plans@8828-golden-a": {
+   "output": "68a5d6b67fa90e998f0e771c7277d92f719fa7e1bdadc8a9acc88e3d54f287ce",
+   "exposure": "5b253e1702a4592f471f1626362cc5967aa7db61c45f0ae032b116fc63d3f512"
+  },
+  "mountain#12:oneday:plans@8828-golden-b": {
+   "output": "2db7e925bda2a6e1dc80fcbd666220686109c98fb2039ec9fb5df4cf93828599",
+   "exposure": "0b1347e5a28e12e654387761de9f0689037af78186e795d27008852627be7387"
+  },
+  "high_mountain#15:first:ai@8828-golden-a": {
+   "output": "820ec649de76958ea9de8a7515696da779c4293edbd32950b9c14743f369233b",
+   "exposure": "fb5b0d17373316d2b6bf1cf66c7abf1d5c20adad1605d8c2a74ea4f9e93b04c4"
+  },
+  "high_mountain#15:first:ai@8828-golden-b": {
+   "output": "4edcdbbc94a3673e9ec7873680d31ab0b069375db6db25faaff4163cbc51101c",
+   "exposure": "755a3ad2b47f84a04fad90deda5e4da768338e2c5760d0a7d9114973ad9bc9d5"
+  },
+  "high_mountain#15:first:plans@8828-golden-a": {
+   "output": "91846ff05b1bd9cd70f6bef0aa8cd66d1e50ce480eecf772b2a4ab06a1130a4f",
+   "exposure": "92710235878f7914bb6b081b4bc3c9d41b77a83da9665369f1110f656bc7cbeb"
+  },
+  "high_mountain#15:first:plans@8828-golden-b": {
+   "output": "830810fb46d378c6f9c6bdcf1e04998e4c3b59afa0ce65abe5d8d1670fff63a9",
+   "exposure": "85ad9fa77e387cb20ebcd86279650c23447b94fe337d5a69fabf5f382393bd0d"
+  },
+  "high_mountain#15:mid:ai@8828-golden-a": {
+   "output": "616f208ae1ead6cf66217141157b3474faedcf674220806831369ef241f07a0c",
+   "exposure": "04bba493ce7d0b4f7e112cfa66c0733281dc043f1deb06c977f8b089e6636c36"
+  },
+  "high_mountain#15:mid:ai@8828-golden-b": {
+   "output": "14c690bb49c3e3225a2eb8f4b0257eb1788b01bb181db4d8e0e8ba56372be1ff",
+   "exposure": "2a54bfa4a5e4084678398788ce7ee9ecdb24ac88fdc55a9476b990af964eb333"
+  },
+  "high_mountain#15:mid:plans@8828-golden-a": {
+   "output": "4c07140cff252fbb1c1d7697d9c5a76fec719384c496f5510a6aa09fbff7d5c7",
+   "exposure": "388bc38ec7852609a36f4bdd1b0a62c9068a3e253b5f1b4d253ab697a5641137"
+  },
+  "high_mountain#15:mid:plans@8828-golden-b": {
+   "output": "6bfcf788b90e8ea704aa822307113e5413059b1cf014cbdf7c37ed200ada6914",
+   "exposure": "e7336ace86016b9e5de33d92fdbcf2be48789aab06155c925d2ca83ce19c1e9b"
+  },
+  "high_mountain#15:oneday:ai@8828-golden-a": {
+   "output": "38d5929454562b6f4ca9231aaca0de90efd9bc25400489f679447c62507322e6",
+   "exposure": "27bd8b60b98a3a2facb2856e803bc410f781052a80328332ec0166244e3b124b"
+  },
+  "high_mountain#15:oneday:ai@8828-golden-b": {
+   "output": "71b44addd8a296a5f271ae6a0851b62ce675bbaaaa729706ded697441c0a693c",
+   "exposure": "396ebeeca85e234751dd2b7a4ee57f55501d7955f83e15ee25f0a3489e801be0"
+  },
+  "high_mountain#15:oneday:plans@8828-golden-a": {
+   "output": "7422ee7c9dfe89b957cd874b517352455ad1cd56a24db3d3f5149b1aa8fc2f58",
+   "exposure": "1a4578f0dc5fb62b030558a5a016c1c833e237d304da75c2a18c1f654074476d"
+  },
+  "high_mountain#15:oneday:plans@8828-golden-b": {
+   "output": "691c177e5bca8d22e88dd1c5738c29613a0b332047cbf9b9bbb3e70ec4e715b9",
+   "exposure": "518fa9effdf3974b04e963e294ddc0e580ed7c3ca0a50fe4d83b307049dc0ba3"
+  },
+  "cobbles#45:first:ai@8828-golden-a": {
+   "output": "f807f7c4a7e5a07dca5c141bccb370ab178635bade1fdca1feaf74a66d01daa3",
+   "exposure": "6736b1b590507c477e083330d92e1f3d603af81abefa6e949513fe88921335d7"
+  },
+  "cobbles#45:first:ai@8828-golden-b": {
+   "output": "302e4f29740594ddb973e1c153f8d0c55e725426328598d023bcc6b7c1bed168",
+   "exposure": "736f5decf45f924747ca9dc29545d2c95d55f128149c5cc4a2b24e4dcc2d6dae"
+  },
+  "cobbles#45:first:plans@8828-golden-a": {
+   "output": "ad19f73c3f3d592d739918e01a23fe71a84c575fdf5e4376486dacce62283255",
+   "exposure": "f002f10f66804f0ebf1cdfa536d8f559f785d4dfa6379cbd4d16c551cc9c2a31"
+  },
+  "cobbles#45:first:plans@8828-golden-b": {
+   "output": "cfd9b0444977604e50e273dcfa0a2f04c4ace31451812b82839624219fc85dac",
+   "exposure": "83342b6e22bf67bd414a85be11ad20b47cd4ce8cdcafe1812fff78b55668065f"
+  },
+  "cobbles#45:mid:ai@8828-golden-a": {
+   "output": "4d45ea450fa0e36209875c22e58b5f9d0eaa184338e0972affdc9a4aa4ac71aa",
+   "exposure": "474ca9977ac5de294e49e0006a3f87efd6f443c3236674cf9ac2d86a3de15a3c"
+  },
+  "cobbles#45:mid:ai@8828-golden-b": {
+   "output": "77214808a61fd22e36d8e75d5f23e60ecbd908e9ab51a1e6a257db24fdcf5231",
+   "exposure": "a4217888fbc07148705439c4e52bc53f993d9cd255a26977a7014ac047e7db3f"
+  },
+  "cobbles#45:mid:plans@8828-golden-a": {
+   "output": "6ddcebac4ea2efddbcd9820f806def55ffd829dbf46656ec872dbba27f4c0249",
+   "exposure": "4b781d36affcaf2b99593c3ad454b5d820d943d2af38083a5a2a121d56ab3fb7"
+  },
+  "cobbles#45:mid:plans@8828-golden-b": {
+   "output": "8254e79fac4b2519d5ea8aebc7b0c93425354d16c32066b825d31e33ad823038",
+   "exposure": "6ba22e0ace1f67adceae2d6354bdf65acb7528e4e2801fc9e6987f2012cae775"
+  },
+  "cobbles#45:oneday:ai@8828-golden-a": {
+   "output": "247a30b0fcfc5b97c565c5e16d41f9fdb534bad23b6b7ec7179953052cfa138a",
+   "exposure": "6736b1b590507c477e083330d92e1f3d603af81abefa6e949513fe88921335d7"
+  },
+  "cobbles#45:oneday:ai@8828-golden-b": {
+   "output": "8008c64fdf105eb7daefa987c3dfd04fc95a3c47e3a81a3c9b176ead1b8304b4",
+   "exposure": "736f5decf45f924747ca9dc29545d2c95d55f128149c5cc4a2b24e4dcc2d6dae"
+  },
+  "cobbles#45:oneday:plans@8828-golden-a": {
+   "output": "168582c49aa7daf0796dbc9215229bfb828eb89729a829910561b45619141174",
+   "exposure": "f002f10f66804f0ebf1cdfa536d8f559f785d4dfa6379cbd4d16c551cc9c2a31"
+  },
+  "cobbles#45:oneday:plans@8828-golden-b": {
+   "output": "94f412ccf17d98b8597e2181f215975e67f5485cc7629de08e5155476d359997",
+   "exposure": "83342b6e22bf67bd414a85be11ad20b47cd4ce8cdcafe1812fff78b55668065f"
+  },
+  "classic#93:first:ai@8828-golden-a": {
+   "output": "2ea9853ebb5ed3458604da1045503abc40570be20186bea46f94c59b2cfb9278",
+   "exposure": "860d4c76835482f9a3a1add0c9d5efa7770d23d4cdcb77867c43ce5df89eb3b2"
+  },
+  "classic#93:first:ai@8828-golden-b": {
+   "output": "375544d3c84409fa55d2eb67261510f9b1cbad5ed1605ceb34b75e8de16cf56c",
+   "exposure": "cd7c4fb0f2a8d2365df072784f4f669e41295743d11098795368dabac83680ac"
+  },
+  "classic#93:first:plans@8828-golden-a": {
+   "output": "b14aff1cb01ddb0c81f1d1037e63b858c9fac5526d9ade492cce88b317780dcc",
+   "exposure": "14e5f01cc7f9dc842969b9999dce2d03d5329b172d027f3f13ecc0137cc72b9c"
+  },
+  "classic#93:first:plans@8828-golden-b": {
+   "output": "a97bd4b02881b584224d5d5a142c33a10f715485058e6dfd38d63c2171ef6c47",
+   "exposure": "f47c2b2e0b2653e186be58faa404da7dc3d64deef58f188bdf23c6a91b65299c"
+  },
+  "classic#93:mid:ai@8828-golden-a": {
+   "output": "0f0a0da624e620cee2f00e53b78dfd9209d75601dbf27f44ffe69b93760066ba",
+   "exposure": "b77796d6df17f8b8444a62b4b1d9ef96d4b5d0fee5279c58705f9cce9b62c24f"
+  },
+  "classic#93:mid:ai@8828-golden-b": {
+   "output": "c557bc3781f010b11b19d78a6ea288bc0caab575e762c58b2373082ef414334d",
+   "exposure": "f4e5280e8a210e096d868656753b5b22c9d2f9ca105445fabda8970890b0bf10"
+  },
+  "classic#93:mid:plans@8828-golden-a": {
+   "output": "99007194d12d8c645dafd467c6fcf584dcbf0c57f4369241abe309dfb0e26dbc",
+   "exposure": "1a7fbdb4f99e9c9854fde096370620dd2456085752bbf5466b797f3a89ef263c"
+  },
+  "classic#93:mid:plans@8828-golden-b": {
+   "output": "9c7edfc9b17d5795fef37e035b517f00e8c914a75a3ce7c81a7932e84b725293",
+   "exposure": "95b433b2c13c0e46e7aef3c9c9ac1fe377f04d29afa7178bec7950eec6efd7b8"
+  },
+  "classic#93:oneday:ai@8828-golden-a": {
+   "output": "24c002c0f0ab88bb4887ec8cb6b66b7e1ec7e61d2aa265e9b69e7818e55da989",
+   "exposure": "8de542b88a109b477c2950a413519458857f415cec60a0d46f1ea55af9380001"
+  },
+  "classic#93:oneday:ai@8828-golden-b": {
+   "output": "47a93e86406ff7fca6409c9bce66d8b6fd4e855817339f81d9daa73f7a09af83",
+   "exposure": "66b97db30f31129d7df2d82e16f258157a0c6cc69417ee2e2377b59a44a08fea"
+  },
+  "classic#93:oneday:plans@8828-golden-a": {
+   "output": "68d79dccf4b7070102b7b1869e6c9f28e97551a36a370c95a10e4fa61d78ac40",
+   "exposure": "44acb3bb2625e07afcc7366a20af94db0d1ae23e7bf07302742a618a6125bc85"
+  },
+  "classic#93:oneday:plans@8828-golden-b": {
+   "output": "33b778e7eb2907d1508a79943420e166505f4351299bdacdad6cfac94611cb6f",
+   "exposure": "bf1bbd81d59610eca7830fe3569e93120c199919767522aa27c65c7176aef5e3"
+  }
+ }
+}
