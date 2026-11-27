@@ -349,7 +349,8 @@ const TERRAIN_RANK = Object.freeze({ flat: 0, rolling: 1, hilly: 2, medium_mount
  * Del (2) for EN Grand Tour: kvoter + ugestruktur.
  *   ugestruktur (spec §5): ingen hoejbjerg i foerste tredjedel · kongeetapen (en etape af
  *   loebets haardeste terraen) i sidste tredjedel · en enkeltstart tidligt (foerste
- *   tredjedel) og en sent (sidste tredjedel) · sidste dag flad eller tidskoersel.
+ *   tredjedel) og en sent (sidste tredjedel), kun naar kvoten har 2+ tidskoersler (junior-mini-GT'en
+ *   har een, paa sidste etape, #8830) · sidste dag flad eller tidskoersel.
  * @param {{name?: string, race_class?: string, squad?: string|null, stages: object[]}} race
  * @param {{ s6?: boolean }} [opts]  mini-GT-tredjedele og S6-etapetjek, kun fra S6 (8830)
  */
