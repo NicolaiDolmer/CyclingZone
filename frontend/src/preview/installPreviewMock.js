@@ -37,6 +37,7 @@ import { buildMockSurveyResults } from "./surveyResultsMock.js"; // #4943
 import { stagePlanPreviewActive, stagePlanPreviewTimeline, withStagePlanPreview } from "../components/race/StagePlanPreviewMock.ts"; // #7003
 import { luxuryHelperPreviewActive, withLuxuryHelperSelection, withLuxuryHelperStageRoles, withSeasonRoles } from "./luxuryHelperPreviewMock.ts"; // #5982
 import { film7861Profiles, film7861Results, film7861Timeline } from "./raceFilm7861PreviewMock.ts"; // #7861
+import { longAttackPreviewActive, withLongAttackPreview } from "./longAttack7884PreviewMock.ts"; // #8828
 
 // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — statefuld in-memory
 // toggle, samme princip som klubMock/plannerMock: POST flipper den, GET
@@ -439,7 +440,8 @@ export function installPreviewMock() {
       if (method === "GET" && teamOrdersMatch) {
         const raceId = decodeURIComponent(teamOrdersMatch[1]);
         const body = SEED_TEAM_ORDERS_BY_RACE[raceId] ?? SEED_TEAM_ORDERS;
-        return jsonResponse(stagePlanPreviewActive() ? withStagePlanPreview(body) : body); // #7003: ?stagePlan=1
+        const planned = stagePlanPreviewActive() ? withStagePlanPreview(body) : body; // #7003: ?stagePlan=1
+        return jsonResponse(planned !== body && longAttackPreviewActive() ? withLongAttackPreview(planned, raceId) : planned); // #8828: ?longAttack=1
       }
       if (method === "GET" && stagePlanPreviewActive() && /\/api\/races\/race-live-1\/timeline\?stage=2(?:&|$)/.test(url)) {
         return jsonResponse(stagePlanPreviewTimeline()); // #7003

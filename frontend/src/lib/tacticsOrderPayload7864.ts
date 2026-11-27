@@ -10,7 +10,7 @@ export function tacticsOrderPayload7864(rawOrder:TeamPlanOrder,stagePlan:boolean
   ...(stagePlan&&Array.isArray(rider.plan)&&rider.plan.length?{plan:rider.plan}:{}),
   ...(stagePlan&&rider.locked===true?{locked:true}:{}), // #8298: låsen gemmes med etapens ordre
   // #8828: rutens fingeraftryk følger kun en plan med et "Angrib på"-sted (serveren afviser ellers feltet).
-  ...(stagePlan&&Array.isArray(rider.plan)&&attackPlaceKey7884(rider.plan as never)!==null&&typeof (rider as {long_attack_route_7884?:unknown}).long_attack_route_7884==='string'?{long_attack_route_7884:(rider as {long_attack_route_7884:string}).long_attack_route_7884}:{}),
+  ...(()=>{const fp=(rider as unknown as {long_attack_route_7884?:unknown}).long_attack_route_7884;return stagePlan&&Array.isArray(rider.plan)&&attackPlaceKey7884(rider.plan as never)!==null&&typeof fp==='string'?{long_attack_route_7884:fp}:{};})(),
  }))};
 }
 function stable(value:unknown):unknown{
