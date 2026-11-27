@@ -61,6 +61,27 @@ export function isInternalChange(paths) {
   if (!Array.isArray(paths) || paths.length === 0) return false;
   return paths.every((p) => typeof p === 'string' && INTERNAL_PATHS.some((re) => re.test(p)));
 }
+
+// #8793: om et issue er internt afgoeres af ISSUET, aldrig af PR'ens filer. En
+// docs-PR (fx et designdokument) paa et feature-issue er ikke levering. Spiller-
+// labels og en roadmap-raekke vinder altid over interne labels og titel-praefikser,
+// og et issue uden nogen af delene er spillervendt (i tvivl = spillervendt).
+export const INTERNAL_ISSUE_LABELS = ['cat:ai-ops', 'cat:infra', 'type:docs', 'type:refactor'];
+export const PLAYER_ISSUE_LABELS = ['type:feature', 'cat:user-feature', 'cat:balance'];
+const INTERNAL_TITLE_RE = /^\s*\[(?:ops|ci|deploy)\]/i;
+
+/**
+ * Er issuet selv internt arbejde?
+ * @param {{title?: string, labels?: Array}} issue
+ * @param {{roadmapRef?: boolean}} [opts] roadmapRef: en roadmap-raekke har issue_ref = issuet
+ */
+export function isInternalIssue(issue, { roadmapRef = false } = {}) {
+  if (roadmapRef) return false;
+  const labels = labelNames(issue);
+  if (labels.some((l) => PLAYER_ISSUE_LABELS.includes(l))) return false;
+  if (labels.some((l) => INTERNAL_ISSUE_LABELS.includes(l))) return true;
+  return INTERNAL_TITLE_RE.test(String(issue?.title || ''));
+}
 export const COLLABORATOR_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 
 export const KRAV = [
@@ -235,6 +256,7 @@ function auto(status, kilde, hvorfor = '') {
 }
 
 const INTERNAL_SOURCE = 'internt arbejde: kun scripts, CI, tests eller docs';
+export const PLAYER_INTERNAL_ONLY = 'kun interne stier (docs, scripts, CI, tests) er leveret på et spillervendt issue';
 
 /** Har merge-koeen skrevet "Verificeret" for netop denne PR paa netop dette issue? */
 export function queueVerified(comments, pr, issue) {
@@ -271,19 +293,24 @@ function prLabel(pr) {
  * @param {Array} p.registry   parseRegistry(FEATURE_REGISTRY.yml)
  * @param {string} p.patchNotesText indholdet af frontend/src/data/patchNotes.js
  * @param {false|string} p.helpChanged falsk, eller kilden der aendrede help.json (fx "PR #12")
- * @param {boolean} [p.internalOnly] alle mergede PR'er roerte kun interne stier (#7827)
+ * @param {boolean} [p.internalOnly] alt leveret (mergede PR'er + direkte main-commits) roerte kun interne stier (#7827)
+ * @param {boolean} [p.roadmapRef] en roadmap-raekke har issue_ref = issuet (#8793); ukendt = false
  * @returns {Array<{krav, navn, status, kilde, hvorfor}>}
  */
-export function evaluateDoor({ issue, comments = [], prs = [], commits = [], registry = [], patchNotesText = '', helpChanged = false, internalOnly = false }) {
+export function evaluateDoor({ issue, comments = [], prs = [], commits = [], registry = [], patchNotesText = '', helpChanged = false, internalOnly = false, roadmapRef = false }) {
   const n = Number(issue.number);
   const markers = parseMarkers(comments, { issue: n });
   const merged = prs.filter((p) => p.merged);
   const open = prs.filter((p) => p.state === 'open' && !p.merged);
   const entries = registryEntriesFor(registry, n);
   const autoResults = {};
+  const issueInternal = isInternalIssue(issue, { roadmapRef });
 
-  // 1 Bygget: PR (aaben eller merget) eller main-commit
-  if (merged.length) autoResults[1] = auto('ok', prLabel(merged[0]));
+  // 1 Bygget: PR (aaben eller merget) eller main-commit. #8793: paa et spillervendt
+  // issue er en levering, der kun roerer interne stier, ikke bygget. En aaben PR
+  // redder det ikke: dens filer kendes ikke her, og i tvivl holdes issuet aabent.
+  if (internalOnly && !issueInternal) autoResults[1] = auto('mangler', PLAYER_INTERNAL_ONLY, MANUAL_HINT);
+  else if (merged.length) autoResults[1] = auto('ok', prLabel(merged[0]));
   else if (open.length) autoResults[1] = auto('ok', prLabel(open[0]));
   else if (commits.length) autoResults[1] = auto('ok', `commit ${commits[0].sha.slice(0, 9)} på main`);
   else autoResults[1] = auto('mangler', 'ingen PR eller main-commit med Refs/Closes #' + n);
@@ -325,8 +352,9 @@ export function evaluateDoor({ issue, comments = [], prs = [], commits = [], reg
   // #7827: internt arbejde udfyldes selv, saa det ikke hober sig op som aabent.
   // Kun naar nogen har sagt done, intet er aabent og issuet ikke er en epic:
   // en enkelt merget PR under en delopgave er ikke det samme som faerdig.
+  // #8793: og kun naar ISSUET selv er internt; PR'ens filer alene er ikke nok.
   const labels = labelNames(issue);
-  if (internalOnly && merged.length && !open.length && labels.includes(DONE_LABEL) && !labels.some((l) => l === 'epic' || l.startsWith('epic:'))) {
+  if (issueInternal && internalOnly && merged.length && !open.length && labels.includes(DONE_LABEL) && !labels.some((l) => l === 'epic' || l.startsWith('epic:'))) {
     for (const krav of [3, 4, 5, 6, 7]) {
       if (autoResults[krav].status === 'mangler') autoResults[krav] = auto('na', INTERNAL_SOURCE);
     }
@@ -561,7 +589,9 @@ export function fetchIssueBundle({ execGh = defaultExecGh, execGit = defaultExec
   const commits = mainCommitsFor(execGit, number, ref);
 
   let helpChanged = false;
-  let internalOnly = prs.some((p) => p.merged);
+  // #8793: en direkte main-commit uden PR er ogsaa levering, saa en docs-commit
+  // alene paa main kan heller ikke opfylde krav 1 paa et spillervendt issue.
+  let internalOnly = prs.some((p) => p.merged) || directCommits(commits, prs).length > 0;
   for (const pr of prs.filter((p) => p.merged)) {
     const files = ghPaged(execGh, `repos/${repo}/pulls/${pr.number}/files?per_page=100`).map((f) => f.filename);
     if (!isInternalChange(files)) internalOnly = false;
