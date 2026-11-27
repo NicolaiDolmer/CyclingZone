@@ -112,7 +112,7 @@ export function tierTerrainLoss(counts, tier, { s6 = false } = {}) {
   return loss;
 }
 
-/** #8830: typede loeb, hvor S6 ikke tilfoejer enkeltstart/hoejbjerg (underlaget er typen). */
+/** #8830: typede loeb, hvor S6 ikke tilfoejer enkeltstart (underlaget er typen). S6 tilfoejer aldrig hoejbjerg (#6995). */
 const S6_NO_EXTRA_ITT_TYPES = Object.freeze(new Set(["gravel", "cobbles_benelux"]));
 
 /**
@@ -132,8 +132,8 @@ export function allocateS5TierFillers({ tier, counts, slots, s6 = false }) {
     slots = slots.map((s) => {
       // Typede loeb: enkeltstart for alle typer undtagen grus og brosten (deres underlag ER typen).
       if (s.identityType && S6_NO_EXTRA_ITT_TYPES.has(s.identityType)) return s;
-      // Hoejbjerg kun hvor loebets liste allerede tillader det: en filler maa aldrig blive
-      // haardere end kongeetapen (#6995), og listen er skaaret ved queen-terraenet.
+      // Kun enkeltstart: hoejbjerg tilfoejes ikke, fordi en filler aldrig maa blive haardere
+      // end kongeetapen (#6995); listen er allerede skaaret ved queen-terraenet.
       const extra = ["itt"];
       return { ...s, options: [...new Set([...s.options, ...extra])] };
     });
