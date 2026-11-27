@@ -1439,7 +1439,8 @@
           "Der er ingen grænse for hvor mange ryttere der kan have et program: du kan sætte et for hele truppen.",
           "Under Program sætter du Plantype til Rotation og stiller passene i den rækkefølge, de skal køres. Et løb, en skade eller hvile fra træthedsgrænsen sætter rotationen på pause. Kører samme pas på Let, fortsætter rotationen.",
           "Brug Spring til pas for at ændre rytterens plads. Ved kopiering med samme længde beholder hver rytter sin plads, medmindre du vælger Start fra pas 1. En ny længde starter ved pas 1. En rytters egen rotation vinder over gruppens ugeblokke.",
-          "Under Program sætter du Plantype til Ugeblokke. Sæt dagens pas i prioritetsrækkefølge, og lås ét pas den dag. Løb tager laveste prioritet, og Løb tog viser de pas, der ikke blev plads til. Et låst pas bliver i sit eget felt. Står et løb dér, flytter det til nærmeste ledige felt."
+          "Under Program sætter du Plantype til Ugeblokke. Sæt dagens pas i prioritetsrækkefølge, og lås ét pas den dag. Løb tager laveste prioritet, og Løb tog viser de pas, der ikke blev plads til. Et låst pas bliver i sit eget felt. Står et løb dér, flytter det til nærmeste ledige felt.",
+          "Når Kun denne dag er tilgængelig, kan du i dagsvælgeren under I dag vælge en af de næste 7 dage og give en rytter, flere ryttere eller en hel gruppe et andet pas kun den dag. Det virker med og uden program. Ugeplanen ændres ikke, og dagen efter kører planen igen. Et løb vinder altid, og rotationen venter til dagen efter. Din træthedsgrænse bestemmer stadig, medmindre dagsvælgeren allerede viste, at grænsen erstatter dagen, da du valgte. Tilbage til planen fjerner valget."
         ]
       },
       "dayTypes": {

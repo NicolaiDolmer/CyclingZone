@@ -1439,7 +1439,8 @@
           "There is no cap on how many riders can have a program: you can set one for your entire squad.",
           "In Program, set Plan type to Rotation and put the passes in the order you want them to run. A race, an injury or rest from the fatigue limit pauses the sequence. If the same pass runs on Light, the rotation moves on.",
           "Use Jump to pass to change a rider’s place. Copying a rotation of the same length keeps each rider’s place unless you select Start from pass 1. A different length starts at pass 1. A rider’s own rotation wins over the group’s week blocks.",
-          "In Program, set Plan type to Week blocks. Order each day’s passes by priority and lock one pass that day. Races take the lowest priority, and Races took lists the passes that did not fit. A locked pass stays in its own field. If a race is there, it moves to the nearest free field."
+          "In Program, set Plan type to Week blocks. Order each day’s passes by priority and lock one pass that day. Races take the lowest priority, and Races took lists the passes that did not fit. A locked pass stays in its own field. If a race is there, it moves to the nearest free field.",
+          "When Only this day is available, pick one of the next 7 days in the day picker under Today and give a rider, several riders or a whole group another pass for that day only. It works with or without a program. The week plan does not change, and the plan runs again the day after. A race always wins, and the rotation waits until the next day. Your fatigue limit still decides, unless the day picker already showed that the limit replaces the day when you made the choice. Back to the plan removes the choice."
         ]
       },
       "dayTypes": {

@@ -285,6 +285,7 @@ export function createFake(state, { failRpc = null, fail = null, omvendt = false
   // er en anden, ejer-besluttet laesning end #7982's tryk-ombygning. Det holdes uden for optagelsen
   // (samme resultat som foer) og taelles her, saa en egen proeve kan kraeve det eksakte antal.
   const effortSwitchReads = [];
+  const dayOverrideSwitchReads = []; // #8819
   const unsupported = []; // noget stedfortraederen ikke kender: saa er proeven ugyldig
   // "Runder": kald, der sendes af sted samtidig (fx i én Promise.all), faar svar i samme runde.
   // Kald, der venter paa et tidligere svar, havner i en senere runde. Antal runder pr. tryk er
@@ -323,7 +324,10 @@ export function createFake(state, { failRpc = null, fail = null, omvendt = false
       state[table] ??= [];
       if (!write) {
         const outside = table === "app_config" && spec.some(([name, col, val]) => name === "eq" && col === "key" && val === "training_effort_levels");
-        const failed = outside ? (effortSwitchReads.push({ round, tryk: ctx.tryk > 0 }), null) : injected(record({ kind: "read", target: table, filters: spec }));
+        // #8819 (ejer 26/11: "Kun denne dag" virker altid, også uden program): kontaktens opslag for alle hold, samme greb.
+        const dayOverrideSwitch = table === "app_config" && spec.some(([name, col, val]) => name === "eq" && col === "key" && val === "training_day_override_8592");
+        if (dayOverrideSwitch) dayOverrideSwitchReads.push({ round, tryk: ctx.tryk > 0 });
+        const failed = outside ? (effortSwitchReads.push({ round, tryk: ctx.tryk > 0 }), null) : dayOverrideSwitch ? null : injected(record({ kind: "read", target: table, filters: spec }));
         if (failed) return failed;
         let out = matching();
         for (const [col, asc] of [...orders].reverse()) out = [...out].sort((a, b) => { const x = pathGet(a, col), y = pathGet(b, col); return (x == null ? 1 : y == null ? -1 : x < y ? -1 : x > y ? 1 : 0) * (asc ? 1 : -1); });
@@ -591,7 +595,7 @@ export function createFake(state, { failRpc = null, fail = null, omvendt = false
     if (!impl) { unsupported.push(`rpc:${name}`); return deliver({ data: null, error: { code: "PGRST202", message: `Could not find the function public.${name} in the schema cache` } }); }
     return deliver(impl(structuredClone(args)));
   }
-  return { supabase: { from: builder, rpc }, log, unsupported, deliver, ctx, effortSwitchReads };
+  return { supabase: { from: builder, rpc }, log, unsupported, deliver, ctx, effortSwitchReads, dayOverrideSwitchReads };
 }
 
 // ── De to indgange ────────────────────────────────────────────────────────────────────────────
