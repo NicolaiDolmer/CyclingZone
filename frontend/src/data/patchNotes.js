@@ -1,5 +1,53 @@
 export const PATCHES = [
 {
+  "version": "7.533",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "See exactly what each session trained",
+        "body": "The training report shows each session on its own line with the name from the day picker. Hover or tap the name to see the ability, level and note."
+      },
+      "da": {
+        "title": "Se præcis, hvad hvert pas trænede",
+        "body": "Træningsrapporten viser hvert pas på sin egen linje med navnet fra dagsvælgeren. Hold musen over navnet, eller tryk på det, for at se evne, niveau og note."
+      },
+      "refs": [
+        8856
+      ]
+    }
+  ]
+},
+{
+  "version": "7.532",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Help",
+      "area": "help",
+      "en": {
+        "title": "Help explains Form on rest days correctly",
+        "body": "Help now describes Rest days as days when the rider is set to Rest in the training plan. Rest lowers Fatigue, but Form is only built by training."
+      },
+      "da": {
+        "title": "Hjælp forklarer Form på hviledage rigtigt",
+        "body": "Hjælp beskriver nu hviledage som dage, hvor rytteren står på Hvile i træningsplanen. Hvile sænker Trætheden, men Form bygges kun af træning."
+      },
+      "refs": [
+        8789
+      ]
+    }
+  ]
+},
+{
   "version": "7.531",
   "date": "2026-11-27",
   "changes": [
