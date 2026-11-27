@@ -1035,13 +1035,13 @@ features:
     area: training
     title_en: Rotation plans that wait on rest and races
     title_da: Rotation, der venter ved hvile og løb
-    state: building
+    state: live
     flag: training_rotation
     ssot: docs/TRAINING_RULES.md
     epic: 7456
-    verified: 2026-11-22
-    note: "Data, API, afregning og prognose bag training_rotation. Pladsen fortsætter over sæsonskift. Beta i to dage med aftenverifikation før ejerens go til on."
-    decision: goer-faerdigt
+    verified: 2026-11-26
+    note: "On 26/11 kl. 23:09 efter ejer-go 26/11 (#8549): beta → on for alle, efter #8779 + #8787 og 0 automatisk mærkede week-rækker. Data, API, afregning og prognose bag training_rotation; pladsen fortsætter over sæsonskift."
+    decision: taend
     decide_by: 2026-12-06
 
   - id: training-week-priority-8549
@@ -1052,8 +1052,8 @@ features:
     flag: training_week_priority
     ssot: docs/TRAINING_RULES.md
     epic: 7456
-    verified: 2026-11-22
-    note: "Motor, prognose og Program R5 bag training_week_priority. Feltprioritet og lås gemmes med weekBlock på celle-API'et for ryttere og grupper."
+    verified: 2026-11-26
+    note: "Beta 26/11 kl. 23:09 efter ejer-go (#8549): off → beta, opt-in (kun planer hvor manageren selv har valgt Ugeblokke, #8779). Motor, prognose og Program R5 bag training_week_priority; feltprioritet og lås gemmes med weekBlock på celle-API'et."
     decision: goer-faerdigt
     decide_by: 2026-12-06
 
@@ -1085,13 +1085,13 @@ features:
     area: academy
     title_en: Academy page with tabs and age focus
     title_da: Akademisiden med faner og aldersfokus
-    state: building
+    state: live
     flag: academy_page_v2_8081
     ssot: docs/YOUTH_RULES.md
     epic: 8081
-    verified: 2026-11-16
-    note: Slukket. Ugens træk læser aktivt aldersfokus med gyldig privat konfiguration. Aktivering er en særskilt ejerbeslutning.
-    decision: ejer-beslutning
+    verified: 2026-11-26
+    note: "On 26/11 kl. 23:09 efter ejer-go 26/11 (#8549/#8081). Ugens træk læser aktivt aldersfokus med gyldig privat konfiguration."
+    decision: taend
     decide_by: 2026-11-30
 
   - id: scout-system

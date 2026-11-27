@@ -6,9 +6,9 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · slet `backup_7401_20261101_riders`, `backup_7488_20261102_riders`, `backup_7508_20261102_notif_ids` (forfaldne) · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (tor 26/11 aften → Dolmer PC):** PC1 stoppet ~20 til genstart; alle laner gemt med genoptag-note på issue + PR. Rækkefølge: 1) **S6-kalender #8830 / PR #8836 færdig i aften** (ejer) · 2) merge-tog: #8777, #8801, #8779, #8732, #8796, #8792, #8815, #8809 (merget i aften: #8787 #8724 #8678) · 3) tændinger (rotation, ugeprioritet, akademisiden) efter optælling, så #8820 · 4) mail 1: ejer sætter webhook, test, ejerens "send" · 5) laner på pause: #8819/PR #8834, #8828/PR #8835 (taktik før man 30/11), #8816/PR #8832 (lav prio) · 6) skift lør 28/11. Falsk lukket: #8793 rodårsag.
+> **🎯 Next action (fre 27/11 morgen):** 1) **mail 1** samlet: `infisical login` på Dolmer PC, ejer sætter Resend-webhook (findes ikke), testmails, ejerens ordrette "send", `--execute`, tjek `email_events` · 2) **S6-kalender PR #8836** (D1 55,6 % via #8838 flettet ind, afslutninger ±2, benchmark grøn): TIER FULL → tal+billede → ejer-go → merge; migrationer 8259/8830 post-verify · 3) merge-tog rest: #8796, #8815, #8809 · 4) laner: #8828/PR #8835 (taktik før man 30/11, Fable før merge), #8819/PR #8834, #8816/PR #8832 · 5) skift lør 28/11. **Tændt 26/11 23:09:** akademisiden on, rotation on, ugeprioritet beta (#8549).
 >
-> **🤖 Working agent:** Ingen aktiv session (PC1 stoppet 26/11 ~20; Dolmer PC overtager).
+> **🤖 Working agent:** Ingen aktiv session (Dolmer PC 26/11 aften afsluttet).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
