@@ -112,6 +112,9 @@ export function tierTerrainLoss(counts, tier, { s6 = false } = {}) {
   return loss;
 }
 
+/** #8830: typede loeb, hvor S6 ikke tilfoejer enkeltstart/hoejbjerg (underlaget er typen). */
+const S6_NO_EXTRA_ITT_TYPES = Object.freeze(new Set(["gravel", "cobbles_benelux"]));
+
 /**
  * Fordel én divisions filler-pladser efter kvote.
  *
@@ -123,6 +126,18 @@ export function tierTerrainLoss(counts, tier, { s6 = false } = {}) {
  */
 export function allocateS5TierFillers({ tier, counts, slots, s6 = false }) {
   const cur = { ...counts };
+  // #8830 (ejer 27/11: "flere enkeltstarter nu" i D3): fra S6 maa en filler-plads ogsaa blive
+  // enkeltstart. TT-loftet og ordnings-arketypen holdes; tabet afgoer om det sker.
+  if (s6) {
+    slots = slots.map((s) => {
+      // Typede loeb: enkeltstart for alle typer undtagen grus og brosten (deres underlag ER typen).
+      if (s.identityType && S6_NO_EXTRA_ITT_TYPES.has(s.identityType)) return s;
+      // Hoejbjerg kun hvor loebets liste allerede tillader det: en filler maa aldrig blive
+      // haardere end kongeetapen (#6995), og listen er skaaret ved queen-terraenet.
+      const extra = ["itt"];
+      return { ...s, options: [...new Set([...s.options, ...extra])] };
+    });
+  }
   const fillers = slots.map((s) => s.natural.slice());
   // #6857: et typet løb (identityType) har sin bjergfrihed i typens filler-liste (options);
   // mellembjerg er dér tilladt i et bjergfrit løb (design §2), så forbuddet udledes ikke her.
