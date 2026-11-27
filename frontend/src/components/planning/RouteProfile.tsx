@@ -9,6 +9,9 @@
 // loebssidens finaledetaljer: terraen, afslutning og den valgte stigning (laengde, stigningsprocent og km
 // til maal), med loebssidens egne tekster. Den sidste stigning er valgt som paa loebssiden; et klik paa en
 // anden stigning i profilen viser dens tal. I et etapeloeb foelger profilen Match-vaelgerens etape.
+//
+// #8857: under finaledetaljerne staar alle etapens stigninger (StageClimbList, genbrugelig under enhver
+// etapeprofil); et klik paa en raekke vaelger stigningen paa profilen og omvendt.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -24,6 +27,7 @@ import {
   hasRouteData,
 } from "./primitives.ts";
 import StageProfileV2 from "../race/stagePageV2/StageProfileV2.tsx";
+import StageClimbList from "./StageClimbList.tsx"; // #8857
 import { climbDetail, elevationSeries, sortedClimbs, type Climb, type ElevationSeries, type StageProfile } from "../race/stagePageV2/stagePageV2Model.ts";
 import { finaleLabelKey } from "../../lib/stageProfileConfig.js";
 import { formatNumber } from "../../lib/intl.js";
@@ -84,6 +88,7 @@ function BigProfile({ profile }: { profile: StageProfile }) {
     <div data-testid="planning-big-profile">
       <StageProfileV2 profile={profile} series={series} climbs={climbs} selectedClimb={index} onSelectClimb={setSelectedClimb} />
       <FinaleFacts profile={profile} series={series} climb={climbs[index] ?? null} />
+      <StageClimbList profile={profile} series={series} climbs={climbs} selected={index} onSelect={setSelectedClimb} />
     </div>
   );
 }
@@ -200,6 +205,7 @@ export default function RouteProfile({
                 hasClassifications={hasClassifications}
               />
               <FinaleFacts profile={profile as StageProfile} series={null} climb={sortedClimbs(profile as StageProfile).at(-1) ?? null} />
+              <StageClimbList profile={profile as StageProfile} climbs={sortedClimbs(profile as StageProfile)} />
             </>
           ) : (
             <LegacyStageProfileCard profile={profile} stageLabel={t("profile.stageOf", { n: safe + 1, total })} />

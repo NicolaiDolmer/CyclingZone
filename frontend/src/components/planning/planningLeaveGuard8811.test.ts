@@ -60,7 +60,7 @@ test("ledninger: siden spoerger foer vaelgeren, 'Tilbage til ugen' og et loeb fr
   assert.match(page, /const openRaceFromSeason = \(id: string\) => \{\s*if \(!confirmLeave\(null\)\) return;/);
   assert.match(page, /window\.confirm\(tr\(key\)\)/);
   // Fladerne melder deres kladde op.
-  assert.match(page, /<SeasonMatrixView onOpenRace=\{openRaceFromSeason\} onDirtyChange=\{setSeasonDirty\} \/>/);
+  assert.match(page, /<SeasonMatrixView onOpenRace=\{openRaceFromSeason\} onDirtyChange=\{setSeasonDirty\} needSquadCount=\{upcomingNeed\} \/>/);
   assert.match(page, /<RaceHubBoard onDirtyChange=\{setBoardDirty\} \/>/);
   // Den gamle Saeson-visning (uden linser) er ikke laengere monteret paa den nye side.
   assert.doesNotMatch(page, /racehub\/SeasonView\.jsx/);
