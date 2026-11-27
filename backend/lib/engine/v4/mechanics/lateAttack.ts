@@ -32,6 +32,7 @@ import { makeGroupId, splitGroup } from "../groups.ts";
 import { S5_PROFILES_TUNING } from "../tuning.ts";
 import type { AbilityKey, EngineState, Entrant, RaceGroup, RiderRole, RouteV2, SegmentHookContext, SegmentHookResult } from "../types.ts";
 import { compareIds } from "../../../compareIds.ts";
+import { hillyFinish8189LateAttackChance } from "./hillyFinish8189.ts"; // #8189
 
 /** #6368 lag 3: rollerne der altid maa angribe sent under s5_profiles_v3. */
 export const LATE_ATTACK_LEADER_ROLES: ReadonlySet<RiderRole> = new Set<RiderRole>(["captain", "co_captain", "sprint_captain", "free_role"]);
@@ -60,11 +61,14 @@ export function routeHasSectors(route: Pick<RouteV2, "segments">): boolean {
 }
 
 /** Chancen (0-1) for et sent angreb paa denne rute. 0 = terraenet giver ikke angrebet. */
-export function lateAttackChance(route: Pick<RouteV2, "profile_type" | "finale_type" | "segments">): number {
+export function lateAttackChance(route: Pick<RouteV2, "profile_type" | "finale_type" | "segments"> & Partial<Pick<RouteV2, "distance_km">>, hillyFinish8189 = false): number {
   const t = S5_PROFILES_TUNING.lateAttack;
   const finale = route.finale_type;
   if (finale === "long_climb" || finale === "descent" || finale === "solo_tt") return 0;
   if (routeHasSectors(route)) return t.chanceWithSectors;
+  // #8189 (KUN kontakten, slukket = udeladt): en kuperet spurtetape faar angrebet efter dagens haardhed.
+  const hilly8189 = hillyFinish8189 ? hillyFinish8189LateAttackChance(true, { distance_km: route.distance_km ?? 0, ...route }) : undefined;
+  if (hilly8189 !== undefined) return hilly8189;
   if (finale && t.excludedFinales.includes(finale)) return 0;
   return t.hillyProfiles.includes(route.profile_type) ? t.chanceHilly : 0;
 }
@@ -145,11 +149,11 @@ export function lateAttackRoleAllowed(riderId: string, groupRiderIds: readonly s
  * angriberen ikke er staerk nok til at komme fri. Monotont i angriberens evne: en
  * staerkere angriber faar aldrig et mindre forspring.
  */
-export function lateAttack(state: EngineState, ctx: Pick<SegmentHookContext, "route" | "segment" | "segmentIndex" | "entrants" | "rngForStage" | "s5ProfilesV3">): SegmentHookResult {
+export function lateAttack(state: EngineState, ctx: Pick<SegmentHookContext, "route" | "segment" | "segmentIndex" | "entrants" | "rngForStage" | "s5ProfilesV3" | "hillyFinish8189">): SegmentHookResult {
   const none: SegmentHookResult = { state, events: [] };
   const { route, entrants } = ctx;
   if (ctx.segmentIndex !== lateAttackSegmentIndex(route)) return none;
-  const chance = lateAttackChance(route);
+  const chance = lateAttackChance(route, ctx.hillyFinish8189 === true); // #8189 (slukket = som foer)
   if (!(chance > 0)) return none;
   const group = favouriteGroup(state, entrants);
   if (!group) return none;

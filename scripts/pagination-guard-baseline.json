@@ -519,6 +519,9 @@
     "backend/lib/trainingWeekForecast.js": {
       "training_week_plans": 1
     },
+    "backend/lib/trainingWeekPlanForecast.js": {
+      "training_date_work": 1
+    },
     "backend/lib/transferExecution.js": {
       "auctions": 1,
       "auction_proxy_bids": 1,

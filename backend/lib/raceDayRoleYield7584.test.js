@@ -9,6 +9,12 @@
 // __fixtures__/raceDayRoleYield7584Base.json er skrevet af merge-basens kode (sourceCommit
 // i filen) med de samme scenarier (__fixtures__/raceDayRoleYield7584Scenarios.js) og
 // genereres aldrig med den nye kode. Kun hashes; syntetisk fixture, ingen prod-data.
+//
+// #5950 (tempo ud af hjaelperens evner, ejer 4/11 + 20/11) flytter bevidst hjaelperens og den
+// fri rolles tal med underkontakten taendt. De frosne hashes sammenlignes derfor for
+// underkontakten slukket (FROZEN.subswitchOff, skrevet af merge-basen foer #5950-rettelsen,
+// som ogsaa gav de oprindelige hashes for hele saettet). Kaptajner og jaeger med
+// underkontakten taendt er frosset i raceDayRoleYield5950.test.js.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -65,13 +71,13 @@ function focusUnit(profile, extraArgs) {
 }
 
 test("#7584 golden: Score B slukket er bit-identisk med merge-basen (program, multiplikatorer, hele tick'et)", () => {
-  assert.equal(computeDigests7584().scoreBOff, FROZEN.scoreBOff);
+  assert.equal(computeDigests7584({ subswitch: "off" }).scoreBOff, FROZEN.subswitchOff.scoreBOff);
 });
 
 test("#7584 golden: fokus-evnerne under Score B og basis-programmet er uroerte", () => {
-  const digests = computeDigests7584();
-  assert.equal(digests.scoreBFocus, FROZEN.scoreBFocus);
-  assert.equal(digests.baseProgram, FROZEN.baseProgram);
+  const digests = computeDigests7584({ subswitch: "off" });
+  assert.equal(digests.scoreBFocus, FROZEN.subswitchOff.scoreBFocus);
+  assert.equal(digests.baseProgram, FROZEN.subswitchOff.baseProgram);
 });
 
 for (const [name, developmentScore] of Object.entries(SCORE_B_CASES)) {

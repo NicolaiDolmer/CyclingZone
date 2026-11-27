@@ -67,6 +67,8 @@ const INLINE_EXEMPT = new Set([
   "pro", // ProUpgradePage — ready-gate
   "watchlist", // WatchlistPage — ready-gate
   "staffOverview", // StaffOverviewPage (tab i KlubPage) — ready-gate
+  "dashboard", // #8709: protected game routes
+  "training", // #8709: protected game routes
   "trainingR5", // #7947 R5 I dag-fanen (TodayR5, bag training_page_r5) — I18nReadyGate i TrainingPage
   "standings",
   "squad", // #5519 SquadPage (U23 team / Junior team): I18nReadyGate i App.jsx
@@ -234,7 +236,12 @@ for (const [ns, files] of used) {
 // Uden denne kontrol ville "tilføj til INLINE_EXEMPT" være en tavs måde at
 // genindføre #470 på.
 const gateless = [];
+const sourceCode = srcFiles.map((file) => readFileSync(file, "utf8")).join("\n");
+const gateNamespaceArrays = [...sourceCode.matchAll(/<I18nReadyGate[^>]*\bns\s*=\s*\{\s*\[([^\]]+)\]/g)]
+  .flatMap(([, values]) => [...values.matchAll(/["']([\w-]+)["']/g)].map(([, ns]) => ns));
+
 for (const ns of INLINE_EXEMPT) {
+  if (gateNamespaceArrays.includes(ns)) continue;
   if (!used.has(ns)) continue; // ubrugt namespace kan ikke flashe
   const gateRe = new RegExp(
     `<I18nReadyGate[^>]*\\bns\\s*=\\s*["'\`]${ns}["'\`]` +

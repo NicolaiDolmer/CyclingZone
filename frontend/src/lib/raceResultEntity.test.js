@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resultEntity, isTeamResult } from "./raceResultEntity.js";
+import { resultEntity, isTeamResult, resultTeamName } from "./raceResultEntity.js";
 
 test("resultEntity: rytter-række med joinet rider → navn + link + nationalitet", () => {
   const row = {
@@ -68,4 +68,26 @@ test("isTeamResult: skelner team-rækker fra rytter-rækker", () => {
   assert.equal(isTeamResult({ result_type: "team" }), true);
   assert.equal(isTeamResult({ rider_id: null, team_id: "t1" }), true);
   assert.equal(isTeamResult({ result_type: "gc", rider_id: "r1", team_id: "t1" }), false);
+});
+
+test("#8399: team classification keeps the saved name if the team is renamed", () => {
+  const row = { result_type: "team", team_id: "old", team_name: "At race time", team: { id: "old", name: "Renamed" } };
+  assert.equal(resultEntity(row).name, "At race time");
+  assert.equal(resultEntity(row).linkId, "old");
+});
+
+test("#8399: a historical result keeps its team after a rider transfers", () => {
+  const row = { team_id: "old", team_name: "Old Team", rider: { team: { id: "new", name: "New Team" } } };
+  assert.equal(resultTeamName(row), "Old Team");
+});
+
+test("#8399: a deleted historical team retains only its stored name", () => {
+  const row = { team_id: null, team_name: "Deleted Team", rider: { team: { id: "new", name: "New Team" } } };
+  assert.equal(resultTeamName(row), "Deleted Team");
+  assert.equal(resultTeamName({ ...row, team_name: null }), null);
+});
+
+test("#8399: a missing historical name uses only a direct relation to its saved id", () => {
+  assert.equal(resultTeamName({ team_id: "old", team: { id: "old", name: "Saved Team" } }), "Saved Team");
+  assert.equal(resultTeamName({ team_id: "old", team: { id: "new", name: "Other Team" } }), null);
 });

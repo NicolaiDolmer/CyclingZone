@@ -1,3 +1,4 @@
+import { resultTeamName } from "../lib/raceResultEntity.js";
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
@@ -61,7 +62,7 @@ export default function RaceHistoryPage() {
       try {
         results = await fetchAllRows(() => supabase
           .from("race_results")
-          .select("race_id, stage_number, result_type, rank, rider_id, rider_name, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
+          .select("race_id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code), team:team_id(id, name)")
           .in("race_id", raceIds)
           .order("rank")
           .order("id", { ascending: true }));
@@ -207,8 +208,8 @@ export default function RaceHistoryPage() {
                               : ed.winner.rider_name}
                           </RiderLink>
                           <p className="font-data text-2xs uppercase tracking-[.04em] text-cz-3">
-                            <TeamLink id={ed.winner.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
-                              {ed.winner.rider?.team?.name || ed.winner.team_name || "–"}
+                            <TeamLink id={ed.winner.team_id} className="hover:text-cz-accent-t transition-colors">
+                              {resultTeamName(ed.winner) ?? "–"}
                             </TeamLink>
                           </p>
                         </div>

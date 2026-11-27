@@ -80,6 +80,11 @@ export const DENY_TABLES = [
   // 117 rækker/etape race_id+stage_number-scoped (1.845 etaper) — sidstnævnte
   // shape er provably bounded og optes ud med "pagination-safe:".
   'race_stage_moments',
+  // #8180: formtoppens optakt (motorens input) laeste holdenes training_day_runs i eet kald, og i
+  // store felter fik de sidste hold i id-raekkefoelge ingen raekker. Et vindue paa tvaers af mange
+  // hold kan overstige loftet; et enkelt holds raekker for en dato er bundet og optes ud med
+  // "pagination-safe:".
+  'training_day_runs',
 ];
 
 const DEFAULT_DIRS = ['backend', 'frontend/src'];

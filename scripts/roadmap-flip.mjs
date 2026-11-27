@@ -12,13 +12,38 @@
 //
 // Flyttet maa kun koeres med --apply EFTER merge og naar funktionen er live
 // for alle (ikke beta). Se docs/GITHUB_WORKFLOW.md (close-protokollen).
+//
+// #8793: --apply afviser, naar issuets levering kun roerer interne stier (docs,
+// scripts, CI, tests) eller slet ikke findes. Et issue med en roadmap-raekke er
+// altid spillervendt, saa et designdokument maa aldrig flytte det til leveret.
+// Leveringen laeses med gh + git (samme regel som til doers, lib/til-doers.mjs).
 // ============================================================
 
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { fetchIssueBundle } from "./lib/til-doers.mjs";
 
 const DONE_ITEM = ["shipped", "archived"];
 const DONE_ISSUE = ["fixed", "dismissed"];
+
+/**
+ * Ren vurdering af issuets levering. ok = false betyder, at --apply skal afvises.
+ * @param {{prs?: Array, commits?: Array, internalOnly?: boolean}} bundle fra fetchIssueBundle
+ */
+export function deliveryGate({ prs = [], commits = [], internalOnly = false } = {}) {
+  if (!prs.some((p) => p.merged) && !commits.length) {
+    return { ok: false, reason: "ingen merget PR eller main-commit refererer issuet" };
+  }
+  if (internalOnly) {
+    return { ok: false, reason: "leveringen rører kun interne stier (docs, scripts, CI, tests), ikke spillervendt kode" };
+  }
+  return { ok: true, reason: "spillervendt levering er merget" };
+}
+
+/** Henter leveringen og vurderer den. fetchBundle injiceres i tests. */
+export function checkDelivery({ issue, fetchBundle = fetchIssueBundle }) {
+  return deliveryGate(fetchBundle({ number: issue }));
+}
 
 /** Ren planlaegger: ingen I/O. Returnerer en liste af patches. */
 export function planFlips({ issue, now, items, issues }) {
@@ -91,9 +116,16 @@ async function main() {
   const plan = planFlips({ issue: args.issue, now, items: itemsRes.data, issues: issuesRes.data });
   console.log(formatPlan(plan));
 
+  // #8793: en fejl i opslaget kaster videre, saa --apply aldrig skriver paa et ukendt grundlag.
+  const gate = plan.length ? checkDelivery({ issue: args.issue }) : null;
+  if (gate) console.log(`\nlevering: ${gate.ok ? "ok" : "afvist"} (${gate.reason})`);
+
   if (!args.apply) {
     console.log("\ndry-run, intet skrevet");
     return;
+  }
+  if (gate && !gate.ok) {
+    throw new Error(`--apply afvist (#8793): ${gate.reason}. Intet skrevet.`);
   }
 
   for (const p of plan) {

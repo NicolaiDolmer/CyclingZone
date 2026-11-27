@@ -3377,6 +3377,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
         form: outlook?.form ?? row.form,
         fatigue,
         ...(outlook ? { fatigue_at_start: outlook.fatigueAtStart ?? null } : {}),
+        ...(outlook?.fatigueAtStartIsForecast ? { fatigue_at_start_is_forecast: true } : {}),
         injured_until: row.injured_until ?? null,
         // #5462: resterende LOEBSDAGE inkl. i dag. null = skaden ejes af
         // kalenderdagen (flag off, eller skrevet foer flippet).
