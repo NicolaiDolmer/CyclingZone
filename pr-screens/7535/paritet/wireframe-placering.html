@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planlægning: placering af de manglende dele</title>
+<style>
+  :root { --bg:#f3f1ec; --card:#fbfaf7; --subtle:#ece8df; --border:#e0dbd0; --t1:#1c1d22; --t2:#3e414a; --t3:#6b6f7a; --gold:#e9c43a; --gold-t:#8a6a00; --ok:#2f7d4a; --ok-bg:#e3f1e7; --warn:#a4570f; --warn-bg:#f7ead9; --mark:#d23c3c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1); font:13px/1.45 "Segoe UI", Inter, system-ui, sans-serif; }
+  .page { max-width:1360px; margin:0 auto; padding:24px 24px 40px; }
+  .banner { background:#fff7d6; border:1px solid #e6d58c; border-radius:5px; padding:10px 14px; margin-bottom:18px; color:var(--t2); }
+  .banner b { color:var(--t1); }
+  h1 { font-size:22px; margin:0; font-weight:700; }
+  .sub { color:var(--t3); margin-top:2px; }
+  .head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  .btn { border:1px solid var(--border); background:var(--card); border-radius:5px; padding:7px 12px; font-weight:600; font-size:12.5px; white-space:nowrap; position:relative; }
+  .btn.gold { background:var(--gold); border-color:var(--gold); }
+  .btn.ghost { color:var(--t2); font-weight:500; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:5px; }
+  .ch { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:14px; }
+  .week { display:grid; grid-template-columns:repeat(7,1fr); }
+  .day { padding:10px 10px 12px; border-right:1px solid var(--border); min-height:96px; position:relative; }
+  .day:last-child { border-right:0; }
+  .dl { color:var(--t3); font-size:11.5px; }
+  .pill { margin-top:6px; border:1px solid var(--border); border-radius:5px; padding:4px 6px; font-size:12px; display:flex; justify-content:space-between; background:#fff; }
+  .pill .n { color:var(--ok); font-variant-numeric:tabular-nums; }
+  .pill .n.w { color:var(--warn); }
+  .daylink { margin-top:6px; font-size:12px; color:var(--gold-t); font-weight:600; }
+  .main { display:grid; grid-template-columns:300px 1fr; gap:16px; margin-top:16px; }
+  .race { padding:11px 14px; border-bottom:1px solid var(--border); }
+  .race.sel { background:var(--subtle); }
+  .race .t { font-weight:600; display:flex; justify-content:space-between; }
+  .race .m { color:var(--t3); font-size:12px; }
+  .tag { font-size:11.5px; border-radius:5px; padding:1px 7px; font-weight:600; }
+  .tag.ok { background:var(--ok-bg); color:var(--ok); }
+  .tag.w { background:var(--warn-bg); color:var(--warn); }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:5px; position:relative; }
+  .seg span { padding:6px 12px; font-size:12.5px; border-right:1px solid var(--border); }
+  .seg span:last-child { border-right:0; }
+  .seg span.on { background:var(--subtle); font-weight:600; }
+  .wb-h { padding:14px 16px; border-bottom:1px solid var(--border); }
+  .wb-h h2 { margin:0 0 2px; font-size:18px; }
+  .meta { color:var(--t3); font-size:12px; }
+  .line { font-size:12.5px; margin-top:4px; position:relative; display:inline-block; }
+  .line.share { color:var(--gold-t); }
+  .line.pay { color:var(--warn); }
+  .acts { display:flex; gap:8px; margin-top:10px; }
+  .prof { height:70px; margin:12px 16px; border:1px dashed var(--border); border-radius:5px; display:flex; align-items:center; justify-content:center; color:var(--t3); }
+  .views { display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-weight:600; color:var(--t3); font-size:12px; padding:8px 12px; border-bottom:1px solid var(--border); background:var(--subtle); }
+  td { padding:9px 12px; border-bottom:1px solid var(--border); font-variant-numeric:tabular-nums; }
+  td.r, th.r { text-align:right; }
+  .chip { font-size:11.5px; border:1px solid var(--border); border-radius:5px; padding:1px 6px; color:var(--t2); }
+  .chip.pay { margin-right:10px; border-color:#e2b98a; color:var(--warn); background:var(--warn-bg); }
+  .m66 { background:#3c8a55; color:#fff; border-radius:4px; padding:1px 6px; font-weight:600; }
+  .m58 { background:#5b9a63; color:#fff; border-radius:4px; padding:1px 6px; font-weight:600; }
+  /* Markeringer: roed ramme + nummer = ny placering af en manglende del. Groen = findes allerede. */
+  .mk { outline:2px solid var(--mark); outline-offset:3px; border-radius:5px; position:relative; }
+  .mk::after { content:attr(data-n); position:absolute; top:-12px; right:-12px; width:22px; height:22px; border-radius:50%; background:var(--mark); color:#fff; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .ok-mk { outline:2px dashed var(--ok); outline-offset:3px; border-radius:5px; position:relative; }
+  .ok-mk::after { content:attr(data-n); position:absolute; top:-12px; right:-12px; width:22px; height:22px; border-radius:50%; background:var(--ok); color:#fff; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .inset { margin:12px 16px; padding:10px 12px; border:1px solid var(--border); border-radius:5px; background:#fff; }
+  .legend { margin-top:22px; }
+  .legend h3 { font-size:15px; margin:0 0 8px; }
+  .lg { display:grid; grid-template-columns:28px 1fr; gap:4px 10px; padding:9px 0; border-top:1px solid var(--border); }
+  .no { width:22px; height:22px; border-radius:50%; background:var(--mark); color:#fff; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .no.g { background:var(--ok); }
+  .lg b { font-weight:600; }
+  .lg .q { color:var(--t2); }
+  /* Telefon */
+  @media (max-width: 700px) {
+    .page { padding:14px 16px 32px; }
+    .main { grid-template-columns:1fr; }
+    .week { grid-template-columns:repeat(7,minmax(0,1fr)); font-size:11px; }
+    .day { padding:6px 4px; min-height:70px; }
+    .pill { font-size:10.5px; padding:2px 3px; }
+    .pill .n { display:none; }
+    .daylink { font-size:10.5px; }
+    .hide-phone { display:none; }
+    .phone-only { display:block !important; }
+    th.hp, td.hp { display:none; }
+  }
+  .phone-only { display:none; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="banner"><b>Wireframe, ikke bygget.</b> Den nye planlægningsside, som den ser ud i dag, med de dele fra den gamle side der mangler. Rød ramme og nummer = forslag til ny placering. Grøn stiplet ramme = findes allerede. Eksempeldata.</div>
+
+  <div class="head">
+    <div>
+      <h1>Planlægning</h1>
+      <div class="sub">Sæson 5 · 5 løb mangler en trup de næste 8 dage</div>
+    </div>
+    <div class="btns">
+      <span class="btn">Ugeoversigt</span>
+      <span class="btn">Løbsliste</span>
+      <span class="btn mk" data-n="1">Sæsonmatrix</span>
+      <span class="btn mk" data-n="4">Holdstrategi</span>
+      <span class="btn ok-mk" data-n="5">Månedskalender</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span>Ugeoversigt</span><span class="meta">Uge 48 · 23. nov. - 29. nov.</span></div>
+    <div class="week">
+      <div class="day"><div class="dl">Man. 23. nov.</div></div>
+      <div class="day"><div class="dl">Tirs. 24. nov.</div></div>
+      <div class="day"><div class="dl">Ons. 25. nov.</div></div>
+      <div class="day"><div class="dl">Tors. 26. nov.</div><div class="pill">Giro del Piceno <span class="n">6/6</span></div></div>
+      <div class="day"><div class="dl">Fre. 27. nov.</div><div class="pill">Omloop van de D. <span class="n w">3/6</span></div><div class="pill">Tour de Preview <span class="n">8/8</span></div><div class="daylink mk" data-n="2">Fordel ryttere</div></div>
+      <div class="day"><div class="dl">Lør. 28. nov.</div></div>
+      <div class="day"><div class="dl">Søn. 29. nov.</div><div class="pill">Grand Prix de W. <span class="n w">5/6</span></div></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="card">
+      <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap"><span class="seg"><span class="on">Næste 7 dage</span><span>Hele sæsonen</span></span><span class="btn ghost">Handlinger</span></div>
+      <div class="race"><div class="t">Giro del Piceno <span class="tag ok">Klar</span></div><div class="m">Tors. 26. nov. · løbsdag 200 · endagsløb</div></div>
+      <div class="race sel"><div class="t">Omloop van de Denderstreek <span class="tag w">3 mangler</span></div><div class="m">Fre. 27. nov. · løbsdag 201 · endagsløb</div><div class="m" style="color:var(--gold-t)">Deler løbsdage med Tour de Preview</div></div>
+      <div class="race"><div class="t">Tour de Preview <span class="tag ok">Klar</span></div><div class="m">Fre. 27. nov. · løbsdage 201-204 · 4 etaper</div></div>
+      <div class="race"><div class="t">Grand Prix de Wallonie <span class="tag w">1 mangler</span></div><div class="m">Søn. 29. nov. · løbsdag 203 · endagsløb</div></div>
+    </div>
+
+    <div class="card">
+      <div class="wb-h">
+        <h2>Omloop van de Denderstreek</h2>
+        <div class="meta">Starter fre. 27. nov., 12.00 · om 23 t · klasse 2 · endagsløb · 3 af 6 valgt</div>
+        <div><span class="line share ok-mk" data-n="7">Deler løbsdage med Tour de Preview</span></div>
+        <div><span class="line pay mk" data-n="6">Payback-hul her: Rik Maes (formen falder efter hans formtop)</span></div>
+        <div class="acts"><span class="btn">Kopiér trup fra…</span><span class="btn">Foreslå trup</span><span class="btn gold">Gem trup</span></div>
+      </div>
+      <div class="prof">Ruteprofil (uændret)</div>
+      <div class="views">
+        <span class="seg"><span class="on">Trup</span><span>Taktik</span><span>Formtop</span><span class="mk" data-n="8">Startlister</span></span>
+        <span class="meta hide-phone">Udtag ryttere og giv dem en rolle</span>
+      </div>
+      <table>
+        <tr><th>Vælg</th><th>Rytter</th><th class="hp">Rolle</th><th>Status</th><th class="r hp">Rating</th><th class="r">Form</th><th class="r">Match</th></tr>
+        <tr><td>☐</td><td>Joaquin Ibarra</td><td class="hp">-</td><td></td><td class="r hp">66</td><td class="r">70</td><td class="r"><span class="m66">66</span></td></tr>
+        <tr><td>☑</td><td>Yeison Ferreyra</td><td class="hp">Kaptajn</td><td></td><td class="r hp">66</td><td class="r">74</td><td class="r"><span class="m66">64</span></td></tr>
+        <tr><td>☑</td><td>Rik Maes</td><td class="hp">Kun rytter</td><td><span class="chip pay mk" data-n="6">Payback-hul</span></td><td class="r hp">63</td><td class="r">70</td><td class="r"><span class="m58">61</span></td></tr>
+        <tr><td>☐</td><td>Ignacio Moreno</td><td class="hp">-</td><td><span class="chip">I Tour de Preview</span></td><td class="r hp">62</td><td class="r">74</td><td class="r"><span class="m58">58</span></td></tr>
+      </table>
+      <div class="inset">
+        <div class="meta" style="margin-bottom:6px">Formtop-visningen (når man trykker Formtop):</div>
+        <span class="seg mk" data-n="3"><span class="on">Dette løb</span><span>Pr. rytter, hele sæsonen</span></span>
+        <div class="meta" style="margin-top:6px">"Pr. rytter" viser den gamle formplan uændret: hver rytters mål for sæsonen, assistentens udkast og advarsler når et formdyk rammer et løb.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h3>Hvad numrene betyder</h3>
+    <div class="lg"><span class="no">1</span><div><b>Holdudtagelse, sæson (udtagelsesmatrix).</b> <span class="q">Ny knap i sidehovedet. Matrixen fra den gamle side vises i stedet for ugeoversigten, uændret.</span></div></div>
+    <div class="lg"><span class="no">2</span><div><b>Holdudtagelse, dag og trupfordeling pr. løbsdag.</b> <span class="q">"Fordel ryttere" under en dag med flere løb åbner dagens løb side om side med ledige ryttere, Auto-udfyld og Ryd dag, som i dag.</span></div></div>
+    <div class="lg"><span class="no">3</span><div><b>Formplan.</b> <span class="q">Inde i Formtop: vælg mellem "Dette løb" (som nu) og "Pr. rytter, hele sæsonen" (den gamle formplan).</span></div></div>
+    <div class="lg"><span class="no">4</span><div><b>Strategi.</b> <span class="q">Knap "Holdstrategi" i sidehovedet, der åbner den nuværende strategiside uændret.</span></div></div>
+    <div class="lg"><span class="no g">5</span><div><b>Kalender.</b> <span class="q">Findes: knappen "Månedskalender". Skal pege på kalenderen selv, når den gamle side er væk.</span></div></div>
+    <div class="lg"><span class="no">6</span><div><b>Payback-hul-advarsel.</b> <span class="q">Linje i løbets hoved som på den gamle side, plus et mærke "Payback-hul" i rytterens status.</span></div></div>
+    <div class="lg"><span class="no g">7</span><div><b>Deler løbsdage.</b> <span class="q">Findes: i løbslisten, i løbets hoved og som status "I [løb]".</span></div></div>
+    <div class="lg"><span class="no">8</span><div><b>Mine løb, min division, andre divisioner.</b> <span class="q">Ny visning "Startlister" ved siden af Trup, Taktik og Formtop: divisionens startlister for dagen og en vælger til andre divisioner.</span></div></div>
+  </div>
+</div>
+</body>
+</html>
