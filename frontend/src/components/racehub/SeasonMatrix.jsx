@@ -256,7 +256,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
     return out;
   }, [peakPlans, dayDatesMap]);
 
-  // #8848: den indlejrede matrix aabner ved i dag. Een gang pr. hentet saeson, og foerst naar gitteret
+  // #8848: den indlejrede matrix aabner ved i dag. Een gang pr. saeson, og foerst naar gitteret
   // har en bredde (det ligger skjult bag Rutematch/Form, til linsen skiftes tilbage).
   const desktopRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const scrolledForRef = useRef(/** @type {unknown} */ (null));
@@ -264,9 +264,11 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
     if (!embedded || loading || !data) return undefined;
     const el = desktopRef.current;
     if (!el) return undefined;
+    // Pr. saeson, ikke pr. hentning: et "Gem plan" henter igen og maa ikke flytte spillerens scroll.
+    const seasonKey = /** @type {any} */ (data)?.season?.number ?? "none";
     const tryScroll = () => {
-      if (scrolledForRef.current === data || el.clientWidth === 0) return;
-      scrolledForRef.current = data;
+      if (scrolledForRef.current === seasonKey || el.clientWidth === 0) return;
+      scrolledForRef.current = seasonKey;
       const index = firstColumnFromToday(dayColumns, dayDatesMap, copenhagenToday());
       if (index != null) el.scrollLeft = index * DAY_COL_WIDTH;
     };
