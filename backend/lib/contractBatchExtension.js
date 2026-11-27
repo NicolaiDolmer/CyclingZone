@@ -31,6 +31,7 @@ import {
   computeContractExtension,
   maxAllowedContractEndSeason,
   contractExtensionCapInfo,
+  resolveContractSeasonNumber,
 } from "./contractSeed.js";
 import {
   assertSalaryIncreaseAllowed as defaultAssertSalaryIncreaseAllowed,
@@ -162,11 +163,10 @@ export function planBatchExtension({ riders, items, teamId, currentSeason }) {
   return { plans, errors, oldSalarySum, newSalarySum };
 }
 
+// #7138 (ejer 26/11): i sæsonpausen er den kommende sæson "indeværende", så loftet
+// er kommende + 1 (før gav pausen sæson 1, og gulvet på S6 tog over).
 async function loadActiveSeasonNumber(supabase) {
-  const { data, error } = await supabase
-    .from("seasons").select("number").eq("status", "active").maybeSingle();
-  if (error) throw new Error(`contractBatchExtension: could not load active season: ${error.message}`);
-  return data?.number ?? 1;
+  return resolveContractSeasonNumber(supabase);
 }
 
 async function loadTeamSalaryTotal(supabase, teamId) {

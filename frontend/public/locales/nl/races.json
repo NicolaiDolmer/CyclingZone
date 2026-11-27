@@ -248,7 +248,9 @@
         "band3": "6-8 %",
         "band4": "8-10 %",
         "band5": "boven 10 %",
-        "down": "bergaf"
+        "down": "bergaf",
+        "cobbles": "kasseien",
+        "gravel": "grind"
       },
       "sprint": "Sprint km {km}"
     },

@@ -13,6 +13,7 @@ import {
 } from "./stagePageV2Model.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
+import I18nReadyGate from "../../I18nReadyGate.jsx";
 import YourDayCard, { type CareerEvent, type RowWhy } from "./YourDayCard.tsx";
 import { riderWhy, routeFitsAtRaceTime } from "../../../lib/riderWhyModel.ts"; // #7717
 import { stageRouteMatch } from "../../../lib/lineupInsight.js"; // #7717
@@ -77,7 +78,7 @@ function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb, 
         ? <StageProfileV2 profile={profile} series={series} climbs={climbs} selectedClimb={band ? null : selectedClimb} onSelectClimb={onSelectClimb} band={band} />
         : null}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <GradientLegend />
+        <GradientLegend profile={profile} />
         {sprint && <span className="ml-auto font-data text-2xs tabular-nums text-cz-3">{t("stagePageV2.profile.sprint", { km: formatNumber(Math.round(Number(sprint.km))) })}</span>}
       </div>
       {series?.source === "synthetic" && !band && <p className="m-0 mt-2 text-xs text-cz-3">{t("stagePageV2.profile.drawn")}</p>}
@@ -161,18 +162,20 @@ export default function StageTabV2({
     return (
       <SectionStack>
         {stageErrorSlot ?? (spoiler.active ? null : (
-          <YourDayCard
-            results={results}
-            stageNumber={stageNumber}
-            isStageRace={isStageRace}
-            loaded={stageLoaded}
-            myTeamId={myTeamId}
-            careerEvents={careerEvents}
-            dnfRows={outRows}
-            primaryAction={tacticsAction}
-            onOpenStandings={onOpenStandings}
-            why={why}
-          />
+          <I18nReadyGate ns="dashboard">
+            <YourDayCard
+              results={results}
+              stageNumber={stageNumber}
+              isStageRace={isStageRace}
+              loaded={stageLoaded}
+              myTeamId={myTeamId}
+              careerEvents={careerEvents}
+              dnfRows={outRows}
+              primaryAction={tacticsAction}
+              onOpenStandings={onOpenStandings}
+              why={why}
+            />
+          </I18nReadyGate>
         ))}
         {story ? (
           <RaceStoryCard

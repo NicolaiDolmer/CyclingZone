@@ -30,10 +30,11 @@ import { raceConditionLoads } from "./raceFatigue.js";
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 import { loadRotationPlans, loadRotationReceipts, rotationProgram, rotationProgress, stampRotation } from "./trainingRotationProgress.js";
 import { resolveProgram } from "./dailyTraining.js";
+import { dayTypeForProgram, sessionForProgram } from "./trainingDayTypes.js";
 import { isInjuredOnRaceDay } from "./injuryRaceDays.js";
 import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { fetchAllRows } from "./supabasePagination.js";
-import { stageEntrantSnapshotIds } from "./trainingDateReadiness.js";
+import { stageEntrantSnapshotIds, trainingDateBounds } from "./trainingDateReadiness.js";
 import { resolveDayCloseStatus } from "./trainingDayCloseTrigger.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
@@ -44,6 +45,7 @@ import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js";
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
 import { isTrainingCatalogV3EnabledForTeam } from "./trainingCatalogV3.js"; // #5319
 import { loadRaceExitGameDays, dropBindingsAfterRaceExit, releaseNonStarters } from "./trainingRaceDayTick.js";
+import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js";
 import { isTrainingSettleRaceSessionEnabled } from "./trainingSettleRaceSession7982.js"; // #7982
 import { isTrainingEffortLevelsEnabled } from "./trainingEffortLevels.js"; // #7947
 import { isTrainingWeekPriorityEnabledForTeam, weekPriorityPlacement, winningWeekEntry } from "./trainingWeekPriority.js"; // #8549
@@ -131,6 +133,7 @@ export function buildTeamFatigueForecast({
   effortLevels = false, // #7947: samme kontakt som motoren
   // #8549: Week blocks som motoren (I5). Off = kildefeltet er feltet (dagens prognose).
   weekPriority = false, teamWeekRow = null, riderWeekRowByRider = new Map(), overdueByRider = new Map(),
+  nonStartersByRider = new Map(),
   rotationByRider = new Map(), rotationReceiptsByRider = new Map(), teamId = null,
 }) {
   const days = [...new Set((dateGameDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
@@ -167,6 +170,7 @@ export function buildTeamFatigueForecast({
     let placement = weekPlacementInput ? weekPriorityPlacement(weekPlacementInput) : null;
     const overdue = placement || rotation ? overdueByRider.get(rider.id) : null;
     const projectedReports = placement && overdue?.size ? [...riderReceipts] : null;
+    const pendingNonStarterSessions = {};
     const ruleLoads = []; // #7801: etaper i tidligere felter samme dato
     const slots = days.map((day) => {
       const slotIndex = programSlotForRaceDay(day, days);
@@ -213,6 +217,12 @@ export function buildTeamFatigueForecast({
         conditionModelV2,
         overdue: overdue?.has(day),
       });
+      // The first start field can prove DNS even when the later stage still
+      // has an open slot. Show the training choice without advancing that slot.
+      if (activity.intensity === "unknown_pending" && !plannedStage && nonStartersByRider.get(rider.id)?.has(day)) {
+        const training = { focus: ruled?.focus ?? planned.focus, intensity: injured || boundRest ? "rest" : planIntensity };
+        pendingNonStarterSessions[slotIndex] = sessionForProgram(training) ?? dayTypeForProgram(training);
+      }
       if (projectedReports && !receipt) {
         // Match the sweep: earlier fields keep the source they would already have used
         // when a released stage is stamped as pending. Re-place only the remaining fields.
@@ -246,19 +256,21 @@ export function buildTeamFatigueForecast({
           activity.recovery = true;
         }
       }
-      return activity;
+      return { ...activity, selectedRace: !!plannedStage };
     });
     const fatigue = forecastRiderFatigue({ riderId: rider.id, dateStr: tickDate, opening, slots, recoveryAbility, recoveryConfig, conditionModelV2, medicalBonus, raceDateTrainingDay });
     if (fatigue == null && !placement && !rotation) continue;
     // raceSlots: dagens felter der er laast af et loeb (regel A). Gitteret viser
     // dem som etape; de oevrige felter er traening.
     const raceSlots = slots.flatMap((slot, index) => (
+      slot.intensity === "unknown_pending" ? (slot.selectedRace ? [index] : []) :
       slot.intensity === "race" || (placement?.fieldSource[index] === null && !slot.weekRest) ? [index] : []
     ));
     out[rider.id] = { fatigue, band: forecastBand(fatigue), raceSlots };
     if (placement || rotation) {
       const pendingSlots = slots.flatMap((slot, index) => slot.intensity === "unknown_pending" ? [index] : []);
       if (pendingSlots.length) out[rider.id].pendingSlots = pendingSlots;
+      if (Object.keys(pendingNonStarterSessions).length) out[rider.id].pendingNonStarterSessions = pendingNonStarterSessions;
     }
     if (placement) {
       const restSlots = slots.flatMap((slot, index) => slot.weekRest ? [index] : []);
@@ -311,6 +323,58 @@ async function rows(query, label) {
   return data ?? [];
 }
 
+// Read the saved lineup just as date readiness does. A synthetic binding is
+// limited to the stage itself: it must never create a stage-race rest day.
+async function loadSelectedStageFields({ supabase, team, seasonId, tickDate, stages, dateGameDays, riderIds }) {
+  const youthDivisions = [team.u23_league_division_id, team.junior_league_division_id]
+    .filter((id) => id && id !== team.league_division_id);
+  const { start, end } = trainingDateBounds(tickDate);
+  // pagination-safe: one calendar date across at most two youth pools.
+  const youthStages = youthDivisions.length ? await rows(supabase.from("race_stage_schedule")
+    .select("race_id, stage_number, game_day, scheduled_at, races!inner(season_id, league_division_id)")
+    .eq("races.season_id", seasonId).in("races.league_division_id", youthDivisions)
+    .gte("scheduled_at", start.toISOString()).lt("scheduled_at", end.toISOString()), "forecast youth stages") : [];
+  const dateDays = new Set(dateGameDays);
+  const stagesByRace = new Map();
+  for (const stage of [...stages, ...youthStages]) {
+    if (!dateDays.has(Number(stage.game_day))) continue;
+    if (!stagesByRace.has(stage.race_id)) stagesByRace.set(stage.race_id, []);
+    stagesByRace.get(stage.race_id).push(stage);
+  }
+  if (!stagesByRace.size) return [];
+  // pagination-safe: one team, one calendar date, at most a roster per stage.
+  const selected = await rows(supabase.from("race_entries").select("race_id, rider_id")
+    .eq("team_id", team.id).in("rider_id", riderIds).in("race_id", [...stagesByRace.keys()]), "forecast selected stages");
+  return selected.flatMap((entry) => stagesByRace.get(entry.race_id).map((stage) => ({ ...entry, game_day: stage.game_day })));
+}
+
+export async function loadOvernightForecastHold({ supabase, teamId, seasonId, tickDate, riderIds, previousWork }) {
+  if (!teamId || !seasonId || !riderIds.length) return new Set();
+  const previousDate = previousDateString(tickDate);
+  const work = previousWork === undefined
+    ? (await rows(supabase.from("training_date_work").select("status, expected_rider_ids, quarantined_rider_ids")
+      .eq("team_id", teamId).eq("season_id", seasonId).eq("tick_date", previousDate), "overnight forecast work"))[0]
+    : previousWork;
+  if (work?.status !== "pending" && work?.status !== "partial") return new Set();
+
+  const expected = new Set(work.expected_rider_ids ?? []);
+  const quarantined = new Set(work.quarantined_rider_ids ?? []);
+  const pending = riderIds.filter((id) => expected.has(id) && !quarantined.has(id));
+  if (!pending.length) return new Set();
+
+  // A late admission can reopen the team date without invalidating an existing rider's settlement.
+  // pagination-safe: one settlement per rider on a single date for this roster.
+  const settlements = await rows(supabase.from("training_condition_settlements").select("rider_id")
+    .eq("season_id", seasonId).eq("tick_date", previousDate).in("rider_id", pending), "overnight forecast settlements");
+  const settledIds = new Set(settlements.map((row) => row.rider_id));
+  return new Set(pending.filter((id) => !settledIds.has(id)));
+}
+function showRecordedFatigue(entry, condition) {
+  const fatigue = condition?.fatigue;
+  if (!Number.isFinite(fatigue)) return entry;
+  return { ...entry, fatigue, band: forecastBand(fatigue) };
+}
+
 // Et opslags udfald som vaerdi: et opslag, der er sendt men ikke bruges, kan ikke vaelte noget.
 const settle = (promise) => Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error }));
 const unwrap = (outcome) => {
@@ -324,6 +388,7 @@ const unwrap = (outcome) => {
 // faktiske traethed, ikke en prognose.
 export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = new Date() }) {
   const tickDate = copenhagenDateString(now);
+  const previousDate = previousDateString(tickDate);
   const base = { tickDate, riders: {} };
   if (!seasonId) return { ...base, available: false, reason: "no_active_season" };
   if (!team?.league_division_id) return { ...base, available: false, reason: "no_division" };
@@ -332,7 +397,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   // #7801 svartid: opslag, der ikke afhaenger af hinanden, sendes i samme runde. Hvert svar
   // gemmes som udfald (settle), saa et opslag, der ikke bruges, aldrig kan vaelte forecasten,
   // og saa en fejl rejses paa praecis samme sted og i samme raekkefoelge som foer (unwrap).
-  const closeP = settle(resolveDayCloseStatus({ supabase, seasonId, now, divisionId: team.league_division_id }));
+  const closeP = settle(resolveDayCloseStatus({ supabase, seasonId, now, divisionId: team.league_division_id, includeStages: true }));
   // pagination-safe: one team roster (senior + academy), far below the 1000-row cap.
   const ridersP = settle(rows(supabase.from("riders").select("id, primary_type").eq("team_id", team.id).eq("is_retired", false), "forecast riders"));
   const conditionModelV2P = settle(isConditionModelV2Enabled(supabase)); // #6984 (I5)
@@ -355,7 +420,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   // Motorens regler og straks-tilstandene afhaenger kun af holdet og datoen: de sendes med.
   const rulesP = fatigueRulesForForecast(supabase, team.id, riderIds, tickDate);
   const instantP = settle(loadInstantConditions({ supabase, riderIds, tickDate, failOpenWhenOff: true }));
-  const [conditions, abilities, plans, weekRows, receipts, loads, workRows, boundEntryDays, raceDayEngineOn, cellsOn, catalogV3] = await Promise.all([
+  const [conditions, abilities, plans, weekRows, receipts, loads, workRows, boundEntryDays, raceDayEngineOn, cellsOn, catalogV3, selectedStageFields] = await Promise.all([
     rows(supabase.from("rider_condition").select("*").in("rider_id", riderIds), "forecast condition"),
     rows(supabase.from("rider_derived_abilities").select("rider_id, recovery").in("rider_id", riderIds), "forecast recovery"),
     rows(supabase.from("training_plans").select("rider_id, focus, intensity").eq("team_id", team.id).eq("season_id", seasonId), "forecast plans"),
@@ -365,18 +430,23 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     rows(supabase.from("training_rider_ticks").select("rider_id, game_day, tick_date, team_id, report").eq("season_id", seasonId).in("game_day", dateGameDays).in("rider_id", riderIds), "forecast receipts"),
     // pagination-safe: roster x five game days.
     rows(supabase.from("training_race_loads").select("*").eq("season_id", seasonId).eq("tick_date", tickDate).in("rider_id", riderIds), "forecast race loads"),
-    rows(supabase.from("training_date_work").select("opening_conditions, status").eq("team_id", team.id).eq("season_id", seasonId).eq("tick_date", tickDate).limit(1), "forecast date work"),
+    rows(supabase.from("training_date_work").select("tick_date, opening_conditions, status, expected_rider_ids, quarantined_rider_ids").eq("team_id", team.id).eq("season_id", seasonId).in("tick_date", [previousDate, tickDate]), "forecast date work"),
     // pagination-safe: roster x five game days, UNIQUE (rider_id, season_id, game_day).
     rows(supabase.from("race_entry_days").select("rider_id, race_id, game_day").eq("season_id", seasonId).in("game_day", dateGameDays).in("rider_id", riderIds), "forecast bindings"),
     isRaceDayEngineEnabled(supabase),
     cellsGateForTeam(supabase, team.id),
     catalogV3GateForTeam(supabase, team.id),
+    loadSelectedStageFields({ supabase, team, seasonId, tickDate, stages: close.stages ?? [], dateGameDays, riderIds }),
   ]);
 
   const instant = unwrap(await instantP);
-  const openingByRider = new Map(Object.entries(workRows[0]?.opening_conditions ?? {}));
+  const work = workRows.find((row) => row.tick_date === tickDate);
+  const previousWork = workRows.find((row) => row.tick_date === previousDate);
+  const previousRiders = await loadOvernightForecastHold({
+    supabase, teamId: team.id, seasonId, tickDate, riderIds, previousWork: previousWork ?? null,
+  });
+  const openingByRider = new Map(Object.entries(work?.opening_conditions ?? {}));
   for (const [id, opening] of instant.openingByRider) openingByRider.set(id, opening);
-  const work = workRows[0] ?? null;
   const conditionByRider = new Map(conditions.map((row) => [row.rider_id, row]));
   const dateReceipts = receipts.filter((row) => row.tick_date === tickDate);
   const programCellsOn = cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days));
@@ -404,18 +474,35 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
 
   // Week blocks and Rotation use the engine's start field release. A known
   // non-starter's slots are available for training.
-  const entryDays = weekPriority || rotationByRider.size
-    ? await releaseForecastNonStarters(supabase, boundEntryDays, weekPriority ? null : rotationByRider)
-    : boundEntryDays;
+  const boundSlots = new Set(boundEntryDays.map((row) => `${row.rider_id}:${row.game_day}`));
+  const unboundSelections = selectedStageFields.filter((row) => !boundSlots.has(`${row.rider_id}:${row.game_day}`));
+  const [withdrawnRaceIds, keptSelections, keptBindings] = await Promise.all([
+    loadWithdrawnRaceIdsForTeam({ supabase, teamId: team.id, raceIds: unboundSelections.map((row) => row.race_id) }),
+    releaseForecastNonStarters(supabase, unboundSelections),
+    weekPriority || rotationByRider.size
+      ? releaseForecastNonStarters(supabase, boundEntryDays, weekPriority ? null : rotationByRider)
+      : boundEntryDays,
+  ]);
+  const stillEntered = (row) => !withdrawnRaceIds.has(row.race_id);
+  const entryDays = [...keptBindings, ...keptSelections.filter(stillEntered)];
   // Planlagte etaper: bindingens loeb har en etape paa netop den loebsdag.
   const raceIds = [...new Set(entryDays.map((row) => row.race_id).filter(Boolean))];
   // A later stage can still be pending after the first start field released the rider's binding.
-  const pendingEntries = settled ? [] : boundEntryDays.filter((row) => weekPriority || rotationByRider.has(row.rider_id));
+  const pendingEntries = settled ? [] : [
+    ...boundEntryDays.filter((row) => weekPriority || rotationByRider.has(row.rider_id)),
+    ...unboundSelections.filter(stillEntered),
+  ];
   const scheduledRaceIds = [...new Set([...raceIds, ...pendingEntries.map((row) => row.race_id).filter(Boolean)])];
-  const [schedule, profiles, exits] = scheduledRaceIds.length
+  const divisionRaceIds = new Set(close.divisionRaceIds ?? []);
+  const outsideDivision = scheduledRaceIds.filter((id) => !divisionRaceIds.has(id));
+  const scheduledIds = new Set(scheduledRaceIds);
+  const gameDays = new Set(dateGameDays);
+  const divisionSchedule = (close.stages ?? []).filter((stage) =>
+    scheduledIds.has(stage.race_id) && gameDays.has(Number(stage.game_day)));
+  const [otherSchedule, profiles, exits] = scheduledRaceIds.length
     ? await Promise.all([
       // pagination-safe: a few bound races x five game days.
-      rows(supabase.from("race_stage_schedule").select("race_id, stage_number, game_day, scheduled_at").in("race_id", scheduledRaceIds).in("game_day", dateGameDays), "forecast stage schedule"),
+      outsideDivision.length ? rows(supabase.from("race_stage_schedule").select("race_id, stage_number, game_day, scheduled_at").in("race_id", outsideDivision).in("game_day", dateGameDays), "forecast stage schedule") : [],
       // pagination-safe: a few bound races, at most 21 stages each.
       raceIds.length ? rows(supabase.from("race_stage_profiles").select("race_id, stage_number, profile_type").in("race_id", raceIds), "forecast stage profiles") : [],
       // #5949: same exit lookup as the engine's binding (I5: no copy of the rule).
@@ -425,8 +512,15 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
       }),
     ])
     : [[], [], new Map()];
+  const schedule = [...divisionSchedule, ...otherSchedule];
   const { plannedStages, boundRiderIdsByGameDay } = forecastBindingsFromEntryDays({ entryDays, schedule, profiles, exits });
   const keptEntries = new Set(entryDays);
+  const nonStartersByRider = new Map();
+  for (const entry of pendingEntries) {
+    if (keptEntries.has(entry)) continue;
+    if (!nonStartersByRider.has(entry.rider_id)) nonStartersByRider.set(entry.rider_id, new Set());
+    nonStartersByRider.get(entry.rider_id).add(Number(entry.game_day));
+  }
   const overdueByRider = pendingEntries.length ? await loadOverdueForecastStages({
     supabase, now, tickDate, schedule, entries: pendingEntries.filter((entry) => !keptEntries.has(entry) || plannedStages.some((stage) =>
       stage.rider_id === entry.rider_id && stage.game_day === Number(entry.game_day))),
@@ -467,10 +561,18 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     effortLevels,
     weekPriority,
     overdueByRider,
+    nonStartersByRider,
     teamWeekRow: weekRows.find((row) => row.rider_id == null) ?? null,
     riderWeekRowByRider: new Map(weekRows.filter((row) => row.rider_id != null).map((row) => [row.rider_id, row])),
     rotationByRider, rotationReceiptsByRider, teamId: team.id,
   });
+  if (!settled) {
+    for (const [id, entry] of Object.entries(forecast)) {
+      if (previousRiders.has(id) || entry.pendingSlots?.length) {
+        forecast[id] = showRecordedFatigue(entry, conditionByRider.get(id));
+      }
+    }
+  }
   if (settled) {
     for (const id of riderIds) {
       const fatigue = Number(conditionByRider.get(id)?.fatigue);

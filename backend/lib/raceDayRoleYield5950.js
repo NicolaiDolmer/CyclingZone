@@ -11,7 +11,8 @@
 //          evne (flad = spurt, bjerg = klatring ...), resten i de oevrige profil-evner
 //          plus lederskab (kaptajner) eller aggression (jaegeren)
 //        · hjaelper, luksushjaelper: mest i de baerende hjaelpe-evner (holdarbejde,
-//          tempo, udholdenhed ...), lidt i etapens profil-evner
+//          udholdenhed ...; MAIN_MODEL_HELPER_ABILITIES_BY_PROFILE), lidt i etapens
+//          profil-evner
 //        · fri rolle (og ukendt rolle): en blanding af kaptajnens og hjaelperens (S17)
 //   3. Maks +1 pr. evne pr. loebsdag er uaendret (kaldstedet sender stadig
 //      hardDailyCap). Gaelder senior, U23 og junior ens.
@@ -30,7 +31,8 @@
 // (default off, laeses kun naar hovedflaget er on og params er gyldige): rollen styrer
 // ogsaa BASIS-dagen, ikke kun tillaegget.
 //   · kaptajn/jaeger: uaendret (haard dag paa etapens profil-evner)
-//   · hjaelper: haard dag paa de baerende hjaelpe-evner (HELPER_ABILITIES_BY_PROFILE);
+//   · hjaelper: haard dag paa de baerende hjaelpe-evner (HELPER_ABILITIES_BY_PROFILE,
+//     uden tempo: ejer 4/11 + 20/11);
 //     etapens afgoerende evne faar hverken basis eller tillaeg (en hjaelper paa en
 //     sprintetape udvikler ikke spurt), medmindre den selv er en hjaelpe-evne (holdtempo)
 //   · fri rolle: en blanding af de to basis-dage
@@ -87,9 +89,33 @@ export const DECISIVE_ABILITY_BY_PROFILE = Object.freeze({
   ttt: "time_trial",
 });
 
-// De baerende hjaelpe-evner pr. profil (hjaelperen faar mest i dem). Holdarbejde er
-// altid med (S21: holdarbejde udvikles gennem loeb som hjaelper).
+// De baerende hjaelpe-evner pr. profil (hjaelperen faar mest i dem), naar underkontakten
+// race_day_role_base_day_enabled er taendt. Holdarbejde er altid med (S21: holdarbejde
+// udvikles gennem loeb som hjaelper).
+// Ejer 4/11 + 20/11 (#5950): tempo er evnen til mellemlange stigninger, ikke til at foere
+// feltet, saa hjaelper-rollen i sig selv giver ikke tempo. Ligger tempo i etapens egne
+// profil-evner (kuperet, enkeltstart), faar hjaelperen stadig lidt af det som en del af
+// ruten, ligesom de oevrige profil-evner. Hvilke evner hver opgave i loebet (lead-out,
+// foering, bjerg-hjaelp) skal give, er variant B og aftales med ejeren foer byg.
 export const HELPER_ABILITIES_BY_PROFILE = Object.freeze({
+  flat: Object.freeze(["teamwork", "flat"]),
+  rolling: Object.freeze(["teamwork", "endurance"]),
+  hilly: Object.freeze(["teamwork", "endurance"]),
+  classic: Object.freeze(["teamwork", "positioning", "endurance"]),
+  cobbles: Object.freeze(["teamwork", "positioning", "durability"]),
+  gravel: Object.freeze(["teamwork", "endurance", "durability"]),
+  mountain: Object.freeze(["teamwork", "endurance"]),
+  high_mountain: Object.freeze(["teamwork", "endurance"]),
+  itt: Object.freeze(["teamwork", "endurance"]),
+  itt_hilly: Object.freeze(["teamwork", "endurance"]),
+  ttt: Object.freeze(["teamwork", "time_trial"]),
+});
+
+// Hovedflagets model (race_day_role_yield_enabled, underkontakten slukket): hvor
+// hjaelperens og den fri rolles TILLAEG lander i dag. Uaendret, saa underkontakt off er
+// bit-identisk med foer rettelsen (frossen golden i raceDayRoleYield5950.test.js). At
+// flytte tempo ud af denne liste er en live balanceaendring og kraever ejerens eget go.
+export const MAIN_MODEL_HELPER_ABILITIES_BY_PROFILE = Object.freeze({
   flat: Object.freeze(["teamwork", "tempo", "flat"]),
   rolling: Object.freeze(["teamwork", "tempo", "endurance"]),
   hilly: Object.freeze(["teamwork", "tempo", "endurance"]),
@@ -111,21 +137,23 @@ function uniq(list) {
   return [...new Set(list)].filter((a) => VISIBLE_ABILITIES.includes(a));
 }
 
-function helperAbilities(profile) {
-  return uniq(HELPER_ABILITIES_BY_PROFILE[profile] ?? HELPER_ABILITIES_BY_PROFILE[RACE_DAY_FALLBACK_PROFILE]);
+function helperAbilities(profile, { roleDrivesBaseDay = false } = {}) {
+  const table = roleDrivesBaseDay ? HELPER_ABILITIES_BY_PROFILE : MAIN_MODEL_HELPER_ABILITIES_BY_PROFILE;
+  return uniq(table[profile] ?? table[RACE_DAY_FALLBACK_PROFILE]);
 }
 
 /**
  * Hvor rollens tillaeg lander: `lead` (mest) og `support` (resten), disjunkte.
- * roleDrivesBaseDay (#5950 A): hjaelperens support mister etapens afgoerende evne
- * (medmindre den er en hjaelpe-evne), saa hjaelperen ikke udvikler den.
+ * roleDrivesBaseDay (#5950 A): hjaelperens lead er HELPER_ABILITIES_BY_PROFILE (uden
+ * tempo), og support mister etapens afgoerende evne (medmindre den er en hjaelpe-evne),
+ * saa hjaelperen ikke udvikler den. Slukket = hovedflagets liste, uaendret.
  * @returns {{ lead: string[], support: string[] }}
  */
 export function raceDayRoleAbilityGroups(profileType, group, { roleDrivesBaseDay = false } = {}) {
   const profile = knownProfile(profileType);
   const profileAbilities = [...raceDayFocusAbilities(profile)];
   if (group === "helper") {
-    const lead = helperAbilities(profile);
+    const lead = helperAbilities(profile, { roleDrivesBaseDay });
     const decisive = DECISIVE_ABILITY_BY_PROFILE[profile];
     const support = profileAbilities.filter((a) => !lead.includes(a) && !(roleDrivesBaseDay && a === decisive));
     return { lead, support: uniq(support) };
@@ -238,7 +266,7 @@ export function raceDayRoleBaseProgram(profileType, {
     });
   }
   const budget = profileAbilities.length;
-  const helper = helperAbilities(profile);
+  const helper = helperAbilities(profile, { roleDrivesBaseDay: true });
   // En fokus-evne faar haard-vaeksten I STEDET FOR off-fokus-vaeksten (vaegten er i
   // enheder af haard-vaeksten). Har hjaelperen flere (faerre) fokus-evner end
   // profilen, mister (vinder) han derfor off-fokus-vaekst; vaegten giver den tilbage,

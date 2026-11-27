@@ -37,7 +37,7 @@
 //      aktuelle sæson og forkortede dermed enhver kontrakt med udløb længere ude.
 
 import { notifyTeamOwner, notifyIfContractExpiresThisSeason } from "./notificationService.js";
-import { computeFrozenSalary, computeContractEndSeason, contractOnAcquirePatch } from "./contractSeed.js";
+import { computeFrozenSalary, cappedContractTerm, contractOnAcquirePatch } from "./contractSeed.js";
 import { getTeamMarketState } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
 import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
@@ -291,10 +291,10 @@ export async function demote(supabase, {
   // ændre lønnen.
   const hasContract = hasCompleteContract(rider);
   const newSalary = resolveDemoteSalary(rider);
-  const contractLength = hasContract ? rider.contract_length : ACADEMY.CONTRACT_LENGTH;
-  const contractEnd = hasContract
-    ? rider.contract_end_season
-    : computeContractEndSeason(seasonNumber, ACADEMY.CONTRACT_LENGTH);
+  // #7138: en ny akademi-aftale følger det fælles loft (indeværende + 1).
+  const newTerm = cappedContractTerm(seasonNumber, ACADEMY.CONTRACT_LENGTH);
+  const contractLength = hasContract ? rider.contract_length : newTerm.contract_length;
+  const contractEnd = hasContract ? rider.contract_end_season : newTerm.contract_end_season;
 
   const { data, error } = await supabase.rpc("demote_rider_to_academy", {
     p_team_id: teamId,

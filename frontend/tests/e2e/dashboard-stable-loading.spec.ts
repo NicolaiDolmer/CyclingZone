@@ -283,7 +283,7 @@ test('#8019 a long balance wraps honestly without horizontal page overflow', asy
     return params.has('current_bidder_id') ? json(route, []) : route.fallback();
   });
   await page.goto('/auctions?tab=all');
-  await expect(page.locator('main header')).toContainText('123.456.789.012.345 CZ$ til rådighed');
+  await expect(page.locator('main header')).toContainText(/Balance\s*123\.456\.789\.012\.345\s+CZ\$/);
   await expect(page.locator('main header a[href="/auctions/history"]')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
 });
@@ -620,7 +620,9 @@ test('#8022 optional presence cannot extend the total mount budget or suppress l
   });
   await page.goto('/dashboard');
   try {
-    await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible({ timeout: 2500 });
+    const heading = page.getByRole('heading', { name: 'E2E Racing', exact: true });
+    // Sample throughout the same deadline, including after Playwright's last default poll.
+    await expect.poll(() => heading.isVisible(), { timeout: 2500, intervals: [75] }).toBe(true);
     await expect(page.getByTestId('season-signup-card')).toHaveCount(0);
     release();
     await expect(page.getByTestId('season-signup-card')).toBeVisible();

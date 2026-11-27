@@ -3,5 +3,12 @@
   "note": "#7584: loebsdagens rolle-tillaeg, skrevet fra merge-basen foer rettelsen. Kun hashes. Genereres ALDRIG med den nye kode.",
   "scoreBOff": "d8ffa14cad50d6d1f001d84434dcba5fe0325953f47b141ea9e4ba320a31a99b",
   "scoreBFocus": "7cc71e5481b96e246c9a0e133d42177d3fb85f63f8ba635c0aa231329363b0f2",
-  "baseProgram": "54bb742c0c7204f2585a02c6b6e924f47ee1a578b148e5ae373777dd25b57522"
+  "baseProgram": "54bb742c0c7204f2585a02c6b6e924f47ee1a578b148e5ae373777dd25b57522",
+  "subswitchOff": {
+    "sourceCommit": "9d246b82e0718a6a84cabe2b69d20668533b00cb",
+    "note": "#5950 (tempo ud af hjaelperens evner): kun underkontakten slukket, skrevet fra merge-basen foer rettelsen. Merge-basen gav ogsaa de tre hashes ovenfor (sourceCommit 7894bb3f) for hele saettet.",
+    "scoreBOff": "02d88becb5d9ec7c7325d16c579d8a0ed01a4406ff0febc0d29a4721039e0f16",
+    "scoreBFocus": "701392817e49d41f13a220e872475a19bbd5e876f9c02aa1e898063c73448916",
+    "baseProgram": "2c7add2d5864d0563328fd612dd0bdb94c403a306e5b971810122b3fe4fe62ed"
+  }
 }
