@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import RaceLink from "../../RaceLink.jsx";
+import RaceLevelBadge from "../../race/RaceLevelBadge.tsx";
 import { groupRiderRaces, racesForSeason, riderResultTotals, seasonsInRaces } from "../../../lib/riderResultsTab.js";
 import { formatDate, formatNumber } from "../../../lib/intl.js";
 
@@ -184,6 +185,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
                   >
                     {race.name ?? t("results.fallbackDash")}
                   </RaceLink>
+                  <RaceLevelBadge squad={race.squad} className="shrink-0" />{/* #8853 */}
                 </span>
                 <span className={`${DESKTOP_ONLY} justify-self-start font-mono text-3xs font-bold tracking-[0.03em] px-1.5 py-px rounded bg-cz-subtle text-cz-2 whitespace-nowrap max-w-full overflow-hidden text-ellipsis`}>
                   {race.raceClass ?? "-"}

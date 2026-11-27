@@ -90,6 +90,7 @@ import { resolveV6Tab, tacticsCta, v6Overall, v6WhenLabel } from "../components/
 import V6RaceHeroCard, { V6_STRIP_RESERVED_CLASS } from "../components/race/v6/V6RaceHeroCard.tsx"; // #7778 udgave E
 import { EMPTY_RESULTS_CONTROLS, effectiveNation, filterResultRows, isFiltering, mineOnlyFromTeamFilter, resultNations, sharedMineControls, teamFilterAfterMineToggle } from "../components/race/v6/resultsControlsModel.ts"; // #7860 #7865 #7862
 import { getCountryName } from "../lib/countryUtils.js"; // #7862: nationsfilter og søgning på nation
+import RaceLevelBadge from "../components/race/RaceLevelBadge.tsx"; // #8853
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
 // Section, "The Final Kilometre") i stedet for altid-øverst — lazy-loadet
@@ -1436,6 +1437,7 @@ export default function RaceDetailPage() {
   ].filter(Boolean).join(" · ");
   const heroTags = (
     <>
+      <RaceLevelBadge squad={race.squad} />{/* #8853 */}
       {race.race_class && <CategoryTag>{t(`classOption.${race.race_class}`)}</CategoryTag>}
       <CategoryTag>{race.race_type === "stage_race" ? t("raceType.stageRace") : t("raceType.oneDayShort")}</CategoryTag>
     </>

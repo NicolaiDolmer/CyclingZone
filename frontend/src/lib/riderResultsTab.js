@@ -38,6 +38,7 @@ export function groupRiderRaces(rows = []) {
         name: race.name ?? null,
         raceType: race.race_type ?? "single",
         raceClass: race.race_class ?? null,
+        squad: race.squad ?? null, // #8853: løbsniveau-mærket (U23/junior)
         terrain: race.pool?.terrain_archetype ?? null,
         stagesTotal: race.stages ?? 1,
         status: race.status ?? null,

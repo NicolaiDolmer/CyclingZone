@@ -14,6 +14,7 @@ import {
 } from "../components/ui";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { isHiddenYouthClassificationRow } from "../lib/youthClassification.ts";
+import RaceLevelBadge from "../components/race/RaceLevelBadge.tsx"; // #8853
 
 export default function RaceHistoryPage() {
   const { t } = useTranslation("races");
@@ -152,6 +153,7 @@ export default function RaceHistoryPage() {
         title={raceName}
         subtitle={editions.length > 0 ? (
           <>
+            <RaceLevelBadge squad={/** @type {{ squad?: string | null }} */ (editions[0]).squad} className="me-2" />{/* #8853 */}
             {editions[0].race_type === "stage_race"
               ? t("raceType.stageRaceWithStages", { count: editions[0].stages })
               : t("raceType.oneDay")}
