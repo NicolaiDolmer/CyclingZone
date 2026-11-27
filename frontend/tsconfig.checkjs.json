@@ -7,5 +7,7 @@
     // noise here; retain real type errors. The separate TS config stays strict.
     "noImplicitAny": false
   },
-  "include": ["src/**/*.js", "src/**/*.jsx"]
+  "include": ["src/**/*.js", "src/**/*.jsx"],
+  // patchNotes.js er data; typen staar i patchNotes.d.ts (TS2590 paa main 26/11).
+  "exclude": ["src/data/patchNotes.js"]
 }

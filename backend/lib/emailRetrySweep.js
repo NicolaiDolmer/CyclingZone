@@ -52,6 +52,21 @@ import { captureException } from "./sentry.js";
 const DRAIN_BATCH_SIZE = 25;
 const EMAIL_LOOP_TYPES = Object.keys(EMAIL_LOOP_TYPE_KEYS);
 
+// Codex P2 (#8767): one-off campaigns are not part of the email loop. Their
+// queued retries must follow the campaign's own send gate (owner-only flip),
+// never the legacy email_loop_enabled fallback.
+export const CAMPAIGN_RETRY_GATES = Object.freeze({
+  s6_season: "winback_send_enabled",
+});
+
+export async function readRetryStage(supabase, type) {
+  const gateKey = type ? CAMPAIGN_RETRY_GATES[type] : null;
+  if (!gateKey) return readEmailLoopStage(supabase, type);
+  const { data, error } = await supabase.from("app_config").select("value").eq("key", gateKey).maybeSingle();
+  if (error) return "off";
+  return data?.value === true || data?.value === "true" ? "on" : "off";
+}
+
 /**
  * Is the failure "the retry columns don't exist yet" (Postgres 42703 /
  * PostgREST PGRST204)? The drain ticks every 5 minutes; the window between
@@ -69,7 +84,7 @@ export function isMissingRetryColumnError(error) {
 
 export async function processEmailRetryDrain({
   supabase,
-  readStage = readEmailLoopStage,
+  readStage = readRetryStage,
   resendFactory = getResendClient,
   captureExceptionFn = captureException,
   // #2853: dead-alarmen gaar nu OGSAA til ops-kanalen med @mention (Sentry
@@ -91,7 +106,7 @@ export async function processEmailRetryDrain({
     return stageCache.get(type);
   };
 
-  const anyTypeOn = (await Promise.all(EMAIL_LOOP_TYPES.map(stageFor))).some((stage) => stage === "on");
+  const anyTypeOn = (await Promise.all([...EMAIL_LOOP_TYPES, ...Object.keys(CAMPAIGN_RETRY_GATES)].map(stageFor))).some((stage) => stage === "on");
   if (!anyTypeOn) return { processed: 0, sent: 0, rescheduled: 0, dead: 0 };
   if (!process.env.RESEND_API_KEY) return { processed: 0, sent: 0, rescheduled: 0, dead: 0 };
 

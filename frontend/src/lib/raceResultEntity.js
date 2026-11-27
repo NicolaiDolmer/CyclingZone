@@ -24,12 +24,20 @@ function riderDisplayName(row) {
   return row?.rider_name || null;
 }
 
+export function resultTeamName(row) {
+  if (row?.team_name) return row.team_name;
+  // Older team classifications can omit the snapshot name. Their direct team
+  // relation still identifies the team at the race, even if it changed name.
+  if (row?.team_id != null && row.team?.id === row.team_id) return row.team.name ?? null;
+  return null;
+}
+
 export function resultEntity(row) {
   if (isTeamResult(row)) {
     return {
       kind: "team",
-      name: row?.team?.name ?? row?.team_name ?? null,
-      linkId: row?.team?.id ?? row?.team_id ?? null,
+      name: resultTeamName(row),
+      linkId: row?.team_id ?? null,
       nationality: null,
     };
   }

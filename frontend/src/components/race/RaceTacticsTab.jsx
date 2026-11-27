@@ -435,6 +435,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #6462: etapeprofilerne (togets standard) i en ref, saa load ikke genskabes af en ny objekt-identitet.
   const profileByStageRef = useRef(profileByStage);
   useEffect(() => { profileByStageRef.current = profileByStage; }, [profileByStage]);
+  // #8800: den styrede etape i en ref, saa load() (og et gem, der genindlaeser) aldrig
+  // vaelger en anden etape end den, forælderen viser i striben.
+  const stageRef = useRef(stage);
+  useEffect(() => { stageRef.current = stage; }, [stage]);
   const load = useCallback(async () => {
     const headers = await authHeaders({ json: false });
     if (!headers) { setRoles(false); return; }
@@ -482,6 +486,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     setOrdersByStage(seededOrders);
     setInitialOrdersByStage(seededOrders);
     setActiveStage((current) => {
+      // #8800: en etape styret udefra (v6-striben) vinder altid over fanens egen startregel.
+      if (stageRef.current != null && stageNumbers.includes(stageRef.current)) return stageRef.current;
       if (current != null && stageNumbers.includes(current)) return current;
       const list = orderCtx?.stages?.length
         ? orderCtx.stages

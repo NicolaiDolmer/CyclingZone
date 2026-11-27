@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { buildTeamFatigueForecast, loadTeamFatigueForecast } from "./trainingWeekPlanForecast.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
+import { fatigueOutlookForTeam } from "./riderFatigueNow.js";
 import { DATE1, DATE2, DAYS1, EVENING_AT, RACE, SEASON, TEAM, createFake, digest, press, rider, seedState, sweep } from "./trainNowSameResult7982.harness.js";
 
 const RIDER = rider(0);
@@ -228,11 +229,12 @@ test("#8646: a known non-starter's overdue stage follows deadline settlement", a
     const plannedTime = Date.parse(state.race_stage_schedule.find((row) => row.race_id === RACE && row.stage_number === 2).scheduled_at);
     assert.deepEqual((await forecastAt(new Date(plannedTime - 1))).fieldSource, FIELDS);
     const before = await forecastAt(new Date(plannedTime + 1));
+    assert.equal(before.fatigue, state.rider_condition[0].fatigue);
     await run(state, createFake(state), { deadlineReached: true });
     assert.equal(reports(state)[slot].intensity, "unknown_pending");
     assert.deepEqual(before.fieldSource, sources(state));
     assert.deepEqual(before.pendingSlots, [slot]);
-    assert.equal(before.fatigue, state.rider_condition[0].fatigue);
+    assert.equal((await forecastAt(new Date(plannedTime + 1))).fatigue, state.rider_condition[0].fatigue);
   }
 });
 
@@ -242,7 +244,9 @@ test("#8646: only missing stage evidence is pending", async () => {
     supabase: withScheduleJoin(createFake(state).supabase),
     team: state.teams[0], seasonId: SEASON.id, now: EVENING_AT,
   })).riders[RIDER];
-  assert.deepEqual((await load()).pendingSlots, [2, 4]);
+  const waiting = await load();
+  assert.deepEqual(waiting.pendingSlots, [2, 4]);
+  assert.equal(waiting.pendingNonStarterSessions, undefined);
   state.race_results.push({ id: "8646-first-result", rider_id: RIDER, race_id: RACE,
     stage_number: 1, result_type: "stage" });
   assert.deepEqual((await load()).pendingSlots, [4]);
@@ -282,15 +286,17 @@ test("#8646: an overdue rotation slot waits and later rotations match deadline s
 
   const overdue = (await forecastAt(new Date(`${DATE1}T15:00:01Z`))).riders[RIDER];
   assert.deepEqual(overdue.pendingSlots, [2]);
+  assert.deepEqual(overdue.pendingNonStarterSessions, { 2: "tempo" });
   assert.deepEqual(overdue.rotationSlots.map((slot) => slot?.index ?? null), [0, 1, null, 2, 0]);
   assert.equal(overdue.nextRotationIndex, 1);
+  assert.equal(overdue.fatigue, state.rider_condition[0].fatigue);
 
   await run(state, createFake(state), { deadlineReached: true, now: new Date("2026-11-10T01:00:00Z") });
   const actual = reports(state);
   assert.equal(actual[2].intensity, "unknown_pending");
   assert.equal(actual[2].rotation, undefined);
   assert.deepEqual(overdue.rotationSlots.map((slot) => slot?.index ?? null), actual.map((report) => report.rotation?.index ?? null));
-  assert.equal(overdue.fatigue, state.rider_condition[0].fatigue);
+  assert.equal((await forecastAt(new Date(`${DATE1}T15:00:01Z`))).riders[RIDER].fatigue, state.rider_condition[0].fatigue);
 });
 
 test("#8646: rotation pending fields belong to the current Copenhagen date", async () => {
@@ -303,6 +309,153 @@ test("#8646: rotation pending fields belong to the current Copenhagen date", asy
   assert.equal(after.tickDate, DATE2);
   assert.equal(after.available, true, after.reason);
   assert.equal(after.riders[RIDER].pendingSlots, undefined);
+});
+
+test("#8666: a saved selection without a binding reserves the stage field before start", async () => {
+  const { state, settle } = scenario({ lock: 4, race: [4], pending: true });
+  state.race_entry_days.length = 0;
+  const load = () => loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase),
+    team: state.teams[0], seasonId: SEASON.id, now: new Date(`${DATE1}T13:59:59Z`),
+  });
+  assert.deepEqual((await load()).riders[RIDER].raceSlots, [4]);
+  settle();
+  await run(state);
+  assert.equal(reports(state)[4].race_day, true);
+  assert.deepEqual((await load()).riders[RIDER].raceSlots, [4]);
+});
+
+test("#8666: a withdrawal keeps the saved lineup without reserving a race field", async () => {
+  const { state } = scenario({ lock: 4, race: [4], pending: true });
+  state.race_entry_days.length = 0;
+  state.race_withdrawals.push({ race_id: RACE, team_id: TEAM, withdrawn_reason: "manager" });
+  assert.ok(state.race_entries.some((entry) => entry.race_id === RACE && entry.rider_id === RIDER));
+  const forecast = await loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase),
+    team: state.teams[0], seasonId: SEASON.id, now: new Date(`${DATE1}T13:59:59Z`),
+  });
+  assert.deepEqual(forecast.riders[RIDER].raceSlots, []);
+  assert.deepEqual(forecast.riders[RIDER].fieldSource, FIELDS);
+});
+
+
+test("#8678: the recorded overnight value remains an estimate until the worker closes the date", async () => {
+  const { state, forecastAt } = overdueRotationScenario();
+  const recorded = state.rider_condition[0].fatigue;
+  const work = { tick_date: DATE1, team_id: TEAM, season_id: SEASON.id,
+    status: "pending", expected_rider_ids: [RIDER] };
+  state.training_date_work = [work];
+  for (const status of ["pending", "partial"]) {
+    work.status = status;
+    for (const at of ["2026-11-09T23:00:00.000Z", "2026-11-10T00:59:59.999Z", "2026-11-10T01:05:00Z"]) {
+      const result = await forecastAt(new Date(at));
+      assert.equal(result.tickDate, DATE2);
+      assert.equal(result.settled, false);
+      assert.notEqual(result.riders[RIDER].fatigueIsActual, true);
+      assert.equal(result.riders[RIDER].fatigue, recorded);
+    }
+  }
+  work.status = "complete";
+  const closed = await forecastAt(new Date("2026-11-10T01:05:00Z"));
+  assert.notEqual(closed.riders[RIDER].fatigue, recorded);
+});
+
+test("#8678: admitting a late rider does not put already settled riders back on hold", async () => {
+  const { state } = scenario({ lock: 4, secondDate: true });
+  await run(state);
+  const work = state.training_date_work.find((row) => row.tick_date === DATE1);
+  const now = new Date("2026-11-09T23:30:00Z");
+  const load = () => loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase), team: state.teams[0], seasonId: SEASON.id, now,
+  });
+  assert.equal(work.status, "complete");
+  assert.ok(state.training_condition_settlements.some((row) => row.rider_id === RIDER && row.tick_date === DATE1));
+  const complete = await load();
+  work.status = "partial";
+  work.expected_rider_ids = [...work.expected_rider_ids, rider(1)];
+  const reopened = await load();
+  assert.deepEqual(reopened.riders[RIDER], complete.riders[RIDER]);
+});
+
+test("#8678: a stage starting during the overnight hold has an explicitly projected start value", async (t) => {
+  for (const [previousDate, now, scheduledAt] of [
+    [DATE1, "2026-11-09T23:15:00Z", "2026-11-10T00:30:00Z"],
+    ["2027-03-27", "2027-03-28T00:15:00Z", "2027-03-28T00:30:00Z"],
+  ]) await t.test(scheduledAt, async () => {
+    const { state } = scenario({ lock: 4, secondDate: true });
+    state.app_config.find((row) => row.key === "fatigue_now_7801").value = "on";
+    const next = state.race_stage_schedule.find((row) => row.game_day === 55);
+    next.scheduled_at = scheduledAt;
+    state.race_entry_days.push({ rider_id: RIDER, team_id: TEAM, season_id: SEASON.id,
+      race_id: next.race_id, game_day: next.game_day });
+    state.training_date_work = [{ tick_date: previousDate, team_id: TEAM, season_id: SEASON.id,
+      status: "partial", expected_rider_ids: [RIDER] }];
+    const outlook = await fatigueOutlookForTeam({
+      supabase: withScheduleJoin(createFake(state).supabase), team: state.teams[0], seasonId: SEASON.id,
+      now: new Date(now), conditions: state.rider_condition,
+      abilityByRider: new Map([[RIDER, state.rider_derived_abilities[0]]]),
+    });
+    assert.ok(Number.isFinite(outlook?.get(RIDER)?.fatigueAtStart));
+    assert.equal(outlook.get(RIDER).fatigueAtStartIsForecast, true);
+  });
+});
+
+test("#8678: absent and completed work both publish today's plan and react to edits", async () => {
+  for (const completed of [false, true]) {
+    const { state } = scenario({ lock: 4, secondDate: true });
+    state.teams[0].created_at = "2026-10-01T12:00:00Z";
+    if (completed) {
+      await run(state);
+      assert.equal(state.training_date_work.find((row) => row.tick_date === DATE1)?.status, "complete");
+    }
+    const week = state.training_week_plans.find((row) => row.rider_id === RIDER);
+    for (const at of ["2026-11-09T23:00:00Z", "2026-11-10T01:05:00Z", "2026-11-10T09:00:00Z"]) {
+      const now = new Date(at);
+      const load = () => loadTeamFatigueForecast({
+        supabase: withScheduleJoin(createFake(state).supabase), team: state.teams[0], seasonId: SEASON.id, now,
+      });
+      const original = week.days.tue;
+      const planned = await load();
+      week.days.tue = { ...original, session: "rest", intensity: "rest", slots: Array(5).fill("rest") };
+      const rested = await load();
+      week.days.tue = original;
+      assert.equal(planned.tickDate, DATE2);
+      assert.equal(planned.riders[RIDER].fatigueIsActual, undefined);
+      assert.equal(rested.riders[RIDER].fatigueIsActual, undefined);
+      assert.ok(rested.riders[RIDER].fatigue < planned.riders[RIDER].fatigue);
+    }
+  }
+});
+
+
+test("#8678: tomorrow's start uses today's forecast at 02:05 and 10:00", async () => {
+  const { state } = scenario({ lock: 4, secondDate: true });
+  await run(state);
+  state.app_config.find((row) => row.key === "fatigue_now_7801").value = "on";
+  const next = state.race_stage_schedule.find((row) => row.game_day === 55);
+  state.race_entry_days.push({ rider_id: RIDER, team_id: TEAM, season_id: SEASON.id,
+    race_id: next.race_id, game_day: next.game_day });
+  const team = state.teams[0];
+  const week = state.training_week_plans.find((row) => row.rider_id === RIDER);
+  for (const at of ["2026-11-10T01:05:00Z", "2026-11-10T09:00:00Z"]) {
+    const now = new Date(at);
+    const load = async () => {
+      const supabase = withScheduleJoin(createFake(state).supabase);
+      const forecast = await loadTeamFatigueForecast({ supabase, team, seasonId: SEASON.id, now });
+      const outlook = await fatigueOutlookForTeam({ supabase, team, seasonId: SEASON.id, now,
+        conditions: state.rider_condition, abilityByRider: new Map([[RIDER, state.rider_derived_abilities[0]]]) });
+      const field = forecast.riders[RIDER];
+      assert.equal(field.fatigueIsActual, undefined);
+      assert.equal(outlook?.get(RIDER)?.fatigueAtStart, field.fatigue);
+      return field.fatigue;
+    };
+    const original = week.days.tue;
+    const planned = await load();
+    week.days.tue = { ...original, session: "rest", intensity: "rest", slots: Array(5).fill("rest") };
+    const rested = await load();
+    week.days.tue = original;
+    assert.ok(rested < planned);
+  }
 });
 
 test("Rotation forecast and evening run both free the slots of a known non-starter", async () => {
@@ -420,4 +573,21 @@ test("golden OLD-1 og OFF-1: frosset main med lås og week-rækker", async () =>
   assert.equal(old.value, golden.fingerprint);
   assert.equal(off.value, golden.fingerprint);
   assert.equal(old.readFlag, false);
+});
+
+test("#8678 Fable 4a: ordinary unbound selection keeps the forecast across stage start", async () => {
+  const { state } = scenario({ race: [2], bound: [], pending: true, stage: "off" });
+  state.race_entries.push({ id: "8678-unbound", race_id: RACE, rider_id: RIDER, team_id: TEAM, race_role: "captain" });
+  const start = Date.parse(state.race_stage_schedule.find((row) => row.race_id === RACE).scheduled_at);
+  const forecastAt = async (now) => (await loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase),
+    team: state.teams[0], seasonId: SEASON.id, now,
+  })).riders[RIDER];
+
+  const before = await forecastAt(new Date(start - 1));
+  const after = await forecastAt(new Date(start + 1));
+  assert.notEqual(before.fatigue, state.rider_condition[0].fatigue, "fixture must show a real forecast");
+  assert.equal(after.pendingSlots, undefined, "the ordinary unbound selection has no pending field");
+  assert.equal(after.fatigue, before.fatigue, "stage start alone must not replace the forecast");
+  assert.notEqual(after.fatigueIsActual, true);
 });

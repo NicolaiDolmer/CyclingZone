@@ -38,7 +38,7 @@ import { computeRiderTypes, resolveRiderTypes, NEUTRAL_BASELINE } from "./riderT
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
-import { computeFrozenSalary, pickStarterContractLength, computeContractEndSeason } from "./contractSeed.js";
+import { computeFrozenSalary, pickStarterContractLength, cappedContractTerm, resolveContractSeasonNumber } from "./contractSeed.js";
 import { loadValuationModelById, DEFAULT_VALUATION_MODEL_ID } from "./riderValuationModelSelect.js";
 import { birthYearFrom, seasonReferenceYear } from "./riderSeasonAge.js";
 import {
@@ -558,11 +558,9 @@ async function writeTeamAssignments(supabase, pairs) {
 // opslaget i contractSeed.runContractSeed / backfillCores.activeSeasonNumber (ÉN
 // linje duplikeret pr. modul er den eksisterende konvention her frem for en delt
 // cross-modul-afhængighed for et enkelt select). Læses LIVE, aldrig hardcodet.
+// #7138 (ejer 26/11): i sæsonpausen er den kommende sæson ankeret, ikke sæson 1.
 async function fetchActiveSeasonNumber(supabase) {
-  const { data, error } = await supabase
-    .from("seasons").select("number").eq("status", "active").maybeSingle();
-  if (error) throw new Error(`active season lookup: ${error.message}`);
-  return data?.number ?? 1;
+  return resolveContractSeasonNumber(supabase);
 }
 
 // #2894/#2902 root-cause-fix: start-trup-allokeringen skrev historisk KUN team_id —
@@ -588,8 +586,7 @@ async function applyContractFieldsForRiders(supabase, riderIds, { startSeason, r
       const length = pickStarterContractLength(rng);
       const patch = {
         salary: computeFrozenSalary({ current_production_value: r.current_production_value }),
-        contract_length: length,
-        contract_end_season: computeContractEndSeason(startSeason, length),
+        ...cappedContractTerm(startSeason, length),
       };
       return supabase.from("riders").update(patch).eq("id", r.id).then(({ error }) => {
         if (error) throw new Error(`contract-fields ${r.id}: ${error.message}`);
@@ -868,8 +865,7 @@ export async function runStarterSquadAllocation(supabase, {
         id,
         team_id: teamId,
         salary: computeFrozenSalary({ current_production_value: cpvById.get(id) }),
-        contract_length: length,
-        contract_end_season: computeContractEndSeason(startSeason, length),
+        ...cappedContractTerm(startSeason, length),
       };
     }));
 

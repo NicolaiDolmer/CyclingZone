@@ -10,7 +10,7 @@ import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { ACADEMY } from "./academyFlag.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
-import { computeFrozenSalary } from "./contractSeed.js";
+import { computeFrozenSalary, cappedContractTerm } from "./contractSeed.js";
 import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { notifyTeamOwner, notifyIfContractExpiresThisSeason } from "./notificationService.js";
 import { checkAvailableSpend, INSUFFICIENT_AVAILABLE_BALANCE } from "./availableBalance.js";
@@ -528,7 +528,9 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // #3550 punkt 3: intake-signeringer bruger INTAKE_CONTRACT_LENGTH (1 sæson),
   // isoleret fra den delte CONTRACT_LENGTH (3) som demote-stien (academyTransfer.js)
   // og youth-auktionsvinderen (auctionFinalization.js) fortsat bruger uændret.
-  const contractEndSeason = seasonNumber + ACADEMY.INTAKE_CONTRACT_LENGTH - 1;
+  // #7138: samme fælles loft som alle andre oprettelsesveje.
+  const intakeTerm = cappedContractTerm(seasonNumber, ACADEMY.INTAKE_CONTRACT_LENGTH);
+  const contractEndSeason = intakeTerm.contract_end_season;
   const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
   const acquiredAt = now.toISOString();
 
@@ -563,7 +565,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     p_rider_id: riderId,
     p_price: fee,
     p_salary: salary,
-    p_contract_length: ACADEMY.INTAKE_CONTRACT_LENGTH,
+    p_contract_length: intakeTerm.contract_length,
     p_contract_end_season: contractEndSeason,
     p_acquired_at: acquiredAt,
     p_finance_payload: {

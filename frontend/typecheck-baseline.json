@@ -2429,7 +2429,7 @@
   },
   "src/pages/RaceHistoryPage.jsx": {
     "TS2322": 1,
-    "TS2339": 36,
+    "TS2339": 35,
     "TS2345": 3,
     "TS2739": 1,
     "TS2741": 3
@@ -2457,7 +2457,7 @@
   },
   "src/pages/RiderComparePage.jsx": {
     "TS2322": 1,
-    "TS2339": 23,
+    "TS2339": 18,
     "TS2345": 3,
     "TS2739": 1,
     "TS2741": 2

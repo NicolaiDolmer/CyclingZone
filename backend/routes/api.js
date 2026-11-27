@@ -235,6 +235,7 @@ import {
   computeContractExtension,
   maxAllowedContractEndSeason,
   contractExtensionCapInfo,
+  resolveContractSeasonNumber,
 } from "../lib/contractSeed.js";
 import { quoteBatchExtension, applyBatchExtension } from "../lib/contractBatchExtension.js"; // #6855
 import { buildRiderHistory } from "../lib/riderHistory.js";
@@ -1992,7 +1993,7 @@ router.get("/riders/:id/release-quote", requireAuth, async (req, res) => {
   if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
   const releaseDefer = await releaseDeferContext8153(supabase, rider.id); // #8153: null = slukket, svaret som i dag
   if (releaseDefer?.issue) return res.status(releaseDefer.issue.status).json(releaseDefer.issue.body);
-  const currentSeason = await getActiveSeasonNumber();
+  const currentSeason = await resolveContractSeasonNumber(supabase); // #7138
   const fee = computeReleaseBuyoutFee({
     salary: rider.salary,
     contractEndSeason: rider.contract_end_season,
@@ -2008,7 +2009,7 @@ router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
   const result = await loadOwnedRiderForExtension(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
-  const currentSeason = await getActiveSeasonNumber();
+  const currentSeason = await resolveContractSeasonNumber(supabase); // #7138: kommende sæson i pausen
   const next = computeContractExtension({ ...rider, currentSeason });
   const capError = contractExtensionCapError(next, currentSeason);
   // #3186: tælleren skal være synlig FØR spilleren handler — udregnet fra
@@ -2121,7 +2122,8 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
 
   const { data: season } = await supabase
     .from("seasons").select("id, number").eq("status", "active").maybeSingle();
-  const currentSeason = season?.number ?? 1;
+  // #7138: fyringsgebyret regnes mod kontraktens sæson (kommende sæson i pausen).
+  const currentSeason = await resolveContractSeasonNumber(supabase);
   const fee = computeReleaseBuyoutFee({
     salary: rider.salary,
     contractEndSeason: rider.contract_end_season,
@@ -2244,7 +2246,7 @@ router.get("/riders/:id/academy-release-quote", requireAuth, async (req, res) =>
   // den samme entity ellers ville matche her.
   const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
   if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
-  const currentSeason = await getActiveSeasonNumber();
+  const currentSeason = await resolveContractSeasonNumber(supabase); // #7138
   const fee = computeReleaseBuyoutFee({
     salary: rider.salary,
     contractEndSeason: rider.contract_end_season,
@@ -2280,7 +2282,8 @@ router.post("/riders/:id/academy-release", requireAuth, marketWriteLimiter, asyn
   const { data: season, error: seasonErr } = await supabase
     .from("seasons").select("id, number").eq("status", "active").maybeSingle();
   if (seasonErr) captureException(new Error(`academy-release season lookup (${rider.id}): ${seasonErr.message}`));
-  const currentSeason = season?.number ?? 1;
+  // #7138: fyringsgebyret regnes mod kontraktens sæson (kommende sæson i pausen).
+  const currentSeason = await resolveContractSeasonNumber(supabase);
   const fee = computeReleaseBuyoutFee({
     salary: rider.salary,
     contractEndSeason: rider.contract_end_season,
@@ -2400,7 +2403,7 @@ router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, asyn
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
 
-  const currentSeason = await getActiveSeasonNumber();
+  const currentSeason = await resolveContractSeasonNumber(supabase); // #7138: kommende sæson i pausen
   const next = computeContractExtension({ ...rider, currentSeason });
 
   // #3143: hårdt loft — afvis eksplicit i stedet for at clampe stille (se
@@ -3374,6 +3377,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
         form: outlook?.form ?? row.form,
         fatigue,
         ...(outlook ? { fatigue_at_start: outlook.fatigueAtStart ?? null } : {}),
+        ...(outlook?.fatigueAtStartIsForecast ? { fatigue_at_start_is_forecast: true } : {}),
         injured_until: row.injured_until ?? null,
         // #5462: resterende LOEBSDAGE inkl. i dag. null = skaden ejes af
         // kalenderdagen (flag off, eller skrevet foer flippet).
@@ -9964,10 +9968,15 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
     // Fejlen SKAL håndteres: sæsonnummeret bestemmer kontraktens udløbssæson,
     // og et tavst fald tilbage til 1 ville skrive en allerede-udløbet kontrakt
     // uden at nogen opdagede det.
-    const { data: activeSeason, error: seasonError } = await supabase
-      .from("seasons").select("number").eq("status", "active").maybeSingle();
-    if (seasonError) return res.status(500).json({ error: seasonError.message });
-    contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1);
+    // #7138: kommende sæson i pausen; et opslagsfejl kastes og bliver til 500.
+    let contractSeason;
+    try {
+      contractSeason = await resolveContractSeasonNumber(supabase);
+    } catch (seasonError) {
+      captureException(seasonError);
+      return res.status(500).json({ error: seasonError.message });
+    }
+    contractPatch = contractOnAcquirePatch(rider, contractSeason);
   }
   // #2264: admin-flyt er altid en SENIOR-flytning (frigivelse eller senior-trup).
   // is_academy nulstilles, ellers strander rytteren som "akademi-rytter uden hold"
@@ -19594,13 +19603,8 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     const { riderId } = req.body || {};
     if (!riderId) return res.status(400).json({ error: "riderId required" });
 
-    // Aktiv sæson-nummer til kontrakt-beregning.
-    const { data: season } = await supabase
-      .from("seasons")
-      .select("number")
-      .eq("status", "active")
-      .maybeSingle();
-    const seasonNumber = season?.number ?? 1;
+    // #7138: kontraktens sæson (kommende sæson i pausen, aldrig sæson 1).
+    const seasonNumber = await resolveContractSeasonNumber(supabase);
 
     const result = await signAcademyCandidate(supabase, {
       teamId: req.team.id,
@@ -19671,9 +19675,8 @@ router.post("/academy/promote", requireAuth, marketWriteLimiter, async (req, res
     const { riderId } = req.body || {};
     if (!riderId) return res.status(400).json({ error: "riderId required" });
 
-    const { data: season } = await supabase
-      .from("seasons").select("number").eq("status", "active").maybeSingle();
-    const seasonNumber = season?.number ?? 1;
+    // #7138: kontraktens sæson (kommende sæson i pausen, aldrig sæson 1).
+    const seasonNumber = await resolveContractSeasonNumber(supabase);
 
     const result = await promoteAcademyRider(supabase, {
       teamId: req.team.id,
@@ -19707,9 +19710,8 @@ router.post("/academy/demote", requireAuth, marketWriteLimiter, async (req, res)
     const { riderId } = req.body || {};
     if (!riderId) return res.status(400).json({ error: "riderId required" });
 
-    const { data: season } = await supabase
-      .from("seasons").select("number").eq("status", "active").maybeSingle();
-    const seasonNumber = season?.number ?? 1;
+    // #7138: kontraktens sæson (kommende sæson i pausen, aldrig sæson 1).
+    const seasonNumber = await resolveContractSeasonNumber(supabase);
 
     // #8153: en rytter, hvis frigivelse venter, koerer etapeloebet faerdigt som senior. Slukket = null.
     const pendingIssue = await getPendingReleaseSquadIssue(supabase, riderId);
@@ -19751,7 +19753,7 @@ router.post("/riders/:id/squad", requireAuth, marketWriteLimiter, async (req, re
     const enabled = await isAcademyEnabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "academy_disabled", errorCode: "academy_disabled" });
 
-    const seasonNumber = await getActiveSeasonNumber();
+    const seasonNumber = await resolveContractSeasonNumber(supabase); // #7138: kommende sæson i pausen
     const out = await handleMoveSquadRequest(supabase, {
       teamId: req.team.id,
       riderId: req.params.id,

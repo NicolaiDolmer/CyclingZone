@@ -39,6 +39,49 @@ const COMPARE_RIDER_COLUMNS = `id, firstname, lastname, birthdate, market_value,
 // #1529: erstattede de 14 PCM stat_*-rækker.
 const STATS = ABILITY_STATS;
 
+function CompareRiderHeading({ rider, onRemove, t }) {
+  return (
+    <Section className="text-center">
+      <button
+        onClick={() => onRemove(rider.id)}
+        aria-label={t("common:a11y.removeFromComparison")}
+        className="float-right text-cz-3 hover:text-cz-2 -mt-1 -me-1"><XIcon size={14} aria-hidden="true" /></button>
+      <RiderLink id={rider.id} className="font-bold text-cz-1 text-sm cursor-pointer hover:text-cz-accent-t block">
+        {rider.nationality_code && <Flag code={rider.nationality_code} className="me-1" />}{rider.firstname} {rider.lastname}
+      </RiderLink>
+      <p className="text-cz-3 text-xs mt-1">
+        <TeamLink id={rider.team?.id} className="hover:text-cz-accent-t transition-colors">{rider.team?.name || t("compare.teamFree")}</TeamLink>
+      </p>
+      <p className="font-mono tabular-nums font-bold mt-2 text-sm text-cz-1">{formatCz(getRiderMarketValue(rider))}</p>
+      {rider.is_u25 && (
+        <span className="text-3xs uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded-cz mt-1 inline-block">U25</span>
+      )}
+    </Section>
+  );
+}
+
+function CompareStatValue({ value, isBest }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="min-w-0 flex-1 bg-cz-subtle rounded-cz-pill h-2">
+        <div className="h-2 rounded-cz-pill transition-all duration-500"
+          style={{
+            width: `${Math.round(((value || 0) / 99) * 100)}%`,
+            backgroundColor: statColor(value),
+            opacity: isBest ? 1 : 0.4,
+          }} />
+      </div>
+      {isBest ? (
+        <span className="font-mono tabular-nums text-xs font-extrabold shrink-0 inline-block min-w-[28px] text-center rounded-cz px-1 py-0.5"
+          style={statStyle(value)}>{value ?? "—"}</span>
+      ) : (
+        <span className="font-mono tabular-nums text-xs font-medium w-7 text-right shrink-0"
+          style={{ color: statColor(value) }}>{value ?? "—"}</span>
+      )}
+    </div>
+  );
+}
+
 function RiderSearch({ onSelect, excluded }) {
   const { t } = useTranslation("rider");
   const [q, setQ] = useState("");
@@ -205,6 +248,8 @@ export default function RiderComparePage() {
     );
   }
 
+  const showPotential = fullRiders.some(r => scouting.estimateFor(r.id) !== null);
+
   return (
     <div className="max-w-4xl mx-auto">
       <PageHeader title={t("compare.title")} subtitle={t("compare.subtitle")} />
@@ -219,97 +264,83 @@ export default function RiderComparePage() {
       {fullRiders.length === 0 ? (
         <EmptyState icon={<SearchIcon size={24} aria-hidden="true" />} title={t("compare.empty")} />
       ) : (
-        <div className="overflow-x-auto pb-1">
-          {/* Rider headers */}
-          <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
-            <div /> {/* Empty cell for label column */}
-            {fullRiders.map((r) => (
-              <Section key={r.id} className="text-center">
-                <button
-                  onClick={() => removeRider(r.id)}
-                  aria-label={t("common:a11y.removeFromComparison")}
-                  className="float-right text-cz-3 hover:text-cz-2 -mt-1 -me-1"><XIcon size={14} aria-hidden="true" /></button>
-                <RiderLink id={r.id}
-                  className="font-bold text-cz-1 text-sm cursor-pointer hover:text-cz-accent-t block">
-                  {r.nationality_code && <Flag code={r.nationality_code} className="me-1" />}{r.firstname} {r.lastname}
-                </RiderLink>
-                <p className="text-cz-3 text-xs mt-1">
-                  <TeamLink id={r.team?.id} className="hover:text-cz-accent-t transition-colors">{r.team?.name || t("compare.teamFree")}</TeamLink>
-                </p>
-                <p className="font-mono tabular-nums font-bold mt-2 text-sm text-cz-1">
-                  {formatCz(getRiderMarketValue(r))}
-                </p>
-                {r.is_u25 && (
-                  <span className="text-3xs uppercase bg-cz-info/20 text-cz-info
-                    px-1.5 py-0.5 rounded-cz mt-1 inline-block">U25</span>
-                )}
-              </Section>
+        <div className="@container/comparison">
+          <div className="space-y-5 @min-[40rem]/comparison:hidden" data-testid="compare-mobile-stack">
+            {fullRiders.map(rider => (
+              <article key={rider.id} className="min-w-0 space-y-2" data-testid="compare-rider-card"
+                aria-label={`${rider.firstname} ${rider.lastname}`}>
+                <CompareRiderHeading rider={rider} onRemove={removeRider} t={t} />
+                <Card className="overflow-hidden">
+                  <dl>
+                    {showPotential && (
+                      <div data-testid="compare-potential-row"
+                        className="grid grid-cols-2 items-center gap-2 py-3 px-4 border-b border-cz-border bg-cz-accent/10">
+                        <dt className="flex min-w-0 items-center gap-2 text-cz-2 text-sm font-medium">
+                          <StarIcon size={14} className="text-cz-3 shrink-0" aria-hidden="true" />{t("compare.potential")}
+                        </dt>
+                        <dd className="min-w-0"><ScoutablePotentiale rider={rider} scouting={scouting} /></dd>
+                      </div>
+                    )}
+                    {STATS.map(stat => (
+                      <div key={stat.key} className="grid grid-cols-2 items-center gap-2 py-2 px-4 border-b border-cz-border last:border-0">
+                        <dt className="min-w-0 text-cz-2 text-sm">{t(`racePreview.derived.${stat.key}`)}</dt>
+                        <dd className="min-w-0"><CompareStatValue value={rider[stat.key]} isBest={rider.id === getBestForStat(stat.key)} /></dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Card>
+              </article>
             ))}
           </div>
+          <div className="hidden overflow-x-auto pb-1 @min-[40rem]/comparison:block">
+            {/* Rider headers */}
+            <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
+              <div /> {/* Empty cell for label column */}
+              {fullRiders.map((r) => (
+                <CompareRiderHeading key={r.id} rider={r} onRemove={removeRider} t={t} />
+              ))}
+            </div>
 
-          {/* Stats comparison — dense per-rider grid (T2 table-wrap recipe: rounded-cz
-              wrap + hairline dividers) rather than the T1 Section padding recipe, so
-              rows keep their full-bleed hairline rules edge-to-edge on the card. */}
-          <Card className="overflow-hidden">
-            {/* Potentiale row */}
-            {fullRiders.some(r => scouting.estimateFor(r.id) !== null) && (
-              <div data-testid="compare-potential-row"
-                className="grid items-center py-3 px-4 border-b border-cz-border bg-cz-accent/10"
-                style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
-                <div className="flex items-center gap-2">
-                  <StarIcon size={14} className="text-cz-3 shrink-0" aria-hidden="true" />
-                  <span className="text-cz-2 text-sm font-medium">{t("compare.potential")}</span>
-                </div>
-                {fullRiders.map(r => (
-                  <div key={r.id} className="px-2">
-                    <ScoutablePotentiale rider={r} scouting={scouting} />
-                  </div>
-                ))}
-              </div>
-            )}
-            {STATS.map((stat) => {
-              const bestId = getBestForStat(stat.key);
-              return (
-                <div key={stat.key}
-                  className="grid items-center py-3 px-4 border-b border-cz-border last:border-0"
+            {/* Stats comparison — dense per-rider grid (T2 table-wrap recipe: rounded-cz
+                wrap + hairline dividers) rather than the T1 Section padding recipe, so
+                rows keep their full-bleed hairline rules edge-to-edge on the card. */}
+            <Card className="overflow-hidden">
+              {/* Potentiale row */}
+              {showPotential && (
+                <div data-testid="compare-potential-row"
+                  className="grid items-center py-3 px-4 border-b border-cz-border bg-cz-accent/10"
                   style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-cz-3 font-mono text-3xs w-9 text-center">{stat.label}</span>
-                    <span className="text-cz-2 text-sm">{t(`racePreview.derived.${stat.key}`)}</span>
+                    <StarIcon size={14} className="text-cz-3 shrink-0" aria-hidden="true" />
+                    <span className="text-cz-2 text-sm font-medium">{t("compare.potential")}</span>
                   </div>
-                  {fullRiders.map((r) => {
-                    const val = r[stat.key];
-                    const isBest = r.id === bestId;
-                    return (
-                      <div key={r.id} className="px-2">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-cz-subtle rounded-cz-pill h-2">
-                            <div className="h-2 rounded-cz-pill transition-all duration-500"
-                              style={{
-                                width: `${Math.round(((val || 0) / 99) * 100)}%`,
-                                backgroundColor: statColor(val),
-                                opacity: isBest ? 1 : 0.4,
-                              }} />
-                          </div>
-                          {isBest ? (
-                            <span className="font-mono tabular-nums text-xs font-extrabold shrink-0 inline-block min-w-[28px] text-center rounded-cz px-1 py-0.5"
-                              style={statStyle(val)}>
-                              {val ?? "—"}
-                            </span>
-                          ) : (
-                            <span className="font-mono tabular-nums text-xs font-medium w-7 text-right shrink-0"
-                              style={{ color: statColor(val) }}>
-                              {val ?? "—"}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {fullRiders.map(r => (
+                    <div key={r.id} className="px-2">
+                      <ScoutablePotentiale rider={r} scouting={scouting} />
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
-          </Card>
+              )}
+              {STATS.map((stat) => {
+                const bestId = getBestForStat(stat.key);
+                return (
+                  <div key={stat.key}
+                    className="grid items-center py-3 px-4 border-b border-cz-border last:border-0"
+                    style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-cz-3 font-mono text-3xs w-9 text-center">{stat.label}</span>
+                      <span className="text-cz-2 text-sm">{t(`racePreview.derived.${stat.key}`)}</span>
+                    </div>
+                    {fullRiders.map(r => (
+                      <div key={r.id} className="px-2">
+                        <CompareStatValue value={r[stat.key]} isBest={r.id === bestId} />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </Card>
+          </div>
         </div>
       )}
     </div>

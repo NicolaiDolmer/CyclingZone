@@ -90,6 +90,19 @@ Artikel-henvisningerne er Claudes vurdering ud fra banner-teksten; ejeren har ik
 
 Sprog 📄: skabelonerne vælger tekst på `users.language` (`'da'` giver dansk, alt andet engelsk). Alle tre typer læser `language` sammen med `email`.
 
+### 2.1 Sæsonkampagnen S6 (`s6_season`, #8396)
+
+Engangskampagne, ikke en del af mail-loopet. Sendes kun med `scripts/s6-mail-send.mjs`.
+
+- **Hvem:** menneskehold (`is_ai`, `is_bank`, `is_test_account` præcis false, ikke frosne), én mail pr. bruger og pr. adresse.
+- **Samtykke:** `consent_preferences.email_marketing === true` (samme regel som S5-launchmailen og tilmeldingspåmindelsen). `email_prefs.all`, `winback` eller `s6_season` = false udelukker.
+- **Suppression:** bounced/complained i `email_log` (alle typer) udelukker.
+- **Gruppe og sprog:** `s6AudienceForDaysAway` af dage siden sidst set (aktiv < 14, sovende 14-56, væk > 56); sprog `da`, ellers `en`; emne A.
+- **Gate:** `app_config.winback_send_enabled === true` (kun ejeren flipper). `--dry-run` er default og sender/skriver intet; `--test-to` sender 6 mails til én adresse uden `email_log`.
+- **Dedupe:** `s6_season:<udgave>:<userId>` i `email_log` og som Resend-idempotencyKey. Ved genkørsel springes allerede kontaktede brugere OG deres adresser over.
+- **Retry:** fejlede afsendelser lægges i retry-køen som andre mails, men `emailRetrySweep.js` (`CAMPAIGN_RETRY_GATES`) følger kampagnens egen gate `winback_send_enabled`, aldrig `email_loop_enabled`. Slukkes gaten, stopper både nye mails og retries.
+- **Stop:** sæt `winback_send_enabled` til false.
+
 ## 3. Gate-kæden
 
 Alle sweeps går gennem `sendLoopEmail` (`backend/lib/emailService.js:190-322`). Fem gates, hver kortslutter resten 📄:

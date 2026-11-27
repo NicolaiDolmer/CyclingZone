@@ -14,7 +14,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { raceDayProgram } from "./raceDayYield.js";
 import {
   RACE_DAY_ROLE_YIELD_FLAG_KEY, RACE_DAY_ROLE_YIELD_PARAMS_KEY,
-  DECISIVE_ABILITY_BY_PROFILE, HELPER_ABILITIES_BY_PROFILE,
+  DECISIVE_ABILITY_BY_PROFILE, HELPER_ABILITIES_BY_PROFILE, MAIN_MODEL_HELPER_ABILITIES_BY_PROFILE,
   isRaceDayRoleYieldEnabled, loadRaceDayRoleYield, raceDayRoleBaseProgram, raceDayRoleBonusWeights,
   raceDayRoleByRider, raceDayRoleGroup, raceDayRoleYieldMultipliers, raceDayRoleAbilityGroups,
   validateRaceDayRoleYieldParams, withRaceDayRoleYield, loadRaceDayRoleByRider,
@@ -22,6 +22,8 @@ import {
 } from "./raceDayRoleYield5950.js";
 import { VALID_RACE_ROLES } from "./raceRoles.js";
 import { clearPrivateConfigCache } from "./privateConfig.ts";
+import { readFileSync } from "node:fs";
+import { computeDigests5950Helper } from "./__fixtures__/raceDayRoleYield5950HelperScenarios.js";
 
 // Syntetiske params, IKKE kalibreringen.
 const PARAMS = Object.freeze({ stageBonus: 0.5, leadShare: 0.6 });
@@ -308,8 +310,10 @@ test("#5950: alle evnelister er rigtige evner, og hver profil har en afgoerende 
   for (const profile of PROFILES) {
     assert.ok(VISIBLE_ABILITIES.includes(DECISIVE_ABILITY_BY_PROFILE[profile]), profile);
     assert.ok(RACE_PROFILE_ABILITY_MAP[profile].includes(DECISIVE_ABILITY_BY_PROFILE[profile]), `${profile}: afgoerende evne i profilen`);
-    for (const a of HELPER_ABILITIES_BY_PROFILE[profile]) assert.ok(VISIBLE_ABILITIES.includes(a), `${profile}: ${a}`);
-    assert.ok(HELPER_ABILITIES_BY_PROFILE[profile].includes("teamwork"), `${profile}: hjaelperen udvikler holdarbejde (S21)`);
+    for (const table of [HELPER_ABILITIES_BY_PROFILE, MAIN_MODEL_HELPER_ABILITIES_BY_PROFILE]) {
+      for (const a of table[profile]) assert.ok(VISIBLE_ABILITIES.includes(a), `${profile}: ${a}`);
+      assert.ok(table[profile].includes("teamwork"), `${profile}: hjaelperen udvikler holdarbejde (S21)`);
+    }
     for (const group of ["leader", "hunter", "helper"]) {
       const { lead, support } = raceDayRoleAbilityGroups(profile, group);
       assert.ok(lead.length > 0);
@@ -348,6 +352,8 @@ test("#5950: bjergetape - kaptajnen faar mest klatring; hjaelperen mindre klatri
   const helper = raceDayRoleBonusWeights("mountain", "helper", PARAMS.leadShare);
   assert.equal(Object.entries(cap).sort((a, b) => b[1] - a[1])[0][0], "climbing");
   assert.ok(helper.climbing > 0 && helper.climbing < cap.climbing);
+  // Hovedflagets model (underkontakten slukket) er uaendret; tempo-rettelsen gaelder kun
+  // med underkontakten taendt (se "#5950 tempo" nedenfor).
   assert.ok(helper.tempo > (cap.tempo ?? 0));
 });
 
@@ -807,4 +813,93 @@ test("#5950 A motor: hjaelper paa flad etape faar mindre spurt med underkontakte
   const captainOn = seedWithRole({ flags: withSub, role: "captain", profile: "flat" });
   await run(captainOn, { params: true });
   assert.deepEqual(gameState(captainOn), gameState(captainOff), "kaptajnen: bit-identisk");
+});
+
+// ── #5950: tempo ud af hjaelperens evner (ejer 4/11 + 20/11) ─────────────────────────
+// Tempo er evnen til mellemlange stigninger, ikke til at foere feltet. Rettelsen gaelder
+// kun med underkontakten race_day_role_base_day_enabled taendt (den er slukket i prod).
+// Slukket = bit-identisk med merge-basen: __fixtures__/raceDayRoleYield5950HelperBase.json
+// er skrevet af merge-basens kode (sourceCommit i filen) med de samme scenarier og
+// genereres aldrig med den nye kode. Kun hashes; syntetisk fixture, ingen prod-data.
+const FROZEN_5950_HELPER = JSON.parse(readFileSync(new URL("./__fixtures__/raceDayRoleYield5950HelperBase.json", import.meta.url), "utf8"));
+const TEMPO_FIX_PROFILES = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt"];
+
+test("#5950 tempo golden: hovedflag off og hovedflagets model (underkontakt off) er bit-identisk med merge-basen", () => {
+  const digests = computeDigests5950Helper();
+  assert.equal(digests.flagOff, FROZEN_5950_HELPER.flagOff, "hovedflag off har flyttet sig");
+  assert.equal(digests.mainModel, FROZEN_5950_HELPER.mainModel, "hovedflagets model (underkontakt off) har flyttet sig");
+});
+
+test("#5950 tempo golden: kaptajner og jaegeren er bit-identiske med merge-basen, ogsaa med underkontakten taendt", () => {
+  assert.equal(computeDigests5950Helper().leadersWithSubswitch, FROZEN_5950_HELPER.leadersWithSubswitch);
+});
+
+test("#5950 tempo: hjaelperens evner indeholder aldrig tempo; hovedflagets liste er uaendret", () => {
+  for (const profile of PROFILES) {
+    assert.ok(!HELPER_ABILITIES_BY_PROFILE[profile].includes("tempo"), `${profile}: tempo er ikke en hjaelpe-evne`);
+    const changed = TEMPO_FIX_PROFILES.includes(profile);
+    assert.equal(MAIN_MODEL_HELPER_ABILITIES_BY_PROFILE[profile].includes("tempo"), changed, `${profile}: hovedflagets liste`);
+    // Rettelsen fjerner kun tempo; resten af hjaelperens evner er de samme.
+    assert.deepEqual(
+      [...HELPER_ABILITIES_BY_PROFILE[profile]],
+      MAIN_MODEL_HELPER_ABILITIES_BY_PROFILE[profile].filter((a) => a !== "tempo"),
+      `${profile}: kun tempo er fjernet`,
+    );
+  }
+});
+
+test("#5950 tempo: med underkontakten taendt traener hjaelperens basis-dag ikke tempo, og tempo er aldrig i hjaelperens lead", () => {
+  for (const profile of [...PROFILES, null, "nonsense"]) {
+    for (const role of ["helper", "luxury_helper"]) {
+      const program = raceDayRoleBaseProgram(profile, { role, roleDrivesBaseDay: true });
+      assert.ok(!program.focusAbilities.includes("tempo"), `${profile}/${role}: basis-dagen traener ikke tempo`);
+    }
+    const { lead } = raceDayRoleAbilityGroups(profile, "helper", { roleDrivesBaseDay: true });
+    assert.ok(!lead.includes("tempo"), `${profile}: tempo er ikke i hjaelperens lead`);
+  }
+});
+
+test("#5950 tempo: hjaelperen faar kun tempo, naar etapen selv traener tempo (som en del af ruten)", () => {
+  const tick = (profile, role, params) => yielded(applyDailyTick(tickArgs(
+    raceDayRoleBaseProgram(profile, { role, roleDrivesBaseDay: params?.roleDrivesBaseDay === true }),
+    withRaceDayRoleYield({}, { params, profileType: profile, role }),
+  )));
+  const offFocus = (y) => y.aggression;
+  for (const profile of TEMPO_FIX_PROFILES) {
+    const helper = tick(profile, "helper", PARAMS_A);
+    const helperMainModel = tick(profile, "helper", PARAMS);
+    const routeTrainsTempo = RACE_PROFILE_ABILITY_MAP[profile].includes("tempo");
+    const weights = raceDayRoleBonusWeights(profile, "helper", PARAMS.leadShare, { roleDrivesBaseDay: true });
+    if (routeTrainsTempo) {
+      // Etapens egen profil-evne: hjaelperen faar noget af den (support), men udvikler
+      // hver af sine hjaelpe-evner mere end tempo.
+      const { support } = raceDayRoleAbilityGroups(profile, "helper", { roleDrivesBaseDay: true });
+      assert.ok(support.includes("tempo"), `${profile}: tempo er en del af ruten`);
+      for (const a of HELPER_ABILITIES_BY_PROFILE[profile]) assert.ok(helper[a] > helper.tempo, `${profile}: ${a} > tempo`);
+    } else {
+      assert.equal(weights.tempo, undefined, `${profile}: intet tillaeg i tempo`);
+      assert.equal(raceDayRoleYieldMultipliers({ params: PARAMS_A, profileType: profile, role: "helper" }).tempo, undefined);
+      assert.ok(Math.abs(helper.tempo - offFocus(helper)) < 1e-12, `${profile}: hjaelperen faar kun off-fokus i tempo`);
+    }
+    assert.ok(helper.tempo < helperMainModel.tempo, `${profile}: hjaelperen udvikler mindre tempo end i hovedflagets model`);
+    assert.ok(helper.teamwork > offFocus(helper), `${profile}: hjaelperen udvikler stadig holdarbejde`);
+  }
+});
+
+test("#5950 tempo: fri rolle er stadig gennemsnittet af kaptajn og hjaelper, og alle roller faar samme udbytte i alt", () => {
+  const total = (y) => VISIBLE_ABILITIES.reduce((s, k) => s + y[k], 0);
+  const tick = (profile, role) => yielded(applyDailyTick(tickArgs(
+    raceDayRoleBaseProgram(profile, { role, roleDrivesBaseDay: true }),
+    withRaceDayRoleYield({}, { params: PARAMS_A, profileType: profile, role }),
+  )));
+  for (const profile of TEMPO_FIX_PROFILES) {
+    const captain = tick(profile, "captain");
+    const helper = tick(profile, "helper");
+    const free = tick(profile, "free_role");
+    for (const [name, y] of [["helper", helper], ["free", free]]) {
+      assert.ok(Math.abs(total(y) - total(captain)) < 1e-9, `${profile}/${name}: ${total(y)} vs ${total(captain)}`);
+    }
+    assert.ok(free.tempo <= Math.max(captain.tempo, helper.tempo) + 1e-12, `${profile}: fri rolle ligger mellem de to i tempo`);
+    assert.ok(free.tempo >= Math.min(captain.tempo, helper.tempo) - 1e-12, `${profile}: fri rolle ligger mellem de to i tempo`);
+  }
 });
