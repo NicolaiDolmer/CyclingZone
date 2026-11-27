@@ -298,6 +298,7 @@
     "fallback_rest": "du repos",
     "notesTitle": "Seulement ce jour",
     "todayHeading": "Seulement aujourd'hui",
+    "pastHeading": "Bilan du {day}",
     "trainedAll": "{n, plural, one {# coureur comme choisi.} other {# coureurs comme choisi.}}",
     "trainedOthers": "{n, plural, one {# coureur de plus comme choisi.} other {# coureurs de plus comme choisi.}}",
     "outcome": {

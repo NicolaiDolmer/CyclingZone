@@ -298,6 +298,7 @@
     "fallback_rest": "rust",
     "notesTitle": "Alleen deze dag",
     "todayHeading": "Alleen vandaag",
+    "pastHeading": "Zo ging {day}",
     "trainedAll": "{n, plural, one {# renner zoals gekozen.} other {# renners zoals gekozen.}}",
     "trainedOthers": "{n, plural, one {# renner meer zoals gekozen.} other {# renners meer zoals gekozen.}}",
     "outcome": {

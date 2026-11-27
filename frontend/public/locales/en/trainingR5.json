@@ -298,6 +298,7 @@
     "fallback_rest": "rest",
     "notesTitle": "Only this day",
     "todayHeading": "Only today",
+    "pastHeading": "How {day} went",
     "trainedAll": "{n, plural, one {# rider as chosen.} other {# riders as chosen.}}",
     "trainedOthers": "{n, plural, one {# more rider as chosen.} other {# more riders as chosen.}}",
     "outcome": {

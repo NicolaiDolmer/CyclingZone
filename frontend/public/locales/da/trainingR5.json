@@ -298,6 +298,7 @@
     "fallback_rest": "hvile",
     "notesTitle": "Kun denne dag",
     "todayHeading": "Kun i dag",
+    "pastHeading": "Sådan gik {day}",
     "trainedAll": "{n, plural, one {# rytter som valgt.} other {# ryttere som valgt.}}",
     "trainedOthers": "{n, plural, one {# rytter mere som valgt.} other {# ryttere mere som valgt.}}",
     "outcome": {

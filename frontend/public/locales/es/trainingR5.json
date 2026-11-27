@@ -298,6 +298,7 @@
     "fallback_rest": "descanso",
     "notesTitle": "Solo este día",
     "todayHeading": "Solo hoy",
+    "pastHeading": "Cómo fue el {day}",
     "trainedAll": "{n, plural, one {# corredor como elegiste.} other {# corredores como elegiste.}}",
     "trainedOthers": "{n, plural, one {# corredor más como elegiste.} other {# corredores más como elegiste.}}",
     "outcome": {

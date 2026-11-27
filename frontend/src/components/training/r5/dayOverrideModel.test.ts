@@ -1,6 +1,9 @@
 // #8592 + #8819 · "Kun denne dag": den rene model bag dagsvælgerens valg.
 import assert from "node:assert/strict";
 import test from "node:test";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   dayOverridesOf, hasDayOverrides, outcomeLineKey, overrideReplaced, overrideSessionGroups, recentByDate, ruleMarksOf, selectedRiderIds, todayOverrides,
 } from "./dayOverrideModel.ts";
@@ -70,4 +73,18 @@ test("#8819 DO-12: dagens valg i trupens rækkefølge, og de seneste dage nyeste
     { date: "2026-11-25", riderId: "z", session: "tempo", outcome: "trained" },
   ], roster);
   assert.deepEqual(recent.map((d) => [d.date, d.entries.map((e) => e.riderId)]), [["2026-11-25", ["a", "b"]], ["2026-11-24", ["b"]]]);
+});
+
+test("hver dayOverride-nøgle, I dag og dagsvælgeren bruger, findes på alle fem sprog (pastHeading manglede)", () => {
+  const dir = path.dirname(fileURLToPath(import.meta.url));
+  const used = new Set<string>();
+  for (const file of fs.readdirSync(dir).filter((f) => /\.tsx?$/.test(f) && !f.endsWith(".test.ts"))) {
+    for (const m of fs.readFileSync(path.join(dir, file), "utf8").matchAll(/["'`](dayOverride\.[A-Za-z0-9_.]+)["'`]/g)) used.add(m[1]);
+  }
+  assert.ok(used.has("dayOverride.pastHeading"));
+  const get = (obj: unknown, key: string) => key.split(".").reduce<unknown>((o, k) => (o && typeof o === "object" ? (o as Record<string, unknown>)[k] : undefined), obj);
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const json = JSON.parse(fs.readFileSync(path.join(dir, "../../../../public/locales", lang, "trainingR5.json"), "utf8"));
+    assert.deepEqual([...used].filter((key) => typeof get(json, key) !== "string"), [], lang);
+  }
 });
