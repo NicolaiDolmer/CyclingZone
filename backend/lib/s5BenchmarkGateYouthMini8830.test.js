@@ -53,3 +53,10 @@ test("samme loeb uden ungdoms-trup eller i S5: seniorens kvote doemmer som foer"
   assert.equal(s5.youthMini, false);
   assert.ok(s5.violations.some((v) => v.startsWith("bjergtoppe 4 mod kvote")), s5.violations.join(" | "));
 });
+
+test("junior-mini-GT i S6: een enkeltstart (ejer 27/11), gaten forventer det samme", () => {
+  const e = expectedGrandTourCounts("giro", 4, { maxTimeTrials: 1 });
+  assert.equal(e.timeTrials, 1);
+  assert.equal(Object.values(e.terrains).reduce((a, b) => a + b, 0), 3);
+  assert.equal(expectedGrandTourCounts("giro", 4).timeTrials, 2, "uden loft: uaendret");
+});
