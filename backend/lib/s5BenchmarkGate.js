@@ -330,7 +330,7 @@ export function expectedGrandTourCounts(gtType, stageCount) {
 /**
  * #8830: er loebet en ungdoms-mini-GT (U23/junior, #7471) i en S6+-saeson? Kun da gaelder
  * mini-GT'ens egen bjergtop-kvote (U23 loesning A). `squad` kommer fra planens raekke.
- * @param {{ squad?: string|null }} race
+ * @param {{ squad?: string|null, [key: string]: unknown }} race
  * @param {number} stageCount
  * @param {boolean} s6
  */
@@ -345,7 +345,7 @@ const TERRAIN_RANK = Object.freeze({ flat: 0, rolling: 1, hilly: 2, medium_mount
  *   ugestruktur (spec §5): ingen hoejbjerg i foerste tredjedel · kongeetapen (en etape af
  *   loebets haardeste terraen) i sidste tredjedel · en enkeltstart tidligt (foerste
  *   tredjedel) og en sent (sidste tredjedel) · sidste dag flad eller tidskoersel.
- * @param {{name?: string, race_class?: string, stages: object[]}} race
+ * @param {{name?: string, race_class?: string, squad?: string|null, stages: object[]}} race
  * @param {{ s6?: boolean }} [opts]  mini-GT-tredjedele og S6-etapetjek, kun fra S6 (8830)
  */
 export function checkGrandTour(race, { s6 = false } = {}) {
