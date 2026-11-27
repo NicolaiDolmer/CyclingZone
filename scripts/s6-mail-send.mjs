@@ -24,8 +24,6 @@
 //   --test-to <adr.>   send de 6 testmails til en adresse (udelukker --execute)
 //   --execute          send rigtige mails (kraever app_config-gaten)
 //   --edition <navn>   kun "before-start" (default); mail 2 faar sit eget go
-//   --holdout <andel>  kontrolgruppe 0-0.5 (default 0 = slukket, #8807). Samme
-//                      andel skal gives til scripts/email-campaign-report.mjs
 //
 // ENV (Infisical, aldrig fra disk):
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY  (dry-run og execute)
@@ -58,7 +56,6 @@ import {
 import { S6_AUDIENCES, buildS6SeasonEmail } from "../backend/lib/emailTemplates.js";
 import { getResendClient, sendLoopEmail, sendViaResend } from "../backend/lib/emailService.js";
 import { unsubscribeUrlForStage } from "../backend/lib/emailUnsubUrl.js";
-import { normalizeHoldoutFraction } from "../backend/lib/emailHoldout.js";
 
 const ARGV = process.argv.slice(2);
 const EXECUTE = ARGV.includes("--execute");
@@ -79,12 +76,6 @@ function argValue(flag) {
 
 const TEST_TO = argValue("--test-to");
 const EDITION = argValue("--edition") ?? S6_MAIL_DEFAULT_EDITION;
-let HOLDOUT = 0;
-try {
-  HOLDOUT = normalizeHoldoutFraction(argValue("--holdout"));
-} catch (err) {
-  fail(`--holdout: ${err.message}.`);
-}
 
 if (EXECUTE && ARGV.includes("--dry-run")) fail("--dry-run og --execute kan ikke kombineres.");
 if (TEST_TO !== undefined && (EXECUTE || ARGV.includes("--dry-run"))) {
@@ -214,13 +205,6 @@ function printDistribution(result) {
     const row = result.distribution[audience];
     console.log(`  ${audience.padEnd(10)} ${String(row.en).padStart(6)} ${String(row.da).padStart(6)}`);
   }
-  if (result.holdoutTotal !== undefined) {
-    console.log(`\nKontrolgruppe (andel ${result.holdoutFraction}, faar IKKE mailen): ${result.holdoutTotal}`);
-    for (const audience of S6_AUDIENCES) {
-      const row = result.holdoutDistribution[audience];
-      console.log(`  ${audience.padEnd(10)} ${String(row.en).padStart(6)} ${String(row.da).padStart(6)}`);
-    }
-  }
 }
 
 // ── main ─────────────────────────────────────────────────────────────────
@@ -235,7 +219,6 @@ async function main() {
   const result = await runS6Mail({
     mode: MODE,
     edition: EDITION,
-    holdoutFraction: HOLDOUT,
     loadInputs,
     testTo: TEST_TO,
     sendTestEmail,
