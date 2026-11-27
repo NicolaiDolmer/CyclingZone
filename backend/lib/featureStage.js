@@ -57,6 +57,7 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "peak_leadup_all_rows_8180", // #8180: formtoppens optakt over alle rækker (motorens input)
   "team_chase_7730",
   "jersey_hunt_7855",
+  "hilly_selection_8799",
   "time_limit_fatigue_7715",
   "route_profile_hills",
   "ai_team_retire_enabled",
