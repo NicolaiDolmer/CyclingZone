@@ -1060,12 +1060,12 @@ features:
     area: training
     title_en: Week blocks with priority and one locked session per day
     title_da: Ugeblokke med prioritet og ét låst pas pr. dag
-    state: building
+    state: live
     flag: training_week_priority
     ssot: docs/TRAINING_RULES.md
     epic: 7456
-    verified: 2026-11-26
-    note: "Beta 26/11 kl. 23:09 efter ejer-go (#8549): off → beta, opt-in (kun planer hvor manageren selv har valgt Ugeblokke, #8779). Motor, prognose og Program R5 bag training_week_priority; feltprioritet og lås gemmes med weekBlock på celle-API'et."
+    verified: 2026-11-27
+    note: "On for alle efter ejer-go 27/11 (Fable-gentjek PASS MED BETINGELSER, ingen ikke-beta-hold med Ugeblokke ved flippet). Beta 26/11 kl. 23:09 efter ejer-go (#8549): off → beta, opt-in (kun planer hvor manageren selv har valgt Ugeblokke, #8779). Motor, prognose og Program R5 bag training_week_priority; feltprioritet og lås gemmes med weekBlock på celle-API'et."
     decision: goer-faerdigt
     decide_by: 2026-12-06
 
