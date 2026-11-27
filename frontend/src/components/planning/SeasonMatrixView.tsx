@@ -130,6 +130,9 @@ export default function SeasonMatrixView({
   const activeNumber = activeSeasonNumber(seasons);
   const pickerSeasons = useMemo(() => neighborSeasons(seasons, activeNumber), [seasons, activeNumber]);
   const current = viewedSeason(seasonChoice, seasons);
+  // Codex P2 (#8871): Uge-visningen henter kun den aktive saeson, saa et loeb fra en anden saeson kan ikke
+  // aabnes dér (det ville aabne et forkert loeb). Klik er kun aktive i den aktive saeson.
+  const openRace = seasonChoice == null || seasonChoice === activeNumber ? onOpenRace : undefined;
 
   function changeLens(next: SeasonLens) {
     setLens(next);
@@ -199,14 +202,14 @@ export default function SeasonMatrixView({
           lens={matrixLensFor(lens)}
           problemsOnly={problemsOnly}
           embedded
-          onOpenRace={onOpenRace}
+          onOpenRace={openRace}
           onDirtyChange={setMatrixDirty}
           onData={onData}
           needSquadCount={seasonChoice == null ? needSquadCount : undefined}
         />
       </div>
 
-      {lens === "routeMatch" && <RouteMatchLens snapshot={snapshot} onOpenRace={onOpenRace} />}
+      {lens === "routeMatch" && <RouteMatchLens snapshot={snapshot} onOpenRace={openRace} />}
       {lens === "form" && (
         <I18nReadyGate ns="planner">
           {/* key: et divisionsvalg foelger aldrig med over i en anden saeson (samme regel som Formplan-fanen). */}
