@@ -68,7 +68,7 @@ const client = ({ writes = "on", xp = "on", fromDate = "2026-11-08", params = PA
   [POTENTIAL_ESTIMATES_TABLE]: [],
   team_staff: [],
   team_facilities: [],
-  // t1 har scoutet r2; t2 har scoutet r1 og r3. r3 har kun 3 datoer på t1: ingen egen viden endnu.
+  // t1 har scoutet r2; t2 har scoutet r1 og r3. r3 har kun 3 datoer på t1: dag ét-skønnet (#8855).
   scout_actions: [
     { id: "a1", team_id: "t1", rider_id: "r2" },
     { id: "a2", team_id: "t2", rider_id: "r1" },
@@ -103,9 +103,9 @@ test("dry-run skriver intet og regner alle ryttere på alle menneskehold", async
   assert.equal(report.mode, "dry-run");
   assert.equal(report.truth, "expected_top");
   assert.equal(report.teams, 2, "AI-hold får intet skøn");
-  // t1: r1 (egen, 6 datoer) + r2 (kig). t2: r2 (egen, 25 datoer) + r1 og r3 (kig). r3 lærer stadig på t1.
-  assert.equal(report.written, 5);
-  assert.equal(report.noKnowledge, 1);
+  // t1: r1 (egen, 6 datoer) + r2 (kig) + r3 (egen, 3 datoer: dag ét-skønnet, #8855). t2: r2 (egen, 25 datoer) + r1 og r3 (kig).
+  assert.equal(report.written, 6);
+  assert.equal(report.noKnowledge, 0);
   assert.equal(estimates(sb).length, 0);
 });
 
@@ -121,7 +121,7 @@ test("dry-run før tænding: --assume-xp regner med XP-tallene i private_config"
   const sb = client({ writes: "off", xp: "off" });
   const report = await backfill(sb, { assumeXp: true });
   assert.equal(report.truth, "expected_top");
-  assert.equal(report.written, 5);
+  assert.equal(report.written, 6);
   assert.equal(estimates(sb).length, 0);
 });
 
@@ -131,7 +131,7 @@ test("dry-run med private filer: filerne vinder, og ugyldige filer afvises", asy
   assert.equal((await backfill(sb, { params: PARAMS })).truth, "talent_ceiling");
   assert.equal((await backfill(sb, { params: PARAMS, assumeXp: true })).reason, "xp_params_missing");
   const report = await backfill(sb, { params: PARAMS, developmentXp: XP_RAW });
-  assert.equal(report.written, 5);
+  assert.equal(report.written, 6);
   assert.equal((await backfill(sb, { params: { ...PARAMS, clip: 0 } })).reason, "params_invalid");
   assert.equal((await backfill(sb, { params: PARAMS, developmentXp: { price: {} } })).reason, "xp_params_invalid");
 });
@@ -153,15 +153,15 @@ test("apply skriver de manglende skøn som backfill over forventet topniveau, og
   const sb = client();
   const first = await backfill(sb, { apply: true });
   assert.equal(first.ran, true);
-  assert.equal(first.written, 5);
-  assert.equal(estimates(sb).length, 5);
+  assert.equal(first.written, 6);
+  assert.equal(estimates(sb).length, 6);
   assert.ok(estimates(sb).every((row) => row.write_reason === BACKFILL_TRIGGER && row.computed_at === NOW.toISOString()));
   assert.equal(estimates(sb).find((row) => row.rider_id === "r1" && row.team_id === "t1").ceiling_at_write, truth());
 
   const snapshot = JSON.stringify(estimates(sb));
   const second = await backfill(sb, { apply: true, now: new Date("2026-11-09T11:00:00.000Z") });
   assert.equal(second.written, 0);
-  assert.equal(second.kept, 5);
+  assert.equal(second.kept, 6);
   assert.equal(JSON.stringify(estimates(sb)), snapshot);
 });
 
@@ -173,7 +173,7 @@ test("apply overskriver aldrig en gemt række", async () => {
   };
   const sb = client({ [POTENTIAL_ESTIMATES_TABLE]: [{ ...stored }] });
   const report = await backfill(sb, { apply: true });
-  assert.equal(report.written, 4);
+  assert.equal(report.written, 5);
   assert.deepEqual(estimates(sb).find((row) => row.rider_id === "r1" && row.team_id === "t1"), stored);
 });
 
@@ -185,7 +185,7 @@ test("backfill'en skriver de samme tal og ord som søndagskørslen ville", async
   const key = (row) => `${row.rider_id}:${row.team_id}`;
   const pick = (row) => [row.value, row.certainty, row.knowledge_key, row.ceiling_at_write, row.params_version];
   const sunday = new Map(estimates(viaSunday).map((row) => [key(row), pick(row)]));
-  assert.equal(sunday.size, 5);
+  assert.equal(sunday.size, 6);
   for (const row of estimates(viaBackfill)) assert.deepEqual(pick(row), sunday.get(key(row)), key(row));
 });
 
@@ -204,12 +204,12 @@ test("ét hold der fejler, stopper ikke de andre, og en ny kørsel tager det ige
   assert.deepEqual([...new Set(estimates(sb).map((row) => row.team_id))], ["t2"]);
   const second = await backfill(sb, { apply: true });
   assert.equal(second.failedTeams, 0);
-  assert.equal(estimates(sb).length, 5);
+  assert.equal(estimates(sb).length, 6);
 });
 
 test("gaterne i dry-run: H2-H4 grønne på de planlagte rækker, H5 dækket af læse-testene", async () => {
   const report = await backfill(client(), { withGates: true });
-  assert.equal(report.rows.length, 5);
+  assert.equal(report.rows.length, 6);
   const { gates } = report;
   assert.equal(gates.h1.status, "no_limit", "uden private grænser måles der, men intet dømmes");
   assert.equal(gates.h2.status, "green");
