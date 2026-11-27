@@ -1,0 +1,22 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Race development and training shown separately",
+        "body": "The daily report separates progress from races and from training. Rider profiles no longer show the old training score when riders develop through experience points."
+      },
+      "da": {
+        "title": "Løbsudvikling og træning vises hver for sig",
+        "body": "Dagens rapport viser fremgang fra løb og træning hver for sig. Rytterprofiler viser ikke længere den gamle træningsscore, når rytterne udvikler sig med erfaringspoint."
+      },
+      "refs": [
+        8476
+      ]
+    }
+  ]
+}

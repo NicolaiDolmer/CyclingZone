@@ -31,7 +31,7 @@
 //
 // "Earned today" is the date's own XP (1). "Paid out from the bar" is (3). The two
 // are always shown apart, per rider and in total (Fable verdict on PR #8276, point 5).
-import type { DailyRiderReceipt, DailyTrainingReceipt, TrainingActivity } from "./trainingDailyReceipt.ts";
+import { raceDevelopmentBeforeTraining, type DailyRiderReceipt, type DailyTrainingReceipt, type TrainingActivity } from "./trainingDailyReceipt.ts";
 import { orderAbilities } from "./trainingReceiptView.ts";
 import { ratingChange, type RatingChange, type RosterAbilities } from "./xpRatingChange.ts";
 
@@ -91,9 +91,10 @@ export interface XpTodayView {
   strip: XpDay[];
   /** Dates before the strip's first day, still inside the 30-day window: what "Show older days" would add. */
   olderDays: number;
-  xp: number; xp30: number; points: number; pointRiders: number;
+  xp: number; xp30: number; training: number; race: number; points: number; pointRiders: number;
   earned: number; paid: number; earnedRiders: number; paidRiders: number;
   racePercent: number | null;
+  raceBeforeTraining: boolean;
   counts: Record<TodayFilter, number>;
   riders: XpTodayRider[];
 }
@@ -295,10 +296,12 @@ export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | nu
     previous: days[index - 1]?.date ?? null, next: days[index + 1]?.date ?? null,
     strip, olderDays: Math.max(0, olderDays),
     xp: day.training + day.race,
+    training: day.training, race: day.race,
     xp30: month.reduce((sum, d) => sum + d.training + d.race, 0),
     points: day.points, pointRiders: riders.filter(r => r.points > 0).length,
     earned: day.earned, paid: day.paid, earnedRiders: riders.filter(r => r.earned > 0).length, paidRiders: riders.filter(r => r.paid > 0).length,
     racePercent: raceShare(day.training, day.race),
+    raceBeforeTraining: raceDevelopmentBeforeTraining(run),
     counts: {
       all: riders.length,
       gained: riders.filter(r => r.points > 0).length,

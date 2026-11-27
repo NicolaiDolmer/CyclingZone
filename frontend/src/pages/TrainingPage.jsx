@@ -38,6 +38,7 @@ import {
 import { useTrainingCatalogV3 } from "../lib/useTrainingCatalogV3.ts";
 import { useTrainNowBonusEnabled } from "../lib/trainNowBonusFlag.ts";
 import { copenhagenDayKey } from "../lib/raceCentre.js";
+import { raceDevelopmentBeforeTraining } from "../lib/trainingDailyReceipt.ts";
 import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
 import { formatClock24 } from "../lib/intlLocale.ts";
@@ -953,7 +954,9 @@ export default function TrainingPage() {
   }
 
   // Bestem hvilken trained-today label der vises (med klokkeslæt når det kendes).
+  const raceBeforeTraining = raceDevelopmentBeforeTraining(todayRun);
   function trainedTodayLabel() {
+    if (raceBeforeTraining) return t("dailyReceipt.raceBeforeTraining");
     const by = todayRun?.executed_by;
     const who = by === "assistant" || by === "cron" ? "assistant" : "you";
     const time = trainedTime();
@@ -2502,7 +2505,7 @@ export default function TrainingPage() {
     ? (
       <>
         <span className="text-cz-success font-medium">{trainedTodayLabel()}</span>
-        {phoneLayout && (
+        {phoneLayout && !raceBeforeTraining && (
           <span className="block text-cz-3" title={t("tickModelDone")} data-testid="training-tick-model-note">
             {t("overview.changesTomorrow")}
           </span>

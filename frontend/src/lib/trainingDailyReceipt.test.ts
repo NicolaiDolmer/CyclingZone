@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aggregateTrainingRuns, averagePassScore, sortReceiptRiders, formatSlotRange, waitingForRace } from "./trainingDailyReceipt.ts";
+import { aggregateTrainingRuns, averagePassScore, sortReceiptRiders, formatSlotRange, waitingForRace, raceDevelopmentBeforeTraining } from "./trainingDailyReceipt.ts";
 import type { TrainingActivity } from "./trainingDailyReceipt.ts";
 import { seasonAbilityGains, riderHistoryFromRuns, abilityReceipt, abilityReceiptGainPct } from "./trainingReport.js";
 import { selectTrainingMoment } from "./trainingMoment.js";
@@ -22,6 +22,17 @@ const run = (day: number, patch: Partial<TrainingActivity> = {}) => ({
       form: day === 4 ? 53 : 52, fatigue: day === 4 ? 19 : 11,
       fatigue_delta: day === 4 ? 8 : 0, settlement_status: "complete",
       status: "normal", ...patch }] },
+});
+
+test("race development appears while training is still pending", () => {
+  const race = run(1, { race_day: true });
+  const [raceOnly] = aggregateTrainingRuns([race]);
+  assert.equal(raceOnly.receipt_status, "pending");
+  assert.equal(raceDevelopmentBeforeTraining(raceOnly), true);
+  assert.equal(raceDevelopmentBeforeTraining(aggregateTrainingRuns([run(0), race])[0]), false);
+  assert.equal(raceDevelopmentBeforeTraining(aggregateTrainingRuns([race, run(2, { intensity: "rest" })])[0]), false);
+  assert.equal(raceDevelopmentBeforeTraining(aggregateTrainingRuns([run(0), race, run(2), run(3), run(4)])[0]), false);
+  assert.equal(raceDevelopmentBeforeTraining(null), false);
 });
 
 test("five unordered slots yield one rider/date receipt with all gains and one condition settlement", () => {

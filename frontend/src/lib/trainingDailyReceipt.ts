@@ -1,6 +1,14 @@
 import { receiptPassScore, type ReceiptScoreView } from "./trainingScoreView.ts";
 
 export type ReceiptStatus ="complete" | "pending" | "reconciliation" | "recorded";
+
+/** A date can have race receipts before any training has been recorded. */
+export function raceDevelopmentBeforeTraining(receipt: DailyTrainingReceipt | null | undefined): boolean {
+  if (receipt?.receipt_status !== "pending") return false;
+  const activities = receipt.report.riders.flatMap(rider => rider.activities);
+  return activities.some(activity => activity.race_day === true)
+    && !activities.some(activity => activity.race_day !== true && activity.status !== "unknown_pending");
+}
 type Numbers = Record<string, number>;
 type Jump = { from: number; to: number };
 export interface TrainingActivity {
