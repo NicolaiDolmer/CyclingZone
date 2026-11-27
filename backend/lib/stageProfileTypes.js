@@ -184,8 +184,7 @@ export const ROAD_FINISH_WEIGHTS = Object.freeze({
 
 /**
  * #8830 (ejer 27/11, "Ret D1 nu"): D1's World Tour-loeb (klassen OtherWorldTourA findes kun i
- * D1) ender oftere op ad bakke end resten af kalenderen; med de faelles vaegte ramte D1 ikke
- * afslutningsmaalet i prods katalog (maaling i balance-internals/). Klassen er fast pr. loeb, saa samme
+ * D1) ender oftere op ad bakke end resten af kalenderen. Klassen er fast pr. loeb, saa samme
  * loeb har stadig samme parcours i alle divisioner (#2276). Kun flad og boelget; resten som ROAD.
  */
 export const WORLD_TOUR_A_FINISH_WEIGHTS = Object.freeze({
