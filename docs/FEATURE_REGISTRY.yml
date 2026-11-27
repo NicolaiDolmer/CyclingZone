@@ -386,6 +386,18 @@ features:
     verified: 2026-11-20
     note: Tændt 20/11 efter ejer-go 19/11 (#8490). Menneskehold uden division træner ikke; AI-hold uden division beholder kalenderdagens tick til de låste tal er designet.
 
+  - id: ai-team-frozen-state-8614
+    area: training
+    title_en: AI teams keep a fixed fatigue and form
+    title_da: AI-hold har fast træthed og form
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 6110
+    verified: 2026-11-26
+    decision: ejer-beslutning
+    decide_by: 2026-12-03
+    note: "Kontakten ai_team_frozen_state_8614 seedes off (migration post-merge). Valg B: intet tick, ingen skader, engangs-nulstilling ved sæsonskiftet. Tænding ejer-only."
+
   - id: training-fatigue-now-7801
     area: training
     title_en: Fatigue now counts today's earlier stages
