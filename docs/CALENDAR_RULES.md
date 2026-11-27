@@ -11,6 +11,33 @@ Reglerne lå før spredt over seks filer med hver sin dato og issue-reference. D
 
 ---
 
+## Regelmatrix (ejer 26/11, [#5841](https://github.com/NicolaiDolmer/CyclingZone/issues/5841) punkt 10)
+
+Alle kalenderregler på ét sted: én række pr. niveau, én kolonne pr. løbstype. Hver celle peger på paragraffen hvor reglen, tallet, filen og begrundelsen står. Ændrer du en regel, ændrer du den i paragraffen **og** her. "—" betyder at løbstypen ikke findes på niveauet. **Fra S6** betyder at reglen kun binder kalendere bygget fra S6 (`calendarPlacementRulesForSeason`, `calendarTierCaps.js`); S3-S5 dømmes efter de regler de blev bygget med.
+
+**Gælder alle seniorniveauer og alle løbstyper:** løb hver kalenderdag (§2, 25/8) · eksakt kvote = density × løbsdatoer (§1b, 3/9) · samme antal løbsdage i alle fire divisioner, S6 = 140 (§1d, ejer 26/11) · én rytter ét løb pr. løbsdag (§2b, 25/8) · højst 5 datoer i træk uden endagsløb og uden etapeløb (§1a R16, 27/9) · **sæsonens sidste løbsdag har kun endagsløb** (§2, fra S6, ejer 26/11) · S6-vindue mandag 30/11 → lørdag 26/12 = 27 løbsdatoer, låst, med løb i julen (§2, ejer 26/11).
+
+| Niveau | Hele kalenderen | Monument | Endagsløb | Etapeløb | Grand Tour | World Tour-klasse |
+|---|---|---|---|---|---|---|
+| **Senior D1** | 5 etaper/dato, ≤ 3 løb/løbsdag (§1, 28/6) · **2+ løb på 55-65 % af løbsdagene** (§1, fra S6, ejer 26/11) | aldrig i et GT-spænd (§4, 3/9) · **≥ 3 kalenderdage imellem, ≥ 20 fra første til sidste** (§4, fra S6, ejer 26/11) · virkelig rækkefølge Sanremo → Flandern → Roubaix → Liège → Lombardiet (§4, 3/9) · **Lombardiet efter Vueltaen** (§4, fra S6, ejer 26/11) | andel af løbene (§4, 7/8) · ugeminimum R17 (§1a, 27/9) | klasse ↔ etapeantal (§4, 4/8) · **slutter senest på GT'ens første løbsdag, hvis det overlapper en GT** (§3, fra S6, ejer 26/11) | 3 stk., Giro → Tour → Vuelta (§3, 26/9) · ≤ 4 etaper/dato, ≤ 6 datoer, 2 hviledage (§3, 22/8 + 26/8) · aldrig dag 1-2 (§3, 26/9) · ≥ 1 dag mellem to GT'er (§3) · **ikke sæsonens sidste løb** (§2, fra S6, ejer 26/11) | alle klasser tilladt (§4) · 6-8 etaper (§4, 4/8) |
+| **Senior D2** | 4 etaper/dato, ≤ 3 løb/løbsdag (§1) · **2+ løb på 55-65 %** (§1, fra S6, ejer 26/11) | — | som D1 | som D1 (uden GT) | — | WorldTour B/C + ProSeries (§4) · 6-8 etaper |
+| **Senior D3** | 3 etaper/dato, ≤ 2 løb/løbsdag (§1) · **2+ løb på 35-45 %** (§1, fra S6, ejer 26/11) | — | som D1 | som D1 (uden GT) | — | — (ProSeries + Class1) |
+| **Senior D4** | 3 etaper/dato (fra S4), ≤ 2 løb/løbsdag (§1) · **2+ løb på 35-45 %** (§1, fra S6, ejer 26/11) | — | som D1 | som D1 (uden GT) | — | — (Class1 + Class2) |
+| **U23** | egen kalender, 1-2 løb pr. uge (§1f, 24/9) · **mini-udgaver af D1's løb, intet overlap i S6** (§7g, ejer 26/11; overlap 25-35 % venter til 2027, [#7471](https://github.com/NicolaiDolmer/CyclingZone/issues/7471)) | — | ungdomsløb (§1f) | ungdomsløb (§1f) | — | — |
+| **Junior** | egen kalender, 1 løb pr. uge (§1f, 24/9) · **mini-udgaver af D1's løb, intet overlap i S6** (§7g, ejer 26/11; overlap 15-25 % venter til 2027, #7471) | — | ungdomsløb (§1f) | ungdomsløb (§1f) | — | — |
+
+Etapernes afslutninger, terrænmix, nedkørsler og ikoniske ruter (ejer 26/11 punkt 1, 5-8) er ikke placeringsregler og har derfor ingen celle her. De står i §7g (fra S6, [#8259](https://github.com/NicolaiDolmer/CyclingZone/issues/8259) / [#8830](https://github.com/NicolaiDolmer/CyclingZone/issues/8830)):
+
+| Niveau | Opad (bakke, mur, bjergtop) | Flad spurt | Etapeløb ≤ 5 etaper | Faste ruter |
+|---|---|---|---|---|
+| Senior D1-D4 | 33-40 % | 25-32 % | ingen flad etape krævet (§7e) | 26 ikoniske endagsløb (§7g) |
+| U23 | 33-40 % | 25-32 % | som senior | seniorens rute × 0,75 |
+| Junior | 28-35 % | 30-37 % | som senior | seniorens rute × 0,60 |
+
+**Grand Tours (ejer 26/11 18:31):** en GT må gerne have 2 eller 3 løb samtidig undervejs; kun monumenterne må ikke overlappe en GT (R9). R20 ("et andet etapeløb der overlapper en GT slutter senest når GT'en starter") er **udgået**. To GT'er deler stadig aldrig en kalenderdato (R6).
+
+---
+
 ## 0. De to akser (den hyppigste fejlkilde)
 
 **AI-nedlæggelse (#4753, design-go 9/9):** Når begge aktiveringsflag i GAME_INVARIANTS
@@ -53,7 +80,10 @@ Bemærk at sæson-oversigten viser et ANDET tal under samme ord: `seasonDayOrdin
 | Etaper pr. kalenderdag | `TIER_DENSITY` | 5 | 4 | 3 | **3** | ejer-låst, D4 hævet **3/9** | `calendarTierCaps.js` |
 | Samtidige løb pr. **løbsdag** (loft) | `TIER_OVERLAP_CAP` | 3 | 3 | 2 | 2 | 28/6, bekræftet 24/8 | `calendarTierCaps.js` |
 | Samtidige løb pr. **løbsdag** (bund) | `TIER_OVERLAP_MIN` | 1 | 1 | 1 | 1 | ejer 3/9 ([#3329](https://github.com/NicolaiDolmer/CyclingZone/issues/3329)) | `calendarTierCaps.js` |
-| Andel løbsdage med **≥ 2 løb** | `TIER_MULTI_RACE_DAY_MIN_SHARE` | 45 % | 55 % | 40 % | 40 % | ejer 3/9 (#3329) | `calendarTierCaps.js` |
+| Andel løbsdage med **≥ 2 løb** (gulv, alle sæsoner) | `TIER_MULTI_RACE_DAY_MIN_SHARE` | 45 % | 55 % | **35 %** | **35 %** | ejer 3/9 (#3329); D3-D4 sænket til det nye bånds bund 26/11 (#5841) | `calendarTierCaps.js` |
+| Andel løbsdage med **≥ 2 løb**, bånd (gulv OG loft), **fra S6** | `TIER_MULTI_RACE_DAY_SHARE_BAND` | 55-65 % | 55-65 % | 35-45 % | 35-45 % | **ejer 26/11** ([#5841](https://github.com/NicolaiDolmer/CyclingZone/issues/5841) punkt 9) | `calendarTierCaps.js` |
+
+**Overlap-båndet fra S6 (ejer 26/11).** Ejeren så den målte andel for S3-S5 i alle divisioner og låste et bånd pr. niveau: D1-D2 55-65 %, D3-D4 35-45 %, U23 25-35 %, junior 15-25 % (`SQUAD_MULTI_RACE_DAY_SHARE_BAND`). Ordret: *"det er vigtigt, at spillerne har meningsfulde beslutninger, hvor de skal tage stilling til noget og kan adskille sig selv fra hinanden"*. Andelen måles på løbsdage **med** løb (`computeGameDayOverlap`); træningsdagene tæller ikke med. Pakkeren holder båndet som binding R21 (den prøver de lette løbsdage først, når andelen ligger over båndets midte), og gaten `detectSeasonPlacementRuleViolations` dømmer det hårdt. Ungdommen har intet overlap i S6 (ejer 26/11); dens bånd (U23 25-35 %, junior 15-25 %) står klar i `SQUAD_MULTI_RACE_DAY_SHARE_BAND` til 2027 og er sat til 0 for S6. **D1 når båndet ([#8837](https://github.com/NicolaiDolmer/CyclingZone/issues/8837), flettet ind i #8836): 55,6 % (45/81) i frø 1-7 med alle regler.** Årsagen var søgningen, ikke reglerne (loftet er ca. 66 %). Bånd-trinnet har egne skeletter med fulde GT-spænd (`BAND_SKELETON_*`, `maxGtStagesPerDate`), ét snit pr. dato og "GT + ét løb" først. Margen: én multi-løbsdag mindre giver 54,3 %. Et andet katalog kan falde tilbage til trinnet uden bånd, og så stopper gaten `--apply`. D2-D4: 55,6 / 37,3 / 39,7 %.
 | Tids-slots pr. dag | `TIER_STAGE_SLOTS` | 5 | 4 | 3 | **3** | ejer-låst, D4 hævet 3/9 | `calendarPlanningWindow.js` (#5592) |
 | Etaper i alt (kvote), S4 | density × løbsdatoer | 140 | 112 | 84 | **84** | afledt af §2 | `buildSeasonCalendar.js` |
 
@@ -238,6 +268,8 @@ Alle puljer i en division kører stadig den samme kalender (#2276), så D4's lø
 
 | Regel | Værdi | Låst | Kilde |
 |---|---|---|---|
+| **Løbsdatoer, sæson 6** | **27** (man 30/11 → **lør** 26/12), **med løb i julen** | **ejer 26/11** | [#5841](https://github.com/NicolaiDolmer/CyclingZone/issues/5841), `SEASON_RACE_DAYS_DEFAULT` + `SEASON_RACE_DATES` i `calendarStartDate.js`; mål 140 løbsdage i `SEASON_RACE_DAY_TARGET` (§1d) |
+| **Sæsonen slutter med endagsløb, fra S6** | sæsonens sidste løbsdag med løb bærer kun endagsløb; Vueltaen er aldrig sidste løb | **ejer 26/11** | #5841, binding R19 i `raceCalendarLanePacker.js`, gate `detectSeasonPlacementRuleViolations` |
 | **Løbsdatoer, sæson 5** | **32** (ons 28/10 → **lør** 28/11) | **14/10** | [#5833](https://github.com/NicolaiDolmer/CyclingZone/issues/5833) (forum-afstemning). Ikke i `SEASON_RACE_DAYS_DEFAULT`: `--last-day 2026-11-28` skal med ved `--apply` |
 | **Løbsdatoer, sæson 4** | **28** (man 28/9 → søn 25/10) | **3/9** | [#4270](https://github.com/NicolaiDolmer/CyclingZone/issues/4270), `SEASON_RACE_DAYS_DEFAULT` i `calendarStartDate.js` |
 | Løbsdatoer pr. sæson (S3) | 31 (28/8-27/9) | 25/8 | [#4218](https://github.com/NicolaiDolmer/CyclingZone/issues/4215) |
@@ -254,7 +286,7 @@ Det er en regel om KALENDERDAGE, ikke løbsdage, og den gælder pr. division. En
 
 **S4-vinduet, præcist (ejer 3/9).** Første løbsdag er **mandag 28/9** (S3 slutter søndag 27/9), og en mandags-start kan kun have længder der er hele uger: 21, 28, 35 eller 42. **31 findes ikke som mulighed** — mandag + 30 dage er en onsdag. 35 blev målt umulig: D3 leverede 50 af 105 løbsdage og fik 18 kalenderdage uden løb, altså §2's ejer-regel brudt i en hel division. 28 er den eneste lovlige længde der er målt grøn på dækning i alle fire divisioner. Tallet står som data i `SEASON_RACE_DAYS_DEFAULT`, så `buildSeasonCalendar.js` ikke kræver `--race-days` for S4; alle andre sæsoner får fortsat et udledt forslag ejeren skal bekræfte.
 
-**Lørdag fra S5 (ejer 14/10 kl. 20:35, [#5833](https://github.com/NicolaiDolmer/CyclingZone/issues/5833)).** Efter forum-afstemningen (slutdag: lørdag flest stemmer; pause: 2 fridage) er S5 låst til **onsdag 28/10 → lørdag 28/11 = 32 løbsdatoer**. S6 følger samme regel (foreløbig mandag 30/11 → lørdag 26/12, 27 løbsdatoer; ikke låst). Søndagsreglen (#4131) gælder kun S1-S4 og ændres ikke for en kørende sæson: S4 slutter søndag 25/10 som planlagt. Håndhævet i `resolveSeasonWindow(..., seasonNumber)`: til og med S4 skal sidste løbsdag være en søndag, fra S5 en lørdag (`SATURDAY_FINISH_FROM_SEASON`), og en S5 med søndags-slut **afvises** (bevidst, så den gamle regel ikke sniger sig ind). Uden sæsonnummer gælder søndag, så ældre S4-værktøjer er uændrede; `buildSeasonCalendar.js` sender altid `--season`. Det udledte forslag fra onsdag 28/10 er netop 32 (lovlige lørdags-længder: 25, 32, 39). Sæsonens sidste løbsdag har stadig de korte sæsonskifte-tider (§2f) — reglen følger datoen, ikke ugedagen, så den gælder nu om lørdagen.
+**Lørdag fra S5 (ejer 14/10 kl. 20:35, [#5833](https://github.com/NicolaiDolmer/CyclingZone/issues/5833)).** Efter forum-afstemningen (slutdag: lørdag flest stemmer; pause: 2 fridage) er S5 låst til **onsdag 28/10 → lørdag 28/11 = 32 løbsdatoer**. S6 følger samme regel: mandag 30/11 → lørdag 26/12, 27 løbsdatoer, **låst af ejeren 26/11** (#5841), med løb i julen og 140 løbsdage. 140 går ikke op i 27, så nogle datoer bærer en løbsdag mere end andre; skadernes varighed rundes derfor op (`injuryRaceDays.js`). Søndagsreglen (#4131) gælder kun S1-S4 og ændres ikke for en kørende sæson: S4 slutter søndag 25/10 som planlagt. Håndhævet i `resolveSeasonWindow(..., seasonNumber)`: til og med S4 skal sidste løbsdag være en søndag, fra S5 en lørdag (`SATURDAY_FINISH_FROM_SEASON`), og en S5 med søndags-slut **afvises** (bevidst, så den gamle regel ikke sniger sig ind). Uden sæsonnummer gælder søndag, så ældre S4-værktøjer er uændrede; `buildSeasonCalendar.js` sender altid `--season`. Det udledte forslag fra onsdag 28/10 er netop 32 (lovlige lørdags-længder: 25, 32, 39). Sæsonens sidste løbsdag har stadig de korte sæsonskifte-tider (§2f) — reglen følger datoen, ikke ugedagen, så den gælder nu om lørdagen.
 
 > ⚠ **Længden er ikke længere 27.** Værdien stod låst på 27 fra 23/8 og blev ændret til 31 den 25/8, da sæsonstarten blev udskudt fra tirsdag 25/8 til fredag 28/8 med uændret slutdato søndag 27/9. Ændrer du startdatoen igen, skal `realDays` efterregnes: **antal løbsdatoer = slutdato − startdato + 1**, og slutdatoen skal ramme sæsonens slut-ugedag (søndag til og med S4, lørdag fra S5).
 
@@ -573,6 +605,9 @@ S4's første dag er den eneste dag hvor en etape ligger efter kl. 19; træningss
 | GT-etaper pr. kalenderdag | `MAX_GT_STAGES_PER_DAY` | 4 | 22/8 m. @thelamba | `raceCalendarLanePacker.js` |
 | GT-spænd i kalenderdage | `MAX_GT_SPAN_DAYS` | 6 | 22/8 m. @thelamba | `raceCalendarLanePacker.js` |
 | Hviledage pr. GT | `GRAND_TOUR_REST_DAYS` | **præcis 2** | 26/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)) | `grandTourRestDays.js` |
+| ~~Andet etapeløb der overlapper en GT~~ | — | **udgået** (R20); en GT må have 2-3 løb samtidig, kun monumenter må ikke overlappe | **ejer 26/11 18:31** ([#8830](https://github.com/NicolaiDolmer/CyclingZone/issues/8830)) | — |
+
+**Etapeløb mod Grand Tour (ejer 26/11).** R20 blev bygget i #5841 og udgik samme aften: ejer ordret *"jeg vil næste sige, at gt'erne skal have overlap. Det må bare ikke være med monumenterne, ellers må gt meget gerne have overlap"*. Ejerens 26/9-tilladelse til frit overlap gælder derfor igen. Monumenter i en GT dømmes stadig hårdt (R9).
 | GT'er kun i | tier 1 | — | [#2251](https://github.com/NicolaiDolmer/CyclingZone/issues/2251) | `tierCalendarMaterializer.js` |
 | To GT'er må ikke dele kalenderdag | real-day-separation | ≥ 1 dags mellemrum | 6/8 | [#3472](https://github.com/NicolaiDolmer/CyclingZone/issues/3472) |
 | GT'ernes startrækkefølge | R14 + `detectGrandTourOrderViolations` | **Giro → Tour → Vuelta** (virkelig startdato fra `date_text`) | **ejer 26/9** ([#5802](https://github.com/NicolaiDolmer/CyclingZone/issues/5802)) | `raceCalendarLanePacker.js`, `calendarPlacementGates.js` |
@@ -669,6 +704,15 @@ Reglerne er nu **bindinger i `solveContiguousStarts`** (`raceCalendarLanePacker.
 | **R9** | et monument ligger aldrig inde i et Grand Tours spænd | **løbsdage** (`game_day`) | — (GT'ens eget spænd) |
 | **R10** | mindst 2 dage mellem to nabo-monumenter | **kalenderdage** | `MONUMENT_MIN_CALENDAR_GAP_DAYS` |
 | **R11** | mindst 14 dage fra første til sidste monument | **kalenderdage** | `MONUMENT_MIN_CALENDAR_SPREAD_DAYS` |
+
+**Strammet fra S6 (ejer 26/11, [#5841](https://github.com/NicolaiDolmer/CyclingZone/issues/5841) punkt 2-3):** R10 er **3** kalenderdage (`MONUMENT_MIN_CALENDAR_GAP_DAYS_FROM_S6`), R11 er **20** (`MONUMENT_MIN_CALENDAR_SPREAD_DAYS_FROM_S6`), og to regler er nye:
+
+| | Regel | Akse |
+|---|---|---|
+| **R18** | de monumenter der i virkeligheden ligger efter den sidste Grand Tour (Lombardiet efter Vueltaen), ligger også efter alle GT'er i kalenderen | løbsdage |
+| **R22** | skelet: GT-starter og monument-datoer låses først (de mest virkelighedsnære kombinationer, der holder R6, R10, R11, R15 og R18), og søgningen fylder resten ud | kalenderdage |
+
+**Hvorfor R9 ikke virkede i S6 (målt 26/11).** Med 27 datoer brugte det monument-bundne forsøg hele `MONUMENT_SOLVE_MAX_STEPS` uden at finde en pakning, i alle syv frø, og kalenderen kom fra forsøget uden reglerne: fire monumenter inde i Giroen og Vueltaen. Reglerne var ikke umulige. Søgningen opdagede bare først dybt nede i træet, at der ikke var plads til det næste monument. R22 gør de globale regler lokale, og D1 løses nu med alle monument-regler i alle syv frø. Ejeren har bedt om at få tallene, hvis generatoren kan bevise at en monument-regel er umulig; reglerne slækkes ikke.
 
 Begge konstanter bor i `calendarTierCaps.js`. **Spredningen måles fortsat i KALENDERDAGE** (ejer 3/9, §11 punkt 5 = valg B); monument-i-GT måles på løbsdage. De to må aldrig blandes sammen.
 
@@ -1258,7 +1302,9 @@ S5-kalenderen var skrevet (15/10), før løbsidentiteten (type, signatur, hånds
 
 **Motoren testes på de foreslåede ruter før apply** (ejer 19/10): `--routes-out=<mappe>` skriver én fil pr. løb i testportens format `cz-race-routes/v1` (`docs/MOTOR_TESTPORT.md`, "Foreslåede ruter", #6909) med præcis de rækker `--apply` ville skrive, og en `manifest.json`. Testporten læser mappen med `--routes-from`.
 
-## 7e. Ethvert etapeløb har mindst én flad etape (A2, ejer 24/10, [#2757](https://github.com/NicolaiDolmer/CyclingZone/issues/2757))
+## 7e. Etapeløb på 6+ etaper har mindst én flad etape (A2, ejer 24/10, [#2757](https://github.com/NicolaiDolmer/CyclingZone/issues/2757); ændret 26/11)
+
+**Ændret 26/11 (ejer, [#8830](https://github.com/NicolaiDolmer/CyclingZone/issues/8830)):** et etapeløb på **5 etaper eller færre** behøver ingen flad etape; 6+ har stadig mindst én (`A2_MIN_STAGES_FOR_FLAT = 6`, håndhævet i `ensureFlatStageS5`). `chooseA2FlatStage` og S5-scriptet `s5FlatStageA2_2757.js` er uændrede, så S5's skrevne ruter dømmes som før.
 
 Et etapeløb uden flad etape giver sprinteren ingen dag at vinde pointtrøjen på. Reglen gælder S5-modellen (`profileModel: "s5"`) for alle etapeløb, også ungdomskalendere og fremtidige sæsoner. v5 er uændret.
 
@@ -1270,6 +1316,29 @@ Et etapeløb uden flad etape giver sprinteren ingen dag at vinde pointtrøjen p�
 - **Kode:** `raceStageProfileGenerator.chooseA2FlatStage` / `buildA2FlatStage` / `ensureFlatStageS5` (`a2FlatStage: false` giver før-A2-output til tests).
 
 **S5's skrevne ruter** rettes på stedet med `backend/scripts/s5FlatStageA2_2757.js` (samme funktioner, på løbets egen sæson-variant). Dry-run er standard: før/efter-rapport, ét billede af alle berørte løb, gaterne (§5, rolling-båndet og §6b før/efter, kun nye brud blokerer; placerings-gaterne; benchmark-gatens etape-tjek; `calendarInvariantsCiGate4123`) og `backup.sql`/`restore.sql`, alt i `balance-internals/2757-a2/`. Apply kræver ejerens godkendelse af billedet: `--apply --owner-go --backup-table=backup_2757_race_stage_profiles_YYYYMMDD --plan-hash=<hash> --plan-file=<dry-runnets a2-dry-run.json>`. Apply bruger den godkendte plan (bygger den aldrig om), opdaterer kun den valgte etape pr. løb på samme række, nægter at skrive hvis en etape er ændret siden dry-runnet, og er genoptagelig.
+
+## 7g. S6: afslutningsmål pr. niveau, faste ruter og ungdommens mini-udgaver (ejer 26/11, [#8830](https://github.com/NicolaiDolmer/CyclingZone/issues/8830))
+
+**Kun fra S6 (sæson-vagt, 27/11).** Alt i dette afsnit og §7e's undtagelse for korte etapeløb gælder kun, når sæsonen er 6 eller senere: afslutningsvægtene (senior, brosten, GT og ungdom), de faste ikoniske ruter, nedkørselsvinduet, mini-GT-reglerne, de 5-etapers løb uden flad etape og terræn-kvotens S6-mål. Grænsen er den samme som placeringsreglernes (`CALENDAR_PLACEMENT_RULES_FIRST_SEASON`, `s6RouteRulesApply` / `isS6Race` i `calendarTierCaps.js`). Materializeren sætter `season_number` og `squad` på hvert seed-løb (`seedRaceFor`). Generatoren, rutegeneratoren, terræn-kvoten og benchmark-gaten læser dem derfra. Ukendt sæson betyder de gamle regler. Derfor er S3-S5 bit-identiske: en pulje, der aktiveres midt i S5, får samme parcours som sine søsterpuljer (#2276). Beviset er, at S5-fingeraftrykket i `raceStageProfileGenerator.test.js`, `pass1-golden.json` og `s5MotorBench.json` er lig main. Før S6 ignoreres et ikonisk løbs faste rute. Enhver anden håndskreven rute på et ikke-monument afvises stadig (fail-closed).
+
+**Målene (ejer 26/11, pr. division og pr. niveau).** Senior og U23: 33-40 % af etaperne ender opad, 25-32 % i flad spurt. Junior: 28-35 % opad, 30-37 % flad spurt. Før var målet 25-32 % opad og 32-40 % fladt (§7b). **Opad** = bakke, mur og bjergtop (`punch`, `wall_finish`, `long_climb`; samme klasse som `FINALE_CLASS_BY_TYPE`). **Flad spurt** = `flat_sprint`. Spurt op ad bakke (`uphill_sprint`), nedkørsel og tidskørsel tæller i ingen af de to.
+
+**Vægtene (`backend/lib/stageProfileTypes.js`).**
+- Senior uden for GT: `ROAD_FINISH_WEIGHTS` / `COBBLES_FINISH_WEIGHTS` (#8259, justeret 26/11).
+- Senior-GT: benchmarkens vægte, undtagen kuperet og mellembjerg, der fra S6 bruger `GT_FINISH_WEIGHTS_S6` (færre flade spurter). Ellers lå D1 over 32 % flad spurt. Benchmark-gatens del (3) måler stadig GT-afslutningerne mod rigtige Grand Tours.
+- Ungdom (U23/junior): `YOUTH_FINISH_WEIGHTS` på alle landevejsetaper, også mini-GT'erne. En ungdoms-mini-GT ender på toppen af alle sine bjerg- og højbjergetaper (`assignGrandTourFinishes`), ellers kan U23 ikke nå 33 % opad med mini-GT'ernes to tidskørsler. Junior er fladere end U23.
+
+**Nedkørsel (ejer 26/11 punkt 6):** sidste top højst 12 km før mål (før 25), undtagen bjerg og højbjerg (`DESCENT_LAST_TOP_WINDOW_KM`).
+
+**Faste ruter (ejer 26/11 punkt 7).** 26 ikoniske endagsløb i D1-D4 har en fast, håndlavet rute (`ICONIC_ROUTE_PROPOSALS_8259`), som monumenterne. De skrives på `race_pool.authored_route` af den idempotente migration `database/2026-11-26-8259-iconic-fixed-routes.sql`, der genereres af `backend/scripts/dev/buildIconicRoutesMigration8259.mjs` (testen holder filen lig med JS-kilden). Ungdomsudgaverne får samme rute, skaleret ved generering: U23 75 %, junior 60 % (`youthMiniEditions7471.js`).
+
+**Ungdommens mini-udgaver ([#7471](https://github.com/NicolaiDolmer/CyclingZone/issues/7471)).** U23 og junior kører mini-udgaver af D1's løb med navnet *"Seniornavn U23/Junior"*: mini-GT'er på 7 (U23) og 4 (junior) etaper, etapeløb afkortet (aldrig under 3), monumenter som endagsløb. Mål: U23 ~40, junior ~28 løbsdage. Intet overlap i S6. Det gamle ungdomskatalog pensioneres blødt (`retired_at`, intet slettes) af `database/2026-11-26-8830-retire-old-youth-catalog.sql`, kun når niveauets mini-udgaver findes.
+
+**Tolerance ±2 point (ejer 26/11).** Divisionen er en stikprøve af katalogets løb (samme løb = samme rute i alle divisioner), så en division kan ligge et point fra båndet, uden at vægtene er forkerte. Målene og toleransen er data (`S6_FINISH_TARGETS`, `S6_FINISH_TOLERANCE_PP` i `stageFinaleMetrics.js`), og `s6FinishTargets8830.test.js` måler den offline S6-kalender over frø 1-5 og fejler uden for ±2.
+
+**Målt 27/11 (offline, S6 30/11-26/12, 140, frø 1-5, gennem `materializeTierCalendars`), opad / flad spurt:** D1 40,1 / 33,2 · D2 35,0 / 25,9 · D3 35,6 / 32,6 · D4 39,5 / 23,7 · U23 41,0 / 28,2 · junior 30,0 / 37,1. Ungdommen er målt gennem materializeren med `squad` på seedet (26/11-tallene gik uden om den).
+
+**Åben konflikt (27/11, ejer-valg før U23's `--apply`).** U23's mini-GT'er på 7 etaper (Giro- og Vuelta-typen) ender på toppen af alle bjergetaper. Det giver 3 og 4 bjergtoppe mod benchmark-gatens GT-kvote på 1 og 2 (±1), så gaten afviser U23's apply i frø 1-5 (fail-closed, intet skrives). Junior og senior er grønne. Valget står mellem en GT-kvote for ungdommens mini-GT'er og færre bjergtoppe i U23. `s6YouthApplyPath8830.test.js` dømmer, at gaten stopper U23, og at junior skriver ungdommens bjergtoppe. Med D1-pakningen fra #8837 (D1 55,6 % løbsdage med 2+ løb i frø 1-7). Benchmark-gaten (§7c) er grøn med GT_FINISH_WEIGHTS_S6: GT-muren og -bakken holdes inden for benchmarkens tolerance.
 
 ### 7f. Variation i etaperækkefølgen (ejer 24/10, [#2757](https://github.com/NicolaiDolmer/CyclingZone/issues/2757))
 

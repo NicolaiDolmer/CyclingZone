@@ -101,8 +101,11 @@ export function injuryEndGameDay({ gameDay, days, seasonNumber,
     return null;
   }
   const density = Number(raceDays) / Number(calendarDates);
-  if (!Number.isFinite(density) || density < 1 || !Number.isInteger(density)) return null;
-  return gd + n * density;
+  if (!Number.isFinite(density) || density < 1) return null;
+  // #5841: S6 har 140 loebsdage paa 27 datoer, saa taetheden er ikke et heltal. Varigheden
+  // rundes OP, saa en skade aldrig bliver kortere end de kalenderdage den blev rullet til.
+  // For heltals-taethed (S4, S5) er resultatet uaendret.
+  return gd + Math.ceil(n * density - 1e-9);
 }
 
 // Delayed finalization cannot move a fresh crash injury's date backwards.

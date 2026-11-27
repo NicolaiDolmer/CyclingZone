@@ -40,10 +40,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import {
-  TERRAIN_TYPES, FINISH_MATRIX, canonicalFinaleType,
+  TERRAIN_TYPES, FINISH_MATRIX, canonicalFinaleType, descentTopWindowFor,
 } from "./stageProfileTypes.js";
 import { regionOf } from "./raceRouteGenerator.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
+import { s6RouteRulesApply } from "./calendarTierCaps.js";
 import { checkElevationProfile, ELEVATION_PROFILE_MIN_GENERATOR_VERSION } from "./routeElevationProfile.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -193,9 +194,10 @@ function checkFinishRamp(stage, finish) {
 /**
  * Del (1) for EN etape. Returnerer terraenet efter B+, afslutningen, og bruddene.
  * @param {object} stage  genereret etape: profile_type, finale_type, distance_km, climbs, sprints
+ * @param {{ s6?: boolean }} [opts]  S6-nedkoerselsvinduet, kun fra S6 (8830)
  * @returns {{ terrain: string, finish: string|null, isTimeTrial: boolean, violations: string[] }}
  */
-export function checkStage(stage) {
+export function checkStage(stage, { s6 = false } = {}) {
   const violations = [];
   const terrain = deriveTerrainTypeBPlus(stage?.climbs);
   const pt = stage?.profile_type ?? null;
@@ -237,7 +239,8 @@ export function checkStage(stage) {
     }
   } else if (finish === "descent") {
     const toGo = last && Number.isFinite(distance) ? distance - Number(last.crest_km) : NaN;
-    const [lo, hi] = S5_DESCENT_TOP_WINDOW_KM;
+    // #8259/#8830: fra S6 kort vindue undtagen bjerg/hoejbjerg; S3-S5 doemmes uaendret.
+    const [lo, hi] = s6 ? descentTopWindowFor(terrain) : S5_DESCENT_TOP_WINDOW_KM;
     if (!last || !(String(last.category) in CAT_RANK) || CAT_RANK[String(last.category)] > CAT_RANK["3"]) {
       violations.push(`nedkørsel kræver at sidste top er kat. 3 eller hårdere (er ${last ? `kat. ${last.category}` : "ingen stigning"})`);
     } else if (!Number.isFinite(toGo) || toGo < lo - GEOMETRY_EPS || toGo > hi + GEOMETRY_EPS) {
@@ -332,8 +335,9 @@ const TERRAIN_RANK = Object.freeze({ flat: 0, rolling: 1, hilly: 2, medium_mount
  *   loebets haardeste terraen) i sidste tredjedel · en enkeltstart tidligt (foerste
  *   tredjedel) og en sent (sidste tredjedel) · sidste dag flad eller tidskoersel.
  * @param {{name?: string, race_class?: string, stages: object[]}} race
+ * @param {{ s6?: boolean }} [opts]  mini-GT-tredjedele og S6-etapetjek, kun fra S6 (8830)
  */
-export function checkGrandTour(race) {
+export function checkGrandTour(race, { s6 = false } = {}) {
   const stages = Array.isArray(race?.stages) ? race.stages : [];
   const n = stages.length;
   const gtType = grandTourTypeOf({ ...race, stages: n });
@@ -341,7 +345,7 @@ export function checkGrandTour(race) {
   const tol = S5_GT_QUOTA_TOLERANCE;
   const violations = [];
 
-  const checked = stages.map((s) => checkStage(s));
+  const checked = stages.map((s) => checkStage(s, { s6 }));
   const terrains = Object.fromEntries(S5_GT_ROAD_TERRAINS.map((t) => [t, 0]));
   let summits = 0;
   let timeTrials = 0;
@@ -363,7 +367,9 @@ export function checkGrandTour(race) {
 
   // Ugestrukturen. Tredjedele som generatoren: foerste = indeks < floor(n/3), sidste =
   // indeks >= n - floor(n/3).
-  const third = Math.floor(n / 3);
+  // #8830: en mini-GT (ungdom, kortere end GRAND_TOUR_MIN_STAGES) rundes op, samme regel
+  // som generatorens orderGrandTourS5. Rigtige GT'er doemmes uaendret.
+  const third = s6 && n < GRAND_TOUR_MIN_STAGES ? Math.ceil(n / 3) : Math.floor(n / 3);
   const firstThirdEnd = third;
   const lastThirdStart = n - third;
   const week = [];
@@ -613,14 +619,17 @@ function raceKey(r, i) {
  * @param {{
  *   races: Array<{pool_race_id?: string, name?: string, race_type?: string, race_class?: string,
  *     terrain_archetype?: string, stages: object[]}>,
+ *   seasonNumber?: number|null,
  *   benchmark: object[],                  loadS5Benchmark()
  *   motor?: object|null,                  loadMotorGapFile(); null = del (4) ikke maalt (roed)
  * }} args
+ *   seasonNumber  saesonen; S6-parcoursreglerne (nedkoerselsvindue, mini-GT) kun fra 6 (8830)
  *   Samme loeb i flere divisioner (samme pool_race_id) taelles een gang: et loebs parcours
  *   er seedet paa loebets identitet, saa det ER den samme rute.
  * @returns {{ green: boolean, blocking: string[], parts: object }}
  */
-export function evaluateS5BenchmarkGate({ races = [], benchmark, motor = null }) {
+export function evaluateS5BenchmarkGate({ races = [], benchmark, motor = null, seasonNumber = null }) {
+  const s6 = s6RouteRulesApply(seasonNumber); // #8830: S6-parcoursreglerne kun fra S6
   if (!Array.isArray(benchmark) || benchmark.length === 0) throw new Error("evaluateS5BenchmarkGate: benchmark mangler");
   const seen = new Set();
   const unique = [];
@@ -638,14 +647,14 @@ export function evaluateS5BenchmarkGate({ races = [], benchmark, motor = null })
   for (const r of unique) {
     for (const s of r.stages ?? []) {
       stageCount += 1;
-      const c = checkStage(s);
+      const c = checkStage(s, { s6 });
       if (c.violations.some((v) => v.startsWith("type "))) mismatchedType += 1;
       for (const v of c.violations) stageViolations.push(`${r.name ?? raceKey(r, 0)} etape ${s.stage_number ?? "?"}: ${v}`);
     }
   }
 
   // (2) pr. GT
-  const gts = unique.filter(isGrandTourRace).map((r) => checkGrandTour(r));
+  const gts = unique.filter(isGrandTourRace).map((r) => checkGrandTour(r, { s6 }));
   const gtViolations = gts.flatMap((g) => g.violations.map((v) => `${g.name ?? "GT"} (${g.gtType}-typen, ${g.stageCount} etaper): ${v}`));
 
   // (3) saeson

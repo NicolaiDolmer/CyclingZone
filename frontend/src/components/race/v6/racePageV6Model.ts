@@ -380,9 +380,29 @@ export function tacticsAfterView({ timeTrial, spoilerHidden = false, resultsStat
  * når fanen forlades). Uden den åbner fanen på etapen guld-knappen nævner, ellers
  * på den valgte etape. Den sidste handling vinder altid, så guld-knappen åbner
  * editoren, også når en kørt etape står valgt i striben.
+ * #8800: en valgt etape, der stadig kan få taktik (ukørt og ikke startet), er selv et
+ * valg og vinder over guld-knappens etape. Ellers sprang fanen fra den valgte etape
+ * (fx 16) til løbets næste åbne etape (14), så snart holdets roller var hentet, og
+ * Etape-fanens etape skiftede ved et klik på Taktik.
  */
-export function v6TacticsStage({ requested, ctaStage, selectedStage }: { requested: number | null | undefined; ctaStage: number | null | undefined; selectedStage: number }): number {
-  return requested ?? ctaStage ?? selectedStage;
+export function v6TacticsStage({ requested, ctaStage, selectedStage, selectedOpen = false }: {
+  requested: number | null | undefined; ctaStage: number | null | undefined; selectedStage: number; selectedOpen?: boolean;
+}): number {
+  if (requested != null) return requested;
+  if (selectedOpen) return selectedStage;
+  return ctaStage ?? selectedStage;
+}
+
+/**
+ * #8800: kan etapen stadig få taktik? Ukørt, løbet ikke slut, og etapens start (låsetid)
+ * ikke passeret; samme regel som guld-knappens åbne etape (tacticsCta).
+ */
+export function v6StageOpenForTactics({ stage, stagesCompleted, totalStages, raceFinished, schedule, nowMs }: {
+  stage: number; stagesCompleted: number; totalStages: number; raceFinished: boolean; schedule: ScheduleRow[]; nowMs: number;
+}): boolean {
+  if (raceFinished || stage <= stagesCompleted || stage > totalStages) return false;
+  const locksAt = scheduleFor(schedule, stage);
+  return locksAt === null || locksAt.getTime() > nowMs;
 }
 
 /** En etapes resultater, som siden henter dem pr. etape (stageFetchState). */

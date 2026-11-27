@@ -248,7 +248,9 @@
         "band3": "6-8 %",
         "band4": "8-10 %",
         "band5": "más del 10 %",
-        "down": "bajada"
+        "down": "bajada",
+        "cobbles": "adoquines",
+        "gravel": "grava"
       },
       "sprint": "Sprint en el km {km}"
     },

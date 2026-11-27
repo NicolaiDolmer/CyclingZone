@@ -246,6 +246,13 @@ export function perKmGradeCeil(perKm: ClimbKm[]): number {
 
 // ── Underlag: kun naar det ikke er asfalt (ejer 14/10) ─────────────────────
 
+/** #8259: hvilke underlag profilen tegner (brosten, grus), i fast raekkefoelge. Tom = asfalt. */
+export function sectorKindsOf(profile: StageProfile | null | undefined): Array<"cobbles" | "gravel"> {
+  const kinds = new Set<"cobbles" | "gravel">();
+  for (const s of Array.isArray(profile?.sectors) ? profile!.sectors! : []) kinds.add(s?.kind === "gravel" ? "gravel" : "cobbles");
+  return (["cobbles", "gravel"] as const).filter((k) => kinds.has(k));
+}
+
 export function surfaceOf(profile: StageProfile | null | undefined): { kind: "cobbles" | "gravel"; count: number; km: number } | null {
   const sectors = Array.isArray(profile?.sectors) ? profile!.sectors! : [];
   if (!sectors.length) return null;
