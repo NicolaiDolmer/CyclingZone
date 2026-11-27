@@ -46,6 +46,12 @@ BEGIN
       beta_soon = false, live_soon = false, updated_at = now()
   WHERE r.id = '136efc1d-7aca-4e85-9c7d-f11b88639198' AND r.issue_ref = 8034 AND r.status IS DISTINCT FROM 'shipped';
 
+  -- 1c. Ugeblokke med prioritet #8549: on for alle 27/11 kl. 14:11 (ejer-go, bevis paa #8549).
+  UPDATE public.roadmap_items AS r
+  SET status = 'shipped', shipped_at = coalesce(r.shipped_at, '2026-11-27T13:11:00Z'::timestamptz),
+      beta_soon = false, live_soon = false, updated_at = now()
+  WHERE r.id = 'c460f604-5748-4d91-888c-e406e7ddcf29' AND r.issue_ref = 8549 AND r.status IS DISTINCT FROM 'shipped';
+
   -- 2. Leveret nu, virker fra skiftet (ejer: "Leveret nu, virker fra skiftet"):
   --    bestyrelsen efter pause #8100 (merget i #8675).
   UPDATE public.roadmap_items AS r
@@ -76,7 +82,6 @@ BEGIN
   FROM (VALUES
     ('3f3530a9-2de8-4249-a93d-73ea2af68941'::uuid, 7471),
     ('55deb42a-938a-4757-9882-521c8d7bdf51'::uuid, 8259),
-    ('c460f604-5748-4d91-888c-e406e7ddcf29'::uuid, 8549),
     ('a84c7b6b-25b7-4905-a598-6ffc601f1db7'::uuid, 8419),
     ('23f166d1-f97a-409a-ab81-ff593ba74d2d'::uuid, 8592),
     ('a85f958a-c5a9-4fe3-98ed-ab7d1ab09e3c'::uuid, 8604)
@@ -144,10 +149,10 @@ BEGIN
     RAISE EXCEPTION '#8719 roadmap-synk: stemmetallet aendrede sig (% -> %)', v_votes_before, v_votes_after;
   END IF;
   SELECT string_agg(issue_ref::text, ', ') INTO v_bad FROM public.roadmap_items
-  WHERE (issue_ref IN (7456, 8060, 6944, 5865, 8100, 8034) AND status <> 'archived' AND id IN (
+  WHERE (issue_ref IN (7456, 8060, 6944, 5865, 8100, 8034, 8549) AND status <> 'archived' AND id IN (
            '786060ea-18d4-4e86-ab35-440ab6572d32', 'd946b0d3-710b-4497-9602-5072b6ca7a60',
            '4ab9f564-1f74-435d-9219-8221ab7986dc', '00006149-0000-4000-8000-000000000021',
-           'f79233f8-fac5-44c9-b791-d44b01843f55', '136efc1d-7aca-4e85-9c7d-f11b88639198') AND status <> 'shipped')
+           'f79233f8-fac5-44c9-b791-d44b01843f55', '136efc1d-7aca-4e85-9c7d-f11b88639198', 'c460f604-5748-4d91-888c-e406e7ddcf29') AND status <> 'shipped')
      OR (id = '9099ebce-5236-4a5a-a4da-9473b786bf4a' AND (category IS DISTINCT FROM 'development' OR horizon <> '2026-11-28'))
      OR (id = 'fda1fcca-8af7-4734-98b7-30f803b0d63f' AND (category IS DISTINCT FROM 'training' OR horizon <> '2026-11-27'))
      OR (id = '09bc633a-3835-45f9-a083-b3df758a1294' AND (category IS DISTINCT FROM 'races' OR horizon <> '2026-11-30'));
