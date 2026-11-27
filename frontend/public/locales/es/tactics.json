@@ -52,6 +52,7 @@
     "ifDropped": "Si se descuelga: {task}",
     "steps": "Niveles de esfuerzo",
     "toClimb": "Hasta {name}",
+    "toClimbUnnamed": "Hasta la categoría {category} en el km {km}",
     "toLastTen": "Hasta los últimos 10 km",
     "lastTen": "Últimos 10 km",
     "tryBreak": "Intentar la escapada",

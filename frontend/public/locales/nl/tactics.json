@@ -52,6 +52,7 @@
     "ifDropped": "Als hij gelost wordt: {task}",
     "steps": "Inspanningsniveaus",
     "toClimb": "Naar {name}",
+    "toClimbUnnamed": "Naar categorie {category} bij km {km}",
     "toLastTen": "Naar de laatste 10 km",
     "lastTen": "Laatste 10 km",
     "tryBreak": "Vlucht proberen",

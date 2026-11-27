@@ -92,7 +92,11 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
     report?.(summaryStage == null || summaryCount == null ? null : { stage: summaryStage, assistant: summaryCount });
   }, [report, summaryStage, summaryCount]);
   useEffect(() => () => report?.(null), [report]);
-  const partLabel = (label: RoutePartLabel) => (label.key === "toClimb" ? t("orders.toClimb", { name: label.name }) : t(`orders.${label.key}`));
+  const partLabel = (label: RoutePartLabel) => {
+    if (label.key === "toClimb") return t("orders.toClimb", { name: label.name });
+    if (label.key === "toClimbUnnamed") return t("orders.toClimbUnnamed", { category: label.category, km: label.km }); // #8828
+    return t(`orders.${label.key}`);
+  };
   const labels = partLabels.map(partLabel);
   const todayText = (today: BoardToday): string => {
     switch (today.key) {

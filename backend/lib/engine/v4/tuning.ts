@@ -487,6 +487,13 @@ export const QUEEN_STAGE_GAP_7236_TUNING = deepFreeze({
 
 // #7635 (KUN s5_profiles_v3 + kontakten stage_plan_dropped_front_7635, SLUKKET): hvornaar en rytter
 // med etapeplan er "sat" (stagePlanEngine.isRiderDropped7635). Valgt konservativt, begrundelse privat.
+// #7884/#8828 (kontakten long_attack_7884, IKKE tilsluttet loebet): langt angreb fra foden
+// (mechanics/longAttack7884.ts). Foreloebige vaerdier; kalibreringen er privat (balance-internals/7884/).
+export const LONG_ATTACK_7884_TUNING = deepFreeze({
+  cpBonus: 0.06, // tillaegget over egen evne, mens reserven raekker
+  reserveSharePerHour: 2.4, // reservens pris for tillaegget (andel af fuld reserve pr. time)
+});
+
 export const STAGE_PLAN_DROPPED_7635_TUNING = deepFreeze({
   minGapSeconds: 20, // afstanden bag fronten der taeller som sat
   consecutiveChecks: 2, // segmentgraenser i traek afstanden skal holde

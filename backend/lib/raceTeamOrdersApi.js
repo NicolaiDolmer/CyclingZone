@@ -195,7 +195,8 @@ export function validateTeamOrder({
   // Ingen side-kanaler: præcis kontraktens felter, hverken flere eller andre.
   for (const r of riders) {
     const unknown = Object.keys(r ?? {}).some(
-      (k) => !VALID_RIDER_ORDER_FIELDS.includes(k) && !REJECTED_RIDER_ORDER_FIELDS.includes(k) && !(stagePlan && (k === "plan" || k === "locked")),
+      (k) => !VALID_RIDER_ORDER_FIELDS.includes(k) && !REJECTED_RIDER_ORDER_FIELDS.includes(k) && !(stagePlan && (k === "plan" || k === "locked"))
+        && !(stagePlan?.places7884 && k === "long_attack_route_7884"), // #8828: kun naar loebet tager imod "Angrib paa"-stederne
     );
     if (unknown) { errors.push("team_orders_unknown_field"); break; }
   }

@@ -15,7 +15,19 @@ import {
   planWithoutLongAttack7884,
   validateLongAttackLegs7884,
   validateStagePlan7884,
+  PLACE_KINDS_7884,
+  PLACE_TASKS_7884,
+  attackPlacesView7884,
+  longAttack7884OpenForRace,
+  longAttackStorage7884,
+  normalizeStagePlan7884,
+  placeFacts7884,
+  placeLabel7884,
+  planHasLongAttack7884,
+  routeFingerprintError7884,
 } from "./tacticAttackTrigger7884.js";
+import * as stagePlanApi from "./stagePlanApi.js";
+import { stagePlanOrderFromRow } from "./stagePlanEngine.ts";
 
 const MOUNTAIN = {
   distance_km: 175,
@@ -279,4 +291,160 @@ test("D17: kun den eksakte vaerdi 'on' taender", () => {
   assert.equal(LONG_ATTACK_7884_FLAG_KEY, "long_attack_7884");
   assert.equal(evaluateLongAttack7884Flag("on"), true);
   for (const value of [undefined, null, "", "off", "beta", "ON", " on", true, 1, {}]) assert.equal(evaluateLongAttack7884Flag(value), false, String(value));
+});
+
+// ── #8828 trin 2: etiket, gem og laesning (dommer-scenarier D18-D27, skrevet foer koden) ──
+
+test("D18: en stigning uden navn vises som kategori + km (toppens km); en navngiven ved navn; finalen for sig", () => {
+  const places = attackPlaces7884({
+    distance_km: 160, profile_type: "hilly",
+    climbs: [
+      { name: "", category: "3", crest_km: 87.4, length_km: 4 },
+      { name: "Côte X", category: "2", crest_km: 120, length_km: 5 },
+    ],
+  });
+  assert.deepEqual(places.map(placeLabel7884), [
+    { key: "climbUnnamed", category: "3", km: 87, summit_finish: false },
+    { key: "climb", name: "Côte X", summit_finish: false },
+    { key: "finale", from_km: 150 },
+  ]);
+  assert.deepEqual(PLACE_KINDS_7884, ["climb", "finale"]);
+  assert.deepEqual(places.map((p) => p.kind), ["climb", "climb", "finale"]);
+});
+
+test("D19: fakta fra ruten: foden, antal stigninger efter, topankomst", () => {
+  assert.deepEqual(PLACES.map((p) => placeFacts7884(p, PLACES)), [
+    { foot_km: 58, climbs_after: 2, summit_finish: false },
+    { foot_km: 119, climbs_after: 1, summit_finish: false },
+    { foot_km: 160, climbs_after: 0, summit_finish: true },
+    { foot_km: 165, climbs_after: 0, summit_finish: false },
+  ]);
+  const view = attackPlacesView7884(MOUNTAIN);
+  assert.equal(view.fingerprint, attackRouteFingerprint7884(PLACES));
+  assert.deepEqual(view.places.map((p) => p.key), ["climb:0", "climb:1", "climb:2", "finale"]);
+});
+
+test("D20: den kanoniske form beholder stigningens index (de gamle regler ville tabe det)", () => {
+  const legs = [{ task: "stay_sheltered", extra: 1 }, { task: "attack", from: { at: "climb_start", kom_index: 1 } }, { task: "attack", from: { at: "finale" } }];
+  assert.deepEqual(normalizeStagePlan7884(legs), [{ task: "stay_sheltered" }, { task: "attack", from: atClimb(1) }, { task: "attack", from: { at: "finale" } }]);
+  // Uden de nye steder: praecis de gamle reglers form.
+  const old = [{ task: "stay_sheltered" }, { task: "attack", from: { at: "kom", kom_index: 0 } }];
+  assert.deepEqual(normalizeStagePlan7884(old), stagePlan.normalizeStagePlanLegs(old));
+});
+
+test("D21: gem baerer planen uden stederne ved siden af, fingeraftrykket og de gamle felter fra den", () => {
+  const legs = [{ task: "breakaway" }, { task: "attack", from: atClimb(1) }, { task: "ride_in", from: { at: "dropped" } }];
+  const row = longAttackStorage7884(legs, "fp", stagePlan.legacyOrderFromPlan);
+  assert.deepEqual(row.plan, legs);
+  assert.deepEqual(row.plan_no_long_attack, [{ task: "breakaway" }, { task: "ride_in", from: { at: "dropped" } }]);
+  assert.equal(row.long_attack_route_7884, "fp");
+  assert.deepEqual([row.effort, row.try_break, row.leadout], ["normal", true, false]);
+  assert.equal("plan_no_hunt" in row, false);
+  // Med troejejagt: planen uden jagt er ogsaa uden stederne.
+  const hunt = longAttackStorage7884([{ task: "breakaway", hunt: "hunt_points" }, { task: "attack", from: { at: "finale" } }], "fp", stagePlan.legacyOrderFromPlan);
+  assert.deepEqual(hunt.plan_no_hunt, [{ task: "breakaway" }]);
+  assert.equal(planHasLongAttack7884(hunt.plan_no_hunt), false);
+});
+
+test("D22: gem med et andet fingeraftryk (ruten er aendret) afvises neutralt; planer uden steder roeres ikke", () => {
+  const plan = [{ task: "stay_sheltered" }, { task: "attack", from: atClimb(1) }];
+  assert.equal(routeFingerprintError7884({ plan, long_attack_route_7884: "a" }, "a"), null);
+  assert.equal(routeFingerprintError7884({ plan, long_attack_route_7884: "a" }, "b"), "long_attack_route_changed");
+  assert.equal(routeFingerprintError7884({ plan }, "b"), "long_attack_route_changed");
+  assert.equal(routeFingerprintError7884({ plan: [{ task: "stay_sheltered" }] }, "b"), null);
+});
+
+test("D23: API'et tager kun imod stederne med kontakten on, etapeplanens revision OG motorens trin", async () => {
+  assert.equal(longAttack7884OpenForRace({ flagValue: "on", revisionOk: true }), false); // motorens trin mangler
+  assert.equal(longAttack7884OpenForRace({ flagValue: "on", revisionOk: true, engineReady: true }), true);
+  assert.equal(longAttack7884OpenForRace({ flagValue: "on", revisionOk: false, engineReady: true }), false);
+  assert.equal(longAttack7884OpenForRace({ flagValue: "off", revisionOk: true, engineReady: true }), false);
+  // Ingen opslag, saa laenge motorens trin ikke er tilsluttet.
+  let reads = 0;
+  const race = { engine_rules_revision: "s5_profiles_v3", stages_completed: 0 };
+  assert.equal(await stagePlanApi.longAttack7884OpenForRaceApi({ supabase: null, race, readStage: async () => { reads += 1; return "on"; } }), false);
+  assert.equal(reads, 0);
+});
+
+test("D24: med stederne aabne valideres og gemmes planen; et sted uden konteksten er et ukendt punkt som i dag", () => {
+  const ctx = stagePlanApi.withLongAttack7884Context({ route: R, roleByRider: new Map([["r1", "helper"]]), hasRoute: true }, MOUNTAIN);
+  const plan = [{ task: "shelter_leader" }, { task: "attack", from: atClimb(1) }];
+  const rider = { rider_id: "r1", effort: "normal", try_break: false, leadout: false, plan, long_attack_route_7884: ctx.fingerprint7884 };
+  assert.equal(stagePlanApi.validateRiderPlans([rider], ctx), null);
+  assert.equal(stagePlanApi.validateRiderPlans([{ ...rider, long_attack_route_7884: "old" }], ctx), "long_attack_route_changed");
+  const captain = { ...rider, plan: [{ task: "stay_sheltered" }, { task: "attack", from: atClimb(1) }] };
+  assert.equal(stagePlanApi.validateRiderPlans([captain], { route: R, roleByRider: new Map([["r1", "captain"]]), hasRoute: true }), "stage_plan_unknown_trigger");
+  const saved = stagePlanApi.withStagePlan({ rider_id: "r1", effort: "normal", try_break: false, leadout: false }, rider);
+  assert.deepEqual(saved.plan_no_long_attack, [{ task: "shelter_leader" }]);
+  assert.equal(saved.long_attack_route_7884, ctx.fingerprint7884);
+  // Den gemte raekke kommer til motoren som planen uden stederne (motorens trin er ikke tilsluttet).
+  const order = stagePlanOrderFromRow("t", { riders: [saved] }, "s5_profiles_v3", () => true);
+  assert.deepEqual(order.params.riders[0].legs, [{ task: "shelter_leader" }]);
+});
+
+test("D25: 'holdet foerer fra' og 'km foer maal' kan saettes ind uden omskrivning (kun Angrib i dag)", () => {
+  assert.deepEqual(PLACE_TASKS_7884, ["attack"]);
+  assert.equal(validateLongAttackLegs7884([{ task: "shelter_leader" }, { task: "tempo", from: atClimb(1) }], "helper", R, PLACES), "long_attack_needs_attack_task");
+});
+
+// Frossen golden (#7587): korpusserne koeres mod MERGE-BASENS kode (079e9e9dd775bbe2db8e70cd742f94069c1c6ffd) i et
+// separat checkout; digesterne genereres ALDRIG igen med den nye kode.
+function rowCorpus8828() {
+  const plans = [
+    undefined, null, [], [{ task: "stay_sheltered" }],
+    [{ task: "stay_sheltered" }, { task: "attack", from: { at: "kom", kom_index: 1 } }],
+    [{ task: "shelter_leader" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }, { task: "ride_in", from: { at: "dropped" } }],
+    [{ task: "breakaway", hunt: "hunt_points" }, { task: "ride_for_result", from: { at: "dropped" } }],
+    [{ task: "stay_sheltered" }, { task: "ride_for_result", from: { at: "final_km" } }],
+    "not-an-array",
+  ];
+  const extras = [{}, { plan_no_hunt: [{ task: "breakaway" }] }, { locked: true }, { effort: "normal", try_break: false, leadout: true }];
+  const rows = [undefined, { riders: "x" }, { riders: [] }, { riders: [null, 7, { rider_id: 5, plan: [] }] }];
+  let n = 0;
+  for (const plan of plans) for (const extra of extras) {
+    n += 1;
+    rows.push({ riders: [{ rider_id: `r${n}`, ...(plan === undefined ? {} : { plan }), ...extra }, { rider_id: `s${n}`, plan: plans[(n % (plans.length - 1)) + 1] }] });
+  }
+  return rows;
+}
+const FROZEN_ROW_DIGEST_8828 = { count: 80, sha256: "6e30fe1389084433f26a2411c3b23b39df023f7c2ab6e9151bd5853afb6d293c" };
+const FROZEN_API_DIGEST_8828 = { count: 7776, sha256: "d5cada47d8f25e16dc2dc126d2ba38eaf8a33768275c2a3184acf072fb7eb232" };
+
+test("D26: slukket faar motorens ordre-adapter praecis samme ordre som merge-basen (frossen digest)", () => {
+  const hash = createHash("sha256");
+  let count = 0;
+  for (const rev of ["legacy", "s5_profiles_v3"]) {
+    for (const row of rowCorpus8828()) {
+      hash.update(JSON.stringify(stagePlanOrderFromRow("team-a", row, rev, (r) => r === "s5_profiles_v3")) ?? "undefined");
+      hash.update("\n");
+      count += 1;
+    }
+  }
+  assert.deepEqual({ count, sha256: hash.digest("hex") }, FROZEN_ROW_DIGEST_8828);
+});
+
+test("D27: slukket validerer og gemmer API'et praecis som merge-basen, ogsaa naar en klient sender et sted (frossen digest)", () => {
+  const RAW = {
+    distance_km: 175, profile_type: "high_mountain",
+    climbs: [
+      { name: "A", category: "2", crest_km: 66, length_km: 8 },
+      { name: "B", category: "1", crest_km: 128, length_km: 9 },
+      { name: "C", category: "HC", crest_km: 175, length_km: 15, summit_finish: true },
+    ],
+  };
+  const r = stagePlan.stagePlanRouteFromRaw(RAW);
+  const triggers = [undefined, { at: "kom", kom_index: 0 }, { at: "kom", kom_index: 1 }, { at: "kom", kom_index: 2 }, { at: "final_km" }, { at: "dropped" },
+    { at: "climb_start", kom_index: 0 }, { at: "climb_start", kom_index: 1 }, { at: "finale" }];
+  const hash = createHash("sha256");
+  let count = 0;
+  for (const role of ["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"]) for (const t0 of stagePlan.STAGE_PLAN_TASKS) for (const t1 of stagePlan.STAGE_PLAN_TASKS) for (const trig of triggers) {
+    const plan = [{ task: t0 }, trig ? { task: t1, from: trig } : { task: t1 }];
+    const rider = { rider_id: "r1", effort: "normal", try_break: false, leadout: false, plan };
+    const err = stagePlanApi.validateRiderPlans([rider], { route: r, roleByRider: new Map([["r1", role]]), hasRoute: true });
+    hash.update(String(err));
+    if (err === null) hash.update(JSON.stringify(stagePlanApi.withStagePlan({ rider_id: "r1", effort: "normal", try_break: false, leadout: false }, rider)));
+    hash.update("\n");
+    count += 1;
+  }
+  assert.deepEqual({ count, sha256: hash.digest("hex") }, FROZEN_API_DIGEST_8828);
 });

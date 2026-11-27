@@ -702,7 +702,11 @@ export function stagePlanOrderFromRow(
     const rec = r as Record<string, unknown>;
     if (typeof rec["rider_id"] !== "string" || !Array.isArray(rec["plan"])) continue;
     // #7855: kun raekker gemt med en jagt-opgave baerer plan_no_hunt; alle andre er uaendrede.
-    riders.push({ rider_id: rec["rider_id"], legs: rec["plan"], ...(Array.isArray(rec["plan_no_hunt"]) ? { fallback_legs: rec["plan_no_hunt"] } : {}) });
+    // #8828 (kontakten long_attack_7884): kun raekker gemt med et "Angrib paa"-sted baerer
+    // plan_no_long_attack. Motorens trin er ikke tilsluttet, saa motoren koerer altid planen uden
+    // stederne (tacticAttackTrigger7884.longAttackStorage7884); alle andre raekker er uroerte.
+    const legs = Array.isArray(rec["plan_no_long_attack"]) ? rec["plan_no_long_attack"] : rec["plan"];
+    riders.push({ rider_id: rec["rider_id"], legs, ...(Array.isArray(rec["plan_no_hunt"]) ? { fallback_legs: rec["plan_no_hunt"] } : {}) });
   }
   return riders.length ? { team_id: teamId, kind: STAGE_PLAN_ORDER_KIND, params: { riders } } : null;
 }
