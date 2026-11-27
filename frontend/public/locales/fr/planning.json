@@ -312,5 +312,19 @@
     "toFinish": "Jusqu'à l'arrivée",
     "showOnProfile": "Afficher {name} sur le profil",
     "mobileFacts": "Sommet au km {km} · {length} km · {average} % · {toFinish} km de l'arrivée"
+  },
+  "sectorList": {
+    "titleCobbles": "Les secteurs pavés",
+    "titleGravel": "Les secteurs de gravier",
+    "titleMixed": "Pavés et gravier",
+    "kind": { "cobbles": "Pavés", "gravel": "Gravier" },
+    "sector": "Secteur",
+    "from": "Km",
+    "length": "Longueur",
+    "toFinish": "Jusqu'à l'arrivée",
+    "range": "{from}-{to}",
+    "showOnProfile": "Afficher sur le profil : {text}",
+    "mobileFacts": "Km {from}-{to} · {length} km · {toFinish} km de l'arrivée",
+    "full": "{kind} · {name} · {length} km · km {from}-{to} · {toFinish} km de l'arrivée"
   }
 }

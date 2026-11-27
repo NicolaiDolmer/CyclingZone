@@ -312,5 +312,19 @@
     "toFinish": "Tot de finish",
     "showOnProfile": "Toon {name} op het profiel",
     "mobileFacts": "Top op km {km} · {length} km · {average} % · {toFinish} km tot de finish"
+  },
+  "sectorList": {
+    "titleCobbles": "De kasseistroken",
+    "titleGravel": "De gravelstroken",
+    "titleMixed": "Kasseien en gravel",
+    "kind": { "cobbles": "Kasseien", "gravel": "Gravel" },
+    "sector": "Strook",
+    "from": "Km",
+    "length": "Lengte",
+    "toFinish": "Tot de finish",
+    "range": "{from}-{to}",
+    "showOnProfile": "Toon op het profiel: {text}",
+    "mobileFacts": "Km {from}-{to} · {length} km · {toFinish} km tot de finish",
+    "full": "{kind} · {name} · {length} km · km {from}-{to} · {toFinish} km tot de finish"
   }
 }

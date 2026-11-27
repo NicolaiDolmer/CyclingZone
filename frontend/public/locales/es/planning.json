@@ -312,5 +312,19 @@
     "toFinish": "Hasta la meta",
     "showOnProfile": "Mostrar {name} en el perfil",
     "mobileFacts": "Cima en el km {km} · {length} km · {average} % · {toFinish} km hasta la meta"
+  },
+  "sectorList": {
+    "titleCobbles": "Los tramos de adoquines",
+    "titleGravel": "Los tramos de tierra",
+    "titleMixed": "Adoquines y tierra",
+    "kind": { "cobbles": "Adoquines", "gravel": "Tierra" },
+    "sector": "Tramo",
+    "from": "Km",
+    "length": "Longitud",
+    "toFinish": "Hasta la meta",
+    "range": "{from}-{to}",
+    "showOnProfile": "Mostrar en el perfil: {text}",
+    "mobileFacts": "Km {from}-{to} · {length} km · {toFinish} km hasta la meta",
+    "full": "{kind} · {name} · {length} km · km {from}-{to} · {toFinish} km hasta la meta"
   }
 }
