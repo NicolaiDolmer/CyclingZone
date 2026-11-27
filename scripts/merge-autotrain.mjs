@@ -55,7 +55,8 @@ import { fileURLToPath } from 'node:url';
 import { CATEGORY, DEFAULT_REPO, classifyPr, fetchMigrationFacts, formatClassification } from './merge-queue-classify.mjs';
 import { gitCommonRoot, markerFilePath, readActiveMarker } from './merge-queue-active-marker.mjs';
 import { deploymentAttemptState, handedOffRunVerdict } from './ci/deploy-verification-state.mjs';
-import { classifyPrFiles, mustRunAlone, touchesVercel } from './merge-queue-files.mjs';
+import { classifyPrFiles, mustRunAlone, needsRailwayVerification, touchesVercel } from './merge-queue-files.mjs';
+import { createAffectedCronJobs } from './ci/cron-deploy-verification.mjs';
 import { latestOwnerMarkerSha, runMergeGuard } from './merge-guard.mjs';
 import { CODEX_LOGIN, EXEMPT_AUTHORS, evaluateCodex } from './review-gate.mjs';
 
@@ -147,12 +148,14 @@ export function precheck(pr, { baseBranch = 'main' } = {}) {
  * Udloeser PR'en et deploy (samme regel som merge-queue.ps1: backend, Railway eller
  * Vercel), eller skal den koere alene (migration/motor)? Ukendt filliste = ja (fail-safe).
  */
-export function deployImpact(files) {
+export function deployImpact(files, affected) {
   const paths = Array.isArray(files) ? files.map((f) => (typeof f === 'string' ? f : f?.path)) : null;
-  if (!paths?.length || paths.some((p) => typeof p !== 'string')) return { deploys: true, solo: true };
+  if (!paths?.length || paths.some((p) => typeof p !== 'string')) return { deploys: true, solo: true, needRailway: true, touchesVercel: true };
   const { touchesBackend, touchesRailway } = classifyPrFiles(paths);
   const solo = mustRunAlone(paths);
-  return { deploys: Boolean(touchesBackend || touchesRailway || touchesVercel(paths) || solo), solo };
+  const needRailway = paths.some((path) => path.startsWith('backend/')) || needsRailwayVerification(paths, { affected });
+  const needVercel = touchesVercel(paths);
+  return { deploys: Boolean(touchesBackend || touchesRailway || needVercel || solo), solo, needRailway, touchesVercel: needVercel };
 }
 
 export function evaluatePr(pr, { requiredChecks, allChecks, classification, ownerLogin, baseBranch = 'main', deploy = null }) {
@@ -164,6 +167,8 @@ export function evaluatePr(pr, { requiredChecks, allChecks, classification, owne
     eligible: false,
     deploys: deploy ? Boolean(deploy.deploys) : true,
     solo: deploy ? Boolean(deploy.solo) : true,
+    needRailway: deploy?.needRailway !== false,
+    touchesVercel: deploy?.touchesVercel !== false,
     category: classification?.category ?? null,
     classification: classification ? formatClassification(classification) : null,
     reason: '',
@@ -187,21 +192,41 @@ export function evaluatePr(pr, { requiredChecks, allChecks, classification, owne
 }
 
 /**
- * PR-numre til ET samlet tog (ejer 17/11, #8331), aeldste foerst, hoejst maxBatch.
- * Deploy-reglen (ejer 20/11): hoejst maxDeploy deploy-PR'er (de aeldste), sidst i toget, saa
- * togets sidste merge-SHA baerer deploy-verifikationen (Codex P1 #6861); koeen lukker selv
- * toget, hvis en PR ikke daekker togets deploy-maal (#7104). En solo-PR (migration/motor eller
- * ukendt status, fail-safe) koerer altid som eneste deploy-PR. Resten venter til naeste koersel.
+ * A deploy train keeps every prefix verifiable if a later PR is skipped.
+ * Railway-only and Vercel-only PRs therefore form separate chains, each
+ * optionally ending with PRs that cover both targets. Keep the oldest deploy
+ * eligible for this train, then use spare places for compatible PRs.
  */
+function selectCompatibleDeploys(deploys, limit) {
+  const first = deploys[0];
+  if (!first) return [];
+  if (first.solo !== false) return [first];
+
+  const candidates = deploys.filter((entry) => entry.solo === false);
+  const railway = (entry) => entry.needRailway !== false;
+  const vercel = (entry) => entry.touchesVercel !== false;
+  const plans = [
+    candidates.filter((entry) => !vercel(entry) || railway(entry)),
+    candidates.filter((entry) => !railway(entry) || vercel(entry)),
+  ].map((plan) => plan.slice(0, limit)).filter((plan) => plan.includes(first));
+  plans.sort((a, b) => {
+    if (a.length !== b.length) return b.length - a.length;
+    const firstDifference = a.findIndex((entry, index) => entry !== b[index]);
+    return firstDifference === -1 ? 0 : a[firstDifference].number - b[firstDifference].number;
+  });
+  const targetCount = (entry) => Number(railway(entry)) + Number(vercel(entry));
+  return (plans[0] ?? []).sort((a, b) => targetCount(a) - targetCount(b) || a.number - b.number);
+}
+
 export function selectTrain(evaluations, { maxBatch = TRAIN_MAX_BATCH, maxDeploy = TRAIN_MAX_DEPLOY } = {}) {
   const eligible = (evaluations ?? []).filter((e) => e?.eligible).sort((a, b) => a.number - b.number);
-  const deployAll = eligible.filter((e) => e.deploys !== false);
-  const deploys = deployAll.length && deployAll[0].solo !== false
-    ? [deployAll[0]]
-    : deployAll.filter((e) => e.solo === false).slice(0, Math.max(0, Math.min(maxDeploy, maxBatch)));
-  const quiet = eligible.filter((e) => e.deploys === false).map((e) => e.number);
+  const deploys = selectCompatibleDeploys(
+    eligible.filter((e) => e.deploys !== false),
+    Math.max(0, Math.min(maxDeploy, maxBatch)),
+  );
+  const quiet = eligible.filter((e) => e.deploys === false);
   const room = Math.max(0, maxBatch - deploys.length);
-  return [...quiet.slice(0, room), ...deploys.map((e) => e.number)];
+  return [...quiet.slice(0, room), ...deploys].map((entry) => entry.number);
 }
 
 /** Gaa intet, hvis en koe allerede koerer (levende tog-markoer). */
@@ -289,7 +314,7 @@ export function completeFileList(restFiles, changedFiles) {
 }
 
 /** Vurderer een PR (checks, review-gate, fuld filliste, klassifikation). */
-export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {}, pause = waitForMergeability }) {
+export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {}, pause = waitForMergeability, affected }) {
   // Billige afslag foerst: ingen check- eller klassifikationskald for drafts/konflikter.
   if (precheck(pr) === 'mergeable=UNKNOWN') pr = refreshUnknownMergeability(pr, { repo, gh, log, pause });
   if (precheck(pr)) return evaluatePr(pr, { ownerLogin });
@@ -307,7 +332,7 @@ export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {}, pause = 
       if (!files) {
         log(`  #${pr.number}: fillisten er ufuldstaendig; behandles som ejer-go.`);
       } else {
-        deploy = deployImpact(files);
+        deploy = deployImpact(files, affected);
         const full = { ...pr, files };
         Object.assign(full, fetchMigrationFacts(full, repo, { runGh: gh.text }));
         classification = classifyPr(full);
@@ -321,12 +346,12 @@ export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {}, pause = 
 
 const DEFAULT_GH = { json: ghJson, text: ghText };
 
-export function collectEvaluations({ repo, ownerLogin, gh = DEFAULT_GH, log = () => {}, pause = waitForMergeability }) {
+export function collectEvaluations({ repo, ownerLogin, gh = DEFAULT_GH, log = () => {}, pause = waitForMergeability, affected }) {
   const prs = gh.json(['pr', 'list', '--repo', repo, '--state', 'open', '--limit', '100', '--json', PR_FIELDS]) ?? [];
   const evaluations = [];
   for (const pr of prs) {
     try {
-      evaluations.push(evaluateOne(pr, { repo, ownerLogin, gh, log, pause }));
+      evaluations.push(evaluateOne(pr, { repo, ownerLogin, gh, log, pause, affected }));
     } catch (err) {
       log(`  #${pr.number}: kunne ikke vurderes (${err?.message ?? err}); springes over.`);
     }
@@ -335,9 +360,9 @@ export function collectEvaluations({ repo, ownerLogin, gh = DEFAULT_GH, log = ()
 }
 
 /** Frisk vurdering af een PR lige foer koeen startes for den. */
-export function reevaluatePr(number, { repo, ownerLogin, gh = DEFAULT_GH, log = () => {}, pause = waitForMergeability }) {
+export function reevaluatePr(number, { repo, ownerLogin, gh = DEFAULT_GH, log = () => {}, pause = waitForMergeability, affected }) {
   const pr = gh.json(['pr', 'view', String(number), '--repo', repo, '--json', PR_FIELDS]);
-  return evaluateOne(pr, { repo, ownerLogin, gh, log, pause });
+  return evaluateOne(pr, { repo, ownerLogin, gh, log, pause, affected });
 }
 
 // ── Gen-bestilling af Codex-review (#7654) ─────────────────────────────────
@@ -615,9 +640,10 @@ export async function run({
     }
   }
 
+  const affected = createAffectedCronJobs();
   let evaluations;
   try {
-    evaluations = evaluate({ repo: opts.repo, ownerLogin, log });
+    evaluations = evaluate({ repo: opts.repo, ownerLogin, log, affected });
   } catch (err) {
     log(`  Kunne ikke liste PR'er (${err?.message ?? err}); proever igen naeste koersel.`);
     return { action: 'error', train: [] };
@@ -650,7 +676,7 @@ export async function run({
   for (const n of train) {
     let fresh;
     try {
-      fresh = reevaluate(n, { repo: opts.repo, ownerLogin, log });
+      fresh = reevaluate(n, { repo: opts.repo, ownerLogin, log, affected });
     } catch (err) {
       log(`  #${n}: frisk vurdering fejlede (${err?.message ?? err}); springes over.`);
       continue;
