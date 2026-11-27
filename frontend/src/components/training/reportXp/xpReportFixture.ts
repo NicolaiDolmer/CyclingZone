@@ -61,7 +61,8 @@ const FIXTURE_POINTS_PER_DATE = 1;
 // #8856: the session a slot rode, picked from its first ability, so the preview shows the three
 // VO2max sessions apart (mixed, climbing and punch intervals) and a few others.
 const SESSION_BY_ABILITY: Record<string, string> = { climbing: "vo2max_climb", punch: "vo2max_punch", sprint: "sprint", time_trial: "threshold", endurance: "endurance", cobblestone: "cobbled_sectors", aggression: "attack_repeats" };
-const sessionFor = (ability: string, slot: number): string => SESSION_BY_ABILITY[ability] ?? (slot % 2 ? "vo2max" : "tempo");
+const VARIED = ["tempo", "vo2max_climb", "vo2max", "vo2max_punch"];
+const sessionFor = (ability: string, slot: number): string => SESSION_BY_ABILITY[ability] ?? VARIED[slot % VARIED.length];
 const SCRIPT: Record<string, Record<number, { rest?: true; race?: boolean; focus?: string[]; boost?: { key: string; share: number } }>> = {
   "fx-6": { 1: { race: true, boost: { key: "climbing", share: 2.4 } }, 0: { rest: true } },
   "fx-1": { 1: { focus: ["climbing", "endurance"], boost: { key: "climbing", share: 2.3 } }, 0: { race: false, focus: ["tempo", "recovery"] } },
