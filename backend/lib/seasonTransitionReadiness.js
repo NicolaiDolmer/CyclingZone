@@ -407,6 +407,31 @@ export async function loadFinalTrainingDate({ supabase, seasonId }) {
  * From the evening run's hour, and on any later day, proof is required as before:
  * by then unsettled work means the run failed, not that it has yet to run.
  */
+/**
+ * #7470: true only when every season-start reset that touches rider_condition is off
+ * (fatigue flag off, injury mode off, form mode off/missing). Any read error → false,
+ * so registered work keeps blocking (fail closed).
+ */
+export const SEASON_START_RESET_KEYS = Object.freeze({
+  fatigue: 'season_fatigue_reset_enabled',
+  injury: 'season_injury_reset_mode',
+  form: 'season_form_reset_mode',
+});
+export async function seasonStartResetsDeferred(supabase) {
+  try {
+    const { data, error } = await supabase.from('app_config').select('key,value')
+      .in('key', Object.values(SEASON_START_RESET_KEYS));
+    if (error || !Array.isArray(data)) return false;
+    const byKey = Object.fromEntries(data.map(row => [row.key, row.value]));
+    const off = value => value === undefined || value === null || value === false || value === 'off';
+    return off(byKey[SEASON_START_RESET_KEYS.fatigue]) && off(byKey[SEASON_START_RESET_KEYS.injury]) &&
+      off(byKey[SEASON_START_RESET_KEYS.form]);
+  } catch {
+    // catch-ok: fail closed (registered work keeps blocking season-end).
+    return false;
+  }
+}
+
 export async function assessFinalTrainingDateSettlement({ supabase, season, now } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!season?.id) throw new Error("season required");
@@ -469,8 +494,15 @@ export async function assessFinalTrainingDateSettlement({ supabase, season, now 
   // condition before the season-start form/fatigue resets, so settling it after them
   // would quarantine those riders (commit_training_date_tick: unsafe_current_state).
   // It must settle first, as before #6924.
-  if (blockers.length && blockers.every(row => row.reason === 'missing_registration') &&
-      tickDate === copenhagenDateString(now) && copenhagenHour(now) < TRAINING_DATE_SETTLEMENT_HOUR) {
+  // #7470 (ejer 27/11: "skifte inden rytterne har trænet"): registered work may defer as
+  // well when the season-start resets that would invalidate its frozen opening condition
+  // are switched off for the transition (they run on their own after the evening run,
+  // scripts/season-start-resets-7470.mjs). A failed read keeps the gate closed.
+  const onlyMissing = blockers.every(row => row.reason === 'missing_registration');
+  const finalDayBeforeEvening = tickDate === copenhagenDateString(now) && copenhagenHour(now) < TRAINING_DATE_SETTLEMENT_HOUR;
+  const canDefer = blockers.length > 0 && finalDayBeforeEvening &&
+    (onlyMissing || await seasonStartResetsDeferred(supabase));
+  if (canDefer) {
     return { blocked: false, deferred: true, tick_date: tickDate, blockers,
       detail: `Træning ${tickDate} er ikke afregnet endnu (${blockers.length} hold). Aftenkørslen kl. ${TRAINING_DATE_SETTLEMENT_HOUR} afregner den, når skiftet til næste sæson er gennemført.` };
   }
