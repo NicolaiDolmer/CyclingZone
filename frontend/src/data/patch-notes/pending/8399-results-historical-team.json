@@ -1,0 +1,14 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Results",
+      "area": "races",
+      "en": { "title": "Results show the team a rider rode for", "body": "Stage results, latest results and race history now show the team the rider was on in that race, also after he changed team." },
+      "da": { "title": "Resultater viser holdet, rytteren kørte for", "body": "Etaperesultater, seneste resultater og løbshistorik viser nu det hold, rytteren kørte for i løbet, også efter et holdskifte." },
+      "refs": [8399]
+    }
+  ]
+}

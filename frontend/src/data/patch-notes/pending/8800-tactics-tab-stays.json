@@ -1,0 +1,14 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tactics",
+      "area": "tactics",
+      "en": { "title": "The Tactics tab stays on the stage you picked", "body": "When you open Tactics from a future stage, it now shows that stage instead of jumping back to the next one." },
+      "da": { "title": "Taktikfanen bliver på den etape, du har valgt", "body": "Når du åbner Taktik fra en kommende etape, viser den nu den etape i stedet for at hoppe tilbage til den næste." },
+      "refs": [8800]
+    }
+  ]
+}
