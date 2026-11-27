@@ -18,6 +18,7 @@ import {
   MOTOR_REQUIRED_WINNERS, MOTOR_WINNER_VERDICTS, evaluateS5BenchmarkGate, formatS5BenchmarkReport,
 } from "./s5BenchmarkGate.js";
 import * as routeGenerator from "./raceRouteGenerator.js";
+import { DESCENT_LAST_TOP_WINDOW_KM } from "./stageProfileTypes.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas } from "./raceStageProfileGenerator.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 
@@ -146,6 +147,12 @@ test("checkStage: nedkørsel kræver en kat. 3+-top 5-25 km før mål (kort 5)",
   assert.ok(checkStage(lastIsCat4).violations.some((v) => v.includes("kat. 3 eller hårdere")));
   const hillyDescent = { profile_type: "hilly", finale_type: "descent", distance_km: D, climbs: [climb("3", 4, D - 20)], sprints: finishSprint() };
   assert.deepEqual(checkStage(hillyDescent).violations, []);
+  // #8259/#8830: fra S6 skal sidste top uden for bjerg/højbjerg ligge kort før mål.
+  const [lo, hi] = DESCENT_LAST_TOP_WINDOW_KM;
+  assert.ok(checkStage(hillyDescent, { s6: true }).violations.some((v) => v.includes(`${lo}-${hi} km før mål`)));
+  assert.deepEqual(checkStage({ ...hillyDescent, climbs: [climb("3", 4, D - 10)] }, { s6: true }).violations, []);
+  // Bjerg beholder det lange vindue, også i S6.
+  assert.deepEqual(checkStage({ ...STAGE.mountainDescent(), climbs: [climb("1", 10, D - 20)] }, { s6: true }).violations, []);
 });
 
 test("checkStage: mur, bakke og stigende spurt kræver finale-rampen fra spec §3", () => {

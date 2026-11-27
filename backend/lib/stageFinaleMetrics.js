@@ -91,6 +91,31 @@ export const OVERALL_FINALE_BAND = Object.freeze({
   up: [25, 32], flat: [32, 40], down: [0, 10], break: [12, 20],
 });
 
+// #8830 (ejer 26/11): S6's afslutningsmaal pr. division og pr. niveau, maalt over ALLE
+// etaper (ogsaa GT, tidskoersel og nedkoersel). Opad = klassen "up" (punch, mur, bjergtop);
+// flad spurt = finale_type flat_sprint alene (spurt op ad bakke taeller i ingen af dem).
+// Ejer 26/11: +-2 point tolerance, fordi divisionen er en stikproeve af katalogets loeb
+// (se stikproeve-reglen nedenfor). CALENDAR_RULES §7g; testet i s6FinishTargets8830.test.js.
+export const S6_FINISH_TARGETS = Object.freeze({
+  senior: Object.freeze({ up: Object.freeze([33, 40]), flatSprint: Object.freeze([25, 32]) }),
+  u23: Object.freeze({ up: Object.freeze([33, 40]), flatSprint: Object.freeze([25, 32]) }),
+  junior: Object.freeze({ up: Object.freeze([28, 35]), flatSprint: Object.freeze([30, 37]) }),
+});
+export const S6_FINISH_TOLERANCE_PP = 2;
+
+/**
+ * #8830: opad- og flad spurt-andel (procent) af etaperne.
+ * @param {Array<{ finale_type?: string | null }>} stages
+ * @returns {{ n: number, up: number, flatSprint: number }}
+ */
+export function s6FinishShares(stages) {
+  const n = stages.length;
+  if (!n) return { n: 0, up: 0, flatSprint: 0 };
+  const up = stages.filter((s) => FINALE_CLASS_BY_TYPE[/** @type {keyof typeof FINALE_CLASS_BY_TYPE} */ (s.finale_type)] === "up").length;
+  const flat = stages.filter((s) => s.finale_type === "flat_sprint").length;
+  return { n, up: (100 * up) / n, flatSprint: (100 * flat) / n };
+}
+
 // ── Stikprøve-reglen (hvorfor båndene ikke gates råt pr. division) ────────────────
 //
 // Et løbs parcours er seedet på løbets VIRKELIGE identitet (external_id), så DET SAMME

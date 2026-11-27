@@ -55,7 +55,12 @@ export const TIER_OVERLAP_CAP = Object.freeze({ 1: 3, 2: 3, 3: 2, 4: 2 });
 // TIER_TERRAIN_FAMILY_MIN): de er regressionsvagter, ikke kvalitetsmaal.
 // Se docs/CALENDAR_RULES.md §1.
 export const TIER_OVERLAP_MIN = Object.freeze({ 1: 1, 2: 1, 3: 1, 4: 1 });
-export const TIER_MULTI_RACE_DAY_MIN_SHARE = Object.freeze({ 1: 0.45, 2: 0.55, 3: 0.40, 4: 0.40 });
+//
+// #5841 (ejer 26/11): D3-D4's gulv foelger ejerens nye baand (35-45 %, se
+// TIER_MULTI_RACE_DAY_SHARE_BAND). Det gamle gulv laa OVER det nye baands bund, saa en
+// S6-kalender i baandet ville gaa roed paa den gamle regel. Gulvet er kun saenket, saa ingen
+// kalender der var groen foer, bliver roed.
+export const TIER_MULTI_RACE_DAY_MIN_SHARE = Object.freeze({ 1: 0.45, 2: 0.55, 3: 0.35, 4: 0.35 });
 
 // ── Monument-spredning (CALENDAR_RULES.md §4) ─────────────────────────────────────────
 //
@@ -77,6 +82,77 @@ export const TIER_MULTI_RACE_DAY_MIN_SHARE = Object.freeze({ 1: 0.45, 2: 0.55, 3
 //              saesonen uden et.
 export const MONUMENT_MIN_CALENDAR_GAP_DAYS = 2;
 export const MONUMENT_MIN_CALENDAR_SPREAD_DAYS = 14;
+
+// ── Placeringsreglerne fra S6 (#5841, ejerbeslutninger 26/11) ─────────────────────────
+//
+// Ejeren strammede monument-reglerne og lagde fire nye placeringsregler til 26/11. De
+// gaelder KUN kalendere bygget fra S6. En kalender der er bygget foer (S3-referencen i den
+// gyldne diff, S4, S5) doemmes stadig efter de regler den blev bygget med - samme disciplin
+// som §1d's loebsdagsmaal (calendarScorecardReport.js). Saa er den gyldne S3-kalender og
+// S5-toerkoerslen bit-identiske, og de nye regler kan ikke vaelte en kalender der allerede
+// koerer.
+//
+//   monumentMinGapDays / monumentMinSpreadDays  §4 strammet: mindst 3 kalenderdage mellem
+//       to nabo-monumenter (foer 2) og mindst 20 fra det foerste til det sidste (foer 14).
+//   lastMonumentAfterGrandTours  §4: monumenter hvis virkelige dato ligger efter den sidste
+//       Grand Tours (Lombardiet efter Vueltaen) ligger ogsaa efter den i kalenderen.
+//   seasonEndsWithOneDayRace  §2: saesonens sidste loebsdag med loeb baerer kun endagsloeb,
+//       saa en Grand Tour (Vueltaen) aldrig er sidste loeb.
+//   multiRaceShareBand  §1: andelen af loebsdage (med loeb) der har 2+ samtidige loeb, som
+//       gulv OG loft pr. niveau.
+export const CALENDAR_PLACEMENT_RULES_FIRST_SEASON = 6;
+
+/**
+ * #8830: gaelder S6-reglerne for parcours (afslutningsvaegte, faste ruter, nedkoerselsvindue,
+ * mini-GT, §7e, terraen-kvote) for denne saeson? Samme graense som placeringsreglerne. Ukendt
+ * saeson = nej, saa S3-S5 (ogsaa en pulje der aktiveres midt i S5, #2276) er bit-identiske.
+ * @param {number|null|undefined} seasonNumber
+ */
+export function s6RouteRulesApply(seasonNumber) {
+  const n = Number(seasonNumber);
+  return seasonNumber != null && Number.isInteger(n) && n >= CALENDAR_PLACEMENT_RULES_FIRST_SEASON;
+}
+
+/** #8830: S6-parcoursreglerne for et seed-loeb (season_number saettes af materializeren). @param {any} race */
+export function isS6Race(race) {
+  return s6RouteRulesApply(race?.season_number);
+}
+export const MONUMENT_MIN_CALENDAR_GAP_DAYS_FROM_S6 = 3;
+export const MONUMENT_MIN_CALENDAR_SPREAD_DAYS_FROM_S6 = 20;
+// Ejer 26/11 punkt 9: D1-D2 55-65 %, D3-D4 35-45 %, U23 25-35 %, junior 15-25 %.
+export const TIER_MULTI_RACE_DAY_SHARE_BAND = Object.freeze({
+  1: Object.freeze({ min: 0.55, max: 0.65 }),
+  2: Object.freeze({ min: 0.55, max: 0.65 }),
+  3: Object.freeze({ min: 0.35, max: 0.45 }),
+  4: Object.freeze({ min: 0.35, max: 0.45 }),
+});
+// Ungdommens baand staar her, saa hele reglen har EEN kilde. Ejer 26/11 aften (#8830):
+// ungdom faar INTET overlap i S6 (aldrig to ungdomsloeb samtidig paa samme niveau);
+// ungdoms-overlap venter til 2027.
+export const SQUAD_MULTI_RACE_DAY_SHARE_BAND = Object.freeze({
+  u23: Object.freeze({ min: 0, max: 0 }),
+  junior: Object.freeze({ min: 0, max: 0 }),
+});
+
+/**
+ * Placeringsreglerne for den saeson der bygges, eller null naar saesonen er bygget efter
+ * de gamle regler (foer S6, eller ukendt saeson). null betyder bit-identisk adfaerd.
+ *
+ * @param {number|null|undefined} seasonNumber
+ * @param {number|null} [tier] seniordivisionen (1-4), til overlap-baandet
+ */
+export function calendarPlacementRulesForSeason(seasonNumber, tier = null) {
+  const n = Number(seasonNumber);
+  if (seasonNumber == null || !Number.isInteger(n) || n < CALENDAR_PLACEMENT_RULES_FIRST_SEASON) return null;
+  return Object.freeze({
+    seasonNumber: n,
+    monumentMinGapDays: MONUMENT_MIN_CALENDAR_GAP_DAYS_FROM_S6,
+    monumentMinSpreadDays: MONUMENT_MIN_CALENDAR_SPREAD_DAYS_FROM_S6,
+    lastMonumentAfterGrandTours: true,
+    seasonEndsWithOneDayRace: true,
+    multiRaceShareBand: tier == null ? null : (TIER_MULTI_RACE_DAY_SHARE_BAND[tier] ?? null),
+  });
+}
 
 // ── Seniorpyramiden fra S4: aktive puljer pr. division (#4592, ejer 24/9) ─────────────
 //

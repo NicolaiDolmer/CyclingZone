@@ -141,7 +141,7 @@ export default function V6Route({ profile }: V6RouteProps) {
         </li>
       </ol>
       <div data-route-legend className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 [&>div]:contents">
-        <GradientLegend />
+        <GradientLegend profile={profile} />
         {points.sprints.length > 0 && (
           <span className="inline-flex items-center gap-1.5 font-data text-2xs text-cz-2">
             <span className="inline-block h-2 w-2 rounded-full bg-cz-success" aria-hidden="true" />
