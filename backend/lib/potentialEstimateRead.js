@@ -77,6 +77,8 @@ export async function fillMissingOwnEstimates(supabase, { teamId, riderIds, cloc
   const nowMs = clock.getTime();
   const due = riderIds.filter((id) => (fillRetryAt.get(`${teamId}:${id}`) ?? 0) <= nowMs);
   if (!due.length) return [];
+  // Udløbne pauser ryddes, så hukommelsen ikke vokser i en lang proces.
+  if (fillRetryAt.size > 5000) for (const [key, at] of fillRetryAt) if (at <= nowMs) fillRetryAt.delete(key);
   for (const id of due) fillRetryAt.set(`${teamId}:${id}`, nowMs + FILL_RETRY_MS);
   try {
     const config = await loadEstimateWriteConfig(supabase, { now: clock });
