@@ -1500,7 +1500,7 @@
       },
       "runDayNow": {
         "title": "Kør dagens træning nu",
-        "text": "Fra sæson 4 kører dagens træning af sig selv, samlet, når dagens sidste løb er kørt og tidligst kl. 20. Alle dagens løbsdage trænes i samme kørsel, uanset om du er online eller ej. 'Kør dagens træning nu' er der kun, hvis du ikke vil vente: den kører den samme træning, og den åbner på samme tidspunkt som den automatiske kørsel ville. Når dagen først er trænet, kan den ikke køres igen."
+        "text": "Fra sæson 4 kører dagens træning af sig selv, samlet, når dagens sidste løb er kørt og tidligst kl. 20. Alle dagens løbsdage trænes i samme kørsel, uanset om du er online eller ej. 'Kør dagens træning nu' er der kun, hvis du ikke vil vente: den kører den samme træning, og den åbner på samme tidspunkt som den automatiske kørsel ville. Når dagen først er trænet, kan den ikke køres igen. På sæsonens sidste dag kører den, så snart sæsonens sidste løb er kørt, så sæsonskiftet kan følge samme eftermiddag."
       },
       "trainNowBeta": {
         "title": "Træn nu",

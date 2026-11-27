@@ -1500,7 +1500,7 @@
       },
       "runDayNow": {
         "title": "De training van vandaag nu draaien",
-        "text": "Vanaf seizoen 4 draait de training van de dag vanzelf, in één keer, zodra de laatste koers van de dag klaar is en niet eerder dan 20:00. Elke koersdag van die dag wordt in dezelfde run getraind, of je nu online bent of niet. 'De training van vandaag nu draaien' is er alleen als je niet wilt wachten: het draait dezelfde training en het opent op hetzelfde moment als de automatische run. Zodra de dag is getraind, kan hij niet opnieuw worden gedraaid."
+        "text": "Vanaf seizoen 4 draait de training van de dag vanzelf, in één keer, zodra de laatste koers van de dag klaar is en niet eerder dan 20:00. Elke koersdag van die dag wordt in dezelfde run getraind, of je nu online bent of niet. 'De training van vandaag nu draaien' is er alleen als je niet wilt wachten: het draait dezelfde training en het opent op hetzelfde moment als de automatische run. Zodra de dag is getraind, kan hij niet opnieuw worden gedraaid. Op de laatste dag van het seizoen loopt hij zodra de laatste koers van het seizoen klaar is, zodat de seizoenswissel dezelfde middag kan volgen."
       },
       "trainNowBeta": {
         "title": "Nu trainen",

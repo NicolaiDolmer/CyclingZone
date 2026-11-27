@@ -154,9 +154,17 @@ function existedAt(row, cutoff, keys) {
 // #7470: today is the active season's final training date and no race of the season is
 // left to run (the same count as the season-end gate). Unresolved stages still wait in
 // resolveTrainingDateReadiness, so a race that is run but not finalised settles later.
+// Fable 27/11 (#8884): a read error here must not stop the whole 5-minute run (older dates'
+// retries included). It fails closed instead: the final date then waits for 20:00 as before.
 async function activeFinalDateDue({ supabase, season, today }) {
-  if ((await loadFinalTrainingDate({ supabase, seasonId: season.id })) !== today) return false;
-  return !(await assessSeasonEndBlockers({ supabase, seasonId: season.id })).blocked;
+  try {
+    if ((await loadFinalTrainingDate({ supabase, seasonId: season.id })) !== today) return false;
+    return !(await assessSeasonEndBlockers({ supabase, seasonId: season.id })).blocked;
+  } catch (error) {
+    // catch-ok: fail closed to the evening rule; logged so a stuck afternoon is visible.
+    console.warn(`[training-date] #7470 final-date check failed, waiting for ${TRAINING_DATE_SETTLEMENT_HOUR}:00: ${error?.message ?? error}`);
+    return false;
+  }
 }
 
 export async function loadTrainingDateIndex({ supabase, now }) {

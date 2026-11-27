@@ -1500,7 +1500,7 @@
       },
       "runDayNow": {
         "title": "Run today's training now",
-        "text": "From season 4 the day's training runs by itself, in one go, once the last race of the day is done and no earlier than 20:00. Every race day of that day is trained in the same run, whether you are online or not. 'Run today's training now' is there only if you don't want to wait: it runs the same training and it opens at the same moment the automatic run would. Once the day has been trained it cannot be run again."
+        "text": "From season 4 the day's training runs by itself, in one go, once the last race of the day is done and no earlier than 20:00. Every race day of that day is trained in the same run, whether you are online or not. 'Run today's training now' is there only if you don't want to wait: it runs the same training and it opens at the same moment the automatic run would. Once the day has been trained it cannot be run again. On the season's last day, it runs as soon as the season's last race is done, so the season change can follow the same afternoon."
       },
       "trainNowBeta": {
         "title": "Train now",

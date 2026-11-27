@@ -537,6 +537,29 @@ test('#7470: the final date is due in the afternoon once every race is run', asy
   assert.equal(job.finalSeasonDate, undefined, 'an ordinary date of the active season, not the post-season path');
 });
 
+test('#7470 (Fable): a failed or empty final-date check fails closed and never stops the run', async () => {
+  const { db, options } = cutoverWorld();
+  finishRaces(db);
+  const failing = name => ({ from: table => (table === name
+    ? new Proxy({}, { get: (_t, prop) => (prop === 'then'
+      ? resolve => resolve({ data: null, error: { message: `${name} down` } })
+      : () => failing(name).from(table)) })
+    : options.supabase.from(table)) });
+  // race_stage_schedule is read elsewhere in the index too (a calendar error stops the run as
+  // before #7470); the new check's own reads (the season-end tally) must fail closed.
+  for (const table of ['races']) {
+    const warn = console.warn; console.warn = () => {};
+    try {
+      const dates = await loadTrainingDateIndex({ supabase: failing(table), now: at('2026-10-25T15:00:00Z') }).then(jobDates);
+      assert.ok(!dates.includes(`s4:${FINAL}`), `${table} error: waits for 20:00`);
+      assert.ok(dates.includes('s4:2026-10-24'), `${table} error: older dates still run`);
+    } finally { console.warn = warn; }
+  }
+  db.race_stage_schedule = [];
+  const empty = await loadTrainingDateIndex({ supabase: options.supabase, now: at('2026-10-25T15:00:00Z') }).then(jobDates);
+  assert.ok(!empty.includes(`s4:${FINAL}`), 'no final date in the calendar: waits for 20:00');
+});
+
 test('#7470: an ordinary date is still due at 20:00, even with every race run', async () => {
   const { db, options } = cutoverWorld();
   finishRaces(db);

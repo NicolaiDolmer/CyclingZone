@@ -1500,7 +1500,7 @@
       },
       "runDayNow": {
         "title": "Lancer l'entraînement du jour maintenant",
-        "text": "À partir de la saison 4, l'entraînement du jour se lance tout seul, en une fois, dès que la dernière course du jour est terminée et pas avant 20:00. Chaque jour de course de cette journée est entraîné dans le même lancement, que tu sois en ligne ou non. “Lancer l'entraînement du jour maintenant” n'est là que si tu ne veux pas attendre : il lance le même entraînement et il s'ouvre au même moment que le lancement automatique. Une fois la journée entraînée, elle ne peut pas être relancée."
+        "text": "À partir de la saison 4, l'entraînement du jour se lance tout seul, en une fois, dès que la dernière course du jour est terminée et pas avant 20:00. Chaque jour de course de cette journée est entraîné dans le même lancement, que tu sois en ligne ou non. “Lancer l'entraînement du jour maintenant” n'est là que si tu ne veux pas attendre : il lance le même entraînement et il s'ouvre au même moment que le lancement automatique. Une fois la journée entraînée, elle ne peut pas être relancée. Le dernier jour de la saison, il s'exécute dès que la dernière course de la saison est terminée, pour que le changement de saison puisse suivre le même après-midi."
       },
       "trainNowBeta": {
         "title": "S'entraîner maintenant",

@@ -1500,7 +1500,7 @@
       },
       "runDayNow": {
         "title": "Ejecuta ahora el entrenamiento de hoy",
-        "text": "Desde la temporada 4 el entrenamiento del día se ejecuta solo, de una vez, cuando termina la última carrera del día y no antes de las 20:00. Todos los días de carrera de ese día se entrenan en la misma ejecución, estés en línea o no. “Ejecutar ahora el entrenamiento de hoy” está ahí solo por si no quieres esperar: ejecuta el mismo entrenamiento y se abre en el mismo momento en que se abriría la ejecución automática. Una vez entrenado el día, no se puede volver a ejecutar."
+        "text": "Desde la temporada 4 el entrenamiento del día se ejecuta solo, de una vez, cuando termina la última carrera del día y no antes de las 20:00. Todos los días de carrera de ese día se entrenan en la misma ejecución, estés en línea o no. “Ejecutar ahora el entrenamiento de hoy” está ahí solo por si no quieres esperar: ejecuta el mismo entrenamiento y se abre en el mismo momento en que se abriría la ejecución automática. Una vez entrenado el día, no se puede volver a ejecutar. El último día de la temporada se ejecuta en cuanto termina la última carrera de la temporada, para que el cambio de temporada pueda llegar esa misma tarde."
       },
       "trainNowBeta": {
         "title": "Entrenar ahora",
