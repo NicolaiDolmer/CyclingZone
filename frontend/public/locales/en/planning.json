@@ -297,5 +297,20 @@
     "next": "Next race",
     "close": "Close",
     "position": "{n} / {total}"
+  },
+  "seasonMatrix": {
+    "legendLabel": "Cells:",
+    "legendEmpty": "Not selected. Tap to select"
+  },
+  "climbList": {
+    "title": "The climbs",
+    "name": "Climb",
+    "category": "Category {cat}",
+    "top": "Top at km",
+    "length": "Length",
+    "average": "Average",
+    "toFinish": "To the finish",
+    "showOnProfile": "Show {name} on the profile",
+    "mobileFacts": "Top at km {km} · {length} km · {average} % · {toFinish} km to the finish"
   }
 }

@@ -7,7 +7,7 @@
 //
 // LÅST KONTRAKT — se seasonMatrix.js's fil-header for de fulde punkter. Al
 // geometri/kladde-logik bor DER (ren, testet); denne fil er render + IO.
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
@@ -19,6 +19,8 @@ import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { fitTier, trainNowLockSummary } from "../../lib/raceHubLogic.js";
 import { MIN_RACE_ENTRIES } from "../../lib/raceSelectionLogic.js"; // #6740
 import { intlLocale } from "../../lib/intlLocale.ts"; // #8781
+import { copenhagenToday } from "../../lib/planningWorkbench.ts"; // #8848
+import { firstColumnFromToday, firstRaceFromToday, matrixFooterParts, rolesInMatrix } from "../planning/seasonMatrixLenses.ts"; // #8848
 import TrainNowLockBanner from "./TrainNowLockBanner.tsx"; // #6383
 import { trainNowLockCopy } from "../training/trainNowClock.ts";
 import { Spinner, EmptyState, ErrorState, Button, Segmented, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
@@ -36,6 +38,7 @@ const FIT_TEXT = { strong: "text-cz-accent-t", average: "text-cz-2", poor: "text
 
 // Chunket save (defensivt — bulk-endpointets cap er 60 ændringer/kald, #4316).
 const BULK_CHUNK = 60;
+const DAY_COL_WIDTH = 30; // px pr. loebsdags-kolonne
 
 // #6383: skravering af Train now-låste celler (diagonale streger, 6 px).
 const LOCK_HATCH_IMAGE = `url("data:image/svg+xml,${encodeURIComponent(
@@ -48,12 +51,14 @@ const LOCK_HATCH_IMAGE = `url("data:image/svg+xml,${encodeURIComponent(
 //   embedded             skjuler matrixens egen linse-raekke og overskrift; overskrifter uden versaler
 //   onOpenRace(raceId)   loebsdag-knapperne aabner loebet i stedet for dags-boardet
 //   onData(snapshot)     loeb og ryttere til visningens Rutematch-linse (ingen ekstra hentning)
+// #8848 (kun indlejret): gitteret aabner ved i dag, linjen under matrixen naevner sidens "mangler en
+// trup" (needSquadCount, samme tal som sidehovedet), og rollebogstaverne forklares paa fladen.
 /**
  * @param {{ seasonNumber?: number, onOpenDay?: (date: string) => void, onDirtyChange?: (dirty: boolean) => void,
  *   lens?: string, problemsOnly?: boolean, embedded?: boolean, onOpenRace?: (raceId: string) => void,
- *   onData?: (snapshot: any) => void }} props
+ *   onData?: (snapshot: any) => void, needSquadCount?: number }} props
  */
-export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, lens: lensProp, problemsOnly: problemsOnlyProp, embedded = false, onOpenRace, onData }) {
+export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, lens: lensProp, problemsOnly: problemsOnlyProp, embedded = false, onOpenRace, onData, needSquadCount }) {
   const { t, i18n } = useTranslation("races");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -251,6 +256,27 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
     return out;
   }, [peakPlans, dayDatesMap]);
 
+  // #8848: den indlejrede matrix aabner ved i dag. Een gang pr. hentet saeson, og foerst naar gitteret
+  // har en bredde (det ligger skjult bag Rutematch/Form, til linsen skiftes tilbage).
+  const desktopRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const scrolledForRef = useRef(/** @type {unknown} */ (null));
+  useEffect(() => {
+    if (!embedded || loading || !data) return undefined;
+    const el = desktopRef.current;
+    if (!el) return undefined;
+    const tryScroll = () => {
+      if (scrolledForRef.current === data || el.clientWidth === 0) return;
+      scrolledForRef.current = data;
+      const index = firstColumnFromToday(dayColumns, dayDatesMap, copenhagenToday());
+      if (index != null) el.scrollLeft = index * DAY_COL_WIDTH;
+    };
+    tryScroll();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(tryScroll);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [embedded, loading, data, dayColumns, dayDatesMap]);
+
   if (loading) return <div className="flex justify-center py-8"><Spinner size={20} /></div>;
   if (loadError) {
     return (
@@ -269,7 +295,9 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
   }
 
   const readOnly = !!data.readOnly;
-  const selectedMobileRace = raceById.get(mobileRaceId) ?? races[0];
+  const selectedMobileRace = raceById.get(mobileRaceId)
+    ?? (embedded ? raceById.get(firstRaceFromToday(races, dayDatesMap, copenhagenToday())) : null) // #8848
+    ?? races[0];
   const mobileWindow = mobileRaceWindow(dayColumns, selectedMobileRace?.id, mobileStart);
   const visibleRiders = riders.filter((r) => !problemsOnly || problems.affectedRiderIds.has(r.id) || races.some((race) => problems.affectedRaceIds.has(race.id) && roleOf(draftByRace.get(race.id), r.id) != null));
 
@@ -326,7 +354,12 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
     }
   }
 
-  const colWidth = 30;
+  const colWidth = DAY_COL_WIDTH;
+  // #8848: forklaringen af cellerne (kun indlejret): de roller der faktisk staar i matrixen.
+  const legendRoles = embedded
+    ? rolesInMatrix(races.flatMap((race) => visibleRiders.map((r) => roleOf(draftByRace.get(race.id), r.id))), Object.keys(ROLE_LETTER))
+    : [];
+  const footerParts = embedded && needSquadCount !== undefined ? matrixFooterParts(problems.count, needSquadCount) : null;
 
   return (
     <div className="mt-5">
@@ -482,7 +515,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
 
       {/* Flag off/ikke-beta: den fulde tabel paa ALLE bredder, praecis som foer
           #5124 (sticky navnekolonne + kontaineret vandret scroll, #1146). */}
-      <div data-testid="season-matrix-desktop" className={`${mobileView ? "hidden sm:block " : ""}rounded-cz border border-cz-border bg-cz-card overflow-x-auto`}>
+      <div ref={desktopRef} data-testid="season-matrix-desktop" className={`${mobileView ? "hidden sm:block " : ""}rounded-cz border border-cz-border bg-cz-card overflow-x-auto`}>
         <table
           data-sort-exempt="rytter x loebsdag-gitter, ikke en sorterbar liste"
           className="border-collapse"
@@ -675,13 +708,44 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange, l
         </table>
       </div>
 
-      <div className="mt-2 flex items-center gap-1.5 font-data text-3xs">
-        {problems.count === 0 ? (
+      <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-data text-3xs" data-testid="season-matrix-footer">
+        {footerParts ? (
+          footerParts === "none" ? (
+            <span className="text-cz-success">{t("matrix.noProblems")}</span>
+          ) : (
+            footerParts.map((part, i) => (
+              <span key={part} className="text-cz-danger">
+                {i > 0 && <span className="me-1.5 text-cz-3" aria-hidden="true">·</span>}
+                {part === "needSquad" ? t("planning:subtitle.needSquad", { count: needSquadCount }) : t("matrix.problemsCount", { count: problems.count })}
+              </span>
+            ))
+          )
+        ) : problems.count === 0 ? (
           <span className="text-cz-success">{t("matrix.noProblems")}</span>
         ) : (
           <span className="text-cz-danger">{t("matrix.problemsCount", { count: problems.count })}</span>
         )}
       </div>
+
+      {/* #8848: cellernes bogstaver og "+" forklaret paa fladen med fuld tekst (ogsaa paa mobil, hvor
+          der ingen tooltip er). Kun de roller der staar i matrixen. */}
+      {embedded && (legendRoles.length > 0 || mobileView) && (
+        <div data-testid="season-matrix-legend" className={`${legendRoles.length ? "" : "sm:hidden "}mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-2xs text-cz-2`}>
+          <span className="text-cz-3">{t("planning:seasonMatrix.legendLabel")}</span>
+          {legendRoles.map((role) => (
+            <span key={role} className="inline-flex items-center gap-1.5">
+              <span className={`inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-cz px-1 text-3xs font-semibold ${roleBadgeClass(role)}`}>{ROLE_LETTER[role]}</span>
+              {t(`tacticsOrders.roleLabel.${role}`)}
+            </span>
+          ))}
+          {mobileView && (
+            <span className="inline-flex items-center gap-1.5 sm:hidden">
+              <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-cz border border-cz-border px-1 text-3xs text-cz-3">+</span>
+              {t("planning:seasonMatrix.legendEmpty")}
+            </span>
+          )}
+        </div>
+      )}
 
       {popover && (() => {
         const rider = riders.find((r) => r.id === popover.riderId);

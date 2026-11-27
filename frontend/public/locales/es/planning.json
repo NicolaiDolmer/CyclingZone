@@ -297,5 +297,20 @@
     "next": "Carrera siguiente",
     "close": "Cerrar",
     "position": "{n} / {total}"
+  },
+  "seasonMatrix": {
+    "legendLabel": "Celdas:",
+    "legendEmpty": "No seleccionado. Toca para seleccionar"
+  },
+  "climbList": {
+    "title": "Las subidas",
+    "name": "Subida",
+    "category": "Categoría {cat}",
+    "top": "Cima en el km",
+    "length": "Longitud",
+    "average": "Media",
+    "toFinish": "Hasta la meta",
+    "showOnProfile": "Mostrar {name} en el perfil",
+    "mobileFacts": "Cima en el km {km} · {length} km · {average} % · {toFinish} km hasta la meta"
   }
 }

@@ -109,10 +109,13 @@ function safeLocalStorage(): Storage | null {
 export default function SeasonMatrixView({
   onOpenRace,
   onDirtyChange,
+  needSquadCount,
 }: {
   onOpenRace?: (raceId: string) => void;
   /** #8811: matrixens ugemte kladde meldes til siden, saa et skift af visning kan spoerge foerst. */
   onDirtyChange?: (dirty: boolean) => void;
+  /** #8848: sidehovedets "X loeb mangler en trup", saa linjen under matrixen siger det samme. */
+  needSquadCount?: number;
 }) {
   const { t } = useTranslation(["races", "planner", "common"]);
   const [lens, setLens] = useState<SeasonLens>(() => readStoredLens(safeLocalStorage()));
@@ -199,6 +202,7 @@ export default function SeasonMatrixView({
           onOpenRace={onOpenRace}
           onDirtyChange={setMatrixDirty}
           onData={onData}
+          needSquadCount={seasonChoice == null ? needSquadCount : undefined}
         />
       </div>
 

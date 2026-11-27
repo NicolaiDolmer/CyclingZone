@@ -297,5 +297,20 @@
     "next": "Course suivante",
     "close": "Fermer",
     "position": "{n} / {total}"
+  },
+  "seasonMatrix": {
+    "legendLabel": "Cases :",
+    "legendEmpty": "Non sélectionné. Touchez pour sélectionner"
+  },
+  "climbList": {
+    "title": "Les ascensions",
+    "name": "Ascension",
+    "category": "Catégorie {cat}",
+    "top": "Sommet au km",
+    "length": "Longueur",
+    "average": "Moyenne",
+    "toFinish": "Jusqu'à l'arrivée",
+    "showOnProfile": "Afficher {name} sur le profil",
+    "mobileFacts": "Sommet au km {km} · {length} km · {average} % · {toFinish} km de l'arrivée"
   }
 }

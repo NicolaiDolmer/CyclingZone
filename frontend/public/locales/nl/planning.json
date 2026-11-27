@@ -297,5 +297,20 @@
     "next": "Volgende koers",
     "close": "Sluiten",
     "position": "{n} / {total}"
+  },
+  "seasonMatrix": {
+    "legendLabel": "Cellen:",
+    "legendEmpty": "Niet geselecteerd. Tik om te selecteren"
+  },
+  "climbList": {
+    "title": "De beklimmingen",
+    "name": "Beklimming",
+    "category": "Categorie {cat}",
+    "top": "Top op km",
+    "length": "Lengte",
+    "average": "Gemiddelde",
+    "toFinish": "Tot de finish",
+    "showOnProfile": "Toon {name} op het profiel",
+    "mobileFacts": "Top op km {km} · {length} km · {average} % · {toFinish} km tot de finish"
   }
 }

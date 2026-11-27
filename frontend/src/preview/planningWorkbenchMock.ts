@@ -123,18 +123,29 @@ const entries = Object.entries(PICKS).flatMap(([raceId, ids]) =>
 
 const overlaps = (a: { id: string; gameDayStart: number; gameDayEnd: number }, b: { id: string; gameDayStart: number; gameDayEnd: number }) => a.id !== b.id && a.gameDayStart <= b.gameDayEnd && b.gameDayStart <= a.gameDayEnd;
 
+// #8848: saesonmatrixen har ogsaa kørte loeb foer i dag, saa "matrixen aabner ved i dag" kan ses.
+const PAST_RACES = ([
+  ["wb-past-1", "Tour du Léman", -14, -11],
+  ["wb-past-2", "Ronde van het Preview", -8, -8],
+  ["wb-past-3", "Giro del Passato", -6, -3],
+] as Array<[string, string, number, number]>).map(([id, name, start, end]) => ({
+  ...RACES[0], id, name, raceClass: "Class1", stages: end - start + 1, status: "completed", stagesCompleted: end - start + 1,
+  lineupLocked: true, gameDayStart: gd(start), gameDayEnd: gd(end), sizeMax: end > start ? STAGE_RACE_SIZE : ONE_DAY_SIZE,
+}));
+const PAST_ENTRIES = PAST_RACES.flatMap((r) => RIDER_DEFS.slice(0, r.sizeMax).map(([riderId], i) => ({ raceId: r.id, riderId, raceRole: i === 0 ? "captain" : null })));
+
 export const PLANNING_SEASON_SEED = {
   enabled: true,
   season: { id: "season-preview-planning", number: 5 },
   ownPoolId: 1,
   readOnly: false,
-  races: RACES,
+  races: [...PAST_RACES, ...RACES],
   riders: RIDER_DEFS.map(([id, name, type, ab, , , injured]) => ({ id, name, primaryType: type, secondaryType: null, abilities: abilities(ab), injured })),
-  entries,
+  entries: [...PAST_ENTRIES, ...entries],
   withdrawnRaceIds: [],
   didNotStartRaceIds: [],
   trainNowLockByRace: {},
-  dayDates: Array.from({ length: 24 }, (_, i) => ({ gameDay: gd(i), date: day(i) })),
+  dayDates: Array.from({ length: 38 }, (_, i) => ({ gameDay: gd(i - 14), date: day(i - 14) })),
 };
 
 /** Svar for GET /api/races/:id/selection paa de seedede loeb, ellers null. */

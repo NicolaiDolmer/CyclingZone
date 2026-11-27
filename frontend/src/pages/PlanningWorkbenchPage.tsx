@@ -921,7 +921,7 @@ function Workbench() {
   } else if (mode === "season") {
     other = (
       <Suspense fallback={loader}>
-        <SeasonMatrixView onOpenRace={openRaceFromSeason} onDirtyChange={setSeasonDirty} />
+        <SeasonMatrixView onOpenRace={openRaceFromSeason} onDirtyChange={setSeasonDirty} needSquadCount={upcomingNeed} />
       </Suspense>
     );
   } else if (mode === "month") {

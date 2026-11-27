@@ -297,5 +297,20 @@
     "next": "Næste løb",
     "close": "Luk",
     "position": "{n} / {total}"
+  },
+  "seasonMatrix": {
+    "legendLabel": "Cellerne:",
+    "legendEmpty": "Ikke udtaget. Tryk for at udtage"
+  },
+  "climbList": {
+    "title": "Stigningerne",
+    "name": "Stigning",
+    "category": "Kategori {cat}",
+    "top": "Top ved km",
+    "length": "Længde",
+    "average": "Gennemsnit",
+    "toFinish": "Til mål",
+    "showOnProfile": "Vis {name} på profilen",
+    "mobileFacts": "Top ved km {km} · {length} km · {average} % · {toFinish} km til mål"
   }
 }

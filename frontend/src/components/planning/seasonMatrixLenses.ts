@@ -149,3 +149,56 @@ export function activeSeasonNumber(seasons: SeasonOption[] | null | undefined): 
 export function viewedSeason(choice: number | null, seasons: SeasonOption[] | null | undefined): number | null {
   return choice ?? activeSeasonNumber(seasons);
 }
+
+interface MatrixColumnLike {
+  raceId: string;
+  gameDay: number;
+}
+
+/**
+ * #8848: matrixen aabner ved i dag, ikke ved saesonstart. Den foerste loebsdags-kolonne med en dato
+ * fra i dag og frem (kolonnerne staar i loebenes startraekkefoelge, saa et loeb der koerer i dag
+ * kommer foerst). Null, naar hele saesonen er koert eller ingen kolonne har en dato.
+ */
+export function firstColumnFromToday(
+  columns: readonly MatrixColumnLike[],
+  dateByDay: ReadonlyMap<number, string>,
+  today: string,
+): number | null {
+  const index = columns.findIndex((col) => {
+    const date = dateByDay.get(col.gameDay);
+    return date != null && date >= today;
+  });
+  return index >= 0 ? index : null;
+}
+
+/** #8848: mobilens loebsvaelger starter paa det foerste loeb, der ikke er slut i dag. */
+export function firstRaceFromToday(
+  races: ReadonlyArray<{ id: string; gameDayEnd: number }>,
+  dateByDay: ReadonlyMap<number, string>,
+  today: string,
+): string | null {
+  return races.find((race) => {
+    const end = dateByDay.get(race.gameDayEnd);
+    return end != null && end >= today;
+  })?.id ?? null;
+}
+
+/**
+ * #8848 (TASTE P11, én sandhed): linjen under matrixen maa ikke sige "Ingen problemer", mens
+ * sidehovedet melder loeb uden fuld trup. Siden giver sit eget tal (samme regel som sidehovedet),
+ * og linjen naevner begge dele. `needSquad` undefined = den gamle side, uaendret.
+ */
+export function matrixFooterParts(conflicts: number, needSquad: number | undefined): Array<"needSquad" | "problems"> | "none" {
+  const parts: Array<"needSquad" | "problems"> = [];
+  if ((needSquad ?? 0) > 0) parts.push("needSquad");
+  if (conflicts > 0) parts.push("problems");
+  return parts.length ? parts : "none";
+}
+
+/** #8848: rollebogstaverne der faktisk staar i matrixen, i fast raekkefoelge, til forklaringen paa fladen. */
+export function rolesInMatrix(roles: Iterable<string | null | undefined>, order: readonly string[]): string[] {
+  const seen = new Set<string>();
+  for (const role of roles) if (role) seen.add(role);
+  return order.filter((role) => seen.has(role));
+}
