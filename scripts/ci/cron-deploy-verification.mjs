@@ -29,26 +29,16 @@ export function dueAtMs(config, fromMs, cadence, margin) {
 }
 const stamp = value => typeof value === 'string' && /^\d{4}-\d\d-\d\dT.*(?:Z|\+00:00)$/.test(value) ? Date.parse(value) : NaN;
 
-// Includes injected callback/initializer roots from the reviewed map. Loader/
-// from syntax includes exports, require and literal dynamic imports. Unknown
-// or unresolvable graphs always require proof for that job. Unmapped runtime
-// files and common triggers widen to ALL.
-// cron.js is a shared trigger, never a per-job traversal root.
-export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SOURCE_MAP,
-  read = path => readFileSync(resolve(ROOT, path), 'utf8'),
-  exists = path => existsSync(resolve(ROOT, path)) && statSync(resolve(ROOT, path)).isFile() } = {}) {
-  const all = monitors.map(([slug]) => slug);
-  if (!Array.isArray(files) || files.length === 0 || files.length >= 3000) throw new Error('Unknown changed-file evidence');
-  if (Object.keys(map.sourcePathsBySlug).sort().join() !== [...all].sort().join()) throw new Error('Cron source map does not cover registry');
-  const changed = new Set();
-  for (const file of files) {
-    if (!file || typeof file.filename !== 'string' || !['added', 'modified', 'removed', 'renamed', 'changed', 'copied'].includes(file.status)) throw new Error('Invalid changed-file evidence');
-    for (const path of [file.filename, ...(file.status === 'renamed' ? [file.previous_filename] : [])]) {
-      if (typeof path !== 'string' || !path || path.startsWith('/') || path.includes('\\') || path.split('/').includes('..')) throw new Error('Invalid changed-file path');
-      changed.add(path);
-    }
-  }
-  if ([...changed].some(path => map.commonSourcePaths.includes(path) || path.startsWith('database/'))) return all;
+/** Reuse one traced dependency graph for one read-only planning pass. */
+export function createAffectedCronJobs(options = {}) {
+  let graph;
+  return (files) => affectedCronJobs(files, {
+    ...options,
+    trace: (context) => (graph ??= traceCronGraph(context)),
+  });
+}
+
+function traceCronGraph({ all, map, read, exists }) {
   const closures = new Map();
   const unknown = new Set();
   const sources = new Map();
@@ -87,6 +77,30 @@ export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SO
     } catch { unknown.add(slug); } // unresolved graph always requires this job's proof
     closures.set(slug, seen);
   }
+  return { closures, unknown };
+}
+
+// Includes injected callback/initializer roots from the reviewed map. Loader/
+// from syntax includes exports, require and literal dynamic imports. Unknown
+// or unresolvable graphs always require proof for that job. Unmapped runtime
+// files and common triggers widen to ALL.
+// cron.js is a shared trigger, never a per-job traversal root.
+export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SOURCE_MAP,
+  read = path => readFileSync(resolve(ROOT, path), 'utf8'),
+  exists = path => existsSync(resolve(ROOT, path)) && statSync(resolve(ROOT, path)).isFile(), trace = traceCronGraph } = {}) {
+  const all = monitors.map(([slug]) => slug);
+  if (!Array.isArray(files) || files.length === 0 || files.length >= 3000) throw new Error('Unknown changed-file evidence');
+  if (Object.keys(map.sourcePathsBySlug).sort().join() !== [...all].sort().join()) throw new Error('Cron source map does not cover registry');
+  const changed = new Set();
+  for (const file of files) {
+    if (!file || typeof file.filename !== 'string' || !['added', 'modified', 'removed', 'renamed', 'changed', 'copied'].includes(file.status)) throw new Error('Invalid changed-file evidence');
+    for (const path of [file.filename, ...(file.status === 'renamed' ? [file.previous_filename] : [])]) {
+      if (typeof path !== 'string' || !path || path.startsWith('/') || path.includes('\\') || path.split('/').includes('..')) throw new Error('Invalid changed-file path');
+      changed.add(path);
+    }
+  }
+  if ([...changed].some(path => map.commonSourcePaths.includes(path) || path.startsWith('database/'))) return all;
+  const { closures, unknown } = trace({ all, map, read, exists });
   const runtime = [...changed].filter(path => !/^(?:docs\/|frontend\/|pr-screens\/|superpowers\/|\.claude\/|scripts\/|\.github\/)/.test(path)
     && !/^[^/]+\.md$/.test(path));
   if (runtime.some(path => ![...closures.values()].some(paths => paths.has(path)))) return all;

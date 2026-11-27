@@ -105,3 +105,12 @@ test('#7741 bonus mark: off, or no answer yet, shows nothing', () => {
   assert.doesNotMatch(render({ run:bonusRun, trainNowBonus:false }), /daily-receipt-bonus/);
   assert.doesNotMatch(render({ run:bonusRun }), /daily-receipt-bonus/);
 });
+
+test('#8856 a training session in the fold-out names its session with a tooltip; rest, race and injury keep their word', () => {
+  // The fold-out only renders after a click, so the wiring is read from the source.
+  const src = readFileSync(new URL('./DailyTrainingReceipt.tsx', import.meta.url), 'utf8');
+  assert.match(src, /import SessionName from "\.\/reportXp\/SessionName\.tsx"/);
+  assert.match(src, /trainedFocus\(activity\) \? <SessionName focus=\{trainedFocus\(activity\)!\}/);
+  const guard = src.slice(src.indexOf('const trainedFocus'), src.indexOf('\n', src.indexOf('const trainedFocus') + 120));
+  for (const skip of ['unknown_pending', 'activity.injured', 'activity.race_day', 'activity.intensity === "rest"']) assert.ok(guard.includes(skip), `skips ${skip}`);
+});

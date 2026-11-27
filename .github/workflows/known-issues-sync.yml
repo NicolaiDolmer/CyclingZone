@@ -17,6 +17,8 @@ name: Known issues sync
 
 on:
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'frontend/src/data/patchNotes.js'
       - 'scripts/known-issues-sync*'
@@ -36,6 +38,7 @@ concurrency:
 
 jobs:
   selftest:
+    if: ${{ !github.event.pull_request.draft }}
     name: known-issues-selftest
     runs-on: ubuntu-latest
     steps:

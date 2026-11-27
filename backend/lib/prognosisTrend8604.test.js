@@ -18,10 +18,10 @@ import { publishTeam, runPrognosisTrendBatch, summarizeTeam } from "./prognosisT
 import { GOLDEN_STAGES, GOLDEN_TEAM, goldenDigests, goldenSupabase, goldenSurfaces, goldenTables } from "./prognosisTrend8604.golden.mjs";
 
 // ── Frossen golden ─────────────────────────────────────────────────────────────────
-// Digest fra merge-basen 19e6a835ff8d5b0fd670705844f4d05042422b49 (main før #8604), genereret
+// Digest fra merge-basen 4c0b328b8edea7829d89dd8363ea83799045e6e7 (main før #8604, efter #8873/#8834), genereret
 // med `node backend/lib/prognosisTrend8604.golden.mjs` i en read-only checkout af basen.
 // Genereres ALDRIG med den nye kode.
-const BASE_DIGEST = "7eeb4dc84d6f48866b0cc9aba62e68edba80cd8d3e0c41c0ce3e5c3801cb0fa8";
+const BASE_DIGEST = "25fee7bb736e5d383a4dcb9c9abf39402d8121d24839c7af542a3e09be2af71b";
 
 test("golden: manglende, off og beta er bit for bit som merge-basen", async () => {
   const digests = await goldenDigests(GOLDEN_STAGES);

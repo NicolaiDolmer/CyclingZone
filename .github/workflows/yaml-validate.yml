@@ -22,6 +22,9 @@ name: YAML validate
 
 on:
   pull_request:
+    # #8802: kladder koerer kun den billige actionlint (hurtig besked ved workflow-aendringer);
+    # yamllint venter, og ready_for_review koerer begge paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - '.github/workflows/**'
       - '.github/ISSUE_TEMPLATE/**'
@@ -68,6 +71,7 @@ jobs:
           level: error
 
   yamllint-issue-templates:
+    if: ${{ !github.event.pull_request.draft }}
     name: yamllint (issue templates)
     runs-on: ubuntu-latest
     permissions:

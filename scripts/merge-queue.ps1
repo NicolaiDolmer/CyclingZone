@@ -1332,6 +1332,12 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # (hvad SIDSTE merge-SHA faar verificeret) maa kun bygge paa den friske diff.
   $entryNeedsRailway = [bool]($entry.needRailway -or $fresh.needRailway)
   $coversTrain = ((-not $script:batchVercel) -or [bool]$fresh.touchesVercel) -and ((-not $script:trainNeedsRailway) -or [bool]$fresh.needRailway)
+  if ($DryRun -and $script:dryBatchSize -gt 0 -and ($entrySolo -or -not $coversTrain)) {
+    Write-Host "  [dry-run] ville lukke toget foer PR #$n og verificere dets deploy-maal." -ForegroundColor DarkGray
+    $script:dryBatchSize = 0; $script:trainDeploys = 0; $script:trainNeedsRailway = $false
+    $script:batchRailway = $false; $script:batchBackend = $false; $script:batchVercel = $false
+    $batchWithNext = Test-MergeWithNext ([bool]$NoBatch) $idx $plan.Count 0 $MaxBatch
+  }
   if (-not $DryRun -and $script:batchMerged.Count -gt 0 -and ($entrySolo -or -not $coversTrain)) {
     Write-Host "  PR #$n $(if ($entrySolo) { 'koerer alene (migration/motor)' } else { 'daekker ikke togets deploy-maal' }): lukker det aabne tog foerst." -ForegroundColor DarkYellow
     Close-OpenTrain
@@ -1353,15 +1359,16 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     if ($entryRailway) { $script:batchRailway = $true }
     if ($entryBackend) { $script:batchBackend = $true }
     if ($entryVercel) { $script:batchVercel = $true }
+    if ($entryNeedsRailway) { $script:trainNeedsRailway = $true }
     if ($batchWithNext) {
       $script:dryBatchSize++
       Write-Host "  [dry-run] ville merge videre uden at vente; CI (main) og evt. Deploy verify ventes EEN gang efter raekken (maks $MaxBatch)." -ForegroundColor DarkGray
     } elseif ($script:batchBackend -or $script:batchRailway -or $script:batchVercel) {
       Write-Host "  [dry-run] sidste i raekken: ville vente paa CI (main) + 'Deploy verify' for hele raekken." -ForegroundColor DarkGray
-      $script:dryBatchSize = 0; $script:trainDeploys = 0; $script:batchRailway = $false; $script:batchBackend = $false; $script:batchVercel = $false
+      $script:dryBatchSize = 0; $script:trainDeploys = 0; $script:trainNeedsRailway = $false; $script:batchRailway = $false; $script:batchBackend = $false; $script:batchVercel = $false
     } else {
       Write-Host "  [dry-run] ville derefter vente paa CI (main) + mindst $MinWaitMinutesNoBackend min (roerer ikke backend/)." -ForegroundColor DarkGray
-      $script:dryBatchSize = 0; $script:trainDeploys = 0; $script:batchRailway = $false; $script:batchVercel = $false
+      $script:dryBatchSize = 0; $script:trainDeploys = 0; $script:trainNeedsRailway = $false; $script:batchRailway = $false; $script:batchVercel = $false
     }
     continue
   }

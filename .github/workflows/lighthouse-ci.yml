@@ -22,7 +22,8 @@ name: Lighthouse CI
 #   uskyldige PR.
 #
 #   Ét perf-gate pr. event. Jobbets interne filter giver også et grønt
-#   check ved kladder, docs og merge_group.
+#   check ved docs og merge_group; på en kladde springes jobbet over på
+#   job-niveau, og ready_for_review kører det på samme HEAD (#8802).
 
 on:
   pull_request:
@@ -52,6 +53,7 @@ concurrency:
 
 jobs:
   perf-gate:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     env:
       # Kun advisory/kommentar-trin springes over for Dependabot.
@@ -67,10 +69,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_EVENT_NAME" == "merge_group" || "$PR_DRAFT" == "true" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "merge_group" ]]; then
             echo "build=false" >> "$GITHUB_OUTPUT"
           elif [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
             echo "build=true" >> "$GITHUB_OUTPUT"

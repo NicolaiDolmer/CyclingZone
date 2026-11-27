@@ -190,3 +190,17 @@ test("#6367 review: grus taeller mod brosten-aksen, saa kvoten ikke tilfoejer ek
   // Foer rettelsen tilfoejede kvoten 4 (grus talte som 0); nu hoejst 1 (det bloede K-B-maal).
   assert.ok(cobbles <= 1, `kvoten tilfoejede ${cobbles} brosten selvom grus allerede daekker aksen`);
 });
+
+// #8830 (ejer 27/11 "flere enkeltstarter nu"): fra S6 maa en filler-plads ogsaa blive enkeltstart.
+test("#8830 S6: fordeleren kan vaelge enkeltstart; ikke i grus/brosten-typer og aldrig i S5", async () => {
+  const { allocateS5TierFillers: alloc } = await import("./s5TierTerrainQuota.js");
+  const slot = (identityType) => ({ id: identityType ?? "arch", guaranteed: ["flat"], natural: ["rolling", "hilly"], options: ["rolling", "hilly", "flat"], ttCap: 1, ...(identityType ? { identityType } : {}) });
+  // En division helt uden tidskoersler: tabet (§6b itt-maalet) trækker mod en enkeltstart.
+  const counts = { flat: 30, rolling: 30, hilly: 30, mountain: 6, high_mountain: 4 };
+  const pick = (s6, identityType) => alloc({ tier: 3, counts, slots: [slot(identityType)], s6 }).fillerById.get(identityType ?? "arch");
+  assert.ok(pick(true, "hilly").includes("itt"), "S6: typet kuperet loeb kan faa en enkeltstart");
+  assert.ok(pick(true, null).includes("itt"), "S6: arketype-loeb kan faa en enkeltstart");
+  for (const t of ["gravel", "cobbles_benelux"]) assert.ok(!pick(true, t).includes("itt"), `S6: ${t} faar aldrig en ekstra enkeltstart`);
+  assert.ok(!pick(false, "hilly").includes("itt"), "S5: ingen ekstra option (bit-identisk)");
+  assert.ok(!pick(true, "hilly").includes("high_mountain"), "S6 tilfoejer aldrig hoejbjerg (#6995)");
+});

@@ -22,6 +22,9 @@ name: Feature-register check
 
 on:
   pull_request:
+    # #8802: kladder koerer kun den billige registry-freshness (hurtig besked til lanen);
+    # registry-flags (npm ci) venter, og ready_for_review koerer begge paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'docs/FEATURE_REGISTRY.yml'
       - 'docs/FEATURE_STATUS.md'
@@ -103,6 +106,7 @@ jobs:
         run: node scripts/feature-registry-flag-expiry.mjs
 
   registry-flags:
+    if: ${{ !github.event.pull_request.draft }}
     name: registry-flags
     runs-on: ubuntu-latest
     timeout-minutes: 30

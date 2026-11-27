@@ -112,6 +112,9 @@ export function tierTerrainLoss(counts, tier, { s6 = false } = {}) {
   return loss;
 }
 
+/** #8830: typede loeb, hvor S6 ikke tilfoejer enkeltstart (underlaget er typen). S6 tilfoejer aldrig hoejbjerg (#6995). */
+const S6_NO_EXTRA_ITT_TYPES = Object.freeze(new Set(["gravel", "cobbles_benelux"]));
+
 /**
  * Fordel én divisions filler-pladser efter kvote.
  *
@@ -121,8 +124,19 @@ export function tierTerrainLoss(counts, tier, { s6 = false } = {}) {
  *   slots   arketype-etapeløbenes filler-pladser (s5StageRaceFillerSlots), i løbssættets rækkefølge
  * @returns {{ fillerById: Map<string, string[]>, changes: number, lossBefore: number, lossAfter: number }}
  */
-export function allocateS5TierFillers({ tier, counts, slots, s6 = false }) {
+export function allocateS5TierFillers({ tier, counts, slots: inputSlots, s6 = false }) {
   const cur = { ...counts };
+  // #8830 (ejer 27/11: "flere enkeltstarter nu" i D3): fra S6 maa en filler-plads ogsaa blive
+  // enkeltstart. TT-loftet og ordnings-arketypen holdes; tabet afgoer om det sker.
+  /** @type {typeof inputSlots} */
+  const slots = !s6 ? inputSlots : inputSlots.map((s) => {
+      // Typede loeb: enkeltstart for alle typer undtagen grus og brosten (deres underlag ER typen).
+      if (s.identityType && S6_NO_EXTRA_ITT_TYPES.has(s.identityType)) return s;
+      // Kun enkeltstart: hoejbjerg tilfoejes ikke, fordi en filler aldrig maa blive haardere
+      // end kongeetapen (#6995); listen er allerede skaaret ved queen-terraenet.
+      const extra = ["itt"];
+      return { ...s, options: [...new Set([...s.options, ...extra])] };
+    });
   const fillers = slots.map((s) => s.natural.slice());
   // #6857: et typet løb (identityType) har sin bjergfrihed i typens filler-liste (options);
   // mellembjerg er dér tilladt i et bjergfrit løb (design §2), så forbuddet udledes ikke her.
@@ -134,6 +148,7 @@ export function allocateS5TierFillers({ tier, counts, slots, s6 = false }) {
   let changes = 0;
   const changedFrom = (/** @type {number} */ i, /** @type {number} */ j) => fillers[i][j] !== slots[i].natural[j];
   for (;;) {
+    /** @type {{ i: number, j: number, to: string, delta: number } | null} */
     let best = null;
     for (let i = 0; i < slots.length; i++) {
       const s = slots[i];

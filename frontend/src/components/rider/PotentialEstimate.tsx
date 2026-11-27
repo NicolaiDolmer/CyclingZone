@@ -144,19 +144,22 @@ export default function PotentialEstimate({ view, size = "cell", action = null, 
     );
   }
 
-  // Usikker: "ca. 74" i afdæmpet farve. Det sande tal vises aldrig, kun skønnet.
+  // Ejer 27/11 (#8873): "Tekst skal ikke vises i talfelterne ... Ved potentiale kan det være et
+  // tooltip". Feltet viser kun tallet; sikkerheden (Usikker/Rimelig/Sikker) står i tooltip'en.
+  // Usikker vises stadig afdæmpet. Det sande tal vises aldrig, kun skønnet.
   const unsure = view.certainty === "unsure";
+  const certaintyWord = t(`rider:potentialEstimate.certainty.${view.certainty}`);
   return (
     <span className="inline-flex flex-col gap-1">
       <span className={`inline-flex items-baseline gap-x-1.5 gap-y-1 ${size === "cell" ? "flex-nowrap" : "flex-wrap"}`} data-testid="potential-estimate">
         <span
           className={`tabular-nums whitespace-nowrap ${unsure ? "text-cz-3" : "text-cz-1"} ${NUMBER_CLASS[size]}`}
-          title={t("rider:potentialEstimate.notAFact")}
+          title={`${certaintyWord}. ${t("rider:potentialEstimate.notAFact")}`}
           data-potential-value={view.value}
+          data-potential-certainty={view.certainty}
         >
-          {unsure ? t("riders:potentialNumber.approx", { value: view.value }) : view.value}
+          {view.value}
         </span>
-        <CertaintyWord certainty={view.certainty} />
         {action}
       </span>
       {sub && <span className="text-2xs font-normal text-cz-3">{sub}</span>}

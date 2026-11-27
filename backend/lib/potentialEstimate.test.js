@@ -23,10 +23,25 @@ const PARAMS = Object.freeze({
 
 const scoutKnow = (looks, tier = 3) => ({ own: false, looks, bestScoutTier: tier });
 
-test("intet tal uden viden: fremmed uden kig og egen ung under grænsen", () => {
+test("intet tal uden viden: fremmed uden kig; en egen rytter har et tal fra dag ét (#8855)", () => {
   assert.deepEqual(estimatePotential({ truePot: 70, currentRating: 40, riderId: "r1", teamId: "t1", knowledge: scoutKnow(0) }, PARAMS), { hidden: true });
-  assert.deepEqual(estimatePotential({ truePot: 70, currentRating: 40, riderId: "r1", teamId: "t1", knowledge: { own: true, trainingDates: 4 } }, PARAMS), { hidden: true });
-  assert.equal(estimatePotential({ truePot: 70, currentRating: 40, riderId: "r1", teamId: "t1", knowledge: { own: true, trainingDates: 5 } }, PARAMS).hidden, false);
+  for (const trainingDates of [0, 4, 5]) {
+    assert.equal(estimatePotential({ truePot: 70, currentRating: 40, riderId: "r1", teamId: "t1", knowledge: { own: true, trainingDates } }, PARAMS).hidden, false);
+  }
+});
+
+test("#8855: egen rytter under grænsen og uden kig = ét kig med holdets egen scout", () => {
+  for (const tier of [null, 1, 3, 5]) {
+    assert.deepEqual(
+      knowledgeLevel({ own: true, trainingDates: 2, looks: 0, bestScoutTier: tier }, PARAMS),
+      knowledgeLevel({ own: false, looks: 1, bestScoutTier: tier }, PARAMS),
+    );
+  }
+  // Rigtige kig vinder over dag ét-niveauet, og over grænsen gælder de egne træninger som før.
+  assert.deepEqual(knowledgeLevel({ own: true, trainingDates: 0, looks: 2, bestScoutTier: 3 }, PARAMS), knowledgeLevel(scoutKnow(2, 3), PARAMS));
+  assert.equal(knowledgeLevel({ own: true, trainingDates: 5, looks: 0, bestScoutTier: 5 }, PARAMS).key, "own0");
+  // En fremmed rytter uden kig får stadig intet.
+  assert.equal(knowledgeLevel({ own: false, trainingDates: 0, looks: 0, bestScoutTier: 5 }, PARAMS), null);
 });
 
 test("stabilt: samme (rytter, hold, viden) giver altid samme tal", () => {
@@ -176,8 +191,8 @@ test("egen rytter beholder holdets viden fra kig før skiftet; bedste kilde vind
   // Mange træninger slår ét kig med svag scout.
   const many = knowledgeLevel({ own: true, trainingDates: 25, looks: 1, bestScoutTier: 1 }, PARAMS);
   assert.equal(many.key, "own2");
-  // Egen rytter uden kig og under grænsen: stadig intet tal.
-  assert.equal(knowledgeLevel({ own: true, trainingDates: 2 }, PARAMS), null);
+  // Egen rytter uden kig og under grænsen: dag ét-niveauet (#8855), aldrig intet.
+  assert.equal(knowledgeLevel({ own: true, trainingDates: 2 }, PARAMS).key, `s1t${PARAMS.scout.defaultTier}`);
 });
 
 test("monotoneLevel: viden kan kun vokse, så ordet aldrig bliver mindre sikkert", () => {

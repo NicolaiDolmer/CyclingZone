@@ -83,9 +83,11 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "training_settle_race_session", // #7982: løbets session afregnes efter etapen
   "training_peak_from_ticks_6490", // #6490 trin c: peak-signalets kilde (motorens input)
   "training_calendar_tick_ai_only", // #6110 ejer 19/11: hold uden division traener ikke (motorens input)
+  "ai_team_frozen_state_8614", // #8614: AI-hold fast traethed og form, intet tick, ingen skader (motorens input)
   "training_effort_levels", // #7947: indsats pr. programfelt (motorens input)
   "training_week_priority",
   "training_rotation",
+  "training_day_override_8592", // #8592: "Kun denne dag" (motorens input)
   // Nødstop for live systemer
   "stage_scheduler_enabled",
   "auto_prize_enabled",
@@ -122,6 +124,18 @@ async function queryFlagValue(supabase, key) {
     // Den caches ikke (regel 1), så næste kald prøver igen.
     return { ok: false, value: null };
   }
+}
+
+/**
+ * #8834 Fable punkt 1: som readFlagStage med fresh, men et fejlet opslag kaster i stedet for at
+ * give null (= off). Til motorveje, hvor "off ved læsefejl" ville tabe en spillers valg i stilhed:
+ * kaldet fejler, og datoen prøves igen.
+ */
+export async function readFlagStageStrict(supabase, key) {
+  if (!supabase?.from) throw new Error(`flag ${key}: no client`);
+  const result = await queryFlagValue(supabase, key);
+  if (!result.ok) throw new Error(`flag ${key}: read failed`);
+  return result.value;
 }
 
 /**
