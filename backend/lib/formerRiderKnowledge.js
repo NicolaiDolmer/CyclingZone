@@ -116,16 +116,27 @@ export function applyFormerRiderStepsToReport(report, stepsLost) {
 }
 
 /**
- * Par (tidligere hold, rytter) uden gemt skøn, til engangs-backfill'en. Ren funktion.
- *   departuresByTeam : Map<teamId, Set<riderId>> tidligere ryttere pr. menneskehold
- *   storedPairs      : Set<"riderId:teamId"> par, der allerede har en række
- * Returnerer Map<teamId, riderId[]>.
+ * Tidligere ryttere pr. hold, til engangs-backfill'en. Ren funktion.
+ *   events      : alle ejerskabshændelser
+ *   teamIds     : holdene der kan se et skøn (loadEstimateTeamIds)
+ *   currentTeam : Map<riderId, team_id nu>; en rytter, der står på holdet nu, er ikke tidligere
+ * Returnerer Map<teamId, riderId[]>, kun hold med mindst én tidligere rytter.
  */
-export function missingFormerPairs(departuresByTeam, storedPairs) {
+export function formerRidersByTeam(events, teamIds, currentTeam) {
+  const teams = new Set(teamIds ?? []);
+  const byTeam = new Map();
+  for (const event of events ?? []) {
+    for (const teamId of [event?.from_team_id, event?.to_team_id]) {
+      if (!teamId || !teams.has(teamId)) continue;
+      if (!byTeam.has(teamId)) byTeam.set(teamId, []);
+      byTeam.get(teamId).push(event);
+    }
+  }
   const out = new Map();
-  for (const [teamId, riderIds] of departuresByTeam ?? []) {
-    const missing = [...riderIds].filter((riderId) => !storedPairs.has(`${riderId}:${teamId}`));
-    if (missing.length) out.set(teamId, missing);
+  for (const [teamId, teamEvents] of byTeam) {
+    const gone = [...latestDepartures(teamEvents, teamId).keys()]
+      .filter((riderId) => currentTeam?.get(riderId) !== teamId);
+    if (gone.length) out.set(teamId, gone);
   }
   return out;
 }
