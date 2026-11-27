@@ -12,6 +12,7 @@
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { seasonSeedSuffix } from "./raceSeedAxis.js";
 import { scaleDistanceBand } from "./youthMiniEditions7471.js";
+import { isS6Race } from "./calendarTierCaps.js";
 // S5 (#6359): matrixen (spec §3) og pladsholder-kilderne bor i Fase 0's ordforråd.
 import { isFinishAllowed as isFinishAllowedS5, S5_PLACEHOLDER_SOURCE_PROFILE, FINISH_MATRIX as FINISH_MATRIX_S5, descentTopWindowFor } from "./stageProfileTypes.js";
 
@@ -692,14 +693,14 @@ export function assertFinishAllowed(terrain, finish) {
  * @param {number} distanceKm
  * @param {{ climb: () => string }} namer
  */
-function placeS5Climbs(rng, set, finish, distanceKm, namer, { summitClimax = false } = {}) {
+function placeS5Climbs(rng, set, finish, distanceKm, namer, { summitClimax = false, s6 = false } = {}) {
   if (!set.length) return [];
   const n = set.length;
   const last = set[n - 1];
   let lastCrest;
   if (finish === "long_climb" || summitClimax) lastCrest = distanceKm;
   // #8259: vinduet afhænger af terrænet (stageProfileTypes.js descentTopWindowFor).
-  else if (finish === "descent") { const [dLo, dHi] = descentTopWindowFor(deriveTerrainType(set)); lastCrest = distanceKm - randInt(rng, dLo, dHi); }
+  else if (finish === "descent") { const [dLo, dHi] = s6 ? descentTopWindowFor(deriveTerrainType(set)) : S5_DESCENT_TOP_WINDOW_KM; lastCrest = distanceKm - randInt(rng, dLo, dHi); }
   else lastCrest = distanceKm - randInt(rng, S5_OPEN_FINISH_LAST_TOP_KM[0], S5_OPEN_FINISH_LAST_TOP_KM[1]);
   const anchor = lastCrest - last.length_km; // klimaksets fod
   const START_KM = 5;
@@ -907,8 +908,8 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
     }
   }
   const climbs = sigClimb
-    ? placeS5Climbs(rng, set, finale_type, distance_km, namer, { summitClimax: sigSummit })
-    : placeS5Climbs(rng, set, finale_type, distance_km, namer);
+    ? placeS5Climbs(rng, set, finale_type, distance_km, namer, { summitClimax: sigSummit, s6: isS6Race(race) })
+    : placeS5Climbs(rng, set, finale_type, distance_km, namer, { s6: isS6Race(race) }); // #8830: nedkoerselsvinduet fra S6
   if (sigClimb) climbs[climbs.length - 1] = { ...climbs[climbs.length - 1], name: sigClimb.name };
 
   const rampSpec = S5_FINISH_RAMPS[finale_type];

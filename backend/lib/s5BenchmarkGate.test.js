@@ -145,14 +145,14 @@ test("checkStage: nedkørsel kræver en kat. 3+-top 5-25 km før mål (kort 5)",
   assert.ok(checkStage(tooClose).violations.some((v) => v.includes("5-25 km før mål")));
   const lastIsCat4 = { profile_type: "hilly", finale_type: "descent", distance_km: D, climbs: [climb("3", 4, 100), climb("4", 2, D - 10)], sprints: finishSprint() };
   assert.ok(checkStage(lastIsCat4).violations.some((v) => v.includes("kat. 3 eller hårdere")));
-  const hillyDescent = { profile_type: "hilly", finale_type: "descent", distance_km: D, climbs: [climb("3", 4, D - 10)], sprints: finishSprint() };
+  const hillyDescent = { profile_type: "hilly", finale_type: "descent", distance_km: D, climbs: [climb("3", 4, D - 20)], sprints: finishSprint() };
   assert.deepEqual(checkStage(hillyDescent).violations, []);
-  // #8259: uden for bjerg/højbjerg skal sidste top ligge kort før mål.
-  const hillyTooFar = { ...hillyDescent, climbs: [climb("3", 4, D - 20)] };
+  // #8259/#8830: fra S6 skal sidste top uden for bjerg/højbjerg ligge kort før mål.
   const [lo, hi] = DESCENT_LAST_TOP_WINDOW_KM;
-  assert.ok(checkStage(hillyTooFar).violations.some((v) => v.includes(`${lo}-${hi} km før mål`)));
-  // Bjerg beholder det lange vindue.
-  assert.deepEqual(checkStage({ ...STAGE.mountainDescent(), climbs: [climb("1", 10, D - 20)] }).violations, []);
+  assert.ok(checkStage(hillyDescent, { s6: true }).violations.some((v) => v.includes(`${lo}-${hi} km før mål`)));
+  assert.deepEqual(checkStage({ ...hillyDescent, climbs: [climb("3", 4, D - 10)] }, { s6: true }).violations, []);
+  // Bjerg beholder det lange vindue, også i S6.
+  assert.deepEqual(checkStage({ ...STAGE.mountainDescent(), climbs: [climb("1", 10, D - 20)] }, { s6: true }).violations, []);
 });
 
 test("checkStage: mur, bakke og stigende spurt kræver finale-rampen fra spec §3", () => {

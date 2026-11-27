@@ -101,7 +101,7 @@ export function runS5BenchmarkGateForPlan({ plan, seasonNumber, motorBenchPath =
   const profileModel = profileModelForSeason(seasonNumber);
   if (profileModel !== S5_PROFILE_MODEL) return { profileModel, applies: false, scope, green: true, blocking: [], gate: null, lines: [] };
   const gate = evaluateS5BenchmarkGate({
-    races: s5GateRacesFromPlan(plan),
+    races: s5GateRacesFromPlan(plan), seasonNumber,
     benchmark: benchmark ?? loadS5Benchmark(),
     motor: motor ?? loadMotorGapFile(motorBenchPath ?? DEFAULT_MOTOR_STUB_PATH),
   });
@@ -248,7 +248,8 @@ function editionYearFrom(startDate) {
 // i BÅDE dry-run og apply, så dry-run-rapporten viser de tal apply ville håndhæve.
 // #3347: seedRace-formen for én planlagt løbsrække — ÉT sted, så dæknings-verifikationen,
 // realisme-re-drawet og selve insert'et beviseligt seeder ens.
-function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonVariant = 0 }) {
+/** @param {any} r @param {any} ctx */
+function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonVariant = 0, seasonNumber = null, squad = null }) {
   return {
     id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
     external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
@@ -261,7 +262,21 @@ function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, identityByP
     // #6857: loebets identitet (type, signatur, haandskreven monument-rute). Kun felter der
     // er sat, saa et loeb uden identitet giver PRAECIS samme seedRace som foer.
     ...(identityByPoolRace?.get(r.pool_race_id) ?? {}),
+    // #8830: saesonen (S6-parcoursreglerne, isS6Race) og truppen (ungdommens afslutningsvaegte).
+    // Kun naar de er sat, saa et seed uden dem er PRAECIS som foer.
+    ...seedSeasonFields({ seasonNumber, squad }),
   };
+}
+
+/**
+ * #8830: season_number/squad paa et seed-loeb, kun de felter der er sat (senior = ingen squad).
+ * @param {{ seasonNumber?: number|null, squad?: string|null }} [args]
+ */
+function seedSeasonFields({ seasonNumber = null, squad = null } = {}) {
+  const out = /** @type {Record<string, any>} */ ({});
+  if (seasonNumber != null && Number.isInteger(Number(seasonNumber))) out.season_number = Number(seasonNumber);
+  if (squad && squad !== "senior") out.squad = squad;
+  return out;
 }
 
 // #6857: race_pool's tre identitetsfelter (L1) pr. katalog-loeb - kun de felter der er sat.
@@ -1122,7 +1137,7 @@ export async function materializeTierCalendars({
     // dæknings-verifikationen, dry-run-scorecardet OG insert'et nedenfor.
     let tierProfiles = null;
     if (repPool) {
-      const seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId }));
+      const seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonNumber: resolvedSeasonNumber, squad }));
       // #6367: S5-seniorens profiler kommer fra divisionens kvote-generator (filler-terraen
       // fordelt over HELE loebssaettet, s5TierTerrainQuota.js). Den samme funktion bruges af
       // gen-traekket, daeknings-verifikationen og dermed insert'et (tierProfiles).
@@ -1148,7 +1163,7 @@ export async function materializeTierCalendars({
         if (draw.exhausted) log(`  ⚠ tier ${tierPlan.tier}: alle ${draw.attemptsTried} gen-træk brød realisme-båndene — bruger det kanoniske træk; realisme-scorecardet vil melde NO-GO (#3347)`);
       }
 
-      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier, profileModel, generate: tierGenerate });
+      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonVariant, seasonNumber: resolvedSeasonNumber, squad, archetypeProfiles: archetypeProfilesForTier, profileModel, generate: tierGenerate });
       tierProfiles = profiles;
       // #6857: identitets-tjekket gaelder kun S5 - v5 (S1-S4) laeser aldrig typerne.
       const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand, identityTypeByPoolRaceId: isS5 ? identityTypeByPoolRace : null });
@@ -1177,7 +1192,7 @@ export async function materializeTierCalendars({
       // så vægte kalibreret mod S2's udvalg overfitter til netop det udvalg. Kun i dry-run:
       // apply-stien har ingen brug for det, og summary'en skal ikke bære unødig vægt.
       if (dryRun) {
-        tierPlan.seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonVariant }));
+        tierPlan.seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonVariant, seasonNumber: resolvedSeasonNumber, squad }));
       }
       // #4270: de PRÆCIS samme profiler dæknings-verifikationen (og dermed insert'et)
       // bruger — så kalender-scorecardet i buildSeasonCalendar.js's dry-run måler det
@@ -1278,7 +1293,7 @@ export async function materializeTierCalendars({
         // (#3347, tierens resolverede re-draw) fra konteksten.
         let profiles = tierProfiles?.get(race.pool_race_id);
         if (!profiles) {
-          const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant, ...(identityByPoolRace.get(race.pool_race_id) ?? {}) };
+          const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant, ...(identityByPoolRace.get(race.pool_race_id) ?? {}), ...seedSeasonFields({ seasonNumber: resolvedSeasonNumber, squad }) };
           profiles = generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier, profileModel });
         }
         for (const p of profiles) profileRows.push(toStageProfileRow(race.id, p));

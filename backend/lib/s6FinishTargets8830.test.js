@@ -5,10 +5,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runOfflineSeasonGates } from "../scripts/dev/seasonCalendarGatesOffline.mjs";
-import { seniorAnchorsFromPlan, withMiniEditionRoutes, buildMiniEditionRow } from "./youthMiniEditions7471.js";
-import { buildTierMaterializationPlan } from "./tierCalendarMaterializer.js";
-import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
+import { runOfflineSeasonGates, makeFixtureSupabase } from "../scripts/dev/seasonCalendarGatesOffline.mjs";
+import { seniorAnchorsFromPlan, buildMiniEditionRow } from "./youthMiniEditions7471.js";
+import { materializeTierCalendars } from "./tierCalendarMaterializer.js";
 import { S6_FINISH_TARGETS, S6_FINISH_TOLERANCE_PP, s6FinishShares } from "./stageFinaleMetrics.js";
 
 const FIX = join(dirname(fileURLToPath(import.meta.url)), "__fixtures__");
@@ -25,18 +24,20 @@ test("#8830 S6: hver division og hvert ungdomsniveau ligger i afslutningsmaalet 
     const d1 = r.plan.planTiers.find((t) => t.tier === 1);
     const anchors = seniorAnchorsFromPlan({ tierPlan: d1, catalog });
     for (const squad of ["u23", "junior"]) {
-      const minis = withMiniEditionRoutes(youthFx.catalog.map((c) => buildMiniEditionRow(c, squad)));
-      const { tierPlans } = buildTierMaterializationPlan({
-        pools: [{ id: 900, tier: 1, pool_index: 0, realManagerCount: 0, squad }], catalog: minis,
-        from: new Date("2026-11-29T12:00:00Z"), realDays: 27, squad, raceDayTarget: 140,
-        seasonLastRaceDay: null, seasonTransitionAt: null, miniEditionAnchors: anchors, baseSeed: seed,
+      // #8830 (review): ungdommen maales gennem materializeTierCalendars, den sti apply skriver
+      // igennem (seedRaceFor med season_number + squad), ikke gennem en genvej uden om den.
+      const minis = youthFx.catalog.map((c) => ({ ...buildMiniEditionRow(c, squad), retired_at: null }));
+      const supabase = makeFixtureSupabase({
+        league_divisions: [{ id: 900, tier: 1, pool_index: 0, label: `${squad} 1`, squad, retired_at: null }],
+        teams: [], race_pool: minis, races: [], seasons: [],
       });
-      const plan = tierPlans[0];
-      let profiles = plan.profilesByPoolRaceId;
-      if (!profiles?.size) {
-        profiles = new Map(plan.pools[0].raceRows.map((row) => [row.pool_race_id,
-          generateRaceStageProfiles(minis.find((m) => m.id === row.pool_race_id) ?? row, { profileModel: "s5" })]));
-      }
+      const plan = await materializeTierCalendars({
+        supabase, seasonId: "00000000-0000-0000-0000-000000000006", seasonNumber: 6, seasonStartDate: "2026-11-30",
+        from: new Date("2026-11-29T12:00:00Z"), dryRun: true, baseSeed: seed, realDays: 27, raceDayTarget: 140,
+        seasonTransitionAt: null, seasonLastRaceDay: null, squad, seniorMiniAnchors: anchors,
+      });
+      const profiles = plan.planTiers?.[0]?.profilesByPoolRaceId;
+      assert.ok(profiles?.size > 0, `${squad} seed ${seed}: materializeren gav ingen profiler`);
       for (const [, st] of profiles) (stagesBy[squad] ??= []).push(...st);
     }
   }
@@ -52,6 +53,7 @@ test("#8830 S6: hver division og hvert ungdomsniveau ligger i afslutningsmaalet 
       if (v < lo - tol || v > hi + tol) brud.push(`${level} ${key} ${v.toFixed(1)} % uden for ${lo}-${hi} ±${tol}`);
     }
   }
+  if (process.env.S6_TARGETS_PRINT) console.log(lines.join(String.fromCharCode(10)));
   assert.deepEqual(Object.keys(stagesBy).sort(), ["D1", "D2", "D3", "D4", "junior", "u23"]);
   assert.deepEqual(brud, [], `${brud.join("\n")}\n${lines.join("\n")}`);
 });

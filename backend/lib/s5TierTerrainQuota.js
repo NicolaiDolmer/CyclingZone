@@ -41,6 +41,7 @@ import {
   compositionCategory, toleranceFor,
 } from "./calendarCompositionTargets.js";
 import { TERRAIN_FAMILY_BY_PROFILE_TYPE, TIER_TERRAIN_FAMILY_MIN, TIER_TERRAIN_FAMILY_MAX } from "./tierCalendarGuarantees.js";
+import { isS6Race } from "./calendarTierCaps.js";
 
 // K-B-kategorierne generatoren kan flytte (TTT genereres ikke, #2411).
 const KB_CATEGORIES = Object.freeze(["flat", "hilly", "mountain", "itt", "cobbles"]);
@@ -77,7 +78,7 @@ const sumOf = (counts, types) => types.reduce((s, t) => s + (counts[t] ?? 0), 0)
  * @param {Record<string, number>} counts  profile_type → antal etaper i divisionen
  * @param {number} tier
  */
-export function tierTerrainLoss(counts, tier) {
+export function tierTerrainLoss(counts, tier, { s6 = false } = {}) {
   const n = Object.values(counts).reduce((s, c) => s + c, 0);
   if (!n) return 0;
   /** @type {Record<string, number>} */
@@ -90,7 +91,8 @@ export function tierTerrainLoss(counts, tier) {
   const hinge = (/** @type {number} */ dev, /** @type {number} */ allowed) => S5_QUOTA_GATE_PENALTY_PER_PP * Math.max(0, Math.abs(dev) - allowed);
   const tierTol = Math.max(/** @type {any} */ (TIER_COMPOSITION_TOLERANCE_PP)[tier] ?? COMPOSITION_TOLERANCE_PP, toleranceFor(n));
   for (const cat of KB_CATEGORIES) {
-    const dev = (100 * (kb[cat] ?? 0)) / n - /** @type {any} */ (S5_QUOTA_KB_TARGET)[cat];
+    // #8830: S6-maalet (faerre flade, flere kuperede) kun fra S6; S5 bruger K-B-maalet uaendret.
+    const dev = (100 * (kb[cat] ?? 0)) / n - /** @type {any} */ (s6 ? S5_QUOTA_KB_TARGET : ACTIVE_TARGET)[cat];
     loss += (dev / COMPOSITION_TOLERANCE_PP) ** 2 + hinge(dev, tierTol - S5_QUOTA_TIER_KB_MARGIN_PP);
   }
   for (const [axis, types] of Object.entries(UNIFORM_AXIS_TYPES)) {
@@ -114,12 +116,12 @@ export function tierTerrainLoss(counts, tier) {
  * Fordel én divisions filler-pladser efter kvote.
  *
  * @param {{ tier: number, counts: Record<string, number>,
- *   slots: Array<{ id: string, guaranteed: string[], natural: string[], options: string[], ttCap: number, orderArchetype?: string }> }} args
+ *   slots: Array<{ id: string, guaranteed: string[], natural: string[], options: string[], ttCap: number, orderArchetype?: string }>, s6?: boolean }} args
  *   counts  divisionens type-tal med det NATURLIGE træk (alle løb, alle etaper)
  *   slots   arketype-etapeløbenes filler-pladser (s5StageRaceFillerSlots), i løbssættets rækkefølge
  * @returns {{ fillerById: Map<string, string[]>, changes: number, lossBefore: number, lossAfter: number }}
  */
-export function allocateS5TierFillers({ tier, counts, slots }) {
+export function allocateS5TierFillers({ tier, counts, slots, s6 = false }) {
   const cur = { ...counts };
   const fillers = slots.map((s) => s.natural.slice());
   // #6857: et typet løb (identityType) har sin bjergfrihed i typens filler-liste (options);
@@ -127,7 +129,7 @@ export function allocateS5TierFillers({ tier, counts, slots }) {
   const mountainFree = slots.map((s) => !s.identityType && ![...s.guaranteed, ...s.natural].some((t) => MOUNTAIN_FAMILY_TYPES.has(t)));
   // Ordnings-arketypen må ikke blive umulig hvis det naturlige træk kunne bære den.
   const keepFeasible = slots.map((s) => Boolean(s.orderArchetype) && isOrderArchetypeFeasible(/** @type {string} */ (s.orderArchetype), [...s.guaranteed, ...s.natural]));
-  const lossBefore = tierTerrainLoss(cur, tier);
+  const lossBefore = tierTerrainLoss(cur, tier, { s6 });
   let loss = lossBefore;
   let changes = 0;
   const changedFrom = (/** @type {number} */ i, /** @type {number} */ j) => fillers[i][j] !== slots[i].natural[j];
@@ -149,7 +151,7 @@ export function allocateS5TierFillers({ tier, counts, slots }) {
           cur[from] -= 1; cur[to] = (cur[to] ?? 0) + 1;
           const wasChanged = changedFrom(i, j);
           const willChange = to !== s.natural[j];
-          const delta = tierTerrainLoss(cur, tier) - loss + S5_QUOTA_CHANGE_COST * ((willChange ? 1 : 0) - (wasChanged ? 1 : 0));
+          const delta = tierTerrainLoss(cur, tier, { s6 }) - loss + S5_QUOTA_CHANGE_COST * ((willChange ? 1 : 0) - (wasChanged ? 1 : 0));
           cur[to] -= 1; cur[from] += 1;
           if (delta < -1e-9 && (best == null || delta < best.delta - 1e-12)) best = { i, j, to, delta };
         }
@@ -161,7 +163,7 @@ export function allocateS5TierFillers({ tier, counts, slots }) {
     cur[from] -= 1; cur[best.to] = (cur[best.to] ?? 0) + 1;
     fillers[best.i][best.j] = best.to;
     changes += (best.to !== slots[best.i].natural[best.j] ? 1 : 0) - (wasChanged ? 1 : 0);
-    loss = tierTerrainLoss(cur, tier);
+    loss = tierTerrainLoss(cur, tier, { s6 });
   }
   return { fillerById: new Map(slots.map((s, i) => [s.id, fillers[i]])), changes, lossBefore, lossAfter: loss };
 }
@@ -196,7 +198,7 @@ export function makeS5TierProfileGenerator({ tier, seedRaces, archetypeProfiles 
       const s = s5StageRaceFillerSlots(race, opts);
       if (s && s.natural.length) slots.push({ id: race.id, ...s });
     }
-    const result = allocateS5TierFillers({ tier, counts, slots });
+    const result = allocateS5TierFillers({ tier, counts, slots, s6: seedRaces.some(isS6Race) });
     onAllocate({ tier, variant, changes: result.changes, lossBefore: result.lossBefore, lossAfter: result.lossAfter });
     byVariant.set(variant, result.fillerById);
     return result.fillerById;

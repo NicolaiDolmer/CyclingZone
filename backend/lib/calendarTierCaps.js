@@ -101,6 +101,22 @@ export const MONUMENT_MIN_CALENDAR_SPREAD_DAYS = 14;
 //   multiRaceShareBand  §1: andelen af loebsdage (med loeb) der har 2+ samtidige loeb, som
 //       gulv OG loft pr. niveau.
 export const CALENDAR_PLACEMENT_RULES_FIRST_SEASON = 6;
+
+/**
+ * #8830: gaelder S6-reglerne for parcours (afslutningsvaegte, faste ruter, nedkoerselsvindue,
+ * mini-GT, §7e, terraen-kvote) for denne saeson? Samme graense som placeringsreglerne. Ukendt
+ * saeson = nej, saa S3-S5 (ogsaa en pulje der aktiveres midt i S5, #2276) er bit-identiske.
+ * @param {number|null|undefined} seasonNumber
+ */
+export function s6RouteRulesApply(seasonNumber) {
+  const n = Number(seasonNumber);
+  return seasonNumber != null && Number.isInteger(n) && n >= CALENDAR_PLACEMENT_RULES_FIRST_SEASON;
+}
+
+/** #8830: S6-parcoursreglerne for et seed-loeb (season_number saettes af materializeren). @param {any} race */
+export function isS6Race(race) {
+  return s6RouteRulesApply(race?.season_number);
+}
 export const MONUMENT_MIN_CALENDAR_GAP_DAYS_FROM_S6 = 3;
 export const MONUMENT_MIN_CALENDAR_SPREAD_DAYS_FROM_S6 = 20;
 // Ejer 26/11 punkt 9: D1-D2 55-65 %, D3-D4 35-45 %, U23 25-35 %, junior 15-25 %.

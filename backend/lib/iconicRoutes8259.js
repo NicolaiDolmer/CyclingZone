@@ -6,8 +6,8 @@
 // afslutning der ligner det rigtige loeb.
 //
 // STATUS: GODKENDT (ejer 26/11 aften, #8830): alle ruter her er faste fra S6. Migrationen
-// database/2026-11-26-8830-iconic-routes.sql skriver dem i race_pool.authored_route
-// (genereret af backend/scripts/dev/generateIconicRoutesSql8830.mjs; testen holder SQL og
+// database/2026-11-26-8259-iconic-fixed-routes.sql skriver dem i race_pool.authored_route
+// (genereret af backend/scripts/dev/buildIconicRoutesMigration8259.mjs; testen holder SQL og
 // fil ens). Ungdomsudgaverne (#7471) koerer samme rute skaleret som monumenterne.
 // Generatorens vagt for haandlavede ruter tillader monumenterne og netop disse loeb
 // (isFixedIconicRouteRace). Navnene paa stigninger og sektorer er spillets egne varianter,

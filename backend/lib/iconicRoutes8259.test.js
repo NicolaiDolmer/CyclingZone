@@ -57,9 +57,9 @@ test("#8259 genererede etaper uden for GT placerer en kuperet nedkoersels-top i 
   for (const archetype of ["hilly_classic", "puncheur", "hilly_tour", "balanced_week"]) {
     for (let s = 0; s < 30; s++) {
       const single = archetype.endsWith("classic") || archetype === "puncheur";
-      const race = { id: `t-${archetype}`, external_id: `t-${archetype}`, name: "Ronde test", race_type: single ? "single" : "stage_race", stages: single ? 1 : 6, terrain_archetype: archetype, season_id: `s-${s}`, season_variant: 0 };
+      const race = { id: `t-${archetype}`, external_id: `t-${archetype}`, name: "Ronde test", race_type: single ? "single" : "stage_race", stages: single ? 1 : 6, terrain_archetype: archetype, season_id: `s-${s}`, season_variant: 0, season_number: 6 }; // #8830: S6-vinduet
       for (const p of generateRaceStageProfiles(race, { profileModel: "s5" })) {
-        assert.deepEqual(checkStage(p).violations, [], `${archetype} ${s} etape ${p.stage_number}`);
+        assert.deepEqual(checkStage(p, { s6: true }).violations, [], `${archetype} ${s} etape ${p.stage_number}`);
         if (p.finale_type !== "descent") continue;
         const terrain = deriveTerrainType(p.climbs);
         const last = p.climbs.reduce((a, b) => (b.crest_km >= a.crest_km ? b : a));
@@ -132,4 +132,19 @@ test("#8830 migrationen for de faste ruter er genereret fra JS-kilden og er idem
   assert.match(sql, /IS DISTINCT FROM/);
   assert.match(sql, /race_type = 'single'/);
   assert.doesNotMatch(sql, /\b(DELETE|INSERT|DROP|TRUNCATE)\b/i);
+});
+
+test("#8830 den faste rute gaelder fra S6 i loebets egen klasse; foer S6 genereres loebet som foer", () => {
+  for (const p of ICONIC_ROUTE_PROPOSALS_8259) {
+    const base = { id: p.external_id, external_id: p.external_id, name: p.pool_name, race_type: "single", race_class: p.race_class, stages: 1, season_id: "s6", season_variant: 0 };
+    const [s6] = generateRaceStageProfiles({ ...base, authored_route: p.route, season_number: 6 }, { profileModel: "s5" });
+    assert.equal(s6.distance_km, p.route.distance_km, `${p.pool_name}: S6 bruger den faste rute`);
+    assert.equal(s6.finale_type, p.route.finale_type, p.pool_name);
+    // Foer S6 (og uden saeson): ruten ignoreres, og loebet er bit-identisk med et loeb uden rute.
+    for (const season_number of [5, undefined]) {
+      const [before] = generateRaceStageProfiles({ ...base, authored_route: p.route, season_number }, { profileModel: "s5" });
+      const [plain] = generateRaceStageProfiles({ ...base, season_number }, { profileModel: "s5" });
+      assert.deepEqual(before, plain, `${p.pool_name} (saeson ${season_number}): ruten ignoreres foer S6`);
+    }
+  }
 });
