@@ -23,7 +23,8 @@
       "riders": 1
     },
     "backend/lib/dailyTrainingEngine.js": {
-      "riders": 1
+      "riders": 1,
+      "training_day_runs": 4
     },
     "backend/lib/newAccountGates.js": {
       "race_entries": 1
@@ -40,7 +41,8 @@
     },
     "backend/lib/racePeakPlans.js": {
       "race_stage_profiles": 1,
-      "race_stage_schedule": 1
+      "race_stage_schedule": 1,
+      "training_day_runs": 1
     },
     "backend/lib/raceRunner.js": {
       "race_stage_profiles": 1,
@@ -82,6 +84,12 @@
     "backend/lib/teamProfileEngine.js": {
       "riders": 2
     },
+    "backend/lib/trainingDayCloseTrigger.js": {
+      "training_day_runs": 1
+    },
+    "backend/lib/trainingSweep.js": {
+      "training_day_runs": 1
+    },
     "backend/lib/transferExecution.js": {
       "riders": 3
     },
@@ -111,6 +119,9 @@
     },
     "backend/scripts/dev/diag-0c-season-state.mjs": {
       "race_stage_schedule": 1
+    },
+    "backend/scripts/dev/prepare6061TrainingRecovery.test.mjs": {
+      "training_day_runs": 1
     },
     "backend/scripts/dev/rerun-corrupt-races-dryrun.mjs": {
       "race_stage_profiles": 1,

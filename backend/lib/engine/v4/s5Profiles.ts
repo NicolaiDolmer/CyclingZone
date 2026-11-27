@@ -30,6 +30,7 @@ import { isS5ProfilesV1OrLater } from "../../raceEngineRulesRevision.ts";
 import { S5_PROFILES_TUNING } from "./tuning.ts";
 import { lateAttackChance, lateAttackSegmentIndex } from "./mechanics/lateAttack.ts";
 import { finalKmUndivided7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
+import { hillyFinish8189On } from "./mechanics/hillyFinish8189.ts"; // #8189
 import type { AbilityKey, FinaleType, ProfileType, RouteV2, Segment, StageInput } from "./types.ts";
 
 /** De nye S5-finaler og den gamle finale hver af dem afloeser (aeldre revisioner). */
@@ -89,7 +90,7 @@ export function mediumMountainBucket(finale: FinaleType | null): ProfileType {
  * skal oversaettes (alle eksisterende loeb), ellers en kopi med kun
  * profile_type/finale_type aendret (og under S5 evt. én ekstra segmentgraense).
  */
-export function routeForRulesRevision(route: RouteV2, revision: unknown): RouteV2 {
+export function routeForRulesRevision(route: RouteV2, revision: unknown, hillyFinish8189 = false): RouteV2 {
   const s5 = isS5ProfilesV1OrLater(revision);
   let finale = route.finale_type;
   if (s5) {
@@ -99,7 +100,7 @@ export function routeForRulesRevision(route: RouteV2, revision: unknown): RouteV
   }
   const profile = route.profile_type === "medium_mountain" ? mediumMountainBucket(finale) : route.profile_type;
   const typed = profile === route.profile_type && finale === route.finale_type ? route : { ...route, profile_type: profile, finale_type: finale };
-  return s5 ? withLateAttackBoundary(typed) : typed;
+  return s5 ? withLateAttackBoundary(typed, hillyFinish8189) : typed;
 }
 
 /**
@@ -108,8 +109,8 @@ export function routeForRulesRevision(route: RouteV2, revision: unknown): RouteV
  * eller rullende stykke ind til maal), deles det stykke `splitAtKmToGo` fra maal.
  * Kun naar terraenet giver angrebet; ellers samme objekt.
  */
-function withLateAttackBoundary(route: RouteV2): RouteV2 {
-  if (!(lateAttackChance(route) > 0) || lateAttackSegmentIndex(route) >= 0) return route;
+function withLateAttackBoundary(route: RouteV2, hillyFinish8189 = false): RouteV2 {
+  if (!(lateAttackChance(route, hillyFinish8189) > 0) || lateAttackSegmentIndex(route) >= 0) return route;
   const finishKm = route.distance_km > 0 ? route.distance_km : route.segments[route.segments.length - 1]?.to_km ?? 0;
   const at = Math.round((finishKm - S5_PROFILES_TUNING.lateAttack.splitAtKmToGo) * 100) / 100;
   const index = route.segments.findIndex((s) => s.from_km < at - 1 && s.to_km > at + 1);
@@ -121,7 +122,7 @@ function withLateAttackBoundary(route: RouteV2): RouteV2 {
 
 /** StageInput med ruten oversat til revisionen (samme objekt naar intet aendres). */
 export function stageInputForRulesRevision(input: StageInput): StageInput {
-  const route = routeForRulesRevision(input.route, input.rules_revision);
+  const route = routeForRulesRevision(input.route, input.rules_revision, hillyFinish8189On(input)); // #8189 (slukket)
   return route === input.route ? input : { ...input, route };
 }
 

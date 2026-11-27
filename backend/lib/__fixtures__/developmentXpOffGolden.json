@@ -220,5 +220,11 @@
     "catchUp|race|restitution|onFutureDate": "49184b73d6d6451835d377c75705e9d8aa559e8355a80c9c7f9f90140ab03022",
     "catchUp|race|restitution|onNoParams": "49184b73d6d6451835d377c75705e9d8aa559e8355a80c9c7f9f90140ab03022",
     "catchUp|race|restitution|onBadParams": "49184b73d6d6451835d377c75705e9d8aa559e8355a80c9c7f9f90140ab03022"
+  },
+  "subswitchOff": {
+    "sourceCommit": "9d246b82e0718a6a84cabe2b69d20668533b00cb",
+    "note": "#5950 (tempo ud af hjaelperens evner): samme gitter uden raekkerne med underkontakten race_day_role_base_day_enabled, skrevet fra merge-basen foer rettelsen (som ogsaa gav applyDailyTick/dailyAbilityDelta ovenfor for hele gitteret). Genereres ALDRIG med den nye kode.",
+    "applyDailyTick": "cffb88155f5b3aa9a4f905c721ae4e2d2b01b358a6b3cb02fb9a71ada2ca4299",
+    "dailyAbilityDelta": "5fd21d38235f5c35df33fc7db4cd28be7ed33dd3bd97bf26ec8e2d4a4beaa3fe"
   }
 }

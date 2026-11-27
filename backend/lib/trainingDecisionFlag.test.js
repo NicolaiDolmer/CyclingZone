@@ -49,7 +49,9 @@ test("fail-safe: manglende raekke, ukendt vaerdi eller ingen klient giver false"
 test("wiring: /api/training/me laeser flaget server-side og sender en bar boolean", () => {
   const start = apiSource.indexOf('router.get("/training/me"');
   assert.ok(start !== -1, "/training/me skal findes i api.js");
-  const block = apiSource.slice(start, start + 15000);
+  // Hele handleren til næste route, ikke et fast vindue: handleren vokser (#8666).
+  const next = apiSource.indexOf("\nrouter.", start + 1);
+  const block = apiSource.slice(start, next === -1 ? undefined : next);
   assert.match(block, /readFlagStage\(supabase, TRAINING_DECISION_FLAG_KEY\)/);
   assert.match(block, /const decisionCard = evaluateFlagStage\(decisionCardStage, \{ isBetaTester \}\)/);
   assert.match(block, /\n\s*decisionCard,\n/);

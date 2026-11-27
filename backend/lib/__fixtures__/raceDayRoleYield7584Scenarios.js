@@ -38,9 +38,18 @@ function rider(seed) {
 
 const sha = (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
-function eachCase(fn) {
+// subswitch (#5950, tempo ud af hjaelperens evner): "both" = den oprindelige fixture
+// (sourceCommit), "off" = kun underkontakten slukket. Rettelsen flytter bevidst hjaelperens
+// tal med underkontakten taendt, saa det frosne bevis for den slukkede halvdel staar for sig.
+function paramSets(subswitch) {
+  const on = (p) => Object.freeze({ ...p, roleDrivesBaseDay: true });
+  if (subswitch === "off") return [...PARAM_SETS];
+  return PARAM_SETS.flatMap((p) => [p, on(p)]);
+}
+
+function eachCase(fn, subswitch = "both") {
   const out = [];
-  for (const params of PARAM_SETS.flatMap((p) => [p, Object.freeze({ ...p, roleDrivesBaseDay: true })])) {
+  for (const params of paramSets(subswitch)) {
     for (const profileType of PROFILES) {
       for (const role of ROLES) out.push(fn({ params, profileType, role }));
     }
@@ -49,7 +58,7 @@ function eachCase(fn) {
 }
 
 /** Score B slukket: programmet, multiplikatorerne og hele tick'et, ogsaa med catch-up oven i. */
-export function scoreBOffDigest7584() {
+export function scoreBOffDigest7584(subswitch = "both") {
   return sha(eachCase(({ params, profileType, role }) => {
     const plain = withRaceDayRoleYield({}, { params, profileType, role });
     const catchUp = withRaceDayRoleYield(
@@ -61,29 +70,29 @@ export function scoreBOffDigest7584() {
       return { abilities: result.abilities, progress: result.progress, gains: result.gains, score: result.score };
     });
     return { plain, catchUp, direct, ticks };
-  }));
+  }, subswitch));
 }
 
 /** Score B taendt: fokus-evnernes multiplikatorer og programmet. De var rigtige foer #7584 og maa ikke flytte sig. */
-export function scoreBFocusDigest7584() {
+export function scoreBFocusDigest7584(subswitch = "both") {
   return sha(eachCase(({ params, profileType, role }) => SCORE_B_CASES.map((developmentScore) => {
     const { program, abilityYieldMult } = withRaceDayRoleYield({ developmentScore }, { params, profileType, role });
     const focus = program.focusAbilities.filter((a) => a in abilityYieldMult).map((a) => [a, abilityYieldMult[a]]);
     return { program, focus };
-  })));
+  }), subswitch));
 }
 
 /** Basis-programmet alene, som kontrol af at rettelsen ikke roerer basis-dagen. */
-export function baseProgramDigest7584() {
+export function baseProgramDigest7584(subswitch = "both") {
   return sha(eachCase(({ params, profileType, role }) => [null, ...SCORE_B_CASES].map((developmentScore) => (
     raceDayRoleBaseProgram(profileType, { role, roleDrivesBaseDay: params.roleDrivesBaseDay === true, developmentScore })
-  ))));
+  )), subswitch));
 }
 
-export function computeDigests7584() {
+export function computeDigests7584({ subswitch = "both" } = {}) {
   return {
-    scoreBOff: scoreBOffDigest7584(),
-    scoreBFocus: scoreBFocusDigest7584(),
-    baseProgram: baseProgramDigest7584(),
+    scoreBOff: scoreBOffDigest7584(subswitch),
+    scoreBFocus: scoreBFocusDigest7584(subswitch),
+    baseProgram: baseProgramDigest7584(subswitch),
   };
 }

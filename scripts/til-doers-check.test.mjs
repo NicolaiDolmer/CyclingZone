@@ -20,7 +20,7 @@ import {
   DUP_BODY,
 } from './lib/til-doers.mjs';
 import { parseArgs, main, processIssue, targetsFromPr } from './til-doers-check.mjs';
-import { titleScopeIssues, mergedIntoMain, lastMarkerAt, isInternalChange, queueVerified, latestMerged, directCommits, fetchIssueBundle } from './lib/til-doers.mjs';
+import { titleScopeIssues, mergedIntoMain, lastMarkerAt, isInternalChange, queueVerified, latestMerged, directCommits, fetchIssueBundle, isInternalIssue } from './lib/til-doers.mjs';
 
 const N = 4242;
 const owner = (body, created_at = '2026-10-31T10:00:00Z', extra = {}) => ({ id: Math.floor(Math.random() * 1e9), body, created_at, author_association: 'OWNER', user: { login: 'ejer' }, ...extra });
@@ -561,7 +561,8 @@ test('processIssue: en auto-bevis-kommentar er aldrig til-dørs-tabellen og redi
 
 // ---------------------------------------------------------------- internt arbejde (#7827)
 
-const DONE = { number: N, labels: [{ name: 'claude:done' }] };
+// #8793: den interne vej kraever, at issuet selv er internt (her via cat:ai-ops).
+const DONE = { number: N, labels: [{ name: 'claude:done' }, { name: 'cat:ai-ops' }] };
 const MERGED = [{ number: 77, state: 'closed', merged: true }];
 const verified = (pr = 77, issue = N) => owner(`<!-- merge-queue-closeout:v1 pr=${pr} issue=${issue} -->\nMerget. Verificeret: main-CI grøn.`);
 
@@ -646,9 +647,9 @@ test('en menneskelig mangler på krav 8 holder et internt issue åbent', () => {
 
 test('reglen gælder ikke uden done, med åben PR, for epics eller spillervendte PRer', () => {
   const on = (issue, prs = MERGED, internalOnly = true) => status(evaluateDoor({ issue, prs, comments: [verified()], internalOnly }), 3);
-  assert.equal(on({ number: N, labels: [{ name: 'claude:todo' }] }), 'mangler');
+  assert.equal(on({ number: N, labels: [{ name: 'claude:todo' }, { name: 'cat:ai-ops' }] }), 'mangler');
   assert.equal(on(DONE, [...MERGED, { number: 80, state: 'open', merged: false }]), 'mangler');
-  assert.equal(on({ number: N, labels: [{ name: 'claude:done' }, { name: 'epic:progression' }] }), 'mangler');
+  assert.equal(on({ number: N, labels: [...DONE.labels, { name: 'epic:progression' }] }), 'mangler');
   assert.equal(on(DONE, MERGED, false), 'mangler');
 });
 
@@ -691,4 +692,80 @@ test('fetchIssueBundle: en direkte spiller-commit gør issuet ikke-internt', () 
   const run = (file) => fetchIssueBundle({ execGh, execGit: gitWith(file), repo: 'o/r', number: N, mainRef: 'main' }).internalOnly;
   assert.equal(run('frontend/src/pages/A.jsx'), false);
   assert.equal(run('docs/a.md'), true);
+});
+
+// ---------------------------------------------------------------- docs-PR på spillervendt issue (#8793)
+
+test('isInternalIssue: issuet afgør, spiller-labels og roadmap vinder, i tvivl = spillervendt', () => {
+  const issue = (title, ...labels) => ({ title, labels: labels.map((name) => ({ name })) });
+  for (const l of ['cat:ai-ops', 'cat:infra', 'type:docs', 'type:refactor']) assert.equal(isInternalIssue(issue('x', l)), true, l);
+  for (const t of ['[ops] x', '[CI] x', ' [deploy] x']) assert.equal(isInternalIssue(issue(t)), true, t);
+  for (const l of ['type:feature', 'cat:user-feature', 'cat:balance']) {
+    assert.equal(isInternalIssue(issue('[ops] x', 'cat:ai-ops', l)), false, `${l} vinder over interne kendetegn`);
+  }
+  assert.equal(isInternalIssue(issue('[ops] x', 'cat:infra'), { roadmapRef: true }), false, 'roadmap-række = spillervendt');
+  assert.equal(isInternalIssue(issue('fix: noget', 'type:bug')), false, 'ingen kendetegn = spillervendt');
+  assert.equal(isInternalIssue(issue('løb [ops] i midten')), false, 'præfikset skal stå først');
+  assert.equal(isInternalIssue({}), false);
+});
+
+// Fixtures efter de falske lukninger fundet 26/11: et feature-issue, hvor den
+// eneste mergede levering kun rørte interne stier, og merge-køen verificerede den.
+const FALSE_CLOSES = [
+  { n: 8045, title: '[løbsfilm/motor] Angrebets forløb fortalt kronologisk', labels: ['claude:done', 'priority:high', 'type:feature', 'needs-design'], pr: 8122, files: ['docs/superpowers/specs/2026-11-12-8045-angrebsforloeb-design.md'] },
+  { n: 7892, title: '[træning] Træthedsprognose to uger frem', labels: ['claude:done', 'priority:med', 'type:feature'], pr: 7894, files: ['docs/MASTERPLAN.md', 'docs/investigations/2026-11-07-roadmap-omprioritering-forslag.md'], roadmapRef: true },
+  { n: 8568, title: '[perf] Gør appens første indlæsning lettere', labels: ['claude:done', 'priority:med', 'type:feature'], pr: 8569, files: ['frontend/bundle-budget.json', 'scripts/build-stop.json'] },
+];
+const fixtureIssue = (f) => ({ number: f.n, state: 'open', title: f.title, labels: f.labels.map((name) => ({ name })) });
+const queueOk = (f) => owner(`<!-- merge-queue-closeout:v1 pr=${f.pr} issue=${f.n} -->\nMerget. Verificeret: main-CI grøn.`);
+
+for (const f of FALSE_CLOSES) {
+  test(`#${f.n}: en intern PR opfylder ikke Bygget, og 3-7 bliver ikke na`, () => {
+    assert.equal(isInternalChange(f.files), true, 'fixturen er en intern PR');
+    const door = evaluateDoor({ issue: fixtureIssue(f), prs: [{ number: f.pr, state: 'closed', merged: true }], comments: [queueOk(f)], internalOnly: true, roadmapRef: Boolean(f.roadmapRef) });
+    assert.equal(status(door, 1), 'mangler');
+    assert.match(door.find((d) => d.krav === 1).kilde, /spillervendt/);
+    assert.deepEqual([3, 4, 5, 6, 7, 8].map((k) => status(door, k)), ['mangler', 'mangler', 'mangler', 'mangler', 'mangler', 'mangler']);
+    assert.equal(decideClose({ issue: fixtureIssue(f), door }).close, false);
+  });
+
+  test(`#${f.n}: processIssue --apply lader issuet stå åbent`, () => {
+    const { exec, calls } = fakeGh({
+      issues: { [f.n]: { issue: fixtureIssue(f), comments: [queueOk(f)], timeline: [mergedPrEvent(f.pr, f.n)] } },
+      prFiles: { [f.pr]: f.files },
+    });
+    const plan = processIssue({ number: f.n, repo: 'o/r', apply: true, execGh: exec, execGit: noGit, mainRef: 'main', registry: [], patchNotesText: '', brandList: [] });
+    assert.equal(plan.close, false);
+    assert.equal(plan.door.find((d) => d.krav === 1).status, 'mangler');
+    const closing = calls.filter((c) => c.input && /"state"\s*:\s*"closed"/.test(c.input));
+    assert.deepEqual(closing, [], 'issuet lukkes ikke');
+  });
+}
+
+test('#8793: selv menneskelige na på 3-7 og ok på 8 lukker ikke, før krav 1 er opfyldt', () => {
+  const f = FALSE_CLOSES[0];
+  const comments = [queueOk(f), owner([3, 4, 5, 6, 7].map((k) => `Til dørs: ${k} na ops`).join('\n') + '\nTil dørs: 8 ok tjekket')];
+  const door = evaluateDoor({ issue: fixtureIssue(f), prs: [{ number: f.pr, state: 'closed', merged: true }], comments, internalOnly: true });
+  assert.equal(decideClose({ issue: fixtureIssue(f), door }).close, false);
+  // En spillervendt levering (ikke længere kun interne stier) opfylder krav 1 igen.
+  assert.equal(status(evaluateDoor({ issue: fixtureIssue(f), prs: [{ number: f.pr, state: 'closed', merged: true }], comments, internalOnly: false }), 1), 'ok');
+});
+
+test('#8793: et internt issue med intern PR går stadig den interne vej (#7827 uændret)', () => {
+  const issue = { number: N, state: 'open', title: '[ops] x', labels: [{ name: 'claude:done' }] };
+  const door = evaluateDoor({ issue, prs: MERGED, comments: [verified()], internalOnly: true });
+  assert.equal(status(door, 1), 'ok');
+  assert.equal(decideClose({ issue, door }).close, true);
+});
+
+test('fetchIssueBundle: en direkte docs-commit uden PR tæller som kun-intern levering (#8793)', () => {
+  const execGh = (args) => {
+    const path = args.find((a) => a.startsWith('repos/')) || '';
+    if (path.endsWith('/comments?per_page=100') || path.includes('/timeline')) return '';
+    return JSON.stringify({ number: N, state: 'open', labels: [{ name: 'type:feature' }] });
+  };
+  const execGit = (args) => (args[0] === 'log' ? `abc1234\x1fdocs: spec\x1fRefs #${N}\x1e` : 'docs/spec.md\n');
+  const bundle = fetchIssueBundle({ execGh, execGit, repo: 'o/r', number: N, mainRef: 'main' });
+  assert.equal(bundle.internalOnly, true);
+  assert.equal(status(evaluateDoor(bundle), 1), 'mangler');
 });
