@@ -54,7 +54,7 @@ duplikerer den ikke. Kort resumé:
 En spiller skal kunne se, om en ændring gælder ham nu, kun beta-gruppen, eller er noget der blev
 *tændt* (bygget tidligere). Hver spillervendt change får derfor feltet `rollout`:
 
-| `rollout` | Betyder | Chip på sitet (EN / DA) | Eksempel |
+| `rollout` | Betyder | Chip på den gamle side (EN / DA) | Eksempel |
 |---|---|---|---|
 | `live` | For alle, fra i dag | ingen chip | En fejlrettelse |
 | `beta` | Kun beta-gruppen (flag i stadie `beta`) | Beta / Beta | Træn nu 1/10 |
@@ -70,14 +70,19 @@ En spiller skal kunne se, om en ændring gælder ham nu, kun beta-gruppen, eller
 - **Flag-flip = patch note.** Et beta→on-flip eller et off→on-flip af noget spillervendt får sin egen entry samme
   dag (`beta_to_live` / `switched_on`), også når koden blev merget og noteret dage før. 7-dages-auditten 1/10 fandt
   at Mandatets flip 27/9 aldrig blev noteret, fordi koden var noteret som beta.
-- Siden: chippen er en rolig hairline (5px radius, ingen fyld, ingen guld). Hjælp forklarer mærkerne under
-  beta-gruppe-FAQ'en, og sidens fod har én forklarende linje.
+- Chippen bruger hairline og 5px radius. Hjælp forklarer mærkerne under beta-gruppe-FAQ'en. §2b beskriver
+  markeringen på den nye side.
 
 ## 2b. Område, ugens nyhed og billede (ejer 12/11 + 16/11, [#8049](https://github.com/NicolaiDolmer/CyclingZone/issues/8049))
 
-Den nye patch notes-side (bag kontakten `patch_notes_v2_8049`, slukket = den gamle side) grupperer ugen efter
-område. Nye felter på en change. De skrives i PR'ens fragment under `pending/` (§1) og følger med, når merge-toget
-nummererer noten ind i `patchNotes.js`; guarden kræver `area` på hvert ventende fragment med en spillervendt change:
+Bag `patch_notes_v2_8049` bruger siden den [godkendte skitse A til #8449](https://github.com/NicolaiDolmer/CyclingZone/issues/8449#issuecomment-7185077930).
+Siden bruger T1 fra [PAGE_TEMPLATES.md](design/PAGE_TEMPLATES.md) og [TASTE.md](design/TASTE.md).
+Denne uge, åbnede tidligere uger og arkivmåneder viser én læsekolonne grupperet efter `category` i rækkefølgen
+Nyt, Forbedringer og Fejlrettelser. Hver note viser sin egen dato og sit område. Den eksisterende forklaring står
+direkte under titlen. Noter uden kendt kategori bruger Forbedringer. Den gamle side vises, når kontakten er slukket.
+
+Felterne i tabellen skrives i PR'ens fragment under `pending/` (§1) og følger noten ind i `patchNotes.js` ved
+nummerering. Guarden kræver `area` på hvert ventende fragment med en spillervendt change.
 
 | Felt | Betyder | Regel |
 |---|---|---|
@@ -86,8 +91,11 @@ nummererer noten ind i `patchNotes.js`; guarden kræver `area` på hvert ventend
 | `image` | Billede ved ugens nyhed | Valgfri. Sti under `/patch-notes-images/` (fil i `frontend/public/patch-notes-images/`), webp, højst ca. 60 KB, ingen holdnavne eller spillernavne. Vises kun, når noten er ugens nyhed |
 | `replaces` | `version#index` på den beta-note, som denne note afløser | Valgfri. Står begge i samme uge, vises kun den nye. Uden feltet gælder det samme for to noter med samme `flag` |
 
-- Mærket afledes som i dag (`rollout` vinder over `category`), så der er én sandhed: Tændt for alle, Nyt, Beta,
-  Forbedring, Fejlrettelse.
+- Kategori og udrulning har hver sin funktion. `category` bestemmer gruppen. Noter med effektiv `beta` får mærket Beta.
+  `switched_on` og `beta_to_live` vises som Tændt for alle. Øvrige noter vises med deres kategori.
+- Kategori, område, Kun beta og Nyt siden sidst kan kombineres i uger, arkiv og søgning. Nyt siden sidst
+  bruger brugerens synkroniserede læsemarkør ([#6515](https://github.com/NicolaiDolmer/CyclingZone/issues/6515)).
+  Søgeresultater vises nyeste først med dato, kategori og område. Et resultat fra titelindekset kan åbnes i sin arkivmåned.
 - **Gamle noter røres ikke.** Deres område står i `frontend/src/lib/patchNotesAreaData.ts` (nøgle `version#index`)
   og i `TOPIC_AREA` i `frontend/src/lib/patchNotesArea.ts`; hvad der ikke kunne placeres sikkert, ligger i
   "Andet" og vises kun i arkivet. Klassificeringen og dens kilder: [`docs/design/reviews/2026-11-16-8049-klassificering.md`](design/reviews/2026-11-16-8049-klassificering.md).
@@ -98,10 +106,10 @@ nummererer noten ind i `patchNotes.js`; guarden kræver `area` på hvert ventend
   på `DEFAULT_MODEL`, og `--model` vinder altid. Haiku bruges ikke til spillertekst (`docs/AI_CHANNEL_ROUTING.md`).
 - Siden viser kun nummererede noter fra `patchNotes.js`. Et ventende fragment i `pending/` når aldrig spillerne
   (låst af `frontend/vite-plugins/patch-notes-v2.test.ts`).
-- Den åbnede uge og arkivmånederne (variant B) har kolonneoverskrifter: "Område" og "Vigtigst" (ejer 16/11, bekræftet 18/11).
-- Under "Denne uge" ligger fem tidligere uger. Åbnede uger og arkivmåneder har nedadpil, lukkede har højrepil.
-- Ugens nyhed kan have genveje til spillet og Hjælp. Hver genvej kræver et konkret mål for den note.
-  Træn nu-billedet fokuserer på knappen i det normale billedfelt (ejer 18/11).
+- Under "Denne uge" ligger fem tidligere uger og månedsarkivet. Åbnede uger og arkivmåneder har nedadpil,
+  lukkede har højrepil. En arkivmåned hentes, når spilleren åbner den.
+- Ugens valgte nyhed kan have et billede og genveje til spillet og Hjælp i sin egen note. Hver genvej kræver
+  et konkret mål for den note.
 - Filerne siden henter (`patch-notes-data/recent|index|<måned>.<sprog>.json`) genereres i build af
   `frontend/vite-plugins/patch-notes-v2.ts`; de committes aldrig. Åbning af siden henter kun `recent` (en test
   holder den under 40 KB pakket).

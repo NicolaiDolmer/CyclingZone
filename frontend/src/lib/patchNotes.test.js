@@ -195,3 +195,15 @@ test("#8049: kontakten: kun beta og on giver den nye side", () => {
   assert.equal(isPatchNotesV2Stage("on"), true);
   assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes(PATCH_NOTES_V2_FLAG), "kontakten skal kunne læses af spillersiden");
 });
+
+test("#8449: category filters compose with unread, area and effective rollout", () => {
+  const current = { k: "3#0", d: "2026-11-25", a: "market", c: "fixed", r: "beta", f: "sorting" };
+  const older = { k: "2#0", d: "2026-11-23", a: "market", c: "fixed" };
+  const other = { k: "3#1", d: "2026-11-25", a: "training", c: "fixed", r: "beta" };
+  const improvement = { k: "3#2", d: "2026-11-25", a: "market", r: "beta" };
+  const items = [current, older, other, improvement];
+  const filters = { category: "fixed", area: "market", onlyNew: true, marker: "2026-11-23", betaOnly: true };
+  assert.deepEqual(filterV2Items(items, filters), [current]);
+  assert.deepEqual(filterV2Items(items, { ...filters, liveFlags: { sorting: true } }), []);
+  assert.deepEqual(filterV2Items(items, { category: "improved" }), [improvement]);
+});
