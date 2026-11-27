@@ -213,7 +213,7 @@ Gennemgangen dækkede GDD, PROGRESSION_RULES, TRAINING_RULES, YOUTH_RULES, specs
 | S16 | Udgået rytter | Kun basis (som en hård dag), ikke løbets ekstra |
 | S17 | Fri rolle | Halvt som kaptajn, halvt som hjælper |
 | S18 | Grænsen på 5 træninger | 5 rigtige datoer på holdet, hvor træningen er afregnet (Train now-klik eller automatisk træning) |
-| S19 | Scout-viden | Forfalder ikke |
+| S19 | Scout-viden | **Ændret 27/11 (#7455, ejerens valg A 12/11 + scope 27/11):** fuld viden resten af sæsonen efter seneste kig eller afgang fra holdet; derefter ét sikkerhedsord ned pr. sæson (Sikker → Rimelig → Usikker), aldrig under Usikker. Et anker i pausen mellem to sæsoner tæller til den kommende sæson. Faldet regnes ved visning; det gemte skøn skrives ikke om (`formerRiderKnowledge.js`) |
 | S20 | Doktrinen #5490 | Besluttet. Skrives i GDD. Potentialet (skjult grundtalent, vist som skøn + ord) er den eneste bevidste undtagelse |
 | S21 | Holdarbejde og Lederskab | Udvikles gennem løb efter rolle (hjælper: Holdarbejde, kaptajn: Lederskab), samlet udbytte uændret. Holdarbejde i løbsmotoren (#5348) designes først i en egen session senere og bygges, når designet er endeligt (ejer 23/10, rettet samme dag) |
 

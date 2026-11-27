@@ -60,10 +60,10 @@ test("#7455 backfill: dry-run planlægger kun, som om rytteren stod på det tidl
 
 test("#7455 backfill: apply skriver via writeren; slukket skrivning kører ikke", async () => {
   const writer = fakeWriter();
-  const report = await runFormerRiderEstimateBackfill({ supabase: fakeSupabase(TABLES), writer, apply: true });
+  const report = await runFormerRiderEstimateBackfill({ supabase: fakeSupabase(TABLES), writer, apply: true, now: new Date("2026-11-27T12:00:00Z") });
   assert.equal(report.mode, "apply");
   assert.equal(writer.calls.every((call) => call.kind === "write"), true);
-  const off = await runFormerRiderEstimateBackfill({ supabase: fakeSupabase(TABLES), writer: fakeWriter({ enabled: false }) });
+  const off = await runFormerRiderEstimateBackfill({ supabase: fakeSupabase(TABLES), writer: fakeWriter({ enabled: false }), now: new Date("2026-11-27T12:00:00Z") });
   assert.deepEqual(off, { ran: false, mode: "dry-run", reason: "flag_off" });
 });
 
