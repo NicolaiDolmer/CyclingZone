@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "Your own riders show their potential from day one",
+        "body": "Some of your own riders showed a question mark instead of their potential, often riders you had just bought. Now every rider on your team shows the scout's estimate of his potential from the day he joins. The forecast still learns from his training with you."
+      },
+      "da": {
+        "title": "Dine egne ryttere viser deres potentiale fra første dag",
+        "body": "Nogle af dine egne ryttere viste et spørgsmålstegn i stedet for deres potentiale, ofte ryttere du lige havde købt. Nu viser alle ryttere på dit hold spejderens skøn over deres potentiale fra den dag, de kommer til holdet. Prognosen lærer stadig af hans træning hos dig."
+      },
+      "refs": [8855]
+    }
+  ]
+}

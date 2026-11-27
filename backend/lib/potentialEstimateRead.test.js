@@ -132,7 +132,7 @@ const fillFrom = (values) => {
 
 test("loadPotentialViews: læser kun holdets egne rækker og aldrig de skjulte kolonner", async () => {
   const supabase = world();
-  const views = await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted", "stranger", "youth", "veteran", "ghost"], fillMissing: null });
+  const views = await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted", "stranger", "youth", "veteran", "ghost"], fillMissing: null , clock: FIXED_CLOCK });
   assert.equal(views.get("scouted").value, 74);
   assert.deepEqual(views.get("stranger"), { hidden: true, reason: "unscouted" }, "et andet holds skøn må aldrig bruges");
   assert.deepEqual(views.get("veteran"), { hidden: true, reason: "unscouted" });
@@ -144,7 +144,7 @@ test("loadPotentialViews: læser kun holdets egne rækker og aldrig de skjulte k
 
 test("#8855: egne ryttere uden skøn får dag ét-skønnet, også købte seniorer; andres ryttere aldrig", async () => {
   const fill = fillFrom({ youth: 61, veteran: 72 });
-  const views = await loadPotentialViews(world(), { teamId: TEAM, riderIds: ["scouted", "stranger", "youth", "veteran"], fillMissing: fill });
+  const views = await loadPotentialViews(world(), { teamId: TEAM, riderIds: ["scouted", "stranger", "youth", "veteran"], fillMissing: fill , clock: FIXED_CLOCK });
   assert.deepEqual(fill.calls, [{ teamId: TEAM, riderIds: ["youth", "veteran"] }], "kun egne ryttere uden række");
   assert.equal(views.get("youth").value, 61);
   assert.equal(views.get("veteran").value, 72);
@@ -155,18 +155,18 @@ test("#8855: egne ryttere uden skøn får dag ét-skønnet, også købte seniore
 
 test("#8855: har alle egne ryttere et skøn, skrives intet ved visningen", async () => {
   const fill = fillFrom({});
-  await loadPotentialViews(world(), { teamId: TEAM, riderIds: ["scouted", "stranger"], fillMissing: fill });
+  await loadPotentialViews(world(), { teamId: TEAM, riderIds: ["scouted", "stranger"], fillMissing: fill , clock: FIXED_CLOCK });
   assert.deepEqual(fill.calls, []);
 });
 
 test("#8855: lykkes skrivningen ikke, er egen rytter uscoutet, aldrig Læres", async () => {
-  const views = await loadPotentialViews(world(), { teamId: TEAM, riderIds: ["youth"], fillMissing: fillFrom({}) });
+  const views = await loadPotentialViews(world(), { teamId: TEAM, riderIds: ["youth"], fillMissing: fillFrom({}), clock: FIXED_CLOCK });
   assert.deepEqual(views.get("youth"), { hidden: true, reason: "unscouted" });
 });
 
 test("#8855: læse-siden tæller ikke længere træninger", async () => {
   const supabase = world();
-  await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["youth", "veteran"], fillMissing: null });
+  await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["youth", "veteran"], fillMissing: null , clock: FIXED_CLOCK });
   assert.ok(!supabase.reads.some((read) => read.table === "training_rider_ticks"));
 });
 
@@ -200,24 +200,24 @@ test("#8855 fillMissingOwnEstimates: en fejl vælter aldrig visningen", async ()
 
 test("loadPotentialViews: gulvet følger evnerne nu, ikke den cachede rating", async () => {
   const supabase = world({ rider_derived_abilities: [{ rider_id: "scouted", ...abilitiesAt(80) }] });
-  const views = await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted"] });
+  const views = await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted"] , clock: FIXED_CLOCK });
   assert.equal(views.get("scouted").value, 80);
 });
 
 test("loadPotentialViews: uden evner falder gulvet tilbage til den cachede rating", async () => {
   const supabase = world({ rider_derived_abilities: [] });
-  const views = await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted"] });
+  const views = await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted"] , clock: FIXED_CLOCK });
   assert.equal(views.get("scouted").value, 74);
   const lifted = await loadPotentialViews(world({
     rider_derived_abilities: [],
     rider_potential_estimates: [estimateRow({ value: 55 })],
-  }), { teamId: TEAM, riderIds: ["scouted"] });
+  }), { teamId: TEAM, riderIds: ["scouted"], clock: FIXED_CLOCK });
   assert.equal(lifted.get("scouted").value, 60);
 });
 
 test("loadPotentialViews: tom liste slår intet op", async () => {
   const supabase = world();
-  assert.equal((await loadPotentialViews(supabase, { teamId: TEAM, riderIds: [null, undefined] })).size, 0);
+  assert.equal((await loadPotentialViews(supabase, { teamId: TEAM, riderIds: [null, undefined] , clock: FIXED_CLOCK })).size, 0);
   assert.equal(supabase.reads.length, 0);
 });
 
