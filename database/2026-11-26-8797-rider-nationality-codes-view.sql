@@ -5,7 +5,10 @@
 --
 -- security_invoker: viewet ser kun de ryttere den kaldende rolle selv må se (riders-RLS
 -- gælder uændret), så det åbner intet nyt.
--- Idempotent: CREATE OR REPLACE.
+-- Idempotent: CREATE OR REPLACE. Viewet og dets rettigheder i én transaktion, så
+-- viewet aldrig står med Supabase-default-adgang for anon mellem trinene.
+
+BEGIN;
 
 CREATE OR REPLACE VIEW public.rider_nationality_codes
   WITH (security_invoker = true) AS
@@ -19,6 +22,8 @@ WHERE r.is_retired = false
 -- privileges giver nye objekter i public til anon, så det trækkes eksplicit tilbage.
 REVOKE ALL ON public.rider_nationality_codes FROM anon, PUBLIC;
 GRANT SELECT ON public.rider_nationality_codes TO authenticated, service_role;
+
+COMMIT;
 
 -- Verifikation (post-merge):
 --   SELECT count(*) FROM public.rider_nationality_codes;  -- antal nationer, ikke ryttere

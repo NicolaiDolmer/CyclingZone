@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { createClient } from "@supabase/supabase-js";
 import {
   POSTGREST_ROW_CAP,
+  createRowCapObserver,
   inspectRowCapResponse,
   rowsFromContentRange,
   withRowCapAlarm,
@@ -63,8 +64,22 @@ test("wrapperen returnerer svaret uændret og deduplikerer samme form", async ()
   assert.equal(reports.length, 2);
 });
 
+test("observeren vurderer et modtaget svar uden selv at kalde fetch og deduplikerer", () => {
+  const reports = [];
+  let t = 0;
+  const observe = createRowCapObserver({ report: (f) => reports.push(f), now: () => t, dedupeMs: 100 });
+  observe(`${BASE}teams?select=id`, { method: "GET" }, pgResponse(1000));
+  observe(`${BASE}teams?select=id`, { method: "GET" }, pgResponse(1000));
+  observe(`${BASE}teams?select=id`, { method: "GET" }, pgResponse(999));
+  assert.equal(reports.length, 1);
+  t = 200;
+  observe(`${BASE}teams?select=id`, { method: "GET" }, pgResponse(1000));
+  assert.equal(reports.length, 2);
+  assert.doesNotThrow(() => observe(null, undefined, undefined));
+});
+
 test("en fejl i rapporten vælter aldrig kaldet", async () => {
-  const wrapped = withRowCapAlarm(async () => pgResponse(1000), { report: () => { throw new Error("sentry nede"); } });
+  const wrapped = withRowCapAlarm(async () => pgResponse(1000), { report: () => { throw new Error("sentry nede"); }, now: () => 0 });
   const res = await wrapped(`${BASE}teams?select=id`, { method: "GET" });
   assert.equal(res.status, 200);
 });
@@ -73,7 +88,7 @@ test("ægte supabase-js: naiv select meldes, .range() og .limit() gør ikke", as
   const reports = [];
   const baseFetch = async () => pgResponse(1000);
   const supabase = createClient("https://x.supabase.co", "anon", {
-    global: { fetch: createSupabaseFetchWithRetry(baseFetch, { rowCapReport: (f) => reports.push(f) }) },
+    global: { fetch: createSupabaseFetchWithRetry(baseFetch, { rowCapReport: (f) => reports.push(f), rowCapNow: () => 0 }) },
     auth: { persistSession: false, autoRefreshToken: false },
   });
   await supabase.from("teams").select("id").order("id").range(0, 999);

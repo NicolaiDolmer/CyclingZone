@@ -88,6 +88,7 @@ export function createSupabaseFetchWithRetry(baseFetch = globalThis.fetch, {
   delaysMs = RETRY_DELAYS_MS,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   rowCapReport = reportRowCap,
+  rowCapNow = () => Date.now(),
 } = {}) {
   const retrying = async function supabaseFetchWithRetry(input, init) {
     if (!isRetryableRequest(input, init) || isStreamBody(init)) return baseFetch(input, init);
@@ -124,5 +125,6 @@ export function createSupabaseFetchWithRetry(baseFetch = globalThis.fetch, {
     }
   };
   // rowCapReport: null slår alarmen fra (fx tests der selv vil se det rå svar).
-  return rowCapReport ? withRowCapAlarm(retrying, { report: rowCapReport }) : retrying;
+  // rowCapNow: alarmens ur til deduplikering; tests injicerer et fast ur (AGENTS 16).
+  return rowCapReport ? withRowCapAlarm(retrying, { report: rowCapReport, now: rowCapNow }) : retrying;
 }

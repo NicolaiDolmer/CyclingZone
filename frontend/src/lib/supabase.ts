@@ -5,7 +5,7 @@ import { authStorageKey } from "./authLanding.ts";
 import { browserAuthStorage } from "./authCookieStorage.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../types/database.types";
-import { createRowCapAlarmFetch } from "./supabaseRowCapAlarm.ts";
+import { createLazyRowCapAlarmFetch } from "./supabaseRowCapAlarmLazy.ts";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -25,7 +25,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     params: { eventsPerSecond: 10 },
   },
   // #8797: Sentry-advarsel når en læsning uden .range/.limit rammer 1.000-rækkeloftet.
-  global: { fetch: createRowCapAlarmFetch() },
+  // Alarmen hentes dovent efter første svar, så den ikke ligger i første indlæsning.
+  global: { fetch: createLazyRowCapAlarmFetch() },
 });
 
 // Auth helpers

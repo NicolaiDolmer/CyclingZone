@@ -84,18 +84,21 @@ export function inspectRowCapResponse(input, init, response, { cap = POSTGREST_R
 }
 
 /**
- * Pak en fetch ind, så hvert svar vurderes efter at det er modtaget. Svaret
- * returneres altid uændret; en fejl i selve vurderingen sluges (alarmen må aldrig
- * vælte et kald).
- *
- * @param {typeof fetch} baseFetch
- * @param {{ report?: (finding: {table:string, shape:string, rows:number}) => void,
- *           dedupeMs?: number, now?: () => number, cap?: number }} opts
+ * @typedef {{ report?: (finding: {table:string, shape:string, rows:number}) => void,
+ *              dedupeMs?: number, now?: () => number, cap?: number }} RowCapAlarmOptions
  */
-export function withRowCapAlarm(baseFetch, { report, dedupeMs = DEFAULT_DEDUPE_MS, now = () => Date.now(), cap = POSTGREST_ROW_CAP } = {}) {
+
+/**
+ * Vurdering + deduplikering af ét modtaget svar, uden selv at kalde fetch. Browseren
+ * bruger den direkte, så alarmen kan indlæses efter første svar (#8797).
+ * En fejl i vurderingen eller rapporten sluges (alarmen må aldrig vælte et kald).
+ *
+ * @param {RowCapAlarmOptions} opts
+ * @returns {(input: any, init: any, response: any) => void}
+ */
+export function createRowCapObserver({ report, dedupeMs = DEFAULT_DEDUPE_MS, now = () => Date.now(), cap = POSTGREST_ROW_CAP } = {}) {
   const lastReported = new Map();
-  return async function supabaseFetchWithRowCapAlarm(input, init) {
-    const response = await baseFetch(input, init);
+  return function observeRowCap(input, init, response) {
     try {
       const finding = inspectRowCapResponse(input, init, response, { cap });
       if (finding && typeof report === "function") {
@@ -110,6 +113,21 @@ export function withRowCapAlarm(baseFetch, { report, dedupeMs = DEFAULT_DEDUPE_M
     } catch {
       // best-effort: alarmen er et driftssignal; den må aldrig ændre eller vælte svaret.
     }
+  };
+}
+
+/**
+ * Pak en fetch ind, så hvert svar vurderes efter at det er modtaget. Svaret
+ * returneres altid uændret.
+ *
+ * @param {typeof fetch} baseFetch
+ * @param {RowCapAlarmOptions} opts
+ */
+export function withRowCapAlarm(baseFetch, opts = {}) {
+  const observe = createRowCapObserver(opts);
+  return async function supabaseFetchWithRowCapAlarm(input, init) {
+    const response = await baseFetch(input, init);
+    observe(input, init, response);
     return response;
   };
 }
