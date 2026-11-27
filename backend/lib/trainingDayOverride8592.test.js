@@ -12,7 +12,7 @@ import {
 import { buildTeamFatigueForecast } from "./trainingWeekPlanForecast.js";
 import { GOLDEN_SCENARIOS, goldenFingerprint } from "./trainingDayOverride8592.golden.mjs";
 import {
-  TRAINING_DAY_OVERRIDE_FLAG_KEY, attachDayOverrides, createDayOverrideRouter, fatigueRuleMarksAhead, isOverrideDate,
+  TRAINING_DAY_OVERRIDE_FLAG_KEY, addDaysYmd, attachDayOverrides, createDayOverrideRouter, fatigueRuleMarksAhead, isOverrideDate,
   overrideBeatsFatigueRule, overrideOutcome, overrideProgram, overrideWindow, parseOverrideWrite, summarizeOverrideOutcomes,
 } from "./trainingDayOverride8592.js";
 import { FRESH_FLAG_KEYS } from "./featureStage.js";
@@ -366,10 +366,14 @@ function fakeSupabase(state) {
       not(c, operator, v) { assert.equal(operator, "is"); return next((r) => (valueAt(r, c) ?? null) !== v); },
       order() { return obj; },
       limit() { return obj; },
+      range(from, to) {
+        return { then(resolve, reject) { const r = run(); return Promise.resolve({ data: r.data?.slice(from, to + 1) ?? null, error: r.error }).then(resolve, reject); } };
+      },
       delete() { return builder(table, "delete", filters); },
       upsert(p, o) { return builder(table, "upsert", filters, p, o); },
       async maybeSingle() { const r = run(); return { data: r.data?.[0] ?? null, error: r.error }; },
-      then(resolve, reject) { return Promise.resolve(run()).then(resolve, reject); },
+      // Som PostgREST: en select uden .range() giver højst 1000 rækker, uden fejl.
+      then(resolve, reject) { const r = run(); return Promise.resolve(op === "select" && r.data ? { ...r, data: r.data.slice(0, 1000) } : r).then(resolve, reject); },
     };
     return obj;
   }
@@ -549,4 +553,22 @@ test("DO-12 (efter datoen): GET siger, hvordan valgene gik de seneste dage, fra 
     { date: "2026-11-24", riderId: "r2", session: "rest", beatsRule: false, outcome: "race", some: true },
     { date: "2026-11-23", riderId: "r3", session: "tempo", beatsRule: true, outcome: "trained", some: false },
   ]);
+});
+
+test("DO-12b (Codex P2 på #8834): over 1000 kvitteringer læses alle sider, og ingen rytters dato splittes", async (t) => {
+  const state = routeState();
+  const dates = Array.from({ length: 7 }, (_, i) => addDaysYmd("2026-11-26", -(i + 1)));
+  const riders = Array.from({ length: 30 }, (_, i) => `s${String(i).padStart(2, "0")}`);
+  state.training_rider_ticks = dates.flatMap((date) => riders.flatMap((riderId) => [1, 2, 3, 4, 5].map((field) => ({
+    team_id: "team-a", rider_id: riderId, tick_date: date, game_day: field,
+    // Den allersidste rytters sidste felt (efter række 1000) bærer løbet.
+    report: { date_override: { session: "tempo", outcome: date === dates.at(-1) && riderId === riders.at(-1) && field === 5 ? "race" : "trained" } },
+  }))));
+  assert.ok(state.training_rider_ticks.length > 1000);
+  const call = await routeFixture(t, state);
+  const { body } = await call("GET");
+  assert.equal(body.recent.length, dates.length * riders.length);
+  const last = body.recent.find((e) => e.date === dates.at(-1) && e.riderId === riders.at(-1));
+  assert.deepEqual({ outcome: last.outcome, some: last.some }, { outcome: "race", some: true });
+  assert.equal(body.recent.filter((e) => e.outcome !== "trained").length, 1);
 });

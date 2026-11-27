@@ -18,6 +18,7 @@ import { isProgramSession, programForSession } from "./trainingPrograms.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer } from "./trainingCatalogV3.js";
 import { applyFatigueRules } from "./trainingFatigueRules.ts";
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 export const TRAINING_DAY_OVERRIDE_FLAG_KEY = "training_day_override_8592";
 export const DAY_OVERRIDE_TABLE = "training_day_overrides";
@@ -225,13 +226,19 @@ export async function deleteExpiredOverrides({ supabase, teamId, today }) {
  */
 export async function loadRecentOverrideOutcomes({ supabase, teamId, today }) {
   const since = addDaysYmd(today, -DAY_OVERRIDE_RECENT_DAYS);
-  // pagination-safe: one roster x seven dates x five fields, only rows that carry a day choice.
-  const { data, error } = await supabase.from("training_rider_ticks")
-    .select("rider_id, tick_date, game_day, date_override:report->date_override")
-    .eq("team_id", teamId).gte("tick_date", since).lt("tick_date", today)
-    .not("report->date_override", "is", null)
-    .order("tick_date", { ascending: false }).limit(1000);
-  if (error) throw new Error(`training day overrides recent (team ${teamId}): ${error.message ?? error}`);
+  // A full roster x seven dates x every field can pass PostgREST's 1000-row cap (Codex P2 on
+  // #8834), so read every page in a stable order: the primary key after the date, so a rider's
+  // fields on one date never split across pages.
+  let data;
+  try {
+    data = await fetchAllRows(() => supabase.from("training_rider_ticks")
+      .select("rider_id, season_id, tick_date, game_day, date_override:report->date_override")
+      .eq("team_id", teamId).gte("tick_date", since).lt("tick_date", today)
+      .not("report->date_override", "is", null)
+      .order("tick_date", { ascending: false }).order("rider_id").order("season_id").order("game_day"));
+  } catch (error) {
+    throw new Error(`training day overrides recent (team ${teamId}): ${error?.message ?? error}`, { cause: error });
+  }
   const byKey = new Map();
   for (const row of data ?? []) {
     const stamp = row.date_override;

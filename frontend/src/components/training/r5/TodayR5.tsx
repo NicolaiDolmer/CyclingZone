@@ -728,6 +728,8 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       if (!levelsOn) return null;
       const settled = settledEfforts?.[slot] ?? null;
       if (settled) return settled;
+      // Codex P2 (#8834): "Kun denne dag" koerer passet paa sessionens eget niveau (som motoren).
+      if (riderForecast?.dateOverride?.session) return null;
       if (rotationFieldSession(riderForecast, slot)) {
         return effortOfIntensity(riderForecast?.rotationSlots?.[slot]?.intensity);
       }
