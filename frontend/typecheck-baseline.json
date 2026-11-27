@@ -435,8 +435,7 @@
     "TS2345": 1
   },
   "../backend/lib/s5TierTerrainQuota.js": {
-    "TS2322": 1,
-    "TS2339": 14
+    "TS2339": 3
   },
   "../backend/lib/seasonDevelopmentLoad.js": {
     "TS2322": 2
