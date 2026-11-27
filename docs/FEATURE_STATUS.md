@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-166 poster: live 136 · dormant 9 · building 10 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+166 poster: live 137 · dormant 9 · building 9 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -38,9 +38,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## market
 
-**live:** Auto-accept price (`market-auto-accept`) 2026-11-15 · Bid commitment gate (`market-commitment`) 2026-11-12 · Release waits for the end of a stage race (`release-defer-stage-race`) 2026-11-19 · Sale escrow (`sale-escrow`) 2026-11-15
+**live:** Auto-accept price (`market-auto-accept`) 2026-11-15 · Release waits for the end of a stage race (`release-defer-stage-race`) 2026-11-19 · Sale escrow (`sale-escrow`) 2026-11-15
 
-**arkiv:** `auctions` · `direct-transfers` · `rider-swaps` · `rider-valuation-v5`
+**arkiv:** `auctions` · `direct-transfers` · `market-commitment` · `rider-swaps` · `rider-valuation-v5`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -59,7 +59,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## training
 
-**live:** Development XP (`development-xp-model`) 2026-11-21 · One potential source (`potential-estimate-display`) 2026-11-22 · Stored potential estimates (`potential-estimate-writes`) 2026-11-22 · Race session settles when the stage is decided (`settle-race-session-after-stage`) 2026-11-20 · Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Every session at easy, normal or hard (`training-effort-levels-7947`) 2026-11-21 · Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) 2026-11-20 · Teams without a division do not train (`training-no-division-human-no-tick-6110`) 2026-11-20 · New Training page (R5) (`training-page-r5`) 2026-11-21 · Rotation plans that wait on rest and races (`training-rotation-8548`) 2026-11-26 · Train now (no bonus) (`training-train-now`) 2026-11-13 · The rolling training week for the day picker (`training-week-forecast-8580`) 2026-11-22
+**live:** Development XP (`development-xp-model`) 2026-11-21 · One potential source (`potential-estimate-display`) 2026-11-22 · Stored potential estimates (`potential-estimate-writes`) 2026-11-22 · Race session settles when the stage is decided (`settle-race-session-after-stage`) 2026-11-20 · Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Every session at easy, normal or hard (`training-effort-levels-7947`) 2026-11-21 · Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) 2026-11-20 · Teams without a division do not train (`training-no-division-human-no-tick-6110`) 2026-11-20 · New Training page (R5) (`training-page-r5`) 2026-11-21 · Rotation plans that wait on rest and races (`training-rotation-8548`) 2026-11-26 · Train now (no bonus) (`training-train-now`) 2026-11-13 · The rolling training week for the day picker (`training-week-forecast-8580`) 2026-11-22 · Week blocks with priority and one locked session per day (`training-week-priority-8549`) 2026-11-27
 
 **arkiv:** `ability-cap-per-date` · `condition-model-v2` · `condition-v2-race-date-training-day` · `daily-training` · `development-curve-b` · `peak-planner` · `potential-single-number` · `race-day-role-yield` · `season-fatigue-reset` · `train-now-whole-day` · `training-bulk-day` · `training-catalog-v3` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
 
@@ -69,7 +69,6 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Catch-up via racing (`race-day-catchup`)|dormant|`race_day_catchup_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6950|2026-10-25|Ejer, med Udvikling 2.0.|
 |Race day role base day (`race-day-role-base-day`)|dormant|`race_day_role_base_day_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-03|#5950 løsning A (ejer 3/11), underkontakt til race-day-role-yield. Off.|
 |Injuries heal over the off-season (`season-injury-reset`)|building|`season_injury_reset_mode`|[TRAINING_RULES](TRAINING_RULES.md)|#5865|2026-11-25|Prod 25/11: season_injury_reset_mode = clear. Selve nulstillingen efterprøves ved S5→S6.|
-|Week blocks with priority and one locked session per day (`training-week-priority-8549`)|building|`training_week_priority`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-26|Beta 26/11 kl. 23:09 efter ejer-go (#8549): off → beta, opt-in (kun planer hvor manageren selv har valgt Ugeblokke, #8779). Motor, prognose og Program R5 bag training_week_priority; feltprioritet og lås gemmes med weekBlock på celle-API'et.|
 
 ## academy
 
