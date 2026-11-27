@@ -46,7 +46,9 @@ function recordReads(fake) {
   };
   // Dommerens afgoerelse 21/11 (#8537): kontaktens opslag (training_effort_levels) holdes uden for
   // fingeraftrykket; det proeves med eksakt antal i trainingEffortLevels.pr24.test.js.
-  const effortSwitch = (entry) => entry.table === "app_config" && entry.calls.some(([op, args]) => op === "eq" && args?.[0] === "key" && args?.[1] === "training_effort_levels");
+  // #8819: kontakten for "Kun denne dag" (training_day_override_8592) læses for alle hold; samme greb som harnesset.
+  const effortSwitch = (entry) => entry.table === "app_config" && entry.calls.some(([op, args]) => op === "eq" && args?.[0] === "key"
+    && (args?.[1] === "training_effort_levels" || args?.[1] === "training_day_override_8592"));
   return () => reads.filter((entry) => !entry.write && !effortSwitch(entry)).map(({ table, select, calls }) => ({ table, select, calls }));
 }
 

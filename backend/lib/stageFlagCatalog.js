@@ -57,6 +57,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_week_priority", area: "training", label: "Træning — Week blocks: prioritet og låst pas" },
   // #8580 / #8550 del 3: den rullende uge (i dag + 7 dage) til dagsvælgeren. Seedet off; ejer-only flip.
   { key: "training_week_forecast", area: "training", label: "Træning — den rullende uge (dagsvælgeren)" },
+  // #8592 / #8819: "Kun denne dag" (et pas på én dato). Seedet off; ejer-only flip.
+  { key: "training_day_override_8592", area: "training", label: "Træning — Kun denne dag (et pas på én dato)" },
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
   { key: "first_race_card", area: "onboarding", label: "Dit første løb — kort på dashboardet (nye hold)" },
   // #6523: ingen kode laeser den laengere; raekken bliver kun for patch-noten (se PLAYER_VISIBLE_FLAG_KEYS).
