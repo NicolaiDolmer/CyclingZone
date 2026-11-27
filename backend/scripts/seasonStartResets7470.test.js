@@ -15,7 +15,7 @@ function seasonsClient(rows) {
 test("#7470 script: --to-season is required and the injury mode is validated", () => {
   assert.throws(() => parseArgs([]), /--to-season/);
   assert.throws(() => parseArgs(["--to-season", "6", "--injury-mode", "off"]), /injury-mode/);
-  assert.deepEqual(parseArgs(["--to-season", "6", "--execute"]), { execute: true, toSeason: 6, injuryMode: "clear" });
+  assert.deepEqual(parseArgs(["--to-season", "6", "--execute"]), { execute: true, toSeason: 6, injuryMode: "clear", formMode: "decay" });
   assert.equal(parseArgs(["--to-season", "6"]).execute, false, "dry-run by default");
 });
 

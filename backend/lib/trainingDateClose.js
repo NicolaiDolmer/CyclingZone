@@ -106,6 +106,13 @@ function instantWithin(value, { start, end }) {
  * quarantine those riders (unsafe_current_state). Season-end alone (status
  * `completed`, next season not yet active) therefore waits for the transition.
  */
+// #7470: is this the most recently completed season (the one whose cutover may be running)?
+async function isLatestCompletedSeason(supabase, seasonId) {
+  const [season] = await checked(supabase.from('seasons').select('id')
+    .eq('status', 'completed').order('number', { ascending: false }).range(0, 0), 'latest completed season') ?? [];
+  return season?.id === seasonId;
+}
+
 export async function loadJustCompletedFinalTrainingDate({ supabase, today, dueEnd }) {
   const [season] = await checked(supabase.from('seasons').select('id,number,start_date,end_date,status')
     .eq('status', 'completed').order('number', { ascending: false }).range(0, 0), 'completed season') ?? [];
@@ -458,6 +465,15 @@ export async function runNormalizedTrainingDateSweep({
     // the cutoff: the pools the teams raced in, and teams the season-end parking
     // sweep parked afterwards (their work is registered like any other team's).
     const final = job.finalSeasonDate ?? null;
+    // #7470 (Fable hul A): the latest completed season's final date while its transition
+    // has not finished (no final-date context yet, the next season already active) waits
+    // instead of quarantining every registered rider as historical. It is retried on the
+    // next run, and settles once the cutover is complete. Older dates are unchanged.
+    if (!final && index.activeSeasonId !== undefined && index.activeSeasonId !== job.season.id &&
+        job.tickDate >= previousCivilDate(index.today) && await isLatestCompletedSeason(supabase, job.season.id)) {
+      summary.awaitingCutover = (summary.awaitingCutover ?? 0) + 1;
+      continue;
+    }
     const [seasonDivisions, parkedAfterCutoff] = final
       ? await Promise.all([loadSeasonDivisions({ supabase, seasonId: job.season.id }), loadParkedTeams({ supabase, cutoff: final.cutoff })])
       : [new Map(), []];
