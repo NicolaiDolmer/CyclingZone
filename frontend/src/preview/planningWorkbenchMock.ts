@@ -136,7 +136,7 @@ const PAST_ENTRIES = PAST_RACES.flatMap((r) => RIDER_DEFS.slice(0, r.sizeMax).ma
 
 export const PLANNING_SEASON_SEED = {
   enabled: true,
-  season: { id: "season-preview-planning", number: 5 },
+  season: { id: "season-preview-planning", number: 1 }, // samme nummer som plannerMock's aktive saeson (saesonvaelgeren), ejer 27/11
   ownPoolId: 1,
   readOnly: false,
   races: [...PAST_RACES, ...RACES],
@@ -276,7 +276,7 @@ export function previewPeakBoard() {
   const raceById = new Map(RACES.map((r, i) => [r.id, { race: r, start: RACE_DEFS[i][4], end: RACE_DEFS[i][5] }]));
   return {
     enabled: true,
-    season: { id: "season-preview-planning", number: 5 },
+    season: { id: "season-preview-planning", number: 1 }, // samme nummer som plannerMock's aktive saeson (saesonvaelgeren), ejer 27/11
     maxPerRider: PREVIEW_PEAK_MAX,
     today: TODAY,
     leadupDays: 14,
