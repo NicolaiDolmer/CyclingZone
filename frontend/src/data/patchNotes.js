@@ -1,5 +1,151 @@
 export const PATCHES = [
 {
+  "version": "7.531",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "training_week_priority",
+      "replaces": "7.523#0",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Week blocks with priority, now for everyone",
+        "body": "Set Plan type to Week blocks to order each day's passes by priority and lock one pass per day. Races take the lowest priority, and Races took lists the passes that did not fit. It only applies to plans where you chose Week blocks yourself."
+      },
+      "da": {
+        "title": "Ugeblokke med prioritet, nu for alle",
+        "body": "Sæt Plantype til Ugeblokke for at sætte dagens pas i prioritetsrækkefølge og låse ét pas pr. dag. Løb tager laveste prioritet, og Løb tog viser de pas, der ikke blev plads til. Det gælder kun planer, hvor du selv har valgt Ugeblokke."
+      },
+      "refs": [
+        8549
+      ]
+    }
+  ]
+},
+{
+  "version": "7.530",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tactics",
+      "area": "tactics",
+      "en": {
+        "title": "The Tactics tab stays on the stage you picked",
+        "body": "When you open Tactics from a future stage, it now shows that stage instead of jumping back to the next one."
+      },
+      "da": {
+        "title": "Taktikfanen bliver på den etape, du har valgt",
+        "body": "Når du åbner Taktik fra en kommende etape, viser den nu den etape i stedet for at hoppe tilbage til den næste."
+      },
+      "refs": [
+        8800
+      ]
+    }
+  ]
+},
+{
+  "version": "7.529",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Riders",
+      "area": "interface",
+      "en": {
+        "title": "Next and previous rider work again",
+        "body": "On a rider's profile, the arrows to your team's next and previous rider no longer disappear when you switch rider."
+      },
+      "da": {
+        "title": "Næste og forrige rytter virker igen",
+        "body": "På en rytters profil forsvinder pilene til holdets næste og forrige rytter ikke længere, når du skifter rytter."
+      },
+      "refs": [
+        8755
+      ]
+    }
+  ]
+},
+{
+  "version": "7.528",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "New riders train from the day they join",
+        "body": "A rider who joins your team after the day's squad was set, for example from the academy or as a free agent, now gets that day's training in the evening run."
+      },
+      "da": {
+        "title": "Nye ryttere træner fra den dag, de kommer",
+        "body": "En rytter, der kommer på holdet, efter dagens trup er låst, fx fra akademiet eller som fri agent, får nu dagens træning i aftenkørslen."
+      },
+      "refs": [
+        8606
+      ]
+    }
+  ]
+},
+{
+  "version": "7.527",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Results",
+      "area": "races",
+      "en": {
+        "title": "Results show the team a rider rode for",
+        "body": "Stage results, latest results and race history now show the team the rider was on in that race, also after he changed team."
+      },
+      "da": {
+        "title": "Resultater viser holdet, rytteren kørte for",
+        "body": "Etaperesultater, seneste resultater og løbshistorik viser nu det hold, rytteren kørte for i løbet, også efter et holdskifte."
+      },
+      "refs": [
+        8399
+      ]
+    }
+  ]
+},
+{
+  "version": "7.526",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Riders",
+      "area": "mobile",
+      "en": {
+        "title": "Rider comparison fits on your phone",
+        "body": "On narrow screens the comparison stacks, so you no longer scroll sideways."
+      },
+      "da": {
+        "title": "Rytter-sammenligningen passer på telefonen",
+        "body": "På smalle skærme stables sammenligningen, så du ikke længere skal scrolle til siden."
+      },
+      "refs": [
+        7925
+      ]
+    }
+  ]
+},
+{
   "version": "7.525",
   "date": "2026-11-26",
   "changes": [
