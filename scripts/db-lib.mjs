@@ -100,7 +100,9 @@ export function describeTarget(pgEnv) {
 export function psqlJson(sql, pgEnv) {
   const psql = resolvePgBin('psql');
   const wrapped = `SELECT coalesce(json_agg(t), '[]'::json) FROM (${sql}) t;`;
-  const res = run(psql, ['-X', '-A', '-t', '-q', '-v', 'ON_ERROR_STOP=1', '-c', wrapped], { env: pgEnv });
+  // SQL via stdin, ikke -c: Windows afviser argv over ca. 32k tegn (ENAMETOOLONG),
+  // og tælle-forespørgslen over alle tabeller i public er længere end det.
+  const res = run(psql, ['-X', '-A', '-t', '-q', '-v', 'ON_ERROR_STOP=1'], { env: pgEnv, input: wrapped });
   const out = (res.stdout || '').trim();
   return JSON.parse(out || '[]');
 }
@@ -108,7 +110,7 @@ export function psqlJson(sql, pgEnv) {
 /** Run a SQL statement via psql against PG* env, no result parsing. */
 export function psqlExec(sql, pgEnv, { allowFail = false } = {}) {
   const psql = resolvePgBin('psql');
-  return run(psql, ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '-c', sql], { env: pgEnv, allowFail });
+  return run(psql, ['-X', '-q', '-v', 'ON_ERROR_STOP=1'], { env: pgEnv, allowFail, input: sql });
 }
 
 /** Build a PG* env for a plain local TCP Postgres (used by the verify harness). */

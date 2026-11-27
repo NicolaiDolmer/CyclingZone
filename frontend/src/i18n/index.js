@@ -51,7 +51,6 @@ import authEn from "../../public/locales/en/auth.json";
 import errorsEn from "../../public/locales/en/errors.json";
 import auctionsEn from "../../public/locales/en/auctions.json";
 import transfersEn from "../../public/locales/en/transfers.json";
-import dashboardEn from "../../public/locales/en/dashboard.json";
 import bannersEn from "../../public/locales/en/banners.json";
 import feedbackEn from "../../public/locales/en/feedback.json";
 import riderEn from "../../public/locales/en/rider.json";
@@ -64,7 +63,6 @@ import headtoheadEn from "../../public/locales/en/headtohead.json";
 import halloffameEn from "../../public/locales/en/halloffame.json";
 import riderTypesEn from "../../public/locales/en/riderTypes.json";
 import racesEn from "../../public/locales/en/races.json";
-import trainingEn from "../../public/locales/en/training.json";
 import academyEn from "../../public/locales/en/academy.json";
 import klubEn from "../../public/locales/en/klub.json";
 import staffEn from "../../public/locales/en/staff.json";
@@ -146,7 +144,7 @@ i18n
     // loadNamespaces via useTranslation). Stod de her, ville init vente på 2
     // HTTP-loads pr. namespace ved boot (da + en-fallback) og forsinke alt der
     // køer på init (fx changeLanguage).
-    ns: ["common", "auth", "dashboard", "auctions", "transfers", "errors", "banners", "feedback", "rider", "riders", "riderFilters", "riderTypes", "team", "finance", "sponsor", "headtohead", "halloffame", "races", "training", "academy", "klub", "staff", "landing", "globalRank"],
+    ns: ["common", "auth", "auctions", "transfers", "errors", "banners", "feedback", "rider", "riders", "riderFilters", "riderTypes", "team", "finance", "sponsor", "headtohead", "halloffame", "races", "academy", "klub", "staff", "landing", "globalRank"],
     defaultNS: "common",
     // #2849 bølge 4 + #3697: de sjældent besøgte namespaces er IKKE i resources
     // (lazy via HttpBackend fra /locales/{lng}/{ns}.json — filerne ligger
@@ -170,7 +168,7 @@ i18n
     // sproget ER dansk (vite-plugins/i18n-lang-preload.js), saa en dansk
     // besoegende ikke betaler en ekstra rundtur.
     resources: {
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, feedback: feedbackEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, team: teamEn, finance: financeEn, sponsor: sponsorEn, headtohead: headtoheadEn, halloffame: halloffameEn, races: racesEn, training: trainingEn, academy: academyEn, klub: klubEn, staff: staffEn, landing: landingEn, globalRank: globalRankEn },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, banners: bannersEn, feedback: feedbackEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, team: teamEn, finance: financeEn, sponsor: sponsorEn, headtohead: headtoheadEn, halloffame: halloffameEn, races: racesEn, academy: academyEn, klub: klubEn, staff: staffEn, landing: landingEn, globalRank: globalRankEn },
     },
     detection: {
       order: ["localStorage", "navigatorPublic", "htmlTag"],

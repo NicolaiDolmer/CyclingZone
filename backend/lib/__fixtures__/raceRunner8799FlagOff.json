@@ -1,0 +1,60 @@
+{
+  "sourceCommit": "f3702709a49d00cd8b96702a00292b8a3bcd473d",
+  "note": "#8799: skrevet af merge-basens kode foer kontakten, kun hashes; genereres aldrig med den nye kode.",
+  "wholeRace:s5_profiles_v3": {
+    "inputChecksums": [
+      4123493364,
+      2324905007,
+      3868577798
+    ],
+    "inputSha256": [
+      "c4dd887a96726d0a6ed454983ac0c4c5d011380651302783b03b8b547ea2ea08",
+      "35cbd53759e204c2ad0eba8928792595bc194ecce5ef226e26593357b4f2fe38",
+      "475935258380b0b6685efcc4fd26cd33d65c28bcb678995d45467fbdf73035bd"
+    ],
+    "outputSha256": [
+      "cbdd1950bc5c7aefcaf42f5ebc5590972a7cf3b0b0467389f0a07faac5cd8271",
+      "9e54ff1de5703c21d9ccfe4ab089ebb58f8e01b399f165dd68ef006176bdac12",
+      "4f641667a33458a5cd9837f4926cc5ece0720a88d1f480ed89e017e12b89d639"
+    ]
+  },
+  "wholeRace:s5_profiles_v2": {
+    "inputChecksums": [
+      4123493364,
+      4260583426,
+      1672482612
+    ],
+    "inputSha256": [
+      "996d5625534e67cd28ba6f9231784b3dfba5267241849c3b9e12808a75ed62b2",
+      "69ba4ae24f079d9652aaea8465b9983ddee52ca0611c8c05a39e9271a244e562",
+      "7ce9ff03cf3e3711f9e600a69a322e306d9c1b4bfaf4e1ceaea4241dd99a35e1"
+    ],
+    "outputSha256": [
+      "79f1eea4682c988c92ce837cc9d042ca25689a4a11584f288f2c68831e0797ad",
+      "9499a1d539505528fc15d6bf35d47f0337f426e498f916663ec1e36658087f7d",
+      "c4d1ebc806bd7e09bb5030f9342ebf947c804424e0d6be2bb7209485a7b0b52c"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage1": {
+    "inputChecksums": [
+      4123493364
+    ],
+    "inputSha256": [
+      "cfa3fa18e993aae26b56a0bf43dc3347b9f14a0c7b12874ac6d9fcd29223a226"
+    ],
+    "outputSha256": [
+      "cbdd1950bc5c7aefcaf42f5ebc5590972a7cf3b0b0467389f0a07faac5cd8271"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage3": {
+    "inputChecksums": [
+      1436031322
+    ],
+    "inputSha256": [
+      "e028c224e50728c6e4869f42c13c9c08e924845fda9fbb67da4189a70e58db3d"
+    ],
+    "outputSha256": [
+      "6089835f9c28ab928be02510623d0f176f1293cbad6d65a78b04c61f27f0165b"
+    ]
+  }
+}

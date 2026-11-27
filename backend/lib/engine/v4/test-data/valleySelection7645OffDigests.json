@@ -1,0 +1,24 @@
+{
+  "sourceCommit": "6c3c5d59755f91f425d811c08f2e91773be32280",
+  "note": "#7645: dalens selektion slukket er bit-identisk. Skrevet fra merge-basen foer kontakten; maa aldrig genberegnes.",
+  "stageRace": {
+    "hilly#6@7645-valley-a": "f816e82b74b469d0fb65759a4c96152d0badcc9d1958ed4e792a3f1db8ee8c99",
+    "hilly#6@7645-valley-b": "7face3046f13944aaca9fbc3d75b09eca8f611380e475dc47a48eca5328b9496",
+    "hilly#7@7645-valley-a": "8385ede6fd295325690d74eb09a719669774867c59f5f9847313b7ed962b7929",
+    "hilly#7@7645-valley-b": "b2b6d93c43c83ec5cd07785d1ece88242742cc9bf7ba108d80b49aab1a9be4c1",
+    "mountain#12@7645-valley-a": "d4c45d7e6d26de8b54491068c120a7524c7dc87ef91b175e00a46fac78d8e054",
+    "mountain#12@7645-valley-b": "6f44ca3084f18b17c858e9437cb244ca1bb03f53c4e8161212f16050faaf7fde",
+    "mountain#14@7645-valley-a": "ede3483c8db34a1e5b24e887acf3347a6cc0f2538879e84d75e141c063857737",
+    "mountain#14@7645-valley-b": "93703b47e75c577e3ad0d1c56d81f7074d4fecd1c865d01352db5da8c2da4bdd"
+  },
+  "oneDay": {
+    "hilly#6@7645-valley-a": "bc53310fc6dde3a9536dbec90bd27e21ecbdd2828e422411abe2fbfc14d6515e",
+    "hilly#6@7645-valley-b": "be511d2076bddf6bcce203a49207c96da3ac5ba5ea76c6cbd67ca9acdb7b0237",
+    "hilly#7@7645-valley-a": "955a75bbf969a383285734b4c76daa9224faa33f249eb7003b0eb38903fbf9f6",
+    "hilly#7@7645-valley-b": "11df815e864899ce7550ffbe7cc13f83899d2218a0135f8348cc2769226b4424",
+    "mountain#12@7645-valley-a": "8ddaa26aec14d90af9cb8ad352832048a81b5f8cd87497b54c1188ad67de4ce2",
+    "mountain#12@7645-valley-b": "2aed5a76bbd37a29c2b986f7a78d3cb975247f4b325285258833ee1dfd6f8c72",
+    "mountain#14@7645-valley-a": "b1393b9a007b3d488af271db24081c3a204e61f6fd86a67cd3fd584d9283f35c",
+    "mountain#14@7645-valley-b": "7549dc9a137cefce0469c74e17043bbadc01b82eab59404d438ffbf131191eec"
+  }
+}

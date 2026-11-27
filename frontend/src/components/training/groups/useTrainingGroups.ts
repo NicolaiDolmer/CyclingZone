@@ -66,8 +66,8 @@ export function useTrainingGroups({ onChanged }: { onChanged?: () => Promise<unk
       send(`/${id}/cell`, "PUT", { weekday, slotIndex, session, ...plan }),
     [send],
   );
-  const putProgram = useCallback((id: string, programKey: string, planKind?: "week") =>
-    send(`/${id}/program`, "POST", { programKey, planKind }), [send]);
+  const putProgram = useCallback((id: string, programKey: string) =>
+    send(`/${id}/program`, "POST", { programKey }), [send]);
   const follow = useCallback((id: string, riderIds: string[]) => send(`/${id}/follow`, "POST", { riderIds }), [send]);
   const setFatigue = useCallback(
     (id: string, mode: GroupFatigueMode, own?: { threshold: number; fallback: string }) =>

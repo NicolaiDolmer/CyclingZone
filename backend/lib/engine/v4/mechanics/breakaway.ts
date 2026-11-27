@@ -127,6 +127,7 @@ import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScal
 import { MANAGER_CHASE_6912_PARAM, addWork, breakawayCurve6912Applies, curveAppliesToBreak, curveChaseWork, curveClosingCapSeconds, curveControlActive, curveControlledClosing, curveFloorExtraSeconds, curveLetGoSplitKm, curvePeakSeconds, curveScaledGrowthSeconds, curveTargetSeconds, curveTopKm, curvePreFinalLift, curveUpperBoundApplies } from "./breakawayCurve6912.ts"; // #6912
 import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 import { lateAttack } from "./lateAttack.ts";
+import { hillyFinish8189ChaseScale, hillyFinish8189LetGoScale } from "./hillyFinish8189.ts"; // #8189
 import { s5V3AutoChaseIntensity, s5V3ClimbChaseApplies, s5V3ClimbChaseClosing, s5V3ClimbChaseIntensity, s5V3ClimbChaseLeashSeconds, s5V3ControlledClosing, s5V3ControlTargetSeconds, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3InControlFinale, s5V3InterestedTeamIds, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale, s5V3RealisticLeadApplies, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
 import { compareIds } from "../../../compareIds.ts";
 import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts"; // #7160
@@ -2025,7 +2026,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const gcAbilityOf = normalizedGc ? raceGcAbilityModel(normalizedGc) : null;
   // #6804 P1 (KUN s5_profiles_v3, slukket): jagten paa kuperet i etapeloeb (breakawayV3_6804.ts).
   const p1Hilly = s5V3HillyChaseApplies({ s5ProfilesV3: ctx.s5ProfilesV3, profileType: ctx.route.profile_type, gcContext: normalizedGc });
-  const p1FinaleWeightScale = s5V3FinaleWeightScale(p1Hilly, ctx.route.finale_type);
+  const p1FinaleWeightScale = s5V3FinaleWeightScale(p1Hilly, ctx.route.finale_type)
+    * (ctx.hillyFinish8189 === true ? hillyFinish8189ChaseScale(true, ctx.route) : 1); // #8189 (slukket = x1, eksakt)
   const events: TimelineEvent[] = [];
   const breakawayGroups = findBreakawayGroups(state.groups);
   // #5978: under orders_gc_v1 skal et hold der reagerer, kvittere for stoppet
@@ -2218,6 +2220,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       maxGapSeconds *= letGoTuning.letGoMaxGapScaleByProfile[ctx.route.profile_type] ?? letGoTuning.letGoMaxGapScale;
       // #6804 P1.3 (KUN s5_profiles_v3, kuperet etapeloeb): lavere lad-gaa-loft.
       if (p1Hilly) maxGapSeconds *= s5V3LetGoMaxGapScale(true);
+      if (ctx.hillyFinish8189 === true) maxGapSeconds *= hillyFinish8189LetGoScale(true, ctx.route); // #8189 (slukket)
       // #6369 (KUN s5_profiles_v1, endagsloeb): uden klassementshold der lofter
       // udbruddet skal bjerg-bucket'ens loft vaere endagsloebets eget (timeModel.ts).
       if (ctx.s5ProfilesV1 === true && gcContext?.status === "one_day") {

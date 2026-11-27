@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-163 poster: live 134 · dormant 7 · building 11 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+166 poster: live 136 · dormant 9 · building 10 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -20,6 +20,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Long descent chase cap (`race-descent-regroup-cap-7644`)|dormant|`descent_regroup_cap_7644`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7644|2026-11-04|Slukket; tændes af ejeren.|
+|Hilly stages - selection and finishes decided by the day (`race-hilly-selection-8799`)|dormant|`hilly_selection_8799`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#8799|2026-11-26|Slukket; ejer 26/11: tændes før S6's første løb efter samlet måling og Fable-dom. Kun løb der starter efter tænding.|
+|Form peak lead-up reads every team (`race-peak-leadup-all-rows-8180`)|dormant|`peak_leadup_all_rows_8180`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#8180|2026-11-26|Slukket; tændes af ejeren efter Fable-dom. Kun løb der starter efter tænding.|
+|Attack on a climb of your choice (`race-long-attack-7884`)|building|-|[7884-langt-angreb-design](superpowers/specs/2026-11-12-7884-langt-angreb-design.md)|#7884|2026-11-26|Nøgle long_attack_7884 uden række (off). Kun kontrakten (backend/lib/tacticAttackTrigger7884.js); motor og flade mangler.|
 |Tired riders can miss the time limit, with a warning (`race-time-limit-fatigue-7715`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7715|2026-11-07|Nøgle time_limit_fatigue_7715 uden række (off).|
 |Official time persistence revision (`race-official-times-v1`)|retired|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6284|2026-10-16|Frosset prototype.|
 
@@ -56,7 +59,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## training
 
-**live:** Development XP (`development-xp-model`) 2026-11-21 · One potential source (`potential-estimate-display`) 2026-11-22 · Stored potential estimates (`potential-estimate-writes`) 2026-11-22 · Race session settles when the stage is decided (`settle-race-session-after-stage`) 2026-11-20 · Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Every session at easy, normal or hard (`training-effort-levels-7947`) 2026-11-21 · Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) 2026-11-20 · Teams without a division do not train (`training-no-division-human-no-tick-6110`) 2026-11-20 · New Training page (R5) (`training-page-r5`) 2026-11-21 · Train now (no bonus) (`training-train-now`) 2026-11-13 · The rolling training week for the day picker (`training-week-forecast-8580`) 2026-11-22
+**live:** Development XP (`development-xp-model`) 2026-11-21 · One potential source (`potential-estimate-display`) 2026-11-22 · Stored potential estimates (`potential-estimate-writes`) 2026-11-22 · Race session settles when the stage is decided (`settle-race-session-after-stage`) 2026-11-20 · Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Every session at easy, normal or hard (`training-effort-levels-7947`) 2026-11-21 · Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) 2026-11-20 · Teams without a division do not train (`training-no-division-human-no-tick-6110`) 2026-11-20 · New Training page (R5) (`training-page-r5`) 2026-11-21 · Rotation plans that wait on rest and races (`training-rotation-8548`) 2026-11-26 · Train now (no bonus) (`training-train-now`) 2026-11-13 · The rolling training week for the day picker (`training-week-forecast-8580`) 2026-11-22
 
 **arkiv:** `ability-cap-per-date` · `condition-model-v2` · `condition-v2-race-date-training-day` · `daily-training` · `development-curve-b` · `peak-planner` · `potential-single-number` · `race-day-role-yield` · `season-fatigue-reset` · `train-now-whole-day` · `training-bulk-day` · `training-catalog-v3` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
 
@@ -66,10 +69,11 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Catch-up via racing (`race-day-catchup`)|dormant|`race_day_catchup_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6950|2026-10-25|Ejer, med Udvikling 2.0.|
 |Race day role base day (`race-day-role-base-day`)|dormant|`race_day_role_base_day_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-03|#5950 løsning A (ejer 3/11), underkontakt til race-day-role-yield. Off.|
 |Injuries heal over the off-season (`season-injury-reset`)|building|`season_injury_reset_mode`|[TRAINING_RULES](TRAINING_RULES.md)|#5865|2026-11-25|Prod 25/11: season_injury_reset_mode = clear. Selve nulstillingen efterprøves ved S5→S6.|
-|Rotation plans that wait on rest and races (`training-rotation-8548`)|building|`training_rotation`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-22|Data, API, afregning og prognose bag training_rotation. Pladsen fortsætter over sæsonskift. Beta i to dage med aftenverifikation før ejerens go til on.|
-|Week blocks with priority and one locked session per day (`training-week-priority-8549`)|building|`training_week_priority`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-22|Motor, prognose og Program R5 bag training_week_priority. Feltprioritet og lås gemmes med weekBlock på celle-API'et for ryttere og grupper.|
+|Week blocks with priority and one locked session per day (`training-week-priority-8549`)|building|`training_week_priority`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-26|Beta 26/11 kl. 23:09 efter ejer-go (#8549): off → beta, opt-in (kun planer hvor manageren selv har valgt Ugeblokke, #8779). Motor, prognose og Program R5 bag training_week_priority; feltprioritet og lås gemmes med weekBlock på celle-API'et.|
 
 ## academy
+
+**live:** Academy page with tabs and age focus (`academy-page-v2-8081`) 2026-11-26
 
 **arkiv:** `academy` · `academy-intake-pull` · `academy-pull-reminder` · `academy-sunday-drip` · `intake-offer-expiry` · `scout-system`
 
@@ -77,7 +81,6 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |-|-|-|-|-|-|-|
 |AI academy pull (`academy-ai-weekly-pull`)|dormant|-|[YOUTH_RULES](YOUTH_RULES.md)|#6666|2026-10-25|Flag academy_ai_weekly_pull_enabled; ikke nu.|
 |Season academy intake (`season-academy-intake`)|dormant|`season_academy_intake_enabled`|[YOUTH_RULES](YOUTH_RULES.md)|#2911|2026-10-15|Sikkerhedsventil (#2911); off i prod, ejer flipper.|
-|Academy page with tabs and age focus (`academy-page-v2-8081`)|building|`academy_page_v2_8081`|[YOUTH_RULES](YOUTH_RULES.md)|#8081|2026-11-16|Slukket. Ugens træk læser aktivt aldersfokus med gyldig privat konfiguration. Aktivering er en særskilt ejerbeslutning.|
 |Automatic youth squad promotion (`season-squad-promotion`)|building|-|[YOUTH_RULES](YOUTH_RULES.md)|#7323|2026-11-24|Bygget til prøveskiftet #7325, afventer verifikation og release.|
 |Three squads (`three-squads`)|spec|-|[YOUTH_RULES](YOUTH_RULES.md)|#2492|2026-09-06|Slice 0 er leveret; resten er spec.|
 |Awaiting promotion instead of auto-sale (`promotion-pending`)|retired|-|[YOUTH_RULES](YOUTH_RULES.md)|#5833|2026-11-24|#7323 erstatter valget med automatisk oprykning ved sæsonskiftet.|
