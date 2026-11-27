@@ -327,6 +327,17 @@ export function expectedGrandTourCounts(gtType, stageCount) {
   };
 }
 
+/**
+ * #8830: er loebet en ungdoms-mini-GT (U23/junior, #7471) i en S6+-saeson? Kun da gaelder
+ * mini-GT'ens egen bjergtop-kvote (U23 loesning A). `squad` kommer fra planens raekke.
+ * @param {{ squad?: string|null }} race
+ * @param {number} stageCount
+ * @param {boolean} s6
+ */
+export function isYouthMiniGrandTour(race, stageCount, s6) {
+  return s6 === true && (race?.squad === "u23" || race?.squad === "junior") && stageCount < GRAND_TOUR_MIN_STAGES;
+}
+
 const TERRAIN_RANK = Object.freeze({ flat: 0, rolling: 1, hilly: 2, medium_mountain: 3, mountain: 4, high_mountain: 5 });
 
 /**
@@ -342,6 +353,14 @@ export function checkGrandTour(race, { s6 = false } = {}) {
   const n = stages.length;
   const gtType = grandTourTypeOf({ ...race, stages: n });
   const expected = expectedGrandTourCounts(gtType, n);
+  // #8830 U23 loesning A (ejer 27/11): en ungdoms-mini-GT ender bevidst paa toppen af alle
+  // sine bjergtop-terraener (generatorens regel, raceStageProfileGenerator orderGrandTourS5),
+  // saa dens bjergtop-kvote er summen af de skalerede bjergtop-terraener, ikke seniorens
+  // GT-kvote. Senior-GT'er og S5 doemmes uaendret.
+  const youthMini = isYouthMiniGrandTour(race, n, s6);
+  if (youthMini) {
+    expected.summits = Object.keys(S5_SUMMIT_CATEGORIES).reduce((sum, t) => sum + (expected.terrains[t] ?? 0), 0);
+  }
   const tol = S5_GT_QUOTA_TOLERANCE;
   const violations = [];
 
@@ -392,7 +411,7 @@ export function checkGrandTour(race, { s6 = false } = {}) {
   for (const w of week) violations.push(`ugestruktur: ${w}`);
 
   return {
-    name: race?.name ?? null, gtType, stageCount: n,
+    name: race?.name ?? null, gtType, stageCount: n, youthMini,
     counts: { terrains, summits, timeTrials, roadL1 }, expected, violations,
   };
 }

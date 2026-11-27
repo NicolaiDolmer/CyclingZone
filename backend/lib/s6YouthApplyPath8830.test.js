@@ -82,7 +82,7 @@ function writableSupabase(state) {
   return { from, state };
 }
 
-test("#8830 skrive-stien: ungdoms-mini-GT'en faar ungdommens bjergtoppe, og gaten stopper apply fail-closed", { timeout: 300000 }, async () => {
+test("#8830 skrive-stien: ungdoms-mini-GT'en faar ungdommens bjergtoppe, og apply skriver for begge trupper (U23 loesning A)", { timeout: 300000 }, async () => {
   const youthFx = JSON.parse(readFileSync(join(FIX, "youthMiniEditions7471.json"), "utf8"));
   const catalog = JSON.parse(readFileSync(join(FIX, "racePoolCatalog.prod.json"), "utf8")).catalog;
   const senior = await runOfflineSeasonGates({ seasonNumber: 6, firstDay: "2026-11-30", lastDay: "2026-12-26", raceDayTarget: 140, baseSeed: 1 });
@@ -110,15 +110,7 @@ test("#8830 skrive-stien: ungdoms-mini-GT'en faar ungdommens bjergtoppe, og gate
     const notSummit = mountainStages.filter((p) => p.finale_type !== "long_climb");
     assert.deepEqual(notSummit.map((p) => `${p.race_id} etape ${p.stage_number}: ${p.profile_type}/${p.finale_type}`), [],
       `${squad}: alle bjergetaper i en ungdoms-mini-GT ender paa toppen (squad naar generatoren i apply-stien)`);
-    if (squad === "u23") {
-      // (2) Den kendte konflikt (maalt i frø 1-5): U23's 7-etapers Giro/Vuelta-mini-GT faar flere
-      // bjergtoppe end gatens GT-kvote. Gaten stopper apply, og intet er skrevet.
-      await assert.rejects(() => materializeTierCalendars({ ...args, dryRun: false }), /S5 benchmark gate red .*bjergtoppe/);
-      assert.equal(sb.state.races.length, 0, `${squad}: en roed gate skriver intet`);
-      assert.equal(sb.state.race_stage_profiles.length, 0, `${squad}: ingen profiler skrevet`);
-      continue;
-    }
-    // Junior: apply skriver, og de INDSATTE profiler har ungdommens bjergtoppe.
+    // U23 (loesning A, ejer 27/11) og junior: apply skriver, og de INDSATTE profiler har ungdommens bjergtoppe.
     const summary = await materializeTierCalendars({ ...args, dryRun: false });
     assert.ok(summary.racesInserted > 0, `${squad}: apply indsatte ingen loeb`);
     const insertedGt = new Set(sb.state.races.filter((r) => gtIds.has(r.pool_race_id)).map((r) => r.id));
