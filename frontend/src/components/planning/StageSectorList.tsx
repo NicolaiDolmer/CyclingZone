@@ -98,7 +98,8 @@ export default function StageSectorList({
                 <span className="flex min-w-0 items-center gap-2">
                   <SectorGlyph kind={row.kind} />
                   <span className="truncate font-medium text-cz-1">{label}</span>
-                  {row.name && <span className="shrink-0 text-2xs text-cz-3">{kindLabel}</span>}
+                  {/* Underlaget staar i overskriften; kun en blandet etape skriver det pr. raekke. */}
+                  {row.name && kinds.size > 1 && <span className="shrink-0 text-2xs text-cz-3">{kindLabel}</span>}
                 </span>
               );
               return (
