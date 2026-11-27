@@ -119,15 +119,16 @@ export function withAttackRoute7884<R extends { plan?: unknown; long_attack_rout
  * dem (kontakten slukket eller noedstop) og ved kopi til andre etaper: "Brug paa flere etaper" kopierer
  * aldrig en stigning (designets afsnit 2).
  */
-export function orderWithoutAttack7884<O extends { riders?: ReadonlyArray<{ plan?: unknown; long_attack_route_7884?: unknown }> | null }>(order: O): O {
-  const riders = order?.riders ?? [];
+export function orderWithoutAttack7884<O>(order: O): O {
+  type Row = { plan?: unknown; long_attack_route_7884?: unknown };
+  const riders: ReadonlyArray<Row> = ((order as { riders?: ReadonlyArray<Row> | null } | null)?.riders) ?? [];
   if (!riders.some((r) => Array.isArray(r.plan) && attackPlaceKey7884(r.plan as LegWithPlace[]) !== null)) return order;
   return {
-    ...order,
+    ...(order as object),
     riders: riders.map((r) => {
       if (!Array.isArray(r.plan) || attackPlaceKey7884(r.plan as LegWithPlace[]) === null) return r;
       const { long_attack_route_7884: _fp, ...rest } = r;
       return { ...rest, plan: planWithoutAttack7884(r.plan as LegWithPlace[]) };
     }),
-  };
+  } as O;
 }
