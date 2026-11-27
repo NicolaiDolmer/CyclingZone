@@ -26,3 +26,19 @@ test("klasse-vaegte ligger inden for FINISH_MATRIX for terraenet", () => {
     assert.equal(top.value, "flat_sprint");
   }
 });
+
+test("grandTourQuotaTypes + orderGrandTourS5: junior-mini-GT har een enkeltstart, og den er sidste etape", async () => {
+  const { grandTourQuotaTypes, orderGrandTourS5 } = await import("./raceStageProfileGenerator.js");
+  const { makeRng } = await import("./fictionalRiderGenerator.js");
+  for (const gt of ["giro", "tour", "vuelta"]) {
+  const { types } = grandTourQuotaTypes(gt, 4, { maxTimeTrials: 1 });
+  assert.equal(types.filter((t) => t === "itt" || t === "ttt").length, 1, gt);
+  for (let seed = 1; seed <= 20; seed++) {
+    const ordered = orderGrandTourS5(makeRng(seed), types, { s6: true, lastTtOnly: true });
+    assert.equal(ordered.length, 4);
+    assert.equal(ordered[3], "itt", `seed ${seed}: ${ordered.join(",")}`);
+    assert.ok(!ordered.slice(0, 3).includes("itt"));
+  }
+  }
+  assert.equal(grandTourQuotaTypes("giro", 4).types.filter((t) => t === "itt").length, 2, "uden loft: uaendret");
+});
