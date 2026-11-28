@@ -13,6 +13,8 @@
 // anvendes når race_engine_v3_scoring er ON — flag-off skal forblive bit-identisk
 // med motoren før S3 (samme mønster som S1/S2's øvrige v3-seams).
 
+import { fetchAllRows } from "./supabasePagination.js";
+
 /**
  * Indlæs ALLE race_stage_roles-rækker for et løb, grupperet stage → rider → {race_role, effort}.
  * Ubetinget hentning (ingen team-filtrering) — motoren skal se HELE feltets overrides,
@@ -23,11 +25,19 @@
  * @returns {Promise<Map<number, Map<string, {race_role: string, effort: string}>>>}
  */
 export async function loadStageRoleOverrides({ supabase, raceId }) {
-  const { data, error } = await supabase
-    .from("race_stage_roles")
-    .select("stage_number, rider_id, race_role, effort")
-    .eq("race_id", raceId);
-  if (error) throw new Error(`race_stage_roles: ${error.message}`);
+  // #8797: et etapeløbs overrides (etaper × hele feltet) kan passere 1.000 rækker →
+  // paginér på den unikke nøgle. Kortet er nøglet på (etape, rytter), så rækkefølgen
+  // ændrer ikke resultatet.
+  let data;
+  try {
+    data = await fetchAllRows(() => supabase
+      .from("race_stage_roles")
+      .select("stage_number, rider_id, race_role, effort")
+      .eq("race_id", raceId)
+      .order("stage_number").order("rider_id"));
+  } catch (error) {
+    throw new Error(`race_stage_roles: ${error.message}`, { cause: error });
+  }
 
   const byStage = new Map();
   for (const row of data || []) {

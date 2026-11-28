@@ -606,7 +606,7 @@ import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { fatigueByRiderNow, fatigueByRiderForRaces, fatigueOutlookForTeam, openingFatigueMap } from "../lib/riderFatigueNow.js"; // #7801
 import { riderCardFatigueNow7801 } from "../lib/riderCardFatigueNow7801.js"; // #7801
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
-import { selectInChunks } from "../lib/dbChunk.js";
+import { selectInChunks, fetchAllPaged } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
 import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory, buildPrizeBreakdown, buildSponsorPayoutLine } from "../lib/myTeamLatestResult.js";
@@ -5357,7 +5357,7 @@ async function fetchTeamRaceEntriesWithRider(supabase, teamId, raceIds) {
   if (!raceIds.length) return [];
   const { data, error } = await selectInChunks({
     supabase, table: "race_entries", columns: "race_id, rider_id, race_role",
-    inColumn: "race_id", ids: raceIds, extra: (q) => q.eq("team_id", teamId),
+    inColumn: "race_id", ids: raceIds, extra: (q) => q.eq("team_id", teamId), orderBy: ["race_id", "rider_id"], // #8797
   });
   if (error) throw new Error(`race_entries (selection/season): ${error.message}`);
   return data;
@@ -5787,8 +5787,10 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       supabase,
       // ANY_SQUAD: en U23-/juniorentry binder også rytterens løbsdag (#5645).
       squad: ANY_SQUAD,
+      paged: true, // #8797 pagination-safe: paged → fetchAllPaged; holdets entries passerer 1.000 rækker
       baseQuery: () => supabase
-        .from("race_entries").select("race_id, rider_id, team_id, is_auto_filled").eq("team_id", req.team.id),
+        .from("race_entries").select("race_id, rider_id, team_id, is_auto_filled").eq("team_id", req.team.id)
+        .order("race_id").order("rider_id"),
     });
     if (teamEntriesErr) throw new Error(`race_entries (external bindings): ${teamEntriesErr.message}`);
     // #3041: samme regel som ovenfor for kolonnerne — en auto-udtaget entry i et løb der
@@ -5924,8 +5926,9 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
     // nationalitet fra riders (intet form/træthed/egnethed). Hold-navne fra teams.
     const squadsByRace = new Map();
     if (visibleIds.length) {
-      const { data: entries } = await supabase
-        .from("race_entries").select("race_id, team_id, rider_id").in("race_id", visibleIds);
+      // #8797: synlige startlister tilsammen kan passere 1.000 rækker → chunk + paginér.
+      const entries = await fetchAllRowsChunkedIn(visibleIds, (chunk) => supabase
+        .from("race_entries").select("race_id, team_id, rider_id").in("race_id", chunk).order("race_id").order("rider_id"));
       // #5301: et AFMELDT hold må ikke stå på startlisten. race_entries bevares
       // bevidst ved afmelding (#4306), så denne flade — som er den eneste der viser
       // ANDRE managers' opstillinger — viste et fantom-hold til hele puljen og lod
@@ -5939,7 +5942,7 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
       const ids = [...new Set(entryRows.map((e) => e.rider_id))];
       const teamIds = [...new Set(entryRows.map((e) => e.team_id).filter(Boolean))];
       const [{ data: riders }, { data: teams }] = await Promise.all([
-        ids.length ? supabase.from("riders").select("id, firstname, lastname, nationality_code").in("id", ids) : Promise.resolve({ data: [] }),
+        fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("riders").select("id, firstname, lastname, nationality_code").in("id", chunk).order("id")).then((data) => ({ data })),
         teamIds.length ? supabase.from("teams").select("id, name").in("id", teamIds) : Promise.resolve({ data: [] }),
       ]);
       const ridersById = new Map((riders || []).map((r) => [r.id, r]));
@@ -7537,7 +7540,9 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
     const [{ data: abilities }, { data: conditions }, { data: allEntries }] = await Promise.all([
       supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", teamRiderIds),
       supabase.from("rider_condition").select("rider_id, fatigue").in("rider_id", teamRiderIds),
-      supabase.from("race_entries").select("race_id, rider_id, race_role, is_auto_filled").eq("team_id", req.team.id),
+      // #8797: holdets entries i al historik passerer 1.000 rækker → paginér.
+      fetchAllRows(() => supabase.from("race_entries").select("race_id, rider_id, race_role, is_auto_filled").eq("team_id", req.team.id)
+        .order("race_id").order("rider_id")).then((data) => ({ data })),
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
     const fatById = openingFatigueMap(conditions); // #7801: pr. løb ved etapestart, se assignRaces
@@ -7605,7 +7610,8 @@ router.get("/auctions", requireAuth, async (req, res) => {
   const { status = "active" } = req.query;
 
   // schema-columns-ok: riders.best_role/best_role_rating tilføjet af database/2026-09-22-5443-best-role-data.sql (#5487, applied); snapshottet er ældre (#4142)
-  const { data, error } = await supabase
+  // #8797: status=completed passerer 1.000 auktioner → paginér (id som unik andennøgle).
+  const { data, error } = await fetchAllPaged(() => supabase
     .from("auctions")
     .select(`
       id, starting_price, current_price, calculated_end, actual_end,
@@ -7617,7 +7623,7 @@ router.get("/auctions", requireAuth, async (req, res) => {
       current_bidder:current_bidder_id(id, name)
     `)
     .eq("status", status)
-    .order("calculated_end", { ascending: true });
+    .order("calculated_end", { ascending: true }).order("id"));
 
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
@@ -13887,20 +13893,21 @@ router.get("/races", requireAuth, cached({ namespace: "races", ttlMs: CACHE_TTL.
 
     // #5517: løbslisten er seniorernes — ungdomsløb får deres egen flade
     // ("Youth races", spec §7), ikke en plads i denne liste (squads.withSeniorSquadScope).
-    const { data, error } = await withSeniorSquadScope((senior) => {
+    // #8797: uden sæsonfilter passerer listen 1.000 løb → paginér (id som unik andennøgle).
+    const { data, error } = await withSeniorSquadScope((senior) => fetchAllPaged(() => {
       let query = senior(supabase
         .from("races")
         .select(
           "id, name, race_type, race_class, stages, status, edition_year, pool_race:pool_race_id(date_text), season:season_id(id, number, status)"
         ))
-        .order("name", { ascending: true });
+        .order("name", { ascending: true }).order("id");
 
       if (seasonId) query = query.eq("season_id", seasonId);
       if (raceClass) query = query.eq("race_class", raceClass);
       if (status) query = query.eq("status", status);
       if (q) query = query.ilike("name", `%${q}%`);
       return query;
-    });
+    }));
     if (error) return res.status(500).json({ error: error.message });
     res.json(data || []);
   } catch (e) {
@@ -17694,14 +17701,15 @@ router.get("/board/status", requireAuth, async (req, res) => {
         supabase.from("board_plan_snapshots").select("*")
           .in("board_id", boardIds)
           .order("season_within_plan", { ascending: true }),
-        supabase.from("board_request_log")
+        // #8797: historikken passerer 1.000 hændelser → paginér (id som unik andennøgle).
+        fetchAllPaged(() => supabase.from("board_request_log")
           .select("id, board_id, request_type, outcome, title, summary, tradeoff_summary, request_payload, board_changes, season_number, created_at")
           .in("board_id", boardIds)
-          .order("created_at", { ascending: false }),
-        supabase.from("board_satisfaction_events")
+          .order("created_at", { ascending: false }).order("id", { ascending: false })),
+        fetchAllPaged(() => supabase.from("board_satisfaction_events")
           .select("id, board_id, race_name, race_days_completed, satisfaction_before, satisfaction_after, satisfaction_delta, goals_met, goals_total, reason_category, created_at")
           .in("board_id", boardIds)
-          .order("created_at", { ascending: false }),
+          .order("created_at", { ascending: false }).order("id", { ascending: false })),
       ]);
 
       if (snapshotsRes.error) return res.status(500).json({ error: snapshotsRes.error.message });

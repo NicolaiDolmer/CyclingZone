@@ -841,7 +841,13 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null, pena
                 assert.equal(value, "season-1");
                 const data = clone(state.races)
                   .filter((race) => !scoped.senior || race.squad == null || race.squad === "senior");
-                return Promise.resolve({ data, error: null });
+                // #8797: sæsonens løb pagineres (fetchAllPaged → .order("id").range()).
+                return {
+                  order(orderColumn) {
+                    assert.equal(orderColumn, "id");
+                    return { range(from, to) { return Promise.resolve({ data: data.slice(from, to + 1), error: null }); } };
+                  },
+                };
               },
             };
             return builder;

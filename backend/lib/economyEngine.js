@@ -97,6 +97,7 @@ import {
 } from "./sponsorEngine.js";
 import { getActiveContract } from "./sponsorContractsService.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllPaged } from "./dbChunk.js";
 import { withSupabaseRetry } from "./supabaseErrorNormalize.js";
 import { createSupabaseFetchWithRetry } from "./supabaseFetchRetry.js";
 import { captureException } from "./sentry.js";
@@ -3054,8 +3055,9 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
     ), "Could not load teams for standings recalculation"),
     // #5536: kun seniorløb, samme prædikat som RPC'en (#5535). Et ungdomsløb må ikke
     // give point i seniorstillingen, heller ikke i fallback-vinduet.
-    withSeniorSquadScope((senior) =>
-      senior(supabaseClient.from("races").select("id")).eq("season_id", seasonId)),
+    // #8797: en sæsons løb nærmer sig 1.000 rækker → paginér.
+    withSeniorSquadScope((senior) => fetchAllPaged(() =>
+      senior(supabaseClient.from("races").select("id")).eq("season_id", seasonId).order("id"))),
   ]);
 
   if (racesError) throw new Error(racesError.message);

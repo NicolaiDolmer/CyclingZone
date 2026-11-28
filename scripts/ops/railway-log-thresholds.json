@@ -104,6 +104,7 @@
   "ignore": [
     "shutdown",
     "sentry",
+    "row-cap",
     "discord:live-guard",
     "discord-dm:skip",
     "discord-dm:test-channel",

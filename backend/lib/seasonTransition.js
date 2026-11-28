@@ -60,6 +60,7 @@ import {
 } from "./sponsorContractsService.js";
 import { renownTarget } from "./renownEngine.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllPaged } from "./dbChunk.js";
 import { releaseExpiredContractRiders as defaultReleaseExpiredContractRiders } from "./contractExpiryRelease.js";
 import { renewExpiringAiContracts as defaultRenewExpiringAiContracts } from "./aiContractAutoRenewal.js";
 import { releaseRetiredRiders as defaultReleaseRetiredRiders } from "./retirementRelease.js";
@@ -208,13 +209,14 @@ export async function emitSeasonStartedNotifications({
   // (153 hold i prod mod korrekte 150).
   let managers = humanTeams;
   if (!managers) {
-    const { data, error } = await supabase
+    const { data, error } = await fetchAllPaged(() => supabase // #8797: pagineret
       .from("teams")
       .select("id, user_id")
       .eq("is_ai", false)
       .eq("is_bank", false)
       .eq("is_frozen", false)
-      .eq("is_test_account", false);
+      .eq("is_test_account", false)
+      .order("id"));
     if (error) {
       throw new Error(
         `Could not load managers for season_started notifications: ${error.message}`,
@@ -327,7 +329,7 @@ export async function emitSeasonEndedNotifications({
   // (153 hold i prod mod korrekte 150).
   let managers = humanTeams;
   if (!managers) {
-    const { data, error } = await supabase
+    const { data, error } = await fetchAllPaged(() => supabase // #8797: pagineret
       .from("teams")
       // #2924 · id + division kom til for personaliseringen: id slår standings/
       // præmier/ryttere op, division er (efter processSeasonEnd) holdets division
@@ -336,7 +338,8 @@ export async function emitSeasonEndedNotifications({
       .eq("is_ai", false)
       .eq("is_bank", false)
       .eq("is_frozen", false)
-      .eq("is_test_account", false);
+      .eq("is_test_account", false)
+      .order("id"));
     if (error) {
       throw new Error(
         `Could not load managers for season_ended notifications: ${error.message}`,
@@ -507,11 +510,11 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
   // previewet nu regner den FAKTISKE payout - ikke bare den garanterede base.
   // #4592 · parked_at med i selecten: processSeasonStart springer parkerede hold
   // over i sponsor-loopet, så previewet skal kunne gøre det samme.
-  const { data: humanTeams, error: teamsError } = await applyHumanTeamFilter(
+  const { data: humanTeams, error: teamsError } = await fetchAllPaged(() => applyHumanTeamFilter( // #8797
     supabase
       .from("teams")
       .select("id, name, sponsor_income, division, parked_at, board_profiles(budget_modifier, negotiation_status)")
-  );
+  ).order("id"));
   if (teamsError) throw new Error(`Could not load teams: ${teamsError.message}`);
   const sponsorStandingsContext = await loadSponsorPreviewStandings({
     supabase,
@@ -654,10 +657,11 @@ async function loadSponsorPreviewStandings({ supabase, fromSeasonId, toSeasonNum
   if (toSeasonNumber < FIRST_VARIABLE_SPONSOR_SEASON) {
     return buildSponsorStandingsContext([]);
   }
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllPaged(() => supabase // #8797: pagineret
     .from("season_standings")
     .select("team_id, division, rank_in_division, total_points")
-    .eq("season_id", fromSeasonId);
+    .eq("season_id", fromSeasonId)
+    .order("id"));
   if (error) throw new Error(`Could not load sponsor preview standings: ${error.message}`);
   return buildSponsorStandingsContext(data || []);
 }
@@ -685,10 +689,11 @@ async function loadSponsorWindowOpenStandings({ supabase, toSeasonNumber }) {
   }
   if (!season?.id) return null;
 
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllPaged(() => supabase // #8797: pagineret
     .from("season_standings")
     .select("team_id, division, rank_in_division, total_points")
-    .eq("season_id", season.id);
+    .eq("season_id", season.id)
+    .order("id"));
   if (error) {
     throw new Error(`Could not load sponsor window-open standings: ${error.message}`);
   }
@@ -1254,9 +1259,9 @@ export async function transitionToNextSeason({
   // expireAndRenewContracts er injicerbar via deps for test.
   const expireAndRenewContractsFn =
     deps.expireAndRenewContracts ?? defaultExpireAndRenewContracts;
-  const { data: renewTeams, error: renewTeamsError } = await applyHumanTeamFilter(
+  const { data: renewTeams, error: renewTeamsError } = await fetchAllPaged(() => applyHumanTeamFilter( // #8797
     supabase.from("teams").select("id")
-  );
+  ).order("id"));
   if (renewTeamsError) {
     throw new Error(`Could not load teams for contract renewal: ${renewTeamsError.message}`);
   }

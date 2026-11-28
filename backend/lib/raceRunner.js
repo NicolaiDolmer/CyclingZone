@@ -1099,13 +1099,23 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
 // PostgREST .in() encoder id-listen i URL'en — ved relaunch-skala (600-800 UUID'er)
 // rammer det 414/proxy-grænser. Batch derfor alle id-opslag i bidder. (#1307-review)
 const IN_CHUNK_SIZE = 200;
-async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null }) {
+async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null, orderBy = null }) {
   const out = [];
   for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
-    let q = supabase.from(table).select(columns).in(inColumn, ids.slice(i, i + IN_CHUNK_SIZE));
-    if (extra) q = extra(q);
-    const { data, error } = await q;
+    const build = () => { let q = supabase.from(table).select(columns).in(inColumn, ids.slice(i, i + IN_CHUNK_SIZE)); return extra ? extra(q) : q; };
+    let { data, error } = await build();
     if (error) return { data: null, error };
+    // #8797: præcis loftet = afkortet bid → hent den igen side for side (stabil orden).
+    // Under loftet er kald og rækkefølge uændret, så motorens input er bit-identisk.
+    // Ordenen skal være UNIK: fallbacken rammer kun ikke-unikke inColumn (fx riders pr.
+    // team_id), og range-sider over bånd kan springe rækker over eller dublere dem.
+    // Default [inColumn, "id"]; tabeller uden id giver selv orderBy (som dbChunk.js).
+    if ((data || []).length >= 1000) {
+      const cols = orderBy || [inColumn, "id"];
+      try { data = await fetchAllRows(() => cols.reduce((q, col) => q.order(col), build())); } catch (err) {
+        return { data: null, error: err }; // catch-ok: fejlen returneres i {data, error}-kontrakten
+      }
+    }
     out.push(...(data || []));
   }
   return { data: out, error: null };
@@ -1536,6 +1546,7 @@ export async function fillMissingTeamEntries({
     // #6964 (ejer 20/10): alder afgør ungdomsløb — for gammel = aldrig autofyldt.
     inColumn: "team_id", ids: missingTeamIds,
     extra: (q) => applyRiderEligibilityFilter(q, { squad: raceSquad, seasonNumber: raceSeasonNumber }),
+    orderBy: ["team_id", "id"], // #8797: team_id er ikke unik; id gør side-ordenen stabil
   });
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
 

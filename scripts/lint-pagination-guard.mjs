@@ -16,8 +16,8 @@
 // `.range()`. A naive `.from(<big table>).select(...)` lies silently: no error,
 // just a truncated result, so counts/aggregates/matches read falsely low.
 //
-// This lint flags any `.from(<table>)` against a DENY-listed (known-unbounded)
-// table whose call is NOT provably bounded:
+// This lint flags any `.from(<table>)` read (every table except the small
+// SMALL_TABLE_EXCEPTIONS list, #8797) whose call is NOT provably bounded:
 //   - no `.limit(`, `.single(`, `.maybeSingle(`, or `.range(` chained anywhere
 //     in the same statement, AND
 //   - not delegated to a `fetchAll*(...)` pagination helper (fetchAllRows,
@@ -32,10 +32,11 @@
 // The reason is mandatory in spirit — this is a deny-list break-glass, not a
 // blanket opt-out — but only the marker text itself is mechanically checked.
 //
-// DENY_TABLES is deliberately a hard-coded allowlist-of-risk, not a directory
-// scan of every Supabase table: only tables that are known to grow past 1000
-// rows in a live season. Extend it (never shrink it silently) as new tables
-// prove unbounded — see docs/GAME_INVARIANTS.md.
+// #8797: the scope used to be DENY_TABLES only (a hard-coded allowlist-of-risk);
+// the 26/11 audit found the cap biting tables nobody had listed. The guard now
+// covers every table, and DENY_TABLES stays as documentation of the tables
+// already proven unbounded (and for the tests). Pre-existing findings in the
+// newly covered tables live in the baseline ratchet, which may only shrink.
 //
 // This lint tokenises first so it never trips on the pattern inside a //
 // comment or /* */ block. Unlike lint-getuser-guard/lint-postgrest-in-cap, it
@@ -50,7 +51,7 @@
 //
 // Exit codes:
 //   0 — no findings
-//   1 — at least one unbounded select against a deny-listed table
+//   1 — at least one unbounded select (any table except the small-table exceptions)
 //   2 — internal error
 //
 // Refs #3331 #3315 #770. Learnings:
@@ -158,11 +159,24 @@ function matchingClose(code, openIdx) {
 // fetchAllRaceRows, fetchAllScheduleRows, fetchAllStageProfiles, fetchAll, …).
 const FETCH_ALL_CALL = /\bfetchAll[A-Za-z]*\s*\(/g;
 
-const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const FROM_CALL = new RegExp(
-  `\\.from\\(\\s*(['"\`])(${DENY_TABLES.map(reEsc).join('|')})\\1\\s*\\)`,
-  'g',
-);
+// #8797 (audit 26/11): vagten tjekkede kun DENY_TABLES, så loftet bed igen i
+// tabeller ingen havde skrevet på listen (board_satisfaction_events, teams,
+// race_stage_roles, auctions, races …). Nu gælder den ALLE tabeller; kun tabeller
+// der strukturelt ikke kan nå 1.000 rækker (konfiguration, én række pr. sæson/
+// division o.l.) er undtaget. Listen er bevidst lille — en tabel kommer kun på
+// den, når dens størrelse er bundet af spillets struktur, ikke af "i dag".
+export const SMALL_TABLE_EXCEPTIONS = [
+  'app_config',
+  'auction_timing_config',
+  'discord_settings',
+  'feature_flags',
+  'league_divisions',
+  'seasons',
+  'transfer_windows',
+];
+const SMALL_TABLE_SET = new Set(SMALL_TABLE_EXCEPTIONS);
+
+const FROM_CALL = /\.from\(\s*(['"`])([A-Za-z_][A-Za-z0-9_]*)\1\s*\)/g;
 const GUARD_RE = /\.(?:limit|single|maybeSingle|range)\s*\(/;
 
 /**
@@ -195,6 +209,7 @@ export function scan(source, filename = '<source>') {
   let m;
   while ((m = FROM_CALL.exec(code)) !== null) {
     const table = m[2];
+    if (SMALL_TABLE_SET.has(table)) continue; // #8797: strukturelt lille tabel
     const callIdx = m.index; // index of the leading '.'
 
     // Scope to genuine READS: `.select(` must be the call chained IMMEDIATELY
@@ -362,7 +377,7 @@ export function compareAgainstBaseline(findings, baseline) {
 
   for (const [file, tables] of Object.entries(cur)) {
     const allowed = base[file] || {};
-    for (const table of DENY_TABLES) {
+    for (const table of Object.keys(tables)) { // #8797: alle tabeller, ikke kun DENY_TABLES
       const n = tables[table] || 0;
       const max = allowed[table] || 0;
       if (n > max) {
@@ -372,7 +387,7 @@ export function compareAgainstBaseline(findings, baseline) {
   }
   for (const [file, allowed] of Object.entries(base)) {
     const tables = cur[file] || {};
-    for (const table of DENY_TABLES) {
+    for (const table of Object.keys(allowed)) {
       const max = allowed[table] || 0;
       if (max > 0 && (tables[table] || 0) < max) {
         stale.push(`${file} — ${table}: ${tables[table] || 0}/${max} tilbage (baseline kan strammes)`);
@@ -388,7 +403,7 @@ function buildBaseline(findings) {
   for (const file of Object.keys(files).sort()) sorted[file] = files[file];
   return {
     $comment:
-      'Kendte upaginerede selects mod deny-listede tabeller (ratchet — maa kun skrumpe). '
+      'Kendte upaginerede selects (ratchet — maa kun skrumpe). #8797: daekker alle tabeller undtagen SMALL_TABLE_EXCEPTIONS; fund i de nye tabeller er optaget som de stod 26/11. '
       + 'De fleste er verificeret sikre pr. 2026-08-05 (single-team/single-race-scoping, se PR-body '
       + 'for #3331-audittens rækketal), men ikke alle er annoteret inline endnu. '
       + 'Genereret af scripts/lint-pagination-guard.mjs --update-baseline. Refs #3331. '
@@ -417,7 +432,7 @@ function run() {
   // single-file CI/test assertion) always reports raw findings, unratcheted.
   if (!usingDefaultDirs) {
     for (const fnd of findings) {
-      process.stderr.write(`${fnd.file}:${fnd.line}: unbounded select against deny-listed table "${fnd.table}": ${fnd.snippet}\n`);
+      process.stderr.write(`${fnd.file}:${fnd.line}: unbounded select against table "${fnd.table}": ${fnd.snippet}\n`);
     }
     if (findings.length > 0) process.exit(1);
     process.exit(0);
@@ -441,14 +456,14 @@ function run() {
   }
 
   if (newViolations.length > 0) {
-    process.stderr.write(`\n🔴 Pagination guard blocked: ${newViolations.length} NY(E) unbounded select(s) against a deny-listed table (ikke i baseline):\n`);
+    process.stderr.write(`\n🔴 Pagination guard blocked: ${newViolations.length} NY(E) unbounded select(s) (ikke i baseline):\n`);
     for (const v of newViolations) process.stderr.write(`   - ${v}\n`);
     process.stderr.write(`
 Background: PostgREST silently caps a response at 1000 rows. This exact class
 shipped twice (PCM rider-matcher 2026-05-30, sponsor race-results #3315
 2026-08-04) — both caught by a player, not a test.
 
-Deny-listed tables: ${DENY_TABLES.join(', ')}.
+Scope: every table except the small-table exceptions (${SMALL_TABLE_EXCEPTIONS.join(", ")}), #8797.
 
 Fix: paginate with fetchAllRows / fetchAllRowsChunkedIn
 (backend/lib/supabasePagination.js), or add .limit()/.single()/.maybeSingle()

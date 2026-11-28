@@ -161,7 +161,6 @@
     "TS2339": 8
   },
   "../backend/lib/dbChunk.js": {
-    "TS2339": 1,
     "TS2349": 1
   },
   "../backend/lib/discordDeadConnection.js": {
@@ -2613,7 +2612,7 @@
     "TS18046": 5,
     "TS18047": 6,
     "TS2339": 29,
-    "TS2345": 5,
+    "TS2345": 3,
     "TS2698": 4
   },
   "src/pages/admin/AdminEconomyTab.jsx": {

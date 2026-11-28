@@ -23,6 +23,21 @@
 // returneres det sidste svar / den sidste fejl, så normalizeSupabaseErrorMessage ser det samme
 // som før.
 
+import { captureException } from "./sentry.js";
+import { withRowCapAlarm, rowCapAlarmMessage, rowCapAlarmFingerprint } from "./supabaseRowCapAlarm.js";
+
+// #8797: alle backend-klienter går gennem denne fabrik (håndhævet af testen nederst i
+// supabaseFetchRetry.test.js), så rækkeloft-alarmen sidder ét sted for hele backend.
+function reportRowCap(finding) {
+  console.warn(`[row-cap] ${finding.table} (${finding.shape})`);
+  captureException(new Error(rowCapAlarmMessage(finding)), {
+    level: "warning",
+    fingerprint: rowCapAlarmFingerprint(finding),
+    tags: { supabase_table: finding.table },
+    query_shape: finding.shape,
+  });
+}
+
 const RETRY_DELAYS_MS = [300, 1000];
 const CLOUDFLARE_STATUSES = new Set([520, 521, 522, 523, 524, 525]);
 // Status som PostgREST-klienten selv prøver igen ved læsninger.
@@ -72,8 +87,10 @@ function isStreamBody(init) {
 export function createSupabaseFetchWithRetry(baseFetch = globalThis.fetch, {
   delaysMs = RETRY_DELAYS_MS,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  rowCapReport = reportRowCap,
+  rowCapNow = () => Date.now(),
 } = {}) {
-  return async function supabaseFetchWithRetry(input, init) {
+  const retrying = async function supabaseFetchWithRetry(input, init) {
     if (!isRetryableRequest(input, init) || isStreamBody(init)) return baseFetch(input, init);
 
     const method = requestMethod(input, init);
@@ -107,4 +124,7 @@ export function createSupabaseFetchWithRetry(baseFetch = globalThis.fetch, {
       attempt += 1;
     }
   };
+  // rowCapReport: null slår alarmen fra (fx tests der selv vil se det rå svar).
+  // rowCapNow: alarmens ur til deduplikering; tests injicerer et fast ur (AGENTS 16).
+  return rowCapReport ? withRowCapAlarm(retrying, { report: rowCapReport, now: rowCapNow }) : retrying;
 }

@@ -352,7 +352,13 @@ function createCeilingSupabase({
               return {
                 eq() {
                   const ids = Array.from({ length: raceDaysRun }, (_, i) => `race-${i}`);
-                  return Promise.resolve({ data: ids.map((id) => ({ race_id: id })), error: null });
+                  const data = ids.map((id) => ({ race_id: id }));
+                  // #8797: getTeamRaceDaysRun paginerer (fetchAllRows → .order().order().range()).
+                  const paged = {
+                    order() { return paged; },
+                    range(from, to) { return Promise.resolve({ data: data.slice(from, to + 1), error: null }); },
+                  };
+                  return paged;
                 },
               };
             },
@@ -365,10 +371,13 @@ function createCeilingSupabase({
                 in(_col, ids) {
                   return {
                     eq() {
-                      return Promise.resolve({
-                        data: ids.map((id, i) => ({ id, game_day_start: i, status: "completed" })),
-                        error: null,
-                      });
+                      // #8797: race-id'erne chunkes + pagineres (.order("id").range()).
+                      const data = ids.map((id) => ({ id, game_day_start: Number(id.split("-")[1]), status: "completed" }));
+                      return {
+                        order() {
+                          return { range(from, to) { return Promise.resolve({ data: data.slice(from, to + 1), error: null }); } };
+                        },
+                      };
                     },
                   };
                 },

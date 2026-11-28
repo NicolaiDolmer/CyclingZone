@@ -10,6 +10,7 @@ import {
   getTeamRaceDaysRun,
   readNewAccountGateConfig,
 } from "./newAccountGates.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 const NOW = new Date("2026-08-03T12:00:00Z");
 const HOUR = 60 * 60 * 1000;
@@ -221,38 +222,12 @@ test("readNewAccountGateConfig: fail-open — a thrown exception (e.g. unrecogni
 
 // ── getTeamRaceDaysRun (I/O) ───────────────────────────────────────────────────
 
+// #8797: delt fake der afkorter ved 1.000 rækker uden .range(), som prod.
 function makeRaceDaysSupabase({ entries, races }) {
-  return {
-    from(table) {
-      if (table === "race_entries") {
-        return {
-          select(cols) {
-            assert.equal(cols, "race_id");
-            return { eq(col, val) { assert.equal(col, "team_id"); assert.equal(val, "team-1"); return Promise.resolve({ data: entries, error: null }); } };
-          },
-        };
-      }
-      if (table === "races") {
-        return {
-          select(cols) {
-            assert.equal(cols, "game_day_start, status");
-            return {
-              in(col, ids) {
-                assert.equal(col, "id");
-                return { eq(statusCol, statusVal) {
-                  assert.equal(statusCol, "status");
-                  assert.equal(statusVal, "completed");
-                  const filtered = races.filter((r) => ids.includes(r.id) && r.status === "completed");
-                  return Promise.resolve({ data: filtered, error: null });
-                } };
-              },
-            };
-          },
-        };
-      }
-      throw new Error(`Unexpected table: ${table}`);
-    },
-  };
+  return createFakeSupabase({
+    race_entries: entries.map((e, i) => ({ team_id: "team-1", rider_id: `rider-${String(i).padStart(5, "0")}`, ...e })),
+    races,
+  });
 }
 
 test("getTeamRaceDaysRun: no race entries → 0", async () => {
@@ -272,6 +247,19 @@ test("getTeamRaceDaysRun: counts DISTINCT completed game days, ignores scheduled
       { id: "race-a2", game_day_start: 1, status: "completed" },
       { id: "race-b", game_day_start: 2, status: "completed" },
       { id: "race-scheduled", game_day_start: 3, status: "scheduled" },
+    ],
+  });
+  assert.equal(await getTeamRaceDaysRun(supabase, "team-1"), 2);
+});
+
+test("#8797 getTeamRaceDaysRun: entries ud over 1.000 rækker tæller med", async () => {
+  // 1.200 entries; de sidste 200 (efter række 1.000 i sorteringen) er i et løb på en ny dag.
+  const entries = Array.from({ length: 1200 }, (_, i) => ({ race_id: i < 1000 ? "race-a" : "race-z" }));
+  const supabase = makeRaceDaysSupabase({
+    entries,
+    races: [
+      { id: "race-a", game_day_start: 1, status: "completed" },
+      { id: "race-z", game_day_start: 9, status: "completed" },
     ],
   });
   assert.equal(await getTeamRaceDaysRun(supabase, "team-1"), 2);

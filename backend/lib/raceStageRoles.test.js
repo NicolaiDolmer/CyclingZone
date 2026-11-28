@@ -12,6 +12,7 @@ import {
   orderEffortByRiderForStage,
   resolvedEffortByRiderForStage,
 } from "./raceStageRoles.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 // ── resolveStageEntrant: fallback-kæde ────────────────────────────────────────
 
@@ -326,6 +327,8 @@ function makeSupabase({ rows = [], error = null } = {}) {
     const b = {
       select() { return b; },
       eq() { return b; },
+      order() { return b; },
+      range() { return b; },
       then(resolve, reject) {
         return Promise.resolve({ data: error ? null : rows, error }).then(resolve, reject);
       },
@@ -361,6 +364,20 @@ test("loadStageRoleOverrides: DB-fejl → kaster Error", async () => {
     () => loadStageRoleOverrides({ supabase, raceId: "race-1" }),
     /race_stage_roles/
   );
+});
+
+test("#8797 loadStageRoleOverrides: overrides ud over 1.000 rækker kommer med", async () => {
+  // 21 etaper × 60 ryttere = 1.260 rækker; fake'en afkorter ved 1.000 uden .range() som prod.
+  const rows = [];
+  for (let stage = 1; stage <= 21; stage++) {
+    for (let r = 0; r < 60; r++) {
+      rows.push({ race_id: "race-1", stage_number: stage, rider_id: `r${String(r).padStart(2, "0")}`, race_role: "helper", effort: "normal" });
+    }
+  }
+  const supabase = createFakeSupabase({ race_stage_roles: rows });
+  const overrides = await loadStageRoleOverrides({ supabase, raceId: "race-1" });
+  assert.equal(overrides.size, 21);
+  assert.equal(overrides.get(21).size, 60);
 });
 
 // ── #5580 (spec motor runde 2, M1 punkt 6 + 7): én kilde til effort ──────────

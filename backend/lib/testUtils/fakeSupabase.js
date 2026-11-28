@@ -26,6 +26,9 @@
 //
 // Begge er projektion-aware via samme parseSelectColumns/projectRow.
 
+// #8797: samme loft som prod (Supabase max_rows). Se createFakeSupabase(options.rowCap).
+export const POSTGREST_ROW_CAP = 1000;
+
 function clone(value) {
   return value === undefined ? value : JSON.parse(JSON.stringify(value));
 }
@@ -125,6 +128,7 @@ export function createFakeSupabase(initialState = {}, options = {}) {
   // læse-/skriveresultater (de data der "sendes over wire") klones.
   const state = initialState;
   const errors = options.errors ?? {};
+  const rowCap = options.rowCap ?? POSTGREST_ROW_CAP;
 
   function ensureTable(table) {
     if (!state[table]) state[table] = [];
@@ -138,7 +142,7 @@ export function createFakeSupabase(initialState = {}, options = {}) {
 
   function makeQuery(table, action, payload = null, writeOpts = {}) {
     const filters = [];
-    let order = null;
+    const orders = [];
     let limit = null;
     let range = null;
     let projection = null;
@@ -149,16 +153,25 @@ export function createFakeSupabase(initialState = {}, options = {}) {
 
     function shapeOutput(rows) {
       let result = rows;
-      if (order) {
+      if (orders.length) {
+        // #8797: flere .order()-kald sorterer leksikografisk (første kald er primærnøgle),
+        // som PostgREST — før holdt fake'en kun det sidste kald.
         result = [...result].sort((a, b) => {
-          const av = a[order.column];
-          const bv = b[order.column];
-          if (av === bv) return 0;
-          const cmp = av < bv ? -1 : 1;
-          return order.ascending ? cmp : -cmp;
+          for (const order of orders) {
+            const av = a[order.column];
+            const bv = b[order.column];
+            if (av === bv) continue;
+            const cmp = av < bv ? -1 : 1;
+            return order.ascending ? cmp : -cmp;
+          }
+          return 0;
         });
       }
       if (limit != null) result = result.slice(0, limit);
+      // #8797: prod afkorter stille ved PostgREST' rækkeloft når kaldet ikke selv
+      // beder om et vindue. Fake'en gør det samme, så en upagineret læsning fejler i
+      // test i stedet for først i drift. rowCap: Infinity slår det fra.
+      if (action === "select" && limit == null && range == null && result.length > rowCap) result = result.slice(0, rowCap);
       // #2932 · .range(from, to) — PostgREST-agtig, INKLUSIV øvre grænse. Bruges af
       // fetchAllRows (supabasePagination.js) til at hente forbi 1000-rows-loftet
       // side-for-side; .order() SKAL stå før i kæden for stabile sider (håndhæves
@@ -238,7 +251,7 @@ export function createFakeSupabase(initialState = {}, options = {}) {
       gt(column, value) { filters.push({ type: "gt", column, value }); return query; },
       lt(column, value) { filters.push({ type: "lt", column, value }); return query; },
       is(column, value) { filters.push({ type: "is", column, value }); return query; },
-      order(column, opts = {}) { order = { column, ascending: opts.ascending !== false }; return query; },
+      order(column, opts = {}) { orders.push({ column, ascending: opts.ascending !== false }); return query; },
       limit(n) { limit = n; return query; },
       range(from, to) { range = { from, to }; return query; },
       select(columns) { projection = parseSelectColumns(columns); return query; },

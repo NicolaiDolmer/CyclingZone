@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
+import { fetchAllRows } from "../../lib/supabasePagination.js";
 import { RACE_CLASSES, getRaceClassLabel } from "../../lib/uciRaceClasses";
 import RacePoolSection from "../../components/admin/RacePoolSection";
 import RacePointsAdminSection from "../../components/admin/RacePointsAdminSection";
@@ -46,8 +47,11 @@ export default function AdminDataTab() {
   async function loadData() {
     const [s, r, rp] = await Promise.all([
       supabase.from("seasons").select("*").order("number", { ascending: false }),
-      supabase.from("races").select("*").order("name"),
-      supabase.from("race_pool").select("id, name, race_class, race_type, stages, date_text, country").order("name"),
+      // #8797: løb i alle sæsoner passerer 1.000 rækker → paginér (id som unik andennøgle).
+      fetchAllRows(() => supabase.from("races").select("*").order("name").order("id"))
+        .then((data) => ({ data }), () => ({ data: null })),
+      fetchAllRows(() => supabase.from("race_pool").select("id, name, race_class, race_type, stages, date_text, country").order("name").order("id"))
+        .then((data) => ({ data }), () => ({ data: null })),
     ]);
     setSeasons(s.data || []);
     setRaces(r.data || []);

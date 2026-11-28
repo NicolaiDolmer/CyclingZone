@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { scan, stripCommentsKeepStrings, DENY_TABLES, compareAgainstBaseline } from './lint-pagination-guard.mjs';
+import { scan, stripCommentsKeepStrings, DENY_TABLES, SMALL_TABLE_EXCEPTIONS, compareAgainstBaseline } from './lint-pagination-guard.mjs';
 
 test('flags a naive unpaginated select against a deny-listed table (synthetic #3315 shape)', () => {
   const src = `const { data, error } = await supabase
@@ -169,9 +169,26 @@ test('DOES flag a { count: "exact" } query WITHOUT head:true — still returns r
   assert.equal(scan(src, 'x.js').length, 1);
 });
 
-test('does NOT flag a table outside the deny-list', () => {
-  const src = `const { data } = await supabase.from("teams").select("*").eq("id", teamId);`;
-  assert.equal(scan(src, 'x.js').length, 0);
+// #8797: vagten gælder nu ALLE tabeller; kun den lille undtagelsesliste springes over.
+test('#8797 DOES flag a table outside DENY_TABLES (fx teams, board_satisfaction_events)', () => {
+  const src = `const { data } = await supabase.from("teams").select("*").eq("is_ai", false);
+const { data: ev } = await supabase.from("board_satisfaction_events").select("*").in("board_id", ids);`;
+  const findings = scan(src, 'x.js');
+  assert.deepEqual(findings.map((f) => f.table), ['teams', 'board_satisfaction_events']);
+});
+
+test('#8797 does NOT flag a table on the small-table exception list', () => {
+  for (const table of SMALL_TABLE_EXCEPTIONS) {
+    const src = `const { data } = await supabase.from("${table}").select("*");`;
+    assert.equal(scan(src, 'x.js').length, 0, table);
+  }
+  assert.ok(SMALL_TABLE_EXCEPTIONS.length <= 12, 'undtagelseslisten skal forblive lille');
+});
+
+test('#8797 compareAgainstBaseline: en ny tabel uden for DENY_TABLES er en ny overtrædelse', () => {
+  const findings = [{ file: 'a.js', line: 1, table: 'teams', snippet: '' }];
+  const { newViolations } = compareAgainstBaseline(findings, { files: {} });
+  assert.equal(newViolations.length, 1);
 });
 
 test('does NOT flag a deref inside a comment', () => {
