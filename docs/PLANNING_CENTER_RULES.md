@@ -98,15 +98,30 @@ her. Spilleren kan slå den fra på Profil (`teams.selection_reminder_enabled`, 
 
 ## 5. Linser og filtre
 
-| Linse | I v1 | Datagrundlag |
-|---|---|---|
-| Udtagelser | ja | gitterets eget indhold |
-| Kun problemer | ja | udtagelser + klassegrænser + binding, regnes i browseren |
-| Belastning | ja | `load.raceDays` = distinkte `race_stage_schedule.game_day` pr. løb (#4245) |
-| Form og peak | senere | `peak_planner_enabled` er `on` i prod (koden defaulter off) |
-| Rute-match | kun ved celle-åbning | `backend/lib/routeMatch.js` (motorens løbsvektor, #6207); `frontend/src/lib/suitability.js` regner 0-100 mod den |
+To flader viser udtagelsesmatrixen, og de har ikke samme linser. Begge bruger `racehub/SeasonMatrix.jsx` med samme kladde, popover, "Gem plan" (`PUT /races/selection/bulk`, §1), Train now-lås og mobilvisning.
 
-Rute-match som fladedækkende linse er fravalgt: kalender-svaret bærer hverken evner eller demand-vektorer.
+**Den nye planlægningsside, visningen Sæson (#8781, ejerbeslutning 26/11 punkt 11-12 på [#8419](https://github.com/NicolaiDolmer/CyclingZone/issues/8419)).** `frontend/src/components/planning/SeasonMatrixView.tsx`, monteret under Uge · Sæson · Måned på `/planning/workbench`. Fire linser i én `Segmented`, valget huskes i browseren, og et ?-ikon forklarer den valgte linse:
+
+| Linse | Hvad | Datagrundlag |
+|---|---|---|
+| Udtagelser | matrixen som på den gamle flade; et klik på en løbsdag åbner løbet i Uge | gitterets eget indhold |
+| Rutematch | rytter × løb, ét tal pr. løb, alle løb side om side. Bedste tal pr. løb fremhævet uden guld; ingen rute eller evner = tom celle, aldrig et opdigtet 0. Klik på et løbsnavn åbner løbet | samme svar som matrixen (`GET /races/selection/season`): løbets `demandVector` (motorens løbsvektor, #6207) og rytterens evner; `frontend/src/lib/suitability.js` regner 0-100 |
+| Form | formplanen for hele sæsonen: mål (op til grænsen pr. rytter), assistentens udkast med "Acceptér alle", formkurven fra 768 px (formhullet efter en top ses på kurven), mobilens spor under 768 px | Formplan-fanens board (`GET /peak-plans/board`) og kald, ingen nye |
+| Belastning | løbsdage pr. rytter, som på den gamle flade | `load.raceDays` (#4245, se nedenfor) |
+
+"Kun problemer" står kun på Udtagelser og Belastning (problemerne handler om udtagelserne). Matrixen bliver monteret på tværs af linserne, så en ugemt kladde overlever et linseskift; et sæsonskift med ugemte ændringer spørger først. Et skift af visning (Uge, Måned), "Tilbage til ugen" og et løb åbnet fra Sæson spørger også først, når matrixen eller dags-tavlen har en ugemt kladde (#8811). Ingen nye endpoints.
+
+#8848: matrixen åbner ved i dag (første løbsdag fra i dag; mobilens løbsvælger på det første løb, der ikke er slut). Linjen under matrixen bruger sidehovedets eget tal for løb uden fuld trup de næste 8 dage og nævner det sammen med konflikterne, så de to aldrig modsiger hinanden; "Ingen problemer" kun når begge er nul (kun den aktive sæson). Under linjen forklares cellernes rollebogstaver og mobilens "+" med fuld tekst. #8857: under etapeprofilen står alle etapens stigninger (kategori, navn, top ved km, længde, gennemsnit, km til mål) i den genbrugelige `StageClimbList`.
+
+**Den gamle flade (`/planning?tab=selection` > Sæson, `racehub/SeasonView.jsx`).** Uændret, så længe den findes:
+
+| Linse | Datagrundlag |
+|---|---|
+| Udtagelser | gitterets eget indhold |
+| Kun problemer | udtagelser + klassegrænser + binding, regnes i browseren |
+| Belastning | `load.raceDays` = distinkte `race_stage_schedule.game_day` pr. løb (#4245) |
+
+Rute-match står her kun ved celle-åbning, og Form bor i sin egen fane (Formplan). De nye linse-props på `SeasonMatrix.jsx` (`lens`, `problemsOnly`, `embedded`, `onOpenRace`, `onData`) er valgfri; uden dem opfører matrixen sig som før (låst i `SeasonMatrixView.test.ts`).
 
 **Ét rute-match-tal (#6207).** Holdudtagelse/Planlæg dag, Taktik, sæsonmatrix, planner-skuffen og "Passer til holdet" bruger samme model: `backend/lib/routeMatch.js`. Etapens vektor bygges på motorens krav under løbets regel-revision (`surfaceRulesRevision`): enkeltstart på motorens tidskørsels-evne, holdtidskørsel på motorens fysiologi, andre etaper på finale-kravet blandet med terrænet. Løbstallet er snittet af etapetallene, så hver etape tæller lige meget. Endpoints sender løbsvektoren som `demandVector`, og frontend regner aldrig sin egen vektor.
 

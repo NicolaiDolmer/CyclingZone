@@ -2,11 +2,16 @@
 // Alt gemmes gennem det EKSISTERENDE udtagelses-endpoint (PUT /api/races/:id/selection), med
 // samme klient-validering og samme serverfejl som udtagelsespanelet. Intet gemmes af sig selv:
 // "Suggest squad" og "Copy squad from" fylder en kladde som spilleren gennemgaar og selv gemmer.
+//
+// #8419 (ejer 26/11): fanerne er Trup · Taktik · Formtop · Startlister (punkt 6). I et etapeloeb har Match en
+// vaelger (Hele loebet / Etape N, punkt 7), og ruteprofilen foelger den valgte etape (punkt 8). Ingen
+// forklaringstekst over tabellen: kolonnerne forklares med et ?-ikon, resten i Hjaelp (punkt 9).
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
   Segmented,
+  Select,
   EmptyState,
   ErrorState,
   SkeletonLines,
@@ -26,6 +31,8 @@ import RouteProfile from "./RouteProfile.tsx";
 import SquadTable from "./SquadTable.tsx";
 import TacticsView, { type TacticsViewHandle } from "./TacticsView.tsx";
 import PeakView, { usePeakBoard, type PeakBoardData } from "./PeakView.tsx";
+import StartListsView from "./StartListsView.tsx";
+import { matchForScope, PLANNING_VIEWS, type MatchScope, type PlanningView } from "./planningViews.ts";
 import { ReadinessMark } from "./planningUi.tsx";
 import { loadRaceSelection, saveRaceSelection, setRaceWithdrawal, loadStageProfiles, loadExpectedLoad, type StageProfileRow, type RiderDetail, type SeasonLoad } from "../../lib/planningWorkbenchData.ts";
 import { deadlineCountdown } from "../../lib/selectionReminder.ts";
@@ -52,9 +59,7 @@ import {
   saveLabelKey,
   withLoad,
   workbenchUnsaved,
-  WORKBENCH_VIEWS,
   type MobileColumn,
-  type WorkbenchView,
   type RoleKey,
   type Selection,
   type SeasonEntry,
@@ -132,9 +137,11 @@ interface RaceWorkbenchProps {
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: (raceId: string, entries: SeasonEntry[]) => void;
   onWithdrawnChange?: (raceId: string, withdrawn: boolean) => void;
-  /** Visningen under ruteprofilen: Trup | Taktik | Formtop (siden husker valget). */
-  view?: WorkbenchView;
-  onView?: (view: WorkbenchView) => void;
+  /** Visningen under ruteprofilen: Trup | Taktik | Formtop | Startlister (siden husker valget). */
+  view?: PlanningView;
+  onView?: (view: PlanningView) => void;
+  /** Dagens nummer i den gamle dags-tavle for loebets foerste dag (Startlister henter dagens startlister). */
+  boardDay?: number | null;
   /** I dag (Europe/Copenhagen) og loebets startdato, til Formtop-visningen. */
   today?: string;
   raceStart?: string | null;
@@ -174,6 +181,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     today = "",
     raceStart = null,
     inSheet = false,
+    boardDay = null,
   },
   ref,
 ) {
@@ -198,6 +206,8 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const [profilesLoading, setProfilesLoading] = useState(true);
   // Ruteprofilens etape (0-baseret); Taktik foelger den, saa der kun er én etapevaelger.
   const [stageIndex, setStageIndex] = useState(0);
+  // Match-vaelgeren (punkt 7): hele loebet eller én etape. En valgt etape styrer ogsaa profilen og Taktik.
+  const [matchScope, setMatchScope] = useState<MatchScope>("race");
   // "Belastning": serverens ord (let/mellem/haard) med motorens model; null = slukket model eller ukendt.
   const [expectedLoad, setExpectedLoad] = useState<Record<string, string> | null>(null);
   // Taktik-visningens gem (fanens eget, trykket af hovedets guld-knap) og om det kan trykkes lige nu.
@@ -233,6 +243,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     setSaved(EMPTY_SELECTION);
     setProfilesLoading(true);
     setStageIndex(0);
+    setMatchScope("race");
     setExpectedLoad(null);
     loadExpectedLoad(race.id).then((map) => {
       if (gen === generation.current) setExpectedLoad(map);
@@ -290,10 +301,14 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     () => profiles.map((p) => p.profile_type).filter((type): type is string => typeof type === "string" && type.length > 0),
     [profiles],
   );
-  const rows = useMemo(
-    () => (data?.riders ? withLoad(buildSquadRows(data, stageTypes, (flat) => riderBestRole(flat)), expectedLoad) : []),
-    [data, stageTypes, expectedLoad],
-  );
+  const rows = useMemo(() => {
+    if (!data?.riders) return [];
+    const built = withLoad(buildSquadRows(data, stageTypes, (flat) => riderBestRole(flat)), expectedLoad);
+    if (matchScope === "race") return built;
+    // En etape: rytterens etape-match fra samme svar (stageSuitability), aldrig et gaet.
+    const byId = new Map<string, Array<number | null> | null | undefined>(data.riders.map((r: { id: string; stageSuitability?: Array<number | null> | null }) => [r.id, r.stageSuitability]));
+    return built.map((row) => ({ ...row, routeMatch: matchForScope(row.routeMatch, byId.get(row.id), matchScope) }));
+  }, [data, stageTypes, expectedLoad, matchScope]);
   const peak = usePeakBoard({ data: peakData, raceId: race.id, today, gate });
   // Hvornaar rytteren formtopper (punkt 7): staar ved Form i Trup, aldrig i Status.
   const peakNext = useMemo(() => nextPeakByRider(peak.rows), [peak.rows]);
@@ -582,7 +597,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       >
         {t(saveLabelKey("peak"), { count: peak.pairs.length })}
       </Button>
-    ) : view === "squad" ? (
+    ) : view === "squad" || view === "startlists" ? (
       <Button
         variant="primary"
         size="sm"
@@ -595,8 +610,45 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       </Button>
     ) : null;
 
-  // Fanerne Trup | Taktik | Formtop (den kanoniske Segmented). Paa pc under profilen med visningens
-  // korte hjaelp til hoejre (wireframet); i mobil-arket fast oeverst (punkt 2).
+  // Punkt 7: i et etapeloeb vaelger spilleren, om Match gaelder hele loebet eller én etape. En etape flytter
+  // ogsaa profilen (punkt 8) og Taktik dertil; profilens egne pile flytter vaelgeren med, naar den staar paa en etape.
+  const pickStage = (index: number) => {
+    setStageIndex(index);
+    if (matchScope !== "race") setMatchScope(index);
+  };
+  const stageCount = race.stages > 1 ? Math.max(race.stages, profiles.length) : 0;
+  const matchSelect =
+    stageCount > 1 && view === "squad" ? (
+      <label className="flex items-center gap-2 text-xs text-cz-2">
+        <span>{t("match.label")}</span>
+        <Select
+          size="sm"
+          value={matchScope === "race" ? "race" : String(matchScope)}
+          onChange={(e: { target: { value: string } }) => {
+            const v = e.target.value;
+            if (v === "race") {
+              setMatchScope("race");
+              return;
+            }
+            const i = Number(v);
+            setMatchScope(i);
+            setStageIndex(i);
+          }}
+          data-testid="planning-match-scope"
+          className="min-w-[8.5rem]"
+        >
+          <option value="race">{t("match.wholeRace")}</option>
+          {Array.from({ length: stageCount }, (_, i) => (
+            <option key={i} value={String(i)}>
+              {t("match.stage", { n: i + 1 })}
+            </option>
+          ))}
+        </Select>
+      </label>
+    ) : null;
+
+  // Fanerne Trup | Taktik | Formtop | Startlister (den kanoniske Segmented). Paa pc under profilen; i
+  // mobil-arket fast oeverst (punkt 2). Ingen forklaringstekst ved fanerne (punkt 9): kun Match-vaelgeren.
   const viewSwitch = onView ? (
     <div
       className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 ${inSheet ? "sticky -top-2 z-sticky border-b border-cz-border bg-cz-card px-3 py-2" : ""}`}
@@ -605,10 +657,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       <Segmented
         label={t("views.label")}
         value={view}
-        onChange={(next: WorkbenchView) => onView(next)}
-        options={WORKBENCH_VIEWS.map((v) => ({ value: v, label: t(`views.${v}`) }))}
+        onChange={(next: PlanningView) => onView(next)}
+        options={PLANNING_VIEWS.map((v) => ({ value: v, label: t(`views.${v}`) }))}
       />
-      {!inSheet && <p className="text-xs text-cz-3">{t(`views.hint.${view}`)}</p>}
+      {!inSheet && matchSelect}
     </div>
   ) : null;
 
@@ -667,7 +719,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           onToggleHidden={onToggleProfileHidden}
           hasClassifications={race.stages > 1}
           index={stageIndex}
-          onIndex={setStageIndex}
+          onIndex={pickStage}
         />
         {/* Fanerne under profilen (wireframet, punkt 4 D). I mobil-arket staar de fast oeverst i stedet. */}
         {!inSheet && viewSwitch}
@@ -689,7 +741,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
             />
           </div>
         )}
-        {view === "tactics" ? null : view === "peak" ? (
+        {view === "tactics" ? null : view === "startlists" ? (
+          // Punkt 6: kun hvem der deltager i DETTE loeb (dags-tavlens startlister for egen pulje), ingen divisionsvaelger.
+          <StartListsView raceId={race.id} day={boardDay} ownRiderIds={new Set(rows.map((r) => r.id))} />
+        ) : view === "peak" ? (
           <PeakView
             peak={peak}
             raceName={race.name}
@@ -717,12 +772,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           </div>
         ) : (
           <>
-            {/* Én linje kontekst om tallene, samme tekst som loebstavlen paa /planning (P9). */}
-            {/* Paa mobil staar forklaringen ikke over hver tabel (ejer 16/11: én gang, ikke overalt). */}
-            <p className="hidden border-t border-cz-border px-4 py-2 text-2xs leading-snug text-cz-3 sm:block">
-              {tr("racehub.column.numbersExplanation")}
-              {expectedLoad != null && <span className="hidden sm:inline"> {t("squad.loadNote")}</span>}
-            </p>
+            {/* #8419 punkt 9: ingen forklaringstekst over tabellen; hver kolonne har sit ?-ikon. Paa mobil
+                staar Match-vaelgeren her (i arket staar fanerne fast oeverst uden plads til den). */}
+            {inSheet && matchSelect && <div className="border-t border-cz-border px-3 py-2">{matchSelect}</div>}
             {/* Mobil (punkt 2, kompakt): chip-raekken vaelger op til tre tal-kolonner; valget huskes. */}
             {onMobileColumns && (
               <div className="flex flex-nowrap items-center gap-0.5 overflow-hidden border-t border-cz-border px-2.5 sm:hidden" role="group" aria-label={t("squad.columns")} data-testid="planning-column-chips">
@@ -734,7 +786,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
                       type="button"
                       aria-pressed={on}
                       onClick={() => onMobileColumns(toggleMobileColumn(mobileColumns ?? [], c))}
-                      className="min-h-11 shrink-0 px-0.5 font-data text-3xs font-semibold uppercase tracking-wide"
+                      className="min-h-11 shrink-0 px-0.5 font-data text-2xs font-semibold"
                     >
                       <span className={`inline-flex items-center rounded-cz border px-1.5 py-1 ${on ? "border-cz-1 bg-cz-subtle text-cz-1" : "border-cz-border text-cz-3"}`}>
                         {t(`squad.mobileColumn.${c}`)}
@@ -760,6 +812,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               showLoad={expectedLoad != null}
               peakNext={peakNext}
               mobileColumns={mobileColumns}
+              matchLabel={matchScope === "race" ? null : t("match.stage", { n: matchScope + 1 })}
             />
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-cz-border px-4 py-1.5">
               <p className="py-1 font-data text-xs tabular-nums text-cz-3">
@@ -787,13 +840,13 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
             {/* I mobil-arket staar navnet i arkets hoved (med pilene); her kun for skaermlaesere. */}
             <span className={inSheet ? "sr-only" : "min-w-0 break-words"}>{race.name}</span>
             {dirty && (
-              <span className="inline-flex items-center gap-1.5 font-data text-2xs font-semibold uppercase tracking-wide text-cz-warning" data-testid="planning-unsaved-marker">
+              <span className="inline-flex items-center gap-1.5 font-data text-2xs font-semibold text-cz-warning" data-testid="planning-unsaved-marker">
                 <ReadinessMark state="missing" />
                 {t("race.unsaved")}
               </span>
             )}
           </h2>
-          <p className="mt-0.5 font-data text-2xs uppercase tracking-wide text-cz-3">
+          <p className="mt-0.5 font-data text-xs tabular-nums text-cz-3">
             {[
               start ? t("race.starts", { when: start }) : null,
               countdown,

@@ -436,6 +436,18 @@ features:
     roadmap_en: "One planning page: race list, week board, route profile, squad, tactics and peak form in one place."
     roadmap_da: "Én planlægningsside: løbsliste, ugeoversigt, ruteprofil, trup, taktik og formtop samlet ét sted."
 
+  - id: planning-v2-default-8419
+    area: season
+    title_en: The new planning page as the default on /planning
+    title_da: Den nye planlægningsside som standard på /planning
+    state: building
+    ssot: docs/PLANNING_CENTER_RULES.md
+    epic: 8419
+    verified: 2026-11-26
+    note: "Nøgle planning_v2_default_8419 uden række (off); tændes efter ejerens billede-go (390 + 1440)."
+    decision: taend
+    decide_by: 2026-11-28
+
   - id: luxury-helper-role
     area: race-engine
     title_en: Luxury helper

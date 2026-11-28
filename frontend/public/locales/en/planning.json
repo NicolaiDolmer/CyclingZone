@@ -5,6 +5,31 @@
     "needSquad": "{count, plural, one {# race needs a squad in the next 8 days} other {# races need a squad in the next 8 days}}",
     "allReady": "Every race in the next 8 days has a full squad"
   },
+  "mode": {
+    "label": "Show",
+    "week": "Week",
+    "season": "Season",
+    "month": "Month"
+  },
+  "teamStrategy": "Team strategy",
+  "distribute": {
+    "action": "Assign riders",
+    "title": "Assign riders",
+    "titleOn": "Assign riders · {date}",
+    "back": "Back to the week",
+    "backSeason": "Back to the season",
+    "unsaved": "You have unsaved changes on this race. Leave them and open the day?"
+  },
+  "match": {
+    "label": "Match",
+    "wholeRace": "Whole race",
+    "stage": "Stage {n}"
+  },
+  "startlists": {
+    "unavailable": "The start list for this race is not available here yet.",
+    "grossOnly": "Teams and riders only, no roles",
+    "yourTeam": "Your team"
+  },
   "toggles": {
     "weekBoard": "Week board",
     "raceList": "Race list"
@@ -16,7 +41,9 @@
     "next": "Next week",
     "week": "Week {week}",
     "empty": "No races this week. Use the arrows to find the next one.",
-    "raceDaysShort": "RD {days}"
+    "raceDaysShort": "RD {days}",
+    "continuedFrom": "Started the week before",
+    "continuesNext": "Continues into next week"
   },
   "raceList": {
     "title": "Race list",
@@ -112,6 +139,17 @@
       "fatigue": "Fatigue",
       "load": "Load",
       "rating": "Rating"
+    },
+    "helpAria": "What does {column} mean?",
+    "help": {
+      "status": "Why a rider cannot be picked right now: injured, too old, in another race on the same days or locked by Train now.",
+      "role": "The rider's job in this race. Only picked riders have a role.",
+      "type": "The rider's natural type.",
+      "rating": "The rider's rating in his best role right now.",
+      "form": "Form today. A date under it shows when his next peak form is.",
+      "fatigue": "How tired the rider is. Higher is more tired.",
+      "load": "How hard the race is expected to be at normal effort: light, medium or hard.",
+      "routeMatch": "How well the rider suits the route. In a stage race you can choose the whole race or one stage."
     }
   },
   "role": {
@@ -216,7 +254,8 @@
       "squad": "Pick riders and give them a role · every column sorts",
       "tactics": "The plan follows the stage shown in the profile",
       "peak": "Tick riders and apply peak form for this race"
-    }
+    },
+    "startlists": "Start lists"
   },
   "tactics": {
     "noSquad": {
@@ -258,5 +297,20 @@
     "next": "Next race",
     "close": "Close",
     "position": "{n} / {total}"
+  },
+  "seasonMatrix": {
+    "legendLabel": "Cells:",
+    "legendEmpty": "Not selected. Tap to select"
+  },
+  "climbList": {
+    "title": "The climbs",
+    "name": "Climb",
+    "category": "Category {cat}",
+    "top": "Top at km",
+    "length": "Length",
+    "average": "Average",
+    "toFinish": "To the finish",
+    "showOnProfile": "Show {name} on the profile",
+    "mobileFacts": "Top at km {km} · {length} km · {average} % · {toFinish} km to the finish"
   }
 }

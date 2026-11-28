@@ -46,7 +46,10 @@ function selectionDirty(draft, serverSel) {
     || fa !== fb;
 }
 
-export default function RaceHubBoard() {
+// #8811: `onDirtyChange` (valgfri) melder board'ets ugemte kladde til en indlejrende side (den nye
+// planlaegningsside), saa dens eget skift af visning kan spoerge foerst. Uden prop er board'et uaendret.
+/** @param {{ onDirtyChange?: (dirty: boolean) => void }} [props] */
+export default function RaceHubBoard({ onDirtyChange } = {}) {
   const { t } = useTranslation("races");
   const [params, setParams] = useSearchParams();
   const scope = params.get("scope") || "mine";
@@ -187,6 +190,8 @@ export default function RaceHubBoard() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [boardDirty]);
+  useEffect(() => { onDirtyChange?.(boardDirty); }, [boardDirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   // In-app dag/scope-skift rydder kladderne (effekten ovenfor) → bekræft FØRST hvis ugemt,
   // ellers ryger ændringerne tavst (CodeRabbit). Afbryder manageren, sker skiftet ikke.

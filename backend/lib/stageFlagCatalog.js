@@ -140,6 +140,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere" },
   // #7535: den nye planlægningsside (løbsliste, ugeoversigt, trup-tabel, ruteprofil). Kun visning, beta først.
   { key: "planning_workbench", area: "race-day", label: "Ny planlægningsside (/planning/workbench)" },
+  // #8419: den samlede planlægningsside som standard på /planning (kræver planning_workbench). Kun visning, seedet off.
+  { key: "planning_v2_default_8419", area: "race-day", label: "Planlægning: den nye side som standard på /planning" },
   // #8049: den nye patch notes-side (uge for uge, efter område, arkiv pr. måned). Kun visning, seedet off.
   { key: "patch_notes_v2_8049", area: "onboarding", label: "Patch notes: ny side efter område og uge" },
 
@@ -372,6 +374,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "training_week_priority",
   // #7535: den nye planlaegningsside (/planning/workbench) findes kun paa dette flag.
   "planning_workbench",
+  // #8419: /planning viser den nye side som standard paa dette flag (kun sammen med planning_workbench).
+  "planning_v2_default_8419",
   // #8031: beta-noten om Træn nu-kvitteringen skifter til "Now for everyone", naar kontakten er on for alle.
   "training_train_now_instant",
   // #7741: bonusmaerket i traeningskvitteringen og teksterne om bonussen foelger dette flag (beta = beta-testerne, som motoren 16/11).

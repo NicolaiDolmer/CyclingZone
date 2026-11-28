@@ -9,11 +9,20 @@
 // kald: assistentens forslag til mange loeb (laeser kun) og afmelding af mange loeb (alt eller intet).
 //
 // Layout: T2 wide data (cap 1600 px). Spec: docs/superpowers/specs/2026-11-02-planning-workbench-design.md
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+//
+// #8419 (ejerens beslutninger 26/11): sidehovedet har én vaelger Uge · Saeson · Maaned (?mode=) og et stille
+// link til Holdstrategi. Uge er loebslisten, ugestriben og loebet; ugestriben og loebslisten slaas til og fra
+// med to smaa knapper ved vaelgeren (huskes pr. spiller). Saeson er udtagelsesmatrixen med fire linser
+// (#8781, SeasonMatrixView), Maaned den eksisterende kalender. "Fordel ryttere" (?day=) aabner den gamle
+// dags-tavle uaendret.
+//
+// #8811 (Codex P1): Saeson-matrixen og dags-tavlen melder deres ugemte kladde op hertil. Et skift af
+// visning, "Tilbage til ugen" og et loeb aabnet fra Saeson spoerger foerst, ellers forsvandt kladden tavst.
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { PageHeader, Button, EmptyState, ErrorState, SkeletonLines, PageLoader, CalendarIcon, FlagIcon, buttonClass, forgetSelectionDraft } from "../components/planning/primitives.ts";
+import { PageHeader, Button, Segmented, EmptyState, ErrorState, SkeletonLines, PageLoader, FlagIcon, ChevronLeftIcon, forgetSelectionDraft } from "../components/planning/primitives.ts";
 import WeekBoard from "../components/planning/WeekBoard.tsx";
 import RaceList from "../components/planning/RaceList.tsx";
 import RaceWorkbench, { type RaceWorkbenchHandle } from "../components/planning/RaceWorkbench.tsx";
@@ -21,9 +30,24 @@ import UnsavedBar from "../components/planning/UnsavedBar.tsx";
 import RaceSheet from "../components/planning/RaceSheet.tsx";
 import { usePeakBoardData } from "../components/planning/PeakView.tsx";
 import { BulkMenu, BulkDraftBar, BulkRowMark, BulkOpenRaceNote, CheckedCount, type BulkPlan } from "../components/planning/BulkActions.tsx";
+import { formatShortDate } from "../components/planning/planningUi.tsx";
 import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx";
 import { useSelectionReminder, refreshSelectionReminder } from "../hooks/useSelectionReminder.ts";
 import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts";
+import { lazyWithRetry } from "../lib/lazyWithRetry.js";
+import I18nReadyGateBase from "../components/I18nReadyGate.jsx";
+import {
+  boardDayFor,
+  embeddedSurface,
+  isPlanningView,
+  leaveConfirmKey,
+  paramsForMode,
+  planningModeFrom,
+  PLANNING_MODES,
+  type EmbeddedSurface,
+  type PlanningMode,
+  type PlanningView,
+} from "../components/planning/planningViews.ts";
 import { seasonReferenceYear } from "../lib/riderAge.js";
 import {
   loadSeasonOverview,
@@ -40,11 +64,8 @@ import {
 import {
   addDays,
   adjacentRace,
-  isWorkbenchView,
   normalizeMobileColumns,
-  peakCountsByRace,
   type MobileColumn,
-  type WorkbenchView,
   actionTargets,
   capToRoom,
   createBulkStore,
@@ -126,6 +147,13 @@ function useNarrow() {
   return useSyncExternalStore(subscribeNarrow, readNarrow, () => false);
 }
 
+// #8419: Saeson (fire linser, #8781), Maaned og "Fordel ryttere" hentes foerst, naar de vises.
+type AnyComponent = (props: any) => any;
+const I18nReadyGate: AnyComponent = I18nReadyGateBase as any;
+const SeasonMatrixView: AnyComponent = lazyWithRetry(() => import("../components/planning/SeasonMatrixView.tsx")) as any;
+const CalendarPage: AnyComponent = lazyWithRetry(() => import("./CalendarPage.jsx")) as any;
+const RaceHubBoard: AnyComponent = lazyWithRetry(() => import("../components/racehub/RaceHubBoard.jsx")) as any;
+
 function Toggle({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <Button variant="secondary" size="sm" aria-pressed={pressed} onClick={onClick} className={pressed ? "border-cz-3 bg-cz-subtle" : ""}>
@@ -148,7 +176,7 @@ export default function PlanningWorkbenchPage() {
 }
 
 function Workbench() {
-  const { t } = useTranslation("planning");
+  const { t, i18n } = useTranslation("planning");
   const { t: tr } = useTranslation("races");
   const [searchParams, setSearchParams] = useSearchParams();
   const today = useMemo(() => copenhagenToday(), []);
@@ -172,12 +200,12 @@ function Workbench() {
     setMobileColumns(next);
     writePref("mobileColumns", next);
   }, []);
-  // Visningen under ruteprofilen (Trup | Taktik | Formtop): spillerens sidste valg huskes.
-  const [view, setView] = useState<WorkbenchView>(() => {
+  // Visningen under ruteprofilen (Trup | Taktik | Formtop | Startlister): spillerens sidste valg huskes.
+  const [view, setView] = useState<PlanningView>(() => {
     const saved = readPref<unknown>("view", "squad");
-    return isWorkbenchView(saved) ? saved : "squad";
+    return isPlanningView(saved) ? saved : "squad";
   });
-  const changeView = useCallback((next: WorkbenchView) => {
+  const changeView = useCallback((next: PlanningView) => {
     setView(next);
     writePref("view", next);
   }, []);
@@ -216,24 +244,44 @@ function Workbench() {
   const anchorRef = useRef<HTMLDivElement>(null);
   const userPicked = useRef(false);
 
-  const fetchSeason = useCallback(async () => {
-    setLoad({ state: "loading", payload: null });
+  // `quiet`: hent igen uden at rive siden ned (efter Saeson, Maaned eller dags-tavlen, hvor spilleren kan
+  // have gemt trupper). En fejl her lader det viste staa; den naeste fulde hentning siger det hoejt.
+  const fetchSeason = useCallback(async ({ quiet = false }: { quiet?: boolean } = {}) => {
+    if (!quiet) setLoad({ state: "loading", payload: null });
     try {
       const res = await loadSeasonOverview();
       if (!res.ok || !res.data) {
-        setLoad({ state: "error", payload: null });
+        if (!quiet) setLoad({ state: "error", payload: null });
         return;
       }
       setLoad({ state: "ready", payload: res.data });
       setEntries(res.data.entries ?? []);
     } catch {
-      setLoad({ state: "error", payload: null });
+      if (!quiet) setLoad({ state: "error", payload: null });
     }
   }, []);
+
+  // #8419 punkt 1: sidehovedets vaelger Uge · Saeson · Maaned staar i adressen (tilbage/frem virker).
+  const mode: PlanningMode = planningModeFrom(searchParams.get("mode"));
+  // "Fordel ryttere" (punkt 4) og et klik paa en dag i saesonmatrixen aabner den gamle dags-tavle (?day=N).
+  const boardDay = Number.parseInt(searchParams.get("day") ?? "", 10);
+  const distributing = Number.isFinite(boardDay);
+  const weekShown = mode === "week" && !distributing;
 
   useEffect(() => {
     fetchSeason();
   }, [fetchSeason]);
+
+  // Tilbage paa Uge efter Saeson, Maaned eller dags-tavlen: dér kan trupper vaere gemt, saa listen hentes
+  // igen, og et aabent loeb uden ugemte aendringer hentes paa ny (en ugemt kladde roeres aldrig).
+  const wasWeek = useRef(weekShown);
+  useEffect(() => {
+    if (weekShown && !wasWeek.current) {
+      fetchSeason({ quiet: true });
+      if (!workbenchRef.current?.isDirty()) setWorkbenchVersion((v) => v + 1);
+    }
+    wasWeek.current = weekShown;
+  }, [weekShown, fetchSeason]);
 
   const payload = load.payload;
   const allRaces = useMemo<SeasonRace[]>(() => payload?.races ?? [], [payload]);
@@ -327,14 +375,16 @@ function Workbench() {
     return mondayOf(start ?? today);
   }, [weekMonday, selected, dates, today]);
 
+  // `toWeek`: et loeb aabnet fra Saeson skifter til Uge i SAMME adresse-opdatering (to kald i samme
+  // omgang ville overskrive hinanden).
   const selectRace = useCallback(
-    (id: string) => {
+    (id: string, { toWeek = false }: { toWeek?: boolean } = {}) => {
       userPicked.current = true;
       setCloseAsk(false);
       setSheetOpen(true);
       setSearchParams(
         (prev) => {
-          const next = new URLSearchParams(prev);
+          const next = toWeek ? paramsForMode(prev, "week") : new URLSearchParams(prev);
           next.set("race", id);
           return next;
         },
@@ -350,8 +400,10 @@ function Workbench() {
   // Et klik paa et andet loeb med ugemte aendringer aabner bjaelken i stedet for at miste dem. Mens et
   // skrivekald koerer, saettes skiftet i koe (svaret skal lande paa den flade, der sendte det).
   const selectedId = selected?.id ?? null;
+  // `toWeek` (loeb aabnet fra Saeson): kun "go" skifter visning sammen med loebet; ellers skifter
+  // kalderen selv til Uge, hvor bjaelken for ugemte aendringer eller koeen tager over.
   const requestSelect = useCallback(
-    (id: string) => {
+    (id: string, { toWeek = false }: { toWeek?: boolean } = {}) => {
       const step = raceSwitchStep({
         same: id === selectedId,
         writing: gate.current(),
@@ -361,7 +413,8 @@ function Workbench() {
       setSheetOpen(true);
       if (step === "queue") setQueuedId(id);
       else if (step === "ask") setPendingId(id);
-      else if (step === "go") selectRace(id);
+      else if (step === "go") selectRace(id, { toWeek });
+      return step;
     },
     [selectedId, gate, dirty, selectRace],
   );
@@ -545,7 +598,14 @@ function Workbench() {
   };
   // Formtop-board'et én gang for siden: formtop i Trup, maerket i loebslisten og Formtop-visningen.
   const peakData = usePeakBoardData(load.state === "ready");
-  const peakCounts = useMemo(() => peakCountsByRace(peakData.board?.riders), [peakData.board]);
+  // Codex P2 (#8871): Saeson -> Form kan oprette, fjerne eller flytte en formtop i en anden planner-instans.
+  // Tilbage paa Uge hentes formtop-board'et igen, saa Trup-maerkerne og Formtop-fanen ikke viser de gamle planer.
+  const { reload: reloadPeakBoard } = peakData;
+  const wasWeekForPeaks = useRef(weekShown);
+  useEffect(() => {
+    if (weekShown && !wasWeekForPeaks.current) reloadPeakBoard();
+    wasWeekForPeaks.current = weekShown;
+  }, [weekShown, reloadPeakBoard]);
 
   const upcomingNeed = allRaces.filter(
     (r) => !isRacePast(r) && (raceStartDate(r, dates) ?? "9999") <= addDays(today, 8) && raceReadiness(r, counts.get(r.id) ?? 0, shownWithdrawn).state === "missing",
@@ -560,17 +620,79 @@ function Workbench() {
           .join(" · ")
       : undefined;
 
+  // Et skift vaek fra Uge lader loebet staa (skjult, saa en ugemt kladde overlever). Dags-tavlen og saeson-
+  // matrixens egne parametre hoerer kun til dem og ryddes ved hvert skift.
+  const changeMode = useCallback(
+    (next: PlanningMode) => {
+      setSearchParams((prev) => paramsForMode(prev, next), { replace: true });
+    },
+    [setSearchParams],
+  );
+
+  // #8811 (Codex P1 paa #8790): Saeson-matrixen og dags-tavlen melder deres ugemte kladde hertil. Et skift,
+  // der afmonterer fladen, spoerger foerst med fladens eget spoergsmaal; siger spilleren nej, sker intet.
+  const [seasonDirty, setSeasonDirty] = useState(false);
+  const [boardDirty, setBoardDirty] = useState(false);
+  const surface = embeddedSurface(mode, distributing);
+  const confirmLeave = (to: EmbeddedSurface) => {
+    const key = leaveConfirmKey(surface, to, { season: seasonDirty, board: boardDirty });
+    return !key || window.confirm(tr(key));
+  };
+  const requestMode = (next: PlanningMode) => {
+    if (!confirmLeave(embeddedSurface(next, false))) return;
+    changeMode(next);
+  };
+  // Et loeb aabnet fra Saeson: til Uge med loebet valgt. Har det aabne loeb i Uge selv en ugemt trup,
+  // staar bjaelken (Bliv her / Kassér / Gem og aabn) klar i Uge i stedet for at kassere den.
+  const openRaceFromSeason = (id: string) => {
+    if (!confirmLeave(null)) return;
+    if (requestSelect(id, { toWeek: true }) !== "go") changeMode("week");
+  };
+  // "Fordel ryttere" paa en dag med flere loeb: den gamle dags-tavle for den dag. Med en ugemt trup eller
+  // taktik paa det aabne loeb spoerges spilleren foerst (samme spoergsmaal som den gamle tavle stiller).
+  const openDistribute = useCallback(
+    (date: string) => {
+      const day = boardDayFor(date, dates);
+      if (day == null) return;
+      if (workbenchRef.current?.isDirty() && !window.confirm(t("distribute.unsaved"))) return;
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.set("day", String(day));
+          p.delete("returnView");
+          return p;
+        },
+        { replace: true },
+      );
+    },
+    [dates, setSearchParams, t],
+  );
+  const closeDistribute = () => {
+    const back: PlanningMode = searchParams.get("returnView") === "season" ? "season" : mode;
+    requestMode(back);
+  };
+
   const actions = (
-    <div className="flex flex-wrap items-center gap-2">
-      <Toggle pressed={showWeek} onClick={toggleWeek}>
-        {t("toggles.weekBoard")}
-      </Toggle>
-      <Toggle pressed={showList} onClick={toggleList}>
-        {t("toggles.raceList")}
-      </Toggle>
-      <Link to="/planning?tab=calendar" className={buttonClass({ variant: "secondary", size: "sm" })}>
-        <CalendarIcon size={14} aria-hidden="true" />
-        {t("monthCalendar")}
+    <div className="flex flex-wrap items-center gap-2" data-testid="planning-head-controls">
+      <Segmented
+        label={t("mode.label")}
+        value={distributing ? null : mode}
+        onChange={(next: PlanningMode) => requestMode(next)}
+        options={PLANNING_MODES.map((m) => ({ value: m, label: t(`mode.${m}`) }))}
+      />
+      {/* Punkt 2: i Uge kan ugestriben og loebslisten slaas til og fra; valget huskes pr. spiller. */}
+      {weekShown && (
+        <>
+          <Toggle pressed={showWeek} onClick={toggleWeek}>
+            {t("toggles.weekBoard")}
+          </Toggle>
+          <Toggle pressed={showList} onClick={toggleList}>
+            {t("toggles.raceList")}
+          </Toggle>
+        </>
+      )}
+      <Link to="/planning?tab=strategy" className="px-1 text-xs font-medium text-cz-2 underline-offset-2 hover:text-cz-1 hover:underline" data-testid="planning-strategy-link">
+        {t("teamStrategy")}
       </Link>
     </div>
   );
@@ -622,6 +744,7 @@ function Workbench() {
           today={today}
           raceStart={raceStartDate(selected, dates)}
           inSheet={useSheet}
+          boardDay={boardDayFor(raceStartDate(selected, dates) ?? "", dates)}
         />
       ) : (
         <EmptyState
@@ -651,7 +774,7 @@ function Workbench() {
         title={t("error.title")}
         description={t("error.description")}
         action={
-          <Button variant="secondary" size="sm" onClick={fetchSeason}>
+          <Button variant="secondary" size="sm" onClick={() => fetchSeason()}>
             {t("error.retry")}
           </Button>
         }
@@ -664,9 +787,9 @@ function Workbench() {
         title={t("notOpen.title")}
         description={t("notOpen.description")}
         action={
-          <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
-            {t("notOpen.action")}
-          </Link>
+          <Button variant="secondary" size="sm" onClick={() => changeMode("month")}>
+            {t("mode.month")}
+          </Button>
         }
       />
     );
@@ -677,9 +800,9 @@ function Workbench() {
         title={t("noRaces.title")}
         description={t("noRaces.description")}
         action={
-          <Link to="/planning?tab=calendar" className={buttonClass({ variant: "secondary", size: "sm" })}>
-            {t("monthCalendar")}
-          </Link>
+          <Button variant="secondary" size="sm" onClick={() => changeMode("month")}>
+            {t("mode.month")}
+          </Button>
         }
       />
     );
@@ -697,6 +820,7 @@ function Workbench() {
             selectedId={selected?.id}
             onSelect={requestSelect}
             onWeekChange={(dir: -1 | 1) => setWeekMonday(addDays(activeMonday, dir * 7))}
+            onDistribute={openDistribute}
             canPrev={firstMonday != null && activeMonday > firstMonday}
             canNext={lastMonday != null && activeMonday < lastMonday}
           />
@@ -718,12 +842,10 @@ function Workbench() {
           {listColumn && (
             <RaceList
               races={listRaces}
-              allRaces={allRaces}
               dates={dates}
               counts={counts}
               withdrawn={shownWithdrawn}
               terrain={terrain}
-              peakCounts={peakCounts}
               selectedId={selected?.id}
               onSelect={requestSelect}
               scope={scope}
@@ -757,7 +879,7 @@ function Workbench() {
             </div>
           )}
         </div>
-        {useSheet && sheetOpen && selected && (
+        {useSheet && sheetOpen && selected && weekShown && (
           <RaceSheet
             title={selected.name}
             position={sheetIndex >= 0 ? t("sheet.position", { n: sheetIndex + 1, total: sheetRaces.length }) : null}
@@ -783,11 +905,49 @@ function Workbench() {
     );
   }
 
+  // Uge bliver monteret (skjult) under de andre visninger, saa en ugemt trup eller taktik overlever et skift.
+  const loader = <SkeletonLines lines={6} />;
+  let other: ReactNode = null;
+  if (distributing) {
+    const firstDate = [...dates.values()].sort()[0];
+    const dayDate = firstDate ? addDays(firstDate, boardDay - 1) : null;
+    other = (
+      <section aria-label={t("distribute.title")} data-testid="planning-distribute">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={closeDistribute} iconLeft={<ChevronLeftIcon size={14} aria-hidden="true" />}>
+            {searchParams.get("returnView") === "season" ? t("distribute.backSeason") : t("distribute.back")}
+          </Button>
+          <h2 className="text-[15px] font-semibold text-cz-1">
+            {dayDate ? t("distribute.titleOn", { date: formatShortDate(dayDate, i18n.language) }) : t("distribute.title")}
+          </h2>
+        </div>
+        <Suspense fallback={loader}>
+          <RaceHubBoard onDirtyChange={setBoardDirty} />
+        </Suspense>
+      </section>
+    );
+  } else if (mode === "season") {
+    other = (
+      <Suspense fallback={loader}>
+        <SeasonMatrixView onOpenRace={openRaceFromSeason} onDirtyChange={setSeasonDirty} needSquadCount={upcomingNeed} />
+      </Suspense>
+    );
+  } else if (mode === "month") {
+    other = (
+      <Suspense fallback={loader}>
+        <I18nReadyGate ns="calendar">
+          <CalendarPage />
+        </I18nReadyGate>
+      </Suspense>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-[1600px]" data-testid="planning-workbench-page">
+    <div className="mx-auto max-w-[1600px]" data-testid="planning-workbench-page" data-mode={distributing ? "distribute" : mode}>
       <PageHeader title={t("title")} subtitle={subtitle} actions={actions} />
-      <SelectionDeadlineReminder reminder={reminder} />
-      {content}
+      {weekShown && <SelectionDeadlineReminder reminder={reminder} />}
+      <div hidden={!weekShown}>{content}</div>
+      {other}
     </div>
   );
 }

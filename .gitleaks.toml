@@ -64,7 +64,9 @@ regexes = [
   # Feature-flag-nøgler med issue-nummer som suffiks (fx app_config "queen_stage_gap_7236",
   # #7236) trigger generic-api-key pga. key:-prefix + entropi. Ankret: kun rene
   # snake_case-ord (små bogstaver) + afsluttende _<3-5 cifre>. Ikke secrets.
-  '''^[a-z]+(?:_[a-z]+)*_\d{3,5}$''',
+  # #8811: et versions-led som "v2" er tilladt midt i navnet (fx "planning_v2_default_8419",
+  # "patch_notes_v2_8049"), kun som v + 1-2 cifre, så hex-agtige led stadig flagges.
+  '''^[a-z]+(?:_(?:[a-z]+|v\d{1,2}))*_\d{3,5}$''',
 ]
 paths = [
   '''node_modules/''',

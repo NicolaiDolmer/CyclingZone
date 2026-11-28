@@ -123,18 +123,29 @@ const entries = Object.entries(PICKS).flatMap(([raceId, ids]) =>
 
 const overlaps = (a: { id: string; gameDayStart: number; gameDayEnd: number }, b: { id: string; gameDayStart: number; gameDayEnd: number }) => a.id !== b.id && a.gameDayStart <= b.gameDayEnd && b.gameDayStart <= a.gameDayEnd;
 
+// #8848: saesonmatrixen har ogsaa kørte loeb foer i dag, saa "matrixen aabner ved i dag" kan ses.
+const PAST_RACES = ([
+  ["wb-past-1", "Tour du Léman", -14, -11],
+  ["wb-past-2", "Ronde van het Preview", -8, -8],
+  ["wb-past-3", "Giro del Passato", -6, -3],
+] as Array<[string, string, number, number]>).map(([id, name, start, end]) => ({
+  ...RACES[0], id, name, raceClass: "Class1", stages: end - start + 1, status: "completed", stagesCompleted: end - start + 1,
+  lineupLocked: true, gameDayStart: gd(start), gameDayEnd: gd(end), sizeMax: end > start ? STAGE_RACE_SIZE : ONE_DAY_SIZE,
+}));
+const PAST_ENTRIES = PAST_RACES.flatMap((r) => RIDER_DEFS.slice(0, r.sizeMax).map(([riderId], i) => ({ raceId: r.id, riderId, raceRole: i === 0 ? "captain" : null })));
+
 export const PLANNING_SEASON_SEED = {
   enabled: true,
-  season: { id: "season-preview-planning", number: 5 },
+  season: { id: "season-preview-planning", number: 1 }, // samme nummer som plannerMock's aktive saeson (saesonvaelgeren), ejer 27/11
   ownPoolId: 1,
   readOnly: false,
-  races: RACES,
+  races: [...PAST_RACES, ...RACES],
   riders: RIDER_DEFS.map(([id, name, type, ab, , , injured]) => ({ id, name, primaryType: type, secondaryType: null, abilities: abilities(ab), injured })),
-  entries,
+  entries: [...PAST_ENTRIES, ...entries],
   withdrawnRaceIds: [],
   didNotStartRaceIds: [],
   trainNowLockByRace: {},
-  dayDates: Array.from({ length: 24 }, (_, i) => ({ gameDay: gd(i), date: day(i) })),
+  dayDates: Array.from({ length: 38 }, (_, i) => ({ gameDay: gd(i - 14), date: day(i - 14) })),
 };
 
 /** Svar for GET /api/races/:id/selection paa de seedede loeb, ellers null. */
@@ -265,7 +276,7 @@ export function previewPeakBoard() {
   const raceById = new Map(RACES.map((r, i) => [r.id, { race: r, start: RACE_DEFS[i][4], end: RACE_DEFS[i][5] }]));
   return {
     enabled: true,
-    season: { id: "season-preview-planning", number: 5 },
+    season: { id: "season-preview-planning", number: 1 }, // samme nummer som plannerMock's aktive saeson (saesonvaelgeren), ejer 27/11
     maxPerRider: PREVIEW_PEAK_MAX,
     today: TODAY,
     leadupDays: 14,
@@ -334,4 +345,33 @@ for (const [raceId, ids] of Object.entries(PICKS)) {
     const cur = PLANNING_SEASON_LOAD[id] ?? { races: 0, raceDays: 0 };
     PLANNING_SEASON_LOAD[id] = { races: cur.races + 1, raceDays: cur.raceDays + days };
   }
+}
+
+// #8419: Startlister-fanen paa preview. Hvert loebs startliste med holdets egne seks foerste ryttere og tre
+// opdigtede hold (eksempeldata, ingen spillere). De tre sidste loeb er laengere ude end startlistens horisont.
+const FAKE_TEAMS: Array<[string, string[]]> = [
+  ["Equipo Ejemplo", ["Mateo Rivas", "Hugo Serrano", "Iker Lozano", "Pablo Varela", "Dario Nunez", "Ruben Ortega"]],
+  ["Velo Demo", ["Lars Holm", "Jonas Berg", "Emil Strand", "Oskar Lind", "Nils Dahl", "Erik Sand"]],
+  ["Preview Racing", ["Luc Martin", "Theo Girard", "Hugo Moreau", "Paul Fabre", "Leo Roux", "Jules Petit"]],
+];
+export function planningBrowseSeed() {
+  const own = RIDER_DEFS.slice(0, 6).map(([id, name], i) => {
+    const [firstname, ...rest] = name.split(" ");
+    return { id, firstname, lastname: rest.join(" "), nationality_code: NATIONS[i] ?? null };
+  });
+  const fake = FAKE_TEAMS.map(([team, names], t) => ({
+    team: { id: `wb-team-${t}`, name: team },
+    riders: names.map((n, i) => {
+      const [firstname, ...rest] = n.split(" ");
+      return { id: `wb-team-${t}-r${i}`, firstname, lastname: rest.join(" "), nationality_code: ["es", "no", "fr"][t] };
+    }),
+  }));
+  return {
+    enabled: true,
+    columns: RACES.map((r, i) => {
+      const visible = i < RACES.length - 3;
+      const teams = visible ? [{ team: { id: "wb-team-own", name: "Preview Team" }, riders: own }, ...fake] : [];
+      return { id: r.id, name: r.name, visible, opensInDays: visible ? null : 5, teamCount: teams.length, teams };
+    }),
+  };
 }
