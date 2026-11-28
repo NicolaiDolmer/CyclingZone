@@ -8,7 +8,69 @@ import {
   seededUnit,
   estimatePotentialRange,
   buildScoutEstimate,
+  currentSeasonNumber,
+  decayCertainty,
+  decayFormerRiderView,
+  departureSeasonNumber,
+  formerRiderStepsLost,
 } from "./scouting.js";
+
+// ── #7455: viden om en tidligere rytter (ejerens valg A 12/11) ───────────────────
+
+const SEASONS_7455 = [
+  { number: 4, start_date: "2026-09-28", end_date: "2026-10-25" },
+  { number: 5, start_date: "2026-10-28", end_date: null },
+  { number: 3, start_date: "2026-08-28", end_date: "2026-09-27" },
+];
+
+test("#7455 departureSeasonNumber: afgang inde i en sæson hører til den sæson", () => {
+  assert.equal(departureSeasonNumber("2026-10-01", SEASONS_7455), 4);
+  assert.equal(departureSeasonNumber("2026-10-25", SEASONS_7455), 4);
+  assert.equal(departureSeasonNumber("2026-11-27", SEASONS_7455), 5);
+});
+
+test("#7455 departureSeasonNumber: afgang i pausen hører til den kommende sæson", () => {
+  assert.equal(departureSeasonNumber("2026-10-26", SEASONS_7455), 5);
+  assert.equal(departureSeasonNumber("2026-08-01", SEASONS_7455), 3);
+});
+
+test("#7455 departureSeasonNumber: uden sæsoner eller dato → null", () => {
+  assert.equal(departureSeasonNumber("2026-10-01", []), null);
+  assert.equal(departureSeasonNumber(null, SEASONS_7455), null);
+});
+
+test("#7455 currentSeasonNumber: senest startede sæson, også i pausen efter en sæson", () => {
+  assert.equal(currentSeasonNumber("2026-11-27", SEASONS_7455), 5);
+  assert.equal(currentSeasonNumber("2026-10-26", SEASONS_7455), 4);
+  assert.equal(currentSeasonNumber("2026-01-01", SEASONS_7455), null);
+});
+
+test("#7455 formerRiderStepsLost: fuld viden resten af afgangssæsonen, så ét trin pr. sæson", () => {
+  assert.equal(formerRiderStepsLost(5, 5), 0);
+  assert.equal(formerRiderStepsLost(4, 5), 1);
+  assert.equal(formerRiderStepsLost(2, 5), 3);
+  assert.equal(formerRiderStepsLost(6, 5), 0);
+  assert.equal(formerRiderStepsLost(null, 5), 0);
+});
+
+test("#7455 decayCertainty: ét ord pr. trin, aldrig under det laveste trin", () => {
+  assert.equal(decayCertainty("sure", 0), "sure");
+  assert.equal(decayCertainty("sure", 1), "fair");
+  assert.equal(decayCertainty("sure", 2), "unsure");
+  assert.equal(decayCertainty("sure", 9), "unsure");
+  assert.equal(decayCertainty("fair", 1), "unsure");
+  assert.equal(decayCertainty("unsure", 3), "unsure");
+  assert.equal(decayCertainty("mystery", 2), "mystery");
+});
+
+test("#7455 decayFormerRiderView: kun ordet falder; tal og ændring står, skjult forbliver skjult", () => {
+  const view = { hidden: false, value: 74, certainty: "sure", previousValue: 71, previousCertainty: "fair", changedAt: "2026-10-01" };
+  assert.deepEqual(decayFormerRiderView(view, 1), { ...view, certainty: "fair" });
+  assert.equal(decayFormerRiderView(view, 0), view);
+  const hidden = { hidden: true, reason: "unscouted" };
+  assert.equal(decayFormerRiderView(hidden, 2), hidden);
+  assert.equal(decayFormerRiderView(null, 2), null);
+});
 
 // ── deriveScoutState ──────────────────────────────────────────────────────────
 

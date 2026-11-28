@@ -1109,14 +1109,14 @@ features:
 
   - id: training-day-override-8592
     area: training
-    title_en: Only this day, one session on one date
-    title_da: Kun denne dag, et pas på én dato
-    state: building
+    title_en: Only this day, one session for a rider, several riders or a group on one date
+    title_da: Kun denne dag, et pas for en rytter, flere eller en gruppe på én dato
+    state: live
     flag: training_day_override_8592
     ssot: docs/TRAINING_RULES.md
     epic: 7456
-    verified: 2026-11-26
-    note: "Seedet off. Løb, binding og skade vinder."
+    verified: 2026-11-28
+    note: "Tændt for alle 28/11 11:06 (ejer-go efter preview-billeder); patch note 7.535. Løb, binding og skade vinder; virker uden program (#8819)."
     decision: goer-faerdigt
     decide_by: 2026-12-10
 

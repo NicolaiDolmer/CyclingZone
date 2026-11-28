@@ -110,6 +110,10 @@ function context(supabase, extra = {}) {
     buildTypeCeilingBands: legacy("buildTypeCeilingBands"),
     projectCeilingBand: legacy("projectCeilingBand"),
     loadEstimateDevelopmentXp: legacy("loadEstimateDevelopmentXp"), // #6110 F1
+    // #7455: faldet for tidligere ryttere testes i formerRiderKnowledge.test.js; her ingen afgange.
+    loadFormerRiderSteps: async () => new Map(),
+    applyFormerRiderStepsToEstimates: (estimates) => estimates,
+    withFormerRiderDecay: async (_supabase, _teamId, _rider, _own, report) => report,
     ...extra,
   };
 }

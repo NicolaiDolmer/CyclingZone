@@ -238,3 +238,75 @@ export function buildScoutEstimate(rider, level, viewerTeamId, cfg = SCOUTING_CO
   if (!range) return null;
   return { lo: range.lo, hi: range.hi, level: range.scoutLevel };
 }
+
+// ─── Viden om en tidligere rytter (#7455, ejerens valg A 12/11) ────────────────
+//
+// Holdet beholder fuld viden om en rytter, der har forladt holdet, resten af den
+// sæson han forlod det i. Samme regel for en rytter, holdet har scoutet (ejer-scope
+// 27/11): fuld viden resten af sæsonen for det seneste kig. Derefter falder viden ét trin pr. sæson, ned til det
+// laveste trin, og den forsvinder aldrig helt. Et trin er ét sikkerhedsord på det
+// gemte skøn (#6110): Sikker → Rimelig → Usikker. Kun ordet falder; tallet følger stadig
+// det gemte skøn, som søndagskørslen holder opdateret (#7455 review).
+// Rene funktioner; indlæsningen af afgangene bor i formerRiderKnowledge.js.
+
+// Sikkerhedsordene fra mest til mindst sikker (samme ord som potentialEstimate.js).
+export const FORMER_RIDER_CERTAINTY_STEPS = Object.freeze(["sure", "fair", "unsure"]);
+
+// Sæsonnummeret en afgang hører til. Afgang inde i en sæson → den sæson. Afgang
+// i pausen mellem to sæsoner (fx transfervinduet før sæsonstart) → den kommende
+// sæson, så en rytter solgt dagen før sæsonstart ikke mister et trin dagen efter.
+//   leftOn  : afgangens dato (YYYY-MM-DD, København)
+//   seasons : [{ number, start_date, end_date }] (end_date null = ikke slut)
+// Returnerer null uden brugbare sæsoner.
+export function departureSeasonNumber(leftOn, seasons) {
+  const list = (seasons ?? []).filter((s) => s?.start_date && Number.isFinite(Number(s.number)));
+  if (!leftOn || !list.length) return null;
+  let inside = null;
+  for (const s of list) {
+    const n = Number(s.number);
+    if (s.start_date <= leftOn && (s.end_date == null || leftOn <= s.end_date)) {
+      if (inside == null || n > inside) inside = n;
+    }
+  }
+  if (inside != null) return inside;
+  let coming = null;
+  for (const s of list) {
+    const n = Number(s.number);
+    if (s.start_date > leftOn && (coming == null || n < coming)) coming = n;
+  }
+  if (coming != null) return coming;
+  return Math.max(...list.map((s) => Number(s.number)));
+}
+
+// Sæsonen lige nu: den senest startede sæson (også i pausen efter en afsluttet).
+export function currentSeasonNumber(today, seasons) {
+  let current = null;
+  for (const s of seasons ?? []) {
+    const n = Number(s?.number);
+    if (!s?.start_date || !Number.isFinite(n) || s.start_date > today) continue;
+    if (current == null || n > current) current = n;
+  }
+  return current;
+}
+
+// Hvor mange trin holdet har mistet: 0 resten af afgangssæsonen, derefter ét pr. sæson.
+export function formerRiderStepsLost(departureSeason, currentSeason) {
+  if (!Number.isFinite(departureSeason) || !Number.isFinite(currentSeason)) return 0;
+  return Math.max(0, Math.floor(currentSeason - departureSeason));
+}
+
+// Sikkerhedsordet efter tabte trin, aldrig under det laveste trin. Ukendt ord → uændret.
+export function decayCertainty(certainty, stepsLost) {
+  const idx = FORMER_RIDER_CERTAINTY_STEPS.indexOf(certainty);
+  const steps = Math.max(0, Math.floor(Number(stepsLost) || 0));
+  if (idx < 0 || steps === 0) return certainty;
+  return FORMER_RIDER_CERTAINTY_STEPS[Math.min(FORMER_RIDER_CERTAINTY_STEPS.length - 1, idx + steps)];
+}
+
+// Spillerens visning (potentialView fra det gemte skøn) for en tidligere rytter.
+// Skjulte visninger og visninger uden tabte trin returneres uændret (samme objekt).
+export function decayFormerRiderView(view, stepsLost) {
+  if (!view || view.hidden) return view;
+  const certainty = decayCertainty(view.certainty, stepsLost);
+  return certainty === view.certainty ? view : { ...view, certainty };
+}
