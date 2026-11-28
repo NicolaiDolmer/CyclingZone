@@ -66,9 +66,9 @@ export async function runSeasonStartResets({ supabase, toSeason, execute, injury
 
   // Fable hul B: beviset er det registrerede arbejde for datoen (ingen pending/partial),
   // ikke dagens hold (et hold oprettet efter skiftet har ingen registrering for S5).
-  const { data: work, error: workError } = await supabase.from("training_date_work").select("team_id,status")
-    .eq("season_id", from.id).eq("tick_date", tickDate);
-  if (workError) throw new Error(`training_date_work (S${from.number} ${tickDate}): ${workError.message}`);
+  // Codex P1: alle sider (over 1.000 hold), stabil rækkefølge.
+  const work = await fetchAllRows(() => supabase.from("training_date_work").select("team_id,status")
+    .eq("season_id", from.id).eq("tick_date", tickDate).order("team_id"));
   const open = (work ?? []).filter((row) => !["complete", "needs_reconciliation"].includes(row.status));
   if (!work?.length || open.length) {
     throw new Error(`Sæson ${from.number}s ${tickDate} er ikke afregnet: ${work?.length ?? 0} registreringer, ${open.length} åbne`);

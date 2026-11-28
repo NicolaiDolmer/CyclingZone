@@ -61,6 +61,23 @@ rytterne. Sene registreringsveje med bevist starttilstand findes for brodatoer (
 almindelige datoer i den aktive sæson (#7832, se "Sent oprettede hold" nedenfor), ikke for
 sæsonens sidste dato.
 
+### Skifte før træningen med udskudte nulstillinger (#7470, ejer 27/11)
+
+Ejer 27/11: "Træning skal være på samme tidspunkt som altid, der skal bare kunne laves et
+sæsonskifte inden rytterne har trænet". Undtagelse fra reglen om, at registreret
+pending/partial-arbejde på sidste dato blokerer sæsonafslutningen: står alle tre
+sæsonstart-nulstillinger slukket (`season_fatigue_reset_enabled`, `season_injury_reset_mode`,
+`season_form_reset_mode` = off eller mangler; `seasonStartResetsDeferred`), udskyder gaten
+også registreret arbejde til aftenkørslen, for så rører skiftet ikke form, træthed eller
+skader, og starttilstands-snapshottet er stadig gyldigt. En fejlet læsning holder gaten lukket.
+Rækkefølgen er da: skifte (uden nulstillinger) → aftenkørslen kl. 20 afregner sidste dato på
+den gamle sæsons tilstand → `backend/scripts/seasonStartResets7470.js` kører de tre
+nulstillinger alene (kun på sidste dato, kun uden træningsarbejde i den nye sæson, kun når
+datoen har 0 åbne registreringer) → kontakterne tændes igen. Kører skiftet stadig, når
+aftenkørslen når datoen (næste sæson aktiv, intet afslutnings-anker), venter datoen på næste
+kørsel i stedet for at gå til `historical_season_requires_review`. Driftsrækkefølgen står i
+`docs/runbooks/2026-11-28-s5-s6-drejebog.md` §3.
+
 Afregningen ser sæsonen, som den var ved skæringstidspunktet: det tidligste af
 sæsonafslutningens claim (`season_end_claims.claimed_at`) og transitionens eget
 tidspunkt (`meta.transition_at` på transitionens `admin_log`-rækker med
