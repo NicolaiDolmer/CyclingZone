@@ -39,7 +39,7 @@
 // balance-internals/ (8604-trend-prognose.md).
 
 import { buyPoints, xpAgeShare, xpPerDate, xpPriceForNextPoint } from "./developmentXp.ts";
-import { STANDARD_CAREER, standardCareerRotation, standardCareerShares } from "./developmentXpExpectedTop.ts";
+import { STANDARD_CAREER, expectedTopRating, standardCareerRotation, standardCareerShares } from "./developmentXpExpectedTop.ts";
 import {
   AGING_V2_CONFIG, AGING_V2_DECLINING_ABILITIES, agingBrake, agingV2BaseDrop, signatureFactor, xpAgingConfig,
 } from "./riderProgression.js";
@@ -70,6 +70,8 @@ export const PRIOR_FACTOR_MIN = 0.5;
 export const PRIOR_FACTOR_MAX = 1.5;
 // En sæson tæller som hel, når rytterens billeder dækker den til så mange dage fra kanterne.
 export const SEASON_EDGE_DAYS = 7;
+// Halveringer, når det synlige skøn omregnes til potentiale (2^-14 af skalaen er langt under ét ratingpoint).
+export const PRIOR_BISECT_STEPS = 14;
 
 const MENTAL = new Set(VISIBLE_ABILITIES.filter((ability) => abilityMeta(ability)?.category === "mental"));
 const DECLINING = new Set(AGING_V2_DECLINING_ABILITIES);
@@ -154,6 +156,42 @@ export function trendPace(dates, { today, params }) {
 }
 
 const paceTotal = (pace) => Object.values(pace ?? {}).reduce((s, v) => s + (isNum(v) ? v : 0), 0);
+
+/**
+ * Ejer 28/11: startfarten (A) bygger på det SYNLIGE potentiale-skøn, aldrig det skjulte, så
+ * prognosen ikke kan afsløre det. Skønnet er rytterens forventede top (samme sande tal som
+ * potentialEstimateWriter: expectedTopRating). Her findes det potentiale på motorens skala,
+ * der giver netop den top, ved halvering: toppen stiger med potentialet. Deterministisk.
+ * null uden skøn eller uden evner: så bruges laveste potentiale (aldrig det skjulte).
+ *   rider  { id, abilities, seasonAge, primaryType, secondaryType }
+ */
+export function priorPotentialFromEstimate(rider, estimate, params) {
+  if (!params || !isNum(estimate) || !rider?.abilities || !isNum(rider.seasonAge)) return null;
+  const curve = params.potentialXp;
+  let lo = curve[0].at;
+  let hi = curve[curve.length - 1].at;
+  const topAt = (potentiale) => expectedTopRating({
+    id: rider.id, abilities: rider.abilities, age: rider.seasonAge, potentiale,
+    primaryType: rider.primaryType ?? null, secondaryType: rider.secondaryType ?? null,
+  }, params);
+  const low = topAt(lo);
+  if (low == null) return null;
+  if (estimate <= low) return lo;
+  if (estimate >= (topAt(hi) ?? -Infinity)) return hi;
+  // Toppen er et heltal, så et helt spænd af potentialer giver samme skøn. Fable 28/11: brug
+  // midten af spændet (første P, der når skønnet, og første P, der når skønnet + 1), ikke
+  // den nedre kant, som systematisk gav for lavt P.
+  const firstReaching = (target) => {
+    let a = lo;
+    let b = hi;
+    for (let i = 0; i < PRIOR_BISECT_STEPS; i++) {
+      const mid = (a + b) / 2;
+      if ((topAt(mid) ?? -Infinity) < target) a = mid; else b = mid;
+    }
+    return b;
+  };
+  return (firstReaching(estimate) + firstReaching(estimate + 1)) / 2;
+}
 
 /** Normal træning for potentialet (A): standardkarrierens fordeling, renset for alder. */
 export function standardPriorPace({ potentiale, primaryType = null, secondaryType = null }, params, factor = 1) {
