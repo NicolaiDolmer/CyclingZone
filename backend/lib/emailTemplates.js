@@ -810,7 +810,8 @@ export const S6_SUBJECT_VARIANTS = Object.freeze(["a", "b"]);
 const S6_ASSET_BASE = "https://cyclingzone.org/email/s6";
 // The hero PNG is a 2x raster; the mail shows it at the body column's width.
 const S6_HERO_WIDTH = 552;
-const S6_HERO_HEIGHT = 301;
+// #8396 ejer 27/11: v3 is a taller annotated composite; the height differs per language.
+const S6_HERO_HEIGHT = { da: 878, en: 865 };
 const S6_BODY_FONT_SIZE = 16;
 const S6_FOOTER_FONT_SIZE = 14;
 
@@ -831,7 +832,7 @@ const S6_COPY = {
     eyebrow: "Season 6",
     greeting: (team) => (team ? `Hi ${team},` : "Hi,"),
     heroAlt:
-      "Three screens from Cycling Zone: the new race page with the race film, the Training page with the day picker, and the new planning page with the week overview.",
+      "Three screens from Cycling Zone: the Training page with the coming week, the new planning page, and the race page with the race film.",
     roadmapIntro: "I'd like to know what you want me to build next.",
     roadmap: "Vote on the roadmap",
     awayNote: "Your team and your riders are still there. You log in with the same account as before.",
@@ -849,21 +850,23 @@ const S6_COPY = {
         b: "Set your training before Season 6",
       },
       preheader: "A new development system without caps. Set your training before the first race on Monday.",
-      heading: "Season 6 starts Saturday 28 November",
+      heading: "Season 6 starts Saturday, with new training and development",
       // #8396 ejer 26/11: the division for Season 6 is only known after the
       // switch (promotion and relegation), so mail 1 names no division.
       teamLine: null,
-      newsHeading: "What's new in the game",
+      newsHeading: "What you can do now",
       openings: {
         active: "Season 5 ends on Saturday. Before Season 6 starts, here is what's new in the game.",
         dormant: "A lot has happened in the game. Here is what's new, all ready for Season 6.",
         away: "The game has changed a lot, and a new season is the best time to start. Here is what's new.",
       },
       news: [
-        ["A new development system.", "The caps on abilities are gone. Your riders develop from what they train and race."],
-        ["A new academy page.", "Your young talents, their progress and the academy's accounts in one place."],
-        ["Planning.", "Try the new planning page with the week overview, the race list and a month calendar in one place."],
-        ["The race page.", "Watch the race film and read the results for a ridden stage in one place."],
+        ["No more caps.", "Abilities no longer stop at a fixed ceiling. What your riders train and race is what they become."],
+        ["Plan training a week ahead.", "The Today tab shows the next seven days, race days included, and the forecast follows the lineup you pick."],
+        ["You decide what a race day costs.", "Order each day's passes with Week blocks, or build a Rotation that waits while a rider races, rests or is injured."],
+        ["Watch the work pay off.", "Press Train now and see the XP count up rider by rider. Abilities that rise are marked as it happens."],
+        ["An academy worth opening.", "Juniors, U23 riders and talents get their own page, and you can pick an age focus for the weekly intake."],
+        ["A new planning page and race film.", "Week, race list and month calendar sit together in Planning. After a stage, the race film shows where it was decided."],
       ],
       deadline: "The first race is on Monday 30 November. Set your training and your team before then.",
       cta: "Get your team ready for Season 6",
@@ -898,7 +901,7 @@ const S6_COPY = {
     eyebrow: "Sæson 6",
     greeting: (team) => (team ? `Hej ${team},` : "Hej,"),
     heroAlt:
-      "Tre skærmbilleder fra Cycling Zone: den nye løbsside med løbsfilmen, træningssiden med dagsvælgeren og den nye planlægningsside med ugeoversigten.",
+      "Tre skærmbilleder fra Cycling Zone: træningssiden med den kommende uge, den nye planlægningsside og løbssiden med løbsfilmen.",
     roadmapIntro: "Jeg vil gerne høre, hvad du synes, jeg skal bygge næste gang.",
     roadmap: "Stem på roadmappet",
     awayNote: "Dit hold og dine ryttere er der stadig. Du logger ind med den samme konto som før.",
@@ -916,21 +919,23 @@ const S6_COPY = {
         b: "Sæt træningen før sæson 6",
       },
       preheader: "Nyt udviklingssystem uden lofter. Sæt træningen inden første løb mandag.",
-      heading: "Sæson 6 starter lørdag den 28. november",
+      heading: "Sæson 6 starter lørdag med ny træning og udvikling",
       // #8396 ejer 26/11: divisionen i sæson 6 kendes først efter skiftet
       // (op- og nedrykning), så mail 1 nævner ingen division.
       teamLine: null,
-      newsHeading: "De nyeste funktioner i spillet",
+      newsHeading: "Det kan du nu",
       openings: {
         active: "Sæson 5 slutter lørdag. Inden sæson 6 starter, kan du se, hvad der er nyt i spillet.",
         dormant: "Der er sket meget i spillet. Her er det nye, klar til sæson 6.",
         away: "Spillet har ændret sig meget, og en ny sæson er det bedste tidspunkt at starte. Her er det nye.",
       },
       news: [
-        ["Nyt udviklingssystem.", "Lofterne på evnerne er væk. Dine ryttere udvikler sig af det, de træner og kører."],
-        ["Ny akademiside.", "Dine unge talenter, deres fremgang og akademiets regnskab samme sted."],
-        ["Planlægning.", "Prøv den nye planlægningsside med ugeoversigt, løbsliste og månedskalender samme sted."],
-        ["Løbssiden.", "Se løbsfilmen og resultaterne for en kørt etape samme sted."],
+        ["Lofterne er væk.", "Evnerne stopper ikke længere ved et fast loft. Det, dine ryttere træner og kører, er det, de bliver til."],
+        ["Planlæg træningen en uge frem.", "Fanen I dag viser de næste syv dage med løbsdagene, og prognosen følger den udtagelse, du laver."],
+        ["Du bestemmer, hvad en løbsdag koster.", "Sæt dagens pas i rækkefølge med Ugeblokke, eller lav en Rotation, der venter, mens en rytter kører løb, hviler eller er skadet."],
+        ["Se arbejdet give pote.", "Tryk Træn nu, og se XP tælle op rytter for rytter. De evner, der stiger, bliver markeret undervejs."],
+        ["Et akademi, der er værd at åbne.", "Juniorer, U23-ryttere og talenter har fået deres egen side, og du kan vælge aldersfokus for ugens optag."],
+        ["Ny planlægningsside og løbsfilm.", "Uge, løbsliste og månedskalender står samlet i Planlægning. Efter en etape viser løbsfilmen, hvor den blev afgjort."],
       ],
       deadline: "Første løb køres mandag den 30. november. Sæt træning og hold inden da.",
       cta: "Gør holdet klar til sæson 6",
@@ -993,11 +998,11 @@ function s6ButtonHtml(url, label) {
 // type on that navy, so the top of the mail still reads as a caption.
 function s6HeroHtml(lang, alt) {
   // #8396: versionerede filnavne, saa mailproxyer ikke viser et gammelt cachet billede (EMAIL_STACK §5.7).
-  const src = `${S6_ASSET_BASE}/s6-hero-${lang}-v2.png`;
+  const src = `${S6_ASSET_BASE}/s6-hero-${lang}-v3.png`;
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
       <tr>
         <td class="cz-band" bgcolor="${NAVY}" style="background:${NAVY};background-color:${NAVY};border-radius:${RADIUS};line-height:0;font-size:0;">
-          <img class="cz-hero" src="${src}" alt="${escapeHtml(alt)}" width="${S6_HERO_WIDTH}" height="${S6_HERO_HEIGHT}" style="display:block;width:100%;max-width:${S6_HERO_WIDTH}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:${RADIUS};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;color:#ffffff;">
+          <img class="cz-hero" src="${src}" alt="${escapeHtml(alt)}" width="${S6_HERO_WIDTH}" height="${S6_HERO_HEIGHT[lang] ?? S6_HERO_HEIGHT.en}" style="display:block;width:100%;max-width:${S6_HERO_WIDTH}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:${RADIUS};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;color:#ffffff;">
         </td>
       </tr>
     </table>`;
