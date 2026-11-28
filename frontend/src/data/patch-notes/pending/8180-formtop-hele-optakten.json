@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "switched_on",
+      "topic": "Training",
+      "area": "engine",
+      "en": {
+        "title": "Peak form counts all your training in big fields",
+        "body": "In races with many teams, some teams lost part of their training lead-up when the race worked out their peak form. Now every team's full lead-up counts. It applies to races that start from today, so races already under way keep their rules."
+      },
+      "da": {
+        "title": "Formtoppen tæller al din træning i store felter",
+        "body": "I løb med mange hold mistede nogle hold en del af deres træningsoptakt, når løbet regnede formtoppen ud. Nu tæller hele optakten for alle hold. Det gælder løb, der starter fra i dag, så løb, der allerede er i gang, beholder deres regler."
+      },
+      "refs": [8180]
+    }
+  ]
+}
