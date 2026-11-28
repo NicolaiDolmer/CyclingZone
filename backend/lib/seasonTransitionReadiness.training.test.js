@@ -226,6 +226,34 @@ for (const status of ['pending', 'partial']) {
     assert.ok(mixed.detail.includes(' a: missing_registration'), mixed.detail);
   });
 }
+// #7470 (ejer 27/11): with every season-start reset switched off for the transition,
+// registered work defers to the evening run too; it trains on the old season's state,
+// and the resets run afterwards (scripts/seasonStartResets7470.js).
+for (const status of ['pending', 'partial']) {
+  test(`#7470: 25/10 18:00 registered ${status} work defers when the season-start resets are off`, async () => {
+    await db.exec(`CREATE TABLE IF NOT EXISTS app_config (key text PRIMARY KEY, value jsonb)`);
+    await db.exec(`DELETE FROM app_config WHERE key IN ('season_fatigue_reset_enabled','season_injury_reset_mode','season_form_reset_mode')`);
+    await db.query('UPDATE training_date_work SET status=$1 WHERE team_id=$2', [status, 'b']);
+    const setFlags = (fatigue, injury) => db.query(
+      `INSERT INTO app_config(key,value) VALUES ('season_fatigue_reset_enabled',$1::jsonb),('season_injury_reset_mode',$2::jsonb)
+       ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value`, [JSON.stringify(fatigue), JSON.stringify(injury)]);
+    await setFlags('on', 'clear');
+    assert.equal((await assess(client(), { now: at18 })).blocked, true, 'resets on: registered work still blocks');
+    await setFlags('off', 'clear');
+    assert.equal((await assess(client(), { now: at18 })).blocked, true, 'one reset still on: blocks');
+    await setFlags('off', 'off');
+    const deferred = await assess(client(), { now: at18 });
+    assert.equal(deferred.blocked, false);
+    assert.equal(deferred.deferred, true);
+    assert.ok(deferred.blockers.some(row => row.team_id === 'b' && row.reason === status));
+    await db.query(`INSERT INTO app_config(key,value) VALUES ('season_form_reset_mode','"band"'::jsonb)`);
+    assert.equal((await assess(client(), { now: at18 })).blocked, true, 'form reset on: blocks');
+    await db.exec(`DELETE FROM app_config WHERE key='season_form_reset_mode'`);
+    assert.equal((await assess(client(), { now: new Date('2026-10-25T19:00:00Z') })).blocked, true, '20:00: proof required as before');
+    await assert.rejects(() => assess(client('riders'), { now: at18 }), /fixture read failure/);
+    await db.exec(`DELETE FROM app_config WHERE key IN ('season_fatigue_reset_enabled','season_injury_reset_mode')`);
+  });
+}
 test('#6924: settled at 18:00 is not deferred; 19:59 still defers; 20:00 and the next day require proof', async () => {
   assert.equal((await assess(client(), { now: at18 })).deferred, undefined);
   await db.exec('DELETE FROM training_date_work');
