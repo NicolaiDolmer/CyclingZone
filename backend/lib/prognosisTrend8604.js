@@ -315,9 +315,11 @@ export function simulateTrend(rider, pace, params, career = STANDARD_CAREER) {
   const declineDays = age0 >= declineSeasonAge ? (age0 - declineSeasonAge + progress) * perSeason : -Infinity;
   const horizonIndex = Math.round(clamp(declineDays, 0, perSeason));
 
-  // Skiftets fald regnes ÉN gang pr. sæson (motoren regner det fra værdien ved skiftet) og
-  // fordeles over sæsonens datoer. Regnet dato for dato fra de allerede sænkede evner ville
-  // procent-aldring forrente sig, og faldet blev for lille (Codex #8876 P2).
+  // Skiftets fald regnes ÉN gang pr. sæson og fordeles over sæsonens datoer. Regnet dato for
+  // dato fra de allerede sænkede evner ville procent-aldring forrente sig, og faldet blev for
+  // lille (Codex #8876 P2). Kendt tilnærmelse: motoren regner procent-faldet fra værdien VED
+  // skiftet (inkl. sæsonens træning); her regnes det fra værdien ved sæsonstart, så faldet er
+  // lidt for lille (ca. sats x sæsonens gevinst, under et halvt point). Trin-aldring er eksakt.
   const seasonDrops = (newAge) => (newAge - 1 < declineSeasonAge
     ? null
     : expectedSeasonDrops(state, primaryType, newAge, cfg, career.declineLoad));
