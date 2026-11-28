@@ -370,6 +370,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // saa maerket skifter til "Now for everyone", naar de er on for alle.
   "training_rotation",
   "training_week_priority",
+  // #8592: patch note 7.535 ("Kun denne dag") gater paa denne kontakt (taendt 28/11).
+  "training_day_override_8592",
   // #7535: den nye planlaegningsside (/planning/workbench) findes kun paa dette flag.
   "planning_workbench",
   // #8031: beta-noten om Træn nu-kvitteringen skifter til "Now for everyone", naar kontakten er on for alle.
