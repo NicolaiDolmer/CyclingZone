@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { CERTAINTIES, certaintyStep } from "../../lib/potentialEstimateDisplay";
+import { CERTAINTIES, certaintyStep, prognosisTitleKey } from "../../lib/potentialEstimateDisplay";
 import type { Certainty, PotentialView, PrognosisView } from "../../lib/potentialEstimateDisplay";
 
 // #6110 Udvikling 2.0 (spec §3.4, §3.6): potentialet som ét skønnet tal + ét ord for,
@@ -82,7 +82,7 @@ export function PrognosisValue({ view, size = "cell" }: { view: PrognosisView; s
     return (
       <span
         className="text-xs text-cz-3 whitespace-nowrap"
-        title={t(pastPeak ? "riders:potentialNumber.prognosisPastPeakTitle" : "riders:potentialNumber.prognosisNoEstimateTitle")}
+        title={t(prognosisTitleKey(view))}
         data-testid="prognosis-hidden"
         data-prognosis-hidden={view.reason}
       >
@@ -93,10 +93,13 @@ export function PrognosisValue({ view, size = "cell" }: { view: PrognosisView; s
   return (
     <span
       className={`tabular-nums whitespace-nowrap text-cz-1 ${NUMBER_CLASS[size]}`}
-      title={t("riders:potentialNumber.prognosisTitle")}
+      title={t(prognosisTitleKey(view))}
       data-testid="prognosis-value"
       data-prognosis-value={view.value}
+      {...(view.learning ? { "data-prognosis-learning": "true" } : {})}
     >
+      {/* #8604 + ejer 27/11 (#8873): talfelter viser altid kun tallet; usikkerheden mens
+          trend-prognosen læres står i tooltip'en (prognosisTitleKey). */}
       {view.value}
     </span>
   );

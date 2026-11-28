@@ -1094,6 +1094,19 @@ features:
     decision: taend
     decide_by: 2026-12-06
 
+  - id: prognosis-trend-8604
+    area: training
+    title_en: "Trend prognosis"
+    title_da: "Trend-prognose"
+    state: building
+    flag: prognosis_trend_8604
+    ssot: docs/PROGRESSION_RULES.md
+    epic: 6110
+    verified: 2026-11-27
+    note: "Seedet off."
+    decision: goer-faerdigt
+    decide_by: 2026-12-06
+
   - id: training-day-override-8592
     area: training
     title_en: Only this day, one session for a rider, several riders or a group on one date

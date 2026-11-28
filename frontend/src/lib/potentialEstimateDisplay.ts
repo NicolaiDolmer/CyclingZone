@@ -69,8 +69,11 @@ export function potentialViewOf(source: unknown): PotentialView | null {
 // #8523 (spec 2026-11-20 §5): den samlede prognose for egne ryttere, "fortsætter du
 // den nuværende fart, ender du omkring her ved toppen". Serveren regner den; feltet
 // findes kun for egne ryttere med tændt flag.
+// #8604: trend-prognosen bag sin kontakt bærer `basis: "trend"`, `learning` (tallet er usikkert,
+// mens det læres på eget hold) og `horizon: "year"` (forbi toppen: forventet rating om et år).
+// Ingen bånd. Uden felterne er visningen som før.
 export type PrognosisView =
-  | { hidden: false; value: number }
+  | { hidden: false; value: number; basis?: "trend"; learning?: true; horizon?: "year" }
   | { hidden: true; reason: "noEstimate" | "pastPeak" };
 
 /** Læser `prognosisView`. null = feltet mangler (andres rytter eller slukket flag). */
@@ -78,11 +81,29 @@ export function prognosisViewOf(source: unknown): PrognosisView | null {
   const raw = (source as { prognosisView?: unknown } | null | undefined)?.prognosisView;
   if (!raw || typeof raw !== "object") return null;
   const view = raw as Record<string, unknown>;
-  if (view.hidden === false && finite(view.value)) return { hidden: false, value: view.value };
+  if (view.hidden === false && finite(view.value)) {
+    return {
+      hidden: false,
+      value: view.value,
+      ...(view.basis === "trend" ? { basis: "trend" as const } : {}),
+      ...(view.learning === true ? { learning: true as const } : {}),
+      ...(view.horizon === "year" ? { horizon: "year" as const } : {}),
+    };
+  }
   if (view.hidden === true && (view.reason === "noEstimate" || view.reason === "pastPeak")) {
     return { hidden: true, reason: view.reason };
   }
   return null;
+}
+
+/** Tooltip-nøglen til prognosen. Den gamle fart-prognose beholder sin tekst. */
+export function prognosisTitleKey(view: PrognosisView): string {
+  if (view.hidden) {
+    return view.reason === "pastPeak" ? "riders:potentialNumber.prognosisPastPeakTitle" : "riders:potentialNumber.prognosisNoEstimateTitle";
+  }
+  if (view.learning) return "riders:potentialNumber.prognosisLearningTitle";
+  if (view.horizon === "year") return "riders:potentialNumber.prognosisYearTitle";
+  return view.basis === "trend" ? "riders:potentialNumber.prognosisTrendTitle" : "riders:potentialNumber.prognosisTitle";
 }
 
 /** Prognosen som sorteringsværdi. null for begge tomme tilstande, så de falder sidst. */
