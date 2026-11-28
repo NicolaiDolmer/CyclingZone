@@ -36,6 +36,7 @@ import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { PROGNOSIS_PACE_DAYS, pacePrognosis } from "./riderPrognosis.js";
 import { resolveScoutBandSeasonNumber, scoutBandAge } from "./scoutBandAge.js";
 import { roleOutputRaw } from "./weights/displayRecipes.js";
+import { loadTrendPrognosisViews } from "./prognosisTrend8604.js"; // #8604 trend-prognosen (kontakt-gated)
 
 // Bevidst kun de visningsfelter publicEstimateView bruger.
 const ESTIMATE_COLUMNS = "rider_id, value, certainty, previous_value, previous_certainty, changed_at";
@@ -275,7 +276,10 @@ async function loadPaceSnapshots(supabase, { riderIds, today }) {
 async function loadPrognosisViews(supabase, { teamId, context, clock = new Date(), preloaded = null }) {
   const out = new Map();
   const own = context.riderRows.filter((rider) => rider.team_id === teamId);
-  const ready = own.filter((rider) => {
+  // #8604: trend-prognosen bag prognosis_trend_8604. Slukket læses kun kontakten, og resten er som før.
+  const trend = own.length ? await loadTrendPrognosisViews(supabase, { teamId, riderIds: own.map((rider) => rider.id), ratings: context.ratings }) : new Map();
+  for (const [riderId, view] of trend) out.set(riderId, view);
+  const ready = own.filter((rider) => !trend.has(rider.id)).filter((rider) => {
     const view = context.views.get(rider.id);
     if (!view || view.hidden) out.set(rider.id, NO_ESTIMATE);
     return out.get(rider.id) == null;

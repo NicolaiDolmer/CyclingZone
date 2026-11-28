@@ -235,6 +235,8 @@ export const STAGE_FLAGS = Object.freeze([
   // #7685: søndagsjob, holdskifte og nye kig skriver gemte potentiale-skøn. Fail-safe OFF;
   // "beta" læses som off. Ikke spiller-synlig; kræver private_config-kalibreringen. Ejer-only flip.
   { key: "potential_estimate_writes", area: "training", label: "Udvikling 2.0 — gemte potentiale-skøn (skrivning)" },
+  // #8604: trend-prognosen (batch + læsning af rider_prognosis_trend). Seedet off; "beta" læses som off. Ejer-only flip.
+  { key: "prognosis_trend_8604", area: "training", label: "Trend-prognose — hvor han topper, hvis han træner som hidtil" },
   { key: "race_day_catchup_enabled", area: "training", label: "Udvikling 2.0 — catch-up via løb (løbsdagens ekstra ens for alle hold)" },
   // #5950: løbsdag = hård dag + rolle-vægtet tillæg (raceDayRoleYield5950.js). Fail-safe OFF; tal i private_config. Ejer-only flip.
   { key: "race_day_role_yield_enabled", area: "race-day", label: "Udvikling 2.0 — løbsdag = hård dag + tillæg efter rolle" },
