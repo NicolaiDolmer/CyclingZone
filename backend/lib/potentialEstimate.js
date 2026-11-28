@@ -146,8 +146,8 @@ function scoutLevel(k, params) {
 }
 
 // Usikkerhed (halv-spredning i ratingpoint) og nøglen for vidensniveauet.
-// Returnerer null, når holdet intet ved (fremmed rytter uden kig, eller egen
-// ungdomsrytter under grænsen for første skøn og uden kig): så vises intet tal.
+// Returnerer null, når holdet intet ved (fremmed rytter uden kig): så vises intet tal.
+// En egen rytter har altid et niveau (#8855).
 //
 // knowledge:
 //   own                 true for holdets egen rytter
@@ -164,7 +164,10 @@ export function knowledgeLevel(knowledge, params) {
   const scout = scoutLevel(k, params);
   if (!k.own) return scout;
   const own = ownLevel(k, params);
-  if (!own) return scout;
+  // #8855 (ejer 27/11): en egen rytter har altid et skøn fra dag ét. Før grænsen for egne
+  // træninger og uden kig er holdets viden ét kig med holdets egen scout; de egne
+  // træninger afløser det, når de ved mere (monotoni-værnet, H3).
+  if (!own) return scout ?? scoutLevel({ ...k, looks: 1 }, params);
   if (!scout) return own;
   return scout.u < own.u ? scout : own;
 }

@@ -45,6 +45,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "fatigue_now_7801", area: "training", label: "Træthed lige nu — flader og regler" },
   // #6110 ejer 19/11: "hold uden division skal ikke træne". Seedet off; ejer-only flip.
   { key: "training_calendar_tick_ai_only", area: "training", label: "Kalenderdagens tick kun for AI-hold uden division" },
+  // #8614 ejer 23/11 + 26/11 (valg B): AI-hold fast træthed og form, intet tick, ingen skader. Seedet off; ejer-only flip.
+  { key: "ai_team_frozen_state_8614", area: "training", label: "AI-hold: fast træthed og form, intet tick, ingen skader" },
   // #7947: alle træninger på Let/Mellem/Hård. Seedet off; kun "on" tænder (trainingEffortLevels.js). Ejer-only flip.
   { key: "training_effort_levels", area: "training", label: "Alle træninger på Let/Mellem/Hård" },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },
@@ -57,6 +59,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_week_priority", area: "training", label: "Træning — Week blocks: prioritet og låst pas" },
   // #8580 / #8550 del 3: den rullende uge (i dag + 7 dage) til dagsvælgeren. Seedet off; ejer-only flip.
   { key: "training_week_forecast", area: "training", label: "Træning — den rullende uge (dagsvælgeren)" },
+  // #8592 / #8819: "Kun denne dag" (et pas på én dato). Seedet off; ejer-only flip.
+  { key: "training_day_override_8592", area: "training", label: "Træning — Kun denne dag (et pas på én dato)" },
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
   { key: "first_race_card", area: "onboarding", label: "Dit første løb — kort på dashboardet (nye hold)" },
   // #6523: ingen kode laeser den laengere; raekken bliver kun for patch-noten (se PLAYER_VISIBLE_FLAG_KEYS).
@@ -231,6 +235,8 @@ export const STAGE_FLAGS = Object.freeze([
   // #7685: søndagsjob, holdskifte og nye kig skriver gemte potentiale-skøn. Fail-safe OFF;
   // "beta" læses som off. Ikke spiller-synlig; kræver private_config-kalibreringen. Ejer-only flip.
   { key: "potential_estimate_writes", area: "training", label: "Udvikling 2.0 — gemte potentiale-skøn (skrivning)" },
+  // #8604: trend-prognosen (batch + læsning af rider_prognosis_trend). Seedet off; "beta" læses som off. Ejer-only flip.
+  { key: "prognosis_trend_8604", area: "training", label: "Trend-prognose — hvor han topper, hvis han træner som hidtil" },
   { key: "race_day_catchup_enabled", area: "training", label: "Udvikling 2.0 — catch-up via løb (løbsdagens ekstra ens for alle hold)" },
   // #5950: løbsdag = hård dag + rolle-vægtet tillæg (raceDayRoleYield5950.js). Fail-safe OFF; tal i private_config. Ejer-only flip.
   { key: "race_day_role_yield_enabled", area: "race-day", label: "Udvikling 2.0 — løbsdag = hård dag + tillæg efter rolle" },

@@ -1,5 +1,249 @@
 export const PATCHES = [
 {
+  "version": "7.535",
+  "date": "2026-11-28",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "training_day_override_8592",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Change one day's training without touching the week plan",
+        "body": "In the day picker, pick riders and a session that apply to one date only. Your week plan stays as it is. Races still come first, and if the fatigue limit has replaced the day, a session you choose afterwards wins."
+      },
+      "da": {
+        "title": "Skift én dags træning uden at røre ugeplanen",
+        "body": "I dagsvælgeren vælger du ryttere og et pas, der kun gælder én dato. Din ugeplan forbliver, som den er. Løb går stadig forud, og har træthedsgrænsen erstattet dagen, gælder et pas, du vælger bagefter."
+      },
+      "refs": [
+        8592,
+        8819
+      ]
+    }
+  ]
+},
+{
+  "version": "7.534",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "Your own riders show their potential from day one",
+        "body": "Some of your own riders showed a question mark instead of their potential, often riders you had just bought. Now every rider on your team shows the scout's estimate of his potential from the day he joins. The forecast still learns from his training with you."
+      },
+      "da": {
+        "title": "Dine egne ryttere viser deres potentiale fra første dag",
+        "body": "Nogle af dine egne ryttere viste et spørgsmålstegn i stedet for deres potentiale, ofte ryttere du lige havde købt. Nu viser alle ryttere på dit hold spejderens skøn over deres potentiale fra den dag, de kommer til holdet. Prognosen lærer stadig af hans træning hos dig."
+      },
+      "refs": [
+        8855
+      ]
+    }
+  ]
+},
+{
+  "version": "7.533",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "See exactly what each session trained",
+        "body": "The training report shows each session on its own line with the name from the day picker. Hover or tap the name to see the ability, level and note."
+      },
+      "da": {
+        "title": "Se præcis, hvad hvert pas trænede",
+        "body": "Træningsrapporten viser hvert pas på sin egen linje med navnet fra dagsvælgeren. Hold musen over navnet, eller tryk på det, for at se evne, niveau og note."
+      },
+      "refs": [
+        8856
+      ]
+    }
+  ]
+},
+{
+  "version": "7.532",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Help",
+      "area": "help",
+      "en": {
+        "title": "Help explains Form on rest days correctly",
+        "body": "Help now describes Rest days as days when the rider is set to Rest in the training plan. Rest lowers Fatigue, but Form is only built by training."
+      },
+      "da": {
+        "title": "Hjælp forklarer Form på hviledage rigtigt",
+        "body": "Hjælp beskriver nu hviledage som dage, hvor rytteren står på Hvile i træningsplanen. Hvile sænker Trætheden, men Form bygges kun af træning."
+      },
+      "refs": [
+        8789
+      ]
+    }
+  ]
+},
+{
+  "version": "7.531",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "training_week_priority",
+      "replaces": "7.523#0",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Week blocks with priority, now for everyone",
+        "body": "Set Plan type to Week blocks to order each day's passes by priority and lock one pass per day. Races take the lowest priority, and Races took lists the passes that did not fit. It only applies to plans where you chose Week blocks yourself."
+      },
+      "da": {
+        "title": "Ugeblokke med prioritet, nu for alle",
+        "body": "Sæt Plantype til Ugeblokke for at sætte dagens pas i prioritetsrækkefølge og låse ét pas pr. dag. Løb tager laveste prioritet, og Løb tog viser de pas, der ikke blev plads til. Det gælder kun planer, hvor du selv har valgt Ugeblokke."
+      },
+      "refs": [
+        8549
+      ]
+    }
+  ]
+},
+{
+  "version": "7.530",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tactics",
+      "area": "tactics",
+      "en": {
+        "title": "The Tactics tab stays on the stage you picked",
+        "body": "When you open Tactics from a future stage, it now shows that stage instead of jumping back to the next one."
+      },
+      "da": {
+        "title": "Taktikfanen bliver på den etape, du har valgt",
+        "body": "Når du åbner Taktik fra en kommende etape, viser den nu den etape i stedet for at hoppe tilbage til den næste."
+      },
+      "refs": [
+        8800
+      ]
+    }
+  ]
+},
+{
+  "version": "7.529",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Riders",
+      "area": "interface",
+      "en": {
+        "title": "Next and previous rider work again",
+        "body": "On a rider's profile, the arrows to your team's next and previous rider no longer disappear when you switch rider."
+      },
+      "da": {
+        "title": "Næste og forrige rytter virker igen",
+        "body": "På en rytters profil forsvinder pilene til holdets næste og forrige rytter ikke længere, når du skifter rytter."
+      },
+      "refs": [
+        8755
+      ]
+    }
+  ]
+},
+{
+  "version": "7.528",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "New riders train from the day they join",
+        "body": "A rider who joins your team after the day's squad was set, for example from the academy or as a free agent, now gets that day's training in the evening run."
+      },
+      "da": {
+        "title": "Nye ryttere træner fra den dag, de kommer",
+        "body": "En rytter, der kommer på holdet, efter dagens trup er låst, fx fra akademiet eller som fri agent, får nu dagens træning i aftenkørslen."
+      },
+      "refs": [
+        8606
+      ]
+    }
+  ]
+},
+{
+  "version": "7.527",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Results",
+      "area": "races",
+      "en": {
+        "title": "Results show the team a rider rode for",
+        "body": "Stage results, latest results and race history now show the team the rider was on in that race, also after he changed team."
+      },
+      "da": {
+        "title": "Resultater viser holdet, rytteren kørte for",
+        "body": "Etaperesultater, seneste resultater og løbshistorik viser nu det hold, rytteren kørte for i løbet, også efter et holdskifte."
+      },
+      "refs": [
+        8399
+      ]
+    }
+  ]
+},
+{
+  "version": "7.526",
+  "date": "2026-11-27",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Riders",
+      "area": "mobile",
+      "en": {
+        "title": "Rider comparison fits on your phone",
+        "body": "On narrow screens the comparison stacks, so you no longer scroll sideways."
+      },
+      "da": {
+        "title": "Rytter-sammenligningen passer på telefonen",
+        "body": "På smalle skærme stables sammenligningen, så du ikke længere skal scrolle til siden."
+      },
+      "refs": [
+        7925
+      ]
+    }
+  ]
+},
+{
   "version": "7.525",
   "date": "2026-11-26",
   "changes": [

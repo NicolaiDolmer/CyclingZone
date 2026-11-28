@@ -110,9 +110,23 @@ test("rytter uden talent_ceiling springes over", () => {
   assert.equal(counts.noCeiling, 1);
 });
 
-test("fremmed rytter uden kig og egen rytter under grænsen får intet skøn", () => {
+test("fremmed rytter uden kig får intet skøn; egen rytter under grænsen får dag ét-skønnet (#8855)", () => {
   assert.equal(planOne({ rider: foreign, trigger: "sunday" }).counts.noKnowledge, 1);
-  assert.equal(planOne({ rider: own, dates: 4, trigger: "sunday" }).counts.noKnowledge, 1);
+  for (const dates of [0, 4]) {
+    const { rows, counts } = planOne({ rider: own, dates, trigger: "sunday" });
+    assert.equal(counts.noKnowledge, 0);
+    assert.equal(rows[0].knowledge_key, `s1t${PARAMS.scout.defaultTier}`);
+  }
+});
+
+test("#8855: dag ét-skønnet afløses af de egne træninger, når de ved mere, og står ellers stille", () => {
+  const first = planOne({ rider: own, dates: 0, trigger: "team_change" }).rows[0];
+  const stored = { ...first };
+  // Samme viden en søndag senere: tallet står (H2).
+  assert.deepEqual(planOne({ rider: own, dates: 3, trigger: "sunday", stored }).rows, []);
+  // Over grænsen ved holdet mere end ét kig med standardscouten: nyt niveau.
+  const later = planOne({ rider: own, dates: 5, trigger: "sunday", stored }).rows[0];
+  assert.equal(later.knowledge_key, "own0");
 });
 
 test("egen rytter får sit første skøn ved grænsen", () => {
@@ -610,7 +624,9 @@ test("krog: købt rytter har et bud fra dag 1 og læres hurtigere end et akademi
   assert.equal(bought.looks, 2);
   assert.equal(bought.trainingDates, 6);
   assert.ok(knowledgeLevel(bought, PARAMS), "købt rytter har et skøn fra dag 1");
-  assert.equal(knowledgeLevel(knowledgeForOrigin(k, { origin: "academy" }, hooks), PARAMS), null, "akademitalentet lærer stadig");
+  // #8855: akademitalentet har også et skøn fra dag ét, men den købte rytter ved holdet mere om.
+  const academy = knowledgeLevel(knowledgeForOrigin(k, { origin: "academy" }, hooks), PARAMS);
+  assert.ok(knowledgeLevel(bought, PARAMS).u < academy.u, "den købte rytters bud er sikrere");
   assert.equal(knowledgeForOrigin({ ...k, looks: 3 }, { origin: "bought" }, hooks).looks, 3, "aldrig færre kig end holdet har");
   assert.equal(knowledgeForOrigin(k, { origin: "bought" }, { bought: { learnSpeed: 0.5 } }).trainingDates, 3, "aldrig langsommere");
 });

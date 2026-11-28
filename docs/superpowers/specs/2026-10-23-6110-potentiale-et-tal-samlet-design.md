@@ -88,7 +88,7 @@ Ellers står tallet stille. **Teknisk valg: gemt skøn** frem for live-beregning
 - Tre ord: **Usikker, Rimelig, Sikker** (EN: Uncertain, Fair, Confident; endelig copy via `TONE_OF_VOICE.md`). Ordet afledes af usikkerheden i trin.
 - Grænserne kalibreres, så ordet holder, hvad det lover: "Sikker" rammer tæt på i langt de fleste tilfælde (harness-gate H1).
 - Fremmed rytter uden kig: intet tal, kun "Ikke scoutet" + scout-knap (som i dag).
-- Egen ungdomsrytter før 5 træninger: intet tal, "Læres · x af 5 træninger".
+- ~~Egen ungdomsrytter før 5 træninger: intet tal, "Læres · x af 5 træninger".~~ **Afløst 27/11 (ejerens prognose-design, #8604/#8855):** egne ryttere (også købte seniorer og ungdom) viser altid et potentiale-skøn fra dag ét. "Læres" gælder kun prognosen.
 
 ### 3.5 Doktrinen #5490
 Doktrinen siger: det spilleren ser, er det spillet regner på. Potentialet er den **ene bevidste undtagelse**, fordi ejeren har besluttet, at det skal være et skøn (23/10). Undtagelsen afgrænses:
@@ -102,7 +102,7 @@ Alle flader fra kortlægningen skifter fra interval til tal + ord via én ny kom
 - **Rytterprofil, hero (T3):** "Potentiale 74 · Usikker" og under det "Scoutet 1 gang". Loft-linjen forsvinder (D1b gør loftet til potentialet).
 - **Scouting-fanen:** stort tal + ord + tretrins-måler, "bygger på" (antal kig, scoutens navn og niveau), "endnu et kig gør skønnet mere sikkert", scout igen-knap (sekundær). Én linje: "Et skøn, ikke et facit."
 - **Udvikling-fanen:** grafen viser kurven mod skønnet (én linje), ikke et bånd. Prognosen bruger samme motor som alt andet (de tre modeller bliver én).
-- **Akademi, trupper, træning, holdets udvikling, Graduation Day:** samme tal + ord. Ungdom før 5 træninger: "Læres · x af 5".
+- **Akademi, trupper, træning, holdets udvikling, Graduation Day:** samme tal + ord. Fra 27/11 (#8855): også ungdom og nye egne ryttere viser skønnet fra dag ét; "Læres" står kun ved prognosen.
 - **Database, auktion, ønskeliste, sammenlign:** tal + ord i én celle; sortering efter skønnet (eget hold), aldrig efter det sande.
 - Tooltips og help.json om "Rollens loft" skrives om samme dag (krav fra #6110-kommentaren 20/10).
 

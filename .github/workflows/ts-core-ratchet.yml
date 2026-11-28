@@ -19,6 +19,8 @@ name: TypeScript core ratchet
 
 on:
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   # Merge queue: required checks skal rapportere paa merge-group-SHA'en,
@@ -38,6 +40,7 @@ concurrency:
 
 jobs:
   ts-core-ratchet:
+    if: ${{ !github.event.pull_request.draft }}
     name: ts-core-ratchet
     runs-on: ubuntu-latest
     steps:

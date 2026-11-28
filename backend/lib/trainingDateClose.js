@@ -1,4 +1,5 @@
 import { isCalendarTickAiOnly } from "./trainingCalendarTickFlag.js"; // #6110 ejer 19/11
+import { readAiTeamFrozenState, reportFrozenAiWorkSkipped, skipsFrozenAiTeamTick } from "./aiTeamFrozenState8614.js"; // #8614
 import { trainingDateRpc } from "./trainingDateRpc.js";
 import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { fetchAllRows } from './supabasePagination.js';
@@ -105,6 +106,13 @@ function instantWithin(value, { start, end }) {
  * quarantine those riders (unsafe_current_state). Season-end alone (status
  * `completed`, next season not yet active) therefore waits for the transition.
  */
+// #7470: is this the most recently completed season (the one whose cutover may be running)?
+async function isLatestCompletedSeason(supabase, seasonId) {
+  const [season] = await checked(supabase.from('seasons').select('id')
+    .eq('status', 'completed').order('number', { ascending: false }).range(0, 0), 'latest completed season') ?? [];
+  return season?.id === seasonId;
+}
+
 export async function loadJustCompletedFinalTrainingDate({ supabase, today, dueEnd }) {
   const [season] = await checked(supabase.from('seasons').select('id,number,start_date,end_date,status')
     .eq('status', 'completed').order('number', { ascending: false }).range(0, 0), 'completed season') ?? [];
@@ -444,6 +452,8 @@ export async function runNormalizedTrainingDateSweep({
     // #6110 ejer 19/11: kontakten for reservevejen læses én gang pr. dato, kun når et hold uden division findes.
     let calendarAiOnlyPromise = null;
     const loadCalendarAiOnly = () => (calendarAiOnlyPromise ??= isCalendarTickAiOnly(supabase));
+    let aiFrozenPromise = null; // #8614: læses én gang pr. dato, kun når et AI-hold nås
+    const loadAiFrozen8614 = () => (aiFrozenPromise ??= readAiTeamFrozenState(supabase));
     const loadLegacyRan = () => (legacyRanPromise ??= Promise.resolve()
       .then(() => loadLegacyRuns({ supabase, tickDate: job.tickDate }))
       .catch((error) => { legacyRanPromise = null; throw error; }));
@@ -455,6 +465,15 @@ export async function runNormalizedTrainingDateSweep({
     // the cutoff: the pools the teams raced in, and teams the season-end parking
     // sweep parked afterwards (their work is registered like any other team's).
     const final = job.finalSeasonDate ?? null;
+    // #7470 (Fable hul A): the latest completed season's final date while its transition
+    // has not finished (no final-date context yet, the next season already active) waits
+    // instead of quarantining every registered rider as historical. It is retried on the
+    // next run, and settles once the cutover is complete. Older dates are unchanged.
+    if (!final && index.activeSeasonId !== undefined && index.activeSeasonId !== job.season.id &&
+        job.tickDate >= previousCivilDate(index.today) && await isLatestCompletedSeason(supabase, job.season.id)) {
+      summary.awaitingCutover = (summary.awaitingCutover ?? 0) + 1;
+      continue;
+    }
     const [seasonDivisions, parkedAfterCutoff] = final
       ? await Promise.all([loadSeasonDivisions({ supabase, seasonId: job.season.id }), loadParkedTeams({ supabase, cutoff: final.cutoff })])
       : [new Map(), []];
@@ -490,6 +509,13 @@ export async function runNormalizedTrainingDateSweep({
       const lateFor = work => (admissible ? lateRiderIds(work, currentIds).filter(id => (rosterOwner.get(id) ?? team.id) === team.id) : []);
       if (workByTeam.get(team.id)?.status === 'complete' && !lateFor(workByTeam.get(team.id)).length) return;
       if (!currentIds.length && !workByTeam.has(team.id)) return;
+      // #8614: med ai_team_frozen_state_8614 on træner et AI-hold ikke (ingen registrering, intet tick).
+      // #8808 (Fable 26/11): registreret arbejde afsluttes kun på en dato, der var åben ved tændingen.
+      const registered8614 = workByTeam.has(team.id), frozen8614 = team.is_ai === true ? await loadAiFrozen8614() : null;
+      if (skipsFrozenAiTeamTick(team, { frozenOn: frozen8614?.on === true, registered: registered8614, tickDate: job.tickDate, onSince: frozen8614?.onSince })) {
+        if (registered8614) reportFrozenAiWorkSkipped({ teamId: team.id, tickDate: job.tickDate, logger });
+        return;
+      }
       const divisionId = final ? (seasonDivisions.get(team.id) ?? team.league_division_id) : team.league_division_id;
       const days = workByTeam.get(team.id)?.game_days ?? context.gameDaysByDivision.get(divisionId);
       // Division-less teams use the calendar-day fallback (isLegacyCalendarTickTeam). A parked team

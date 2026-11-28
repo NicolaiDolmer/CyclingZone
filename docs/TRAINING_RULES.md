@@ -61,6 +61,23 @@ rytterne. Sene registreringsveje med bevist starttilstand findes for brodatoer (
 almindelige datoer i den aktive sæson (#7832, se "Sent oprettede hold" nedenfor), ikke for
 sæsonens sidste dato.
 
+### Skifte før træningen med udskudte nulstillinger (#7470, ejer 27/11)
+
+Ejer 27/11: "Træning skal være på samme tidspunkt som altid, der skal bare kunne laves et
+sæsonskifte inden rytterne har trænet". Undtagelse fra reglen om, at registreret
+pending/partial-arbejde på sidste dato blokerer sæsonafslutningen: står alle tre
+sæsonstart-nulstillinger slukket (`season_fatigue_reset_enabled`, `season_injury_reset_mode`,
+`season_form_reset_mode` = off eller mangler; `seasonStartResetsDeferred`), udskyder gaten
+også registreret arbejde til aftenkørslen, for så rører skiftet ikke form, træthed eller
+skader, og starttilstands-snapshottet er stadig gyldigt. En fejlet læsning holder gaten lukket.
+Rækkefølgen er da: skifte (uden nulstillinger) → aftenkørslen kl. 20 afregner sidste dato på
+den gamle sæsons tilstand → `backend/scripts/seasonStartResets7470.js` kører de tre
+nulstillinger alene (kun på sidste dato, kun uden træningsarbejde i den nye sæson, kun når
+datoen har 0 åbne registreringer) → kontakterne tændes igen. Kører skiftet stadig, når
+aftenkørslen når datoen (næste sæson aktiv, intet afslutnings-anker), venter datoen på næste
+kørsel i stedet for at gå til `historical_season_requires_review`. Driftsrækkefølgen står i
+`docs/runbooks/2026-11-28-s5-s6-drejebog.md` §3.
+
 Afregningen ser sæsonen, som den var ved skæringstidspunktet: det tidligste af
 sæsonafslutningens claim (`season_end_claims.claimed_at`) og transitionens eget
 tidspunkt (`meta.transition_at` på transitionens `admin_log`-rækker med
@@ -1518,9 +1535,9 @@ Kontakt `training_week_forecast` (off | beta | on), seedet off; tænding er ejer
 - **Bindinger og udgang af løb** genbruger motorens regel (`forecastBindingsFromEntryDays`, #5949). Et løb i divisionen, som rytteren ikke er udtaget til, er ikke hans felt (UGE-4).
 - **Kontakten off** (eller et svar uden ugen): `{ available:false, reason:"disabled", days:[] }`, og I dag-fanen er præcis som før.
 
-### 13.10 Week blocks: prioritet pr. felt og ét låst pas pr. dag (#8549 PR 2; bag slukket kontakt)
+### 13.10 Week blocks: prioritet pr. felt og ét låst pas pr. dag (#8549 PR 2; on for alle fra 27/11)
 
-Kontakt `training_week_priority` (off | beta | on), seedet off; tænding er ejer-only. Design: `docs/audits/undersoegelse-docs-8549-prioritet-laast-pas-design.md` §5. Dommer-scenarier: `docs/audits/7456-program-dommer-scenarier.md` §2 (WB-1..10). Kode: `backend/lib/trainingWeekBlocks.js` (kernen) og `backend/lib/trainingWeekPriority.js` (motorens og prognosens fælles indgang).
+Kontakt `training_week_priority` (off | beta | on), seedet off; beta 26/11, on 27/11 (ejer-go). Sæt den aldrig tilbage til off, og genkør aldrig migrationen `2026-11-26-8549-ugeblokke-opt-in.sql` (den sletter ægte valg uden lås). Design: `docs/audits/undersoegelse-docs-8549-prioritet-laast-pas-design.md` §5. Dommer-scenarier: `docs/audits/7456-program-dommer-scenarier.md` §2 (WB-1..10). Kode: `backend/lib/trainingWeekBlocks.js` (kernen) og `backend/lib/trainingWeekPriority.js` (motorens og prognosens fælles indgang).
 
 - **Gælder kun rækker med `plan_kind = 'week'`** (sættes af den nye Program-fane, K-9). **Opt-in (ejer 26/11, #8776):** kun managerens eget valg sætter mærket, dvs. en Week blocks-skrivning (prioritet/lås) eller et skift fra Rotation til Ugeblokke i Plantype. Et almindeligt felt eller et program sat på lader `plan_kind` være, som det var, også når klienten sender `planKind`. `NULL` = gammel felt-plan med dagens regel (OLD-1). `'rotation'` hører til §13.8 (OFF-2).
 - **Kildefeltet omdirigeres, ikke træningsstien:** session og indsats kommer fra kildefeltet (`resolveDayProgram` med kildefeltet), træthedsgrænsen vurderes på feltets eget tidspunkt og vinder over låsen (WB-7, ejer 19/11).
@@ -1539,6 +1556,34 @@ Kontakt `training_week_priority` (off | beta | on), seedet off; tænding er ejer
 - **Kontakten off:** intet ekstra opslag, ingen `source_slot` i rapporten, kildefeltet = feltet (bit-identisk).
 
 - **Skrivning fra Program R5:** `PUT /api/training/programs/cell` for ryttere og `PUT /api/training/groups/:id/cell` for grupper tager valgfri `weekBlock: { slots, lockSlot, slotEfforts? }` sammen med cellens sædvanlige felter. `slots` indeholder datoens pas i prioriteret rækkefølge. `lockSlot` er et nulbaseret felt eller `null`, der fjerner låsen. Med indsatskontakten på har `slotEfforts` én gyldig indsats eller `null` pr. felt. En `weekBlock`-skrivning sætter `plan_kind = 'week'` og kopierer gruppeplanen til følgere; en skrivning uden `weekBlock` sætter aldrig mærket (#8776). Off giver 409 `feature_disabled`. Ugyldigt indhold giver 400 uden skrivning.
+
+### 13.11 AI-hold har en fast tilstand (#8614 valg B, #8808; bag slukket kontakt)
+
+Kontakt `ai_team_frozen_state_8614`, binær: kun den eksakte værdi `"on"` tænder; seedet off (`database/2026-11-26-8614-ai-team-frozen-state-flag.sql`); tænding er ejer-only. Kode: `backend/lib/aiTeamFrozenState8614.js`. Ejerens beslutning (23/11 + 26/11, valg B): AI-hold har fast træthed og form (moderat grundtræthed, neutral form), ingen udvikling, ingen skader og ingen daglig træning. Undtagelse fra §6 og registreringskravet for divisionshold: med kontakten on registrerer et AI-hold ingen dato.
+
+- **Aftenkørslen** (`trainingDateClose.js`): et AI-hold uden registreret arbejde springes over (ingen `register_training_date_work`, ingen kvittering, intet tick, heller ikke kalenderdagens tick uden division).
+- **Undtagelsen for registreret AI-arbejde (Fable 26/11):** arbejde, der allerede er registreret på en dato, som var åben da kontakten blev tændt (datoen ligger på eller før tændingsdagen, dansk kalenderdato for `app_config.updated_at`), afsluttes som før, så den dato aldrig hænger. Registreret AI-arbejde på en senere dato tickes ikke og meldes til Sentry (én gang pr. hold og dato pr. proces), for det betyder, at en sti stadig registrerer AI-hold. Et ukendt tændingstidspunkt tæller som åben dato. Tænd derfor via Admin > System (skriver `updated_at`); en SQL-tænding skal også sætte `updated_at = now()`.
+- **Etape-afregningen** (§13.5, `trainingSettleRaceSession7982.js`): AI-hold springes over: ingen registrering, intet tick, ingen kvittering. Kontakten læses kun, når planen har et AI-hold.
+- **Sæsonens sidste træningsdato** (`seasonTransitionReadiness.js`): et AI-hold uden registrering kræver ingen kvittering. Registreret AI-arbejde, der ikke er afsluttet, blokerer som før.
+- **Engangsnulstillingen:** ved sæsonskiftet (fase `ai_team_frozen_reset_8614`, efter sæsonstartens øvrige nulstillinger) sættes aktive AI-rytteres træthed til den faste værdi, og skaderne fjernes; formen i databasen røres ikke (motoren bruger den faste form). Én gang, styret af claim-rækken `ai_team_frozen_state_8614_reset` i `app_config` (`claimed` → `done`; en forældet claim kan tages igen). Uret er altid kalderens (sæsonskiftets tidspunkt); der er intet vægur-default. Fejler den, slippes claimen, sæsonskiftet fortsætter, og fejlen meldes til Sentry. Genkørsel uden at vente på næste skifte (også ved tænding midt i en sæson): `backend/scripts/ops/aiTeamFrozenReset8614.mjs` (status som dry-run; `--apply --owner-go` kører samme idempotente nulstilling).
+- **Fejlet læsning:** en fejlet læsning af kontakten tæller som off (dagens regel), men meldes altid til Sentry.
+- **Udvikling:** AI-hold havde allerede ingen udvikling (D6); uden tick sker der intet.
+- **Kontakten off:** bit-identisk med reglerne før #8614; eneste nye opslag er selve kontakten (én gang pr. dato i aftenkørslen, kun når planen har et AI-hold i etape-afregningen). Bevist mod frosne kopier af merge-base (goldens i `backend/lib/__fixtures__/aiTeamFrozenState8614*.golden.json`). Løbsmotorens del: RACE_ENGINE_RULES, "AI-hold fast tilstand".
+
+### 13.12 Kun denne dag: et pas på én dato (#8592; bag slukket kontakt)
+
+Kontakt `training_day_override_8592` (off | beta | on), seedet off; tænding er ejer-only. Ejerbeslutning 26/11 på #8592 og #8819 (to svar plus Fable-dommens fire fund). Dommer-scenarier: `docs/audits/8592-kun-denne-dag-dommer-scenarier.md` (DO-1..13). Kode: `backend/lib/trainingDayOverride8592.js`.
+
+- **Data:** `training_day_overrides`, én række pr. (hold, rytter, dato) med ét pas fra programkataloget. Ugeplanen (`training_week_plans`) røres aldrig. Datoen skal ligge i den rullende uge (i morgen til og med om 7 dage); fortiden, i dag og dag 8 giver 400 `invalid_date`. Et valg fra en tidligere dato bevares, til datoen er gjort op for holdet (`training_date_work` = `complete`), så en genkørsel bruger det; først derefter slettes det ved næste læsning eller skrivning (DO-9). Et valg på en dato uden nogen registrering for holdet ryddes først, når datoen er over 7 dage gammel og holdet har en registrering på en senere dato (motoren er forbi datoen). En fejlet læsning af kontakten i motoren kaster, så datoen prøves igen, og et valg tabes aldrig i stilhed. API og prognose afgør beta på holdets ejer ligesom motoren (#8834, Fable 27/11).
+- **Forrang:** løb / binding / skade > træthedsgrænsen (medmindre valget er nyere end grænsens markering) > dato-valget > rotation > ugeblok > ugedagens felt > plan.
+- **Træthedsgrænsen (DO-10, nyeste information vinder):** dagsvælgeren viser grænsens markering for i morgen (dagens prognose for i aften er morgendagens start; samme regel som motoren, felt 1). Gemmer spilleren et valg, mens markeringen er synlig, sætter serveren `beats_fatigue_rule` på rækken, og på datoen går valget forud for grænsen. Ellers bestemmer grænsen, og feltet stemples `fatigue_rule`. Klienten sender intet om grænsen, og datoer efter i morgen får aldrig markeringen. Valget gælder alle datoens frie felter; felter med løb, bundet hvile og skade er urørte.
+- **Rotation og ugeblokke:** rotationen venter på datoen (intet stempel), og næste frie felt efter datoen kører passet, der stod for tur. Ugeblokkens kildefelt og lås gælder ikke på datoen.
+- **Markering:** hvert felt på datoen får `date_override: { session, outcome }` på kvitteringen; `outcome` er `trained`, `race`, `bound_rest`, `injured`, `unknown`, `fatigue_rule` eller `unavailable`. Med `beats_fatigue_rule` får stemplet også `beats_fatigue_rule: true`. Spilleren ser udfaldet tre steder (DO-12): dagsvælgeren (løb og hvile som før, plus grænsens markering i morgen), I dag (prognosens `dateOverride.outcome`/`some`) og efter datoen (GET svarer `recent` for de seneste 7 datoer, fra kvitteringerne).
+- **Alle hold (DO-11):** det virker også uden program. Motoren læser kontakten for alle hold (samtidig med indsats-kontakten) og tabellen kun med kontakten on. Uden program er planen den samme som i går, og valget erstatter den kun på datoen.
+- **Adgang (DO-13):** spilleren må kun læse eget holds rækker (RLS SELECT); API'et skriver med service-role. Erklæret i `data-api-access` i migrationen.
+- **API:** `GET|PUT|DELETE /api/training/programs/day-overrides`. PUT tager `{ riderIds?, groupId?, date, session }` (en gruppe giver én række pr. medlem på skrivetidspunktet); DELETE er "Tilbage til planen".
+- **Prognoser:** `GET /forecast` og `GET /forecast/week` får datoens valg (`dateOverride` pr. rytter i dag, `dayOverrides` pr. dag i ugen) og regner med samme forrang.
+- **Kontakten off:** motoren er bit-identisk med en frossen kopi af merge-basen (`backend/lib/trainingDayOverride8592.golden.json`), og API'et afviser skrivning med 409 `feature_disabled`.
 
 ## Program R5 · tildeling og gruppemedlemmer (#8608, ejer 23/11)
 

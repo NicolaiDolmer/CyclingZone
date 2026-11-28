@@ -52,6 +52,10 @@ through the existing training engine and receipt CAS. It never trains a reserved
 stage slot or creates a new freeze. Existing simulation snapshots remain frozen.
 Unstamped riders retain the gate above. See [TRAINING_RULES, Instant train-now PR2](TRAINING_RULES.md#instant-train-now-pr2-stage-input-and-existing-displays).
 
+### AI-hold fast tilstand (#8614 valg B, #8808, **slukket**)
+
+Med kontakten `ai_team_frozen_state_8614` on ser motoren alle AI-ryttere med den faste træthed og form (TRAINING_RULES §13.11): i startfeltet (`loadEntrantsForRace`) og igen efter etapestartens træthed ovenfor (`applySameDateEnteringFatigueV2`, også stemplet Træn nu), lige før etapen simuleres (`refreezeAiEntrantsAfterStageStart` i `simulateStageByIndex`). En AI-rytter starter derfor også dagens anden etape med den faste tilstand; datoens tidligere etaper og ledgerens belastninger lægges ikke oveni. Et styrt registreres som hændelse, og rytteren kan udgå af løbet, men skaden gemmes ikke (`persistIncidents`). Menneskeryttere er uændrede. Kontakten læses kun med AI-ryttere i feltet; off er bit-identisk med reglerne før #8614 (golden mod merge-base, `aiTeamFrozenState8614Race.golden.json`). Åbent ejer-spørgsmål (PR #8823): skal AI-trætheden være helt fast inden for en dato?
+
 ### Medicin på etapens styrtskader (#6984 M2/M3, **slukket**)
 
 Under `condition_model_v2` ændrer holdets medicinske afdeling motorens skadeudfald, ikke motoren: når etapens belastnings-snapshot fryses, fryses holdets medicin-bonus med (`medical_bonus` pr. rytter), og et seedet rul pr. rytter og etape gør en styrtskade til et styrt uden skade eller forkorter den. Ét skridt på hele outputtet, så `race_incidents`, `rider_condition`-skaden og tidslinjens `incident`-events bærer samme skadelængde; et genoptaget trin genbruger den frosne bonus. Styrtet og udfaldet (udgået) bevares. Kode: `raceRunner.applyFrozenMedical`, `medicalEffects.applyMedicalToStageOutputs`. Flag off eller hold uden afdeling = uændret.

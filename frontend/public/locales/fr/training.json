@@ -509,7 +509,7 @@
     "dayTypeNote_recovery": "La fatigue baisse un peu. Un peu de progression en récupération.",
     "dayTypeNote_skill": "Charge faible. Savoir-faire uniquement, et ça se construit lentement.",
     "dayTypeNote_training": "Aptitudes physiques, au niveau de la séance.",
-    "noSession_rest": "Un jour de repos n'a pas de séance. Ton coureur ne s'entraîne pas, et sa fatigue baisse plus vite qu'un autre jour. La séance qu'il suivait est conservée, un clic le remet donc dessus.",
+    "noSession_rest": "Un jour de repos n'a pas de séance. Ton coureur ne s'entraîne pas, et sa fatigue baisse plus vite qu'un autre jour. La séance qu'il suivait est conservée, un clic le remet donc dessus. Le repos baisse la fatigue, mais la forme ne se construit qu'avec un entraînement à charge adaptée.",
     "noSession_recovery": "La récupération active n'a pas de séance. Ton coureur pédale tranquille : la fatigue baisse, mais moins qu'un jour de repos complet, et il gagne un peu en récupération. C'est le seul jour qui baisse la fatigue tout en développant quelque chose.",
     "level_easy": "Facile",
     "level_normal": "Moyenne",

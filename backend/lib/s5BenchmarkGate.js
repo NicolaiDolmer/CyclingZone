@@ -310,9 +310,14 @@ export function isGrandTourRace(race) {
  * landevejs-terraenerne skaleres med stoerste-rest-metoden (som generatoren). Ved kvotens
  * eget etapeantal (18/17/17) er resultatet kvoten selv.
  */
-export function expectedGrandTourCounts(gtType, stageCount) {
+/**
+ * @param {string} gtType @param {number} stageCount
+ * @param {{ maxTimeTrials?: number|null }} [opts]
+ */
+export function expectedGrandTourCounts(gtType, stageCount, { maxTimeTrials = null } = {}) {
   const q = S5_GT_QUOTAS[gtType] ?? S5_GT_QUOTAS.tour;
-  const timeTrials = q.itt + q.ttt;
+  // #8830: junior-mini-GT'en har een enkeltstart (ejer 27/11), samme regel som generatoren.
+  const timeTrials = Number.isInteger(maxTimeTrials) ? Math.min(q.itt + q.ttt, /** @type {number} */ (maxTimeTrials)) : q.itt + q.ttt;
   const roadTarget = Math.max(0, Number(stageCount) - timeTrials);
   const roadTotal = S5_GT_ROAD_TERRAINS.reduce((s, t) => s + q[t], 0);
   const exact = S5_GT_ROAD_TERRAINS.map((t) => (q[t] * roadTarget) / roadTotal);
@@ -327,21 +332,42 @@ export function expectedGrandTourCounts(gtType, stageCount) {
   };
 }
 
+/**
+ * #8830: er loebet en ungdoms-mini-GT (U23/junior, #7471) i en S6+-saeson? Kun da gaelder
+ * mini-GT'ens egen bjergtop-kvote (U23 loesning A). `squad` kommer fra planens raekke.
+ * @param {{ squad?: string|null, [key: string]: unknown }} race
+ * @param {number} stageCount
+ * @param {boolean} s6
+ */
+export function isYouthMiniGrandTour(race, stageCount, s6) {
+  return s6 === true && (race?.squad === "u23" || race?.squad === "junior") && stageCount < GRAND_TOUR_MIN_STAGES;
+}
+
 const TERRAIN_RANK = Object.freeze({ flat: 0, rolling: 1, hilly: 2, medium_mountain: 3, mountain: 4, high_mountain: 5 });
 
 /**
  * Del (2) for EN Grand Tour: kvoter + ugestruktur.
  *   ugestruktur (spec §5): ingen hoejbjerg i foerste tredjedel · kongeetapen (en etape af
  *   loebets haardeste terraen) i sidste tredjedel · en enkeltstart tidligt (foerste
- *   tredjedel) og en sent (sidste tredjedel) · sidste dag flad eller tidskoersel.
- * @param {{name?: string, race_class?: string, stages: object[]}} race
+ *   tredjedel) og en sent (sidste tredjedel), kun naar kvoten har 2+ tidskoersler (junior-mini-GT'en
+ *   har een, paa sidste etape, #8830) · sidste dag flad eller tidskoersel.
+ * @param {{name?: string, race_class?: string, squad?: string|null, stages: object[]}} race
  * @param {{ s6?: boolean }} [opts]  mini-GT-tredjedele og S6-etapetjek, kun fra S6 (8830)
  */
 export function checkGrandTour(race, { s6 = false } = {}) {
   const stages = Array.isArray(race?.stages) ? race.stages : [];
   const n = stages.length;
   const gtType = grandTourTypeOf({ ...race, stages: n });
-  const expected = expectedGrandTourCounts(gtType, n);
+  const juniorMini = isYouthMiniGrandTour(race, n, s6) && race?.squad === "junior";
+  const expected = expectedGrandTourCounts(gtType, n, { maxTimeTrials: juniorMini ? 1 : null });
+  // #8830 U23 loesning A (ejer 27/11): en ungdoms-mini-GT ender bevidst paa toppen af alle
+  // sine bjergtop-terraener (generatorens regel, raceStageProfileGenerator assignGrandTourFinishes),
+  // saa dens bjergtop-kvote er summen af de skalerede bjergtop-terraener, ikke seniorens
+  // GT-kvote. Senior-GT'er og S5 doemmes uaendret.
+  const youthMini = isYouthMiniGrandTour(race, n, s6);
+  if (youthMini) {
+    expected.summits = Object.keys(S5_SUMMIT_CATEGORIES).reduce((sum, t) => sum + (expected.terrains[t] ?? 0), 0);
+  }
   const tol = S5_GT_QUOTA_TOLERANCE;
   const violations = [];
 
@@ -362,7 +388,9 @@ export function checkGrandTour(race, { s6 = false } = {}) {
     if (Math.abs(dev) > tol.perTerrain) violations.push(`${t} ${terrains[t]} mod kvote ${expected.terrains[t]} (±${tol.perTerrain})`);
   }
   if (roadL1 > tol.roadL1) violations.push(`terræn-afvigelse i alt ${roadL1} etaper (højst ${tol.roadL1})`);
-  if (Math.abs(summits - expected.summits) > tol.summits) violations.push(`bjergtoppe ${summits} mod kvote ${expected.summits} (±${tol.summits})`);
+  // #8830 review: en ungdoms-mini-GT ender paa toppen af ALLE sine bjergtop-terraener, saa dens kvote er eksakt (tolerance 0).
+  const summitTol = youthMini ? 0 : tol.summits;
+  if (Math.abs(summits - expected.summits) > summitTol) violations.push(`bjergtoppe ${summits} mod kvote ${expected.summits} (±${summitTol})`);
   if (Math.abs(timeTrials - expected.timeTrials) > tol.timeTrials) violations.push(`tidskørsler ${timeTrials} mod kvote ${expected.timeTrials} (±${tol.timeTrials})`);
 
   // Ugestrukturen. Tredjedele som generatoren: foerste = indeks < floor(n/3), sidste =
@@ -392,7 +420,7 @@ export function checkGrandTour(race, { s6 = false } = {}) {
   for (const w of week) violations.push(`ugestruktur: ${w}`);
 
   return {
-    name: race?.name ?? null, gtType, stageCount: n,
+    name: race?.name ?? null, gtType, stageCount: n, youthMini,
     counts: { terrains, summits, timeTrials, roadL1 }, expected, violations,
   };
 }

@@ -101,7 +101,9 @@ test("monument routes keep their signature and stay valid when shortened", () =>
       const f = MINI_EDITION_RULES[squad].distanceScale;
       const r = scaleAuthoredRoute(m.authored_route, f);
       assert.equal(validateAuthoredRoute(r), true, `${m.name} ${squad}`);
-      assert.ok(Math.abs(r.distance_km - m.authored_route.distance_km * f) < 0.11);
+      assert.ok(Math.abs(r.distance_km - m.authored_route.distance_km * f) <= 0.5);
+      // race_stage_profiles.distance_km og elevation_gain_m er heltal (junior-apply 27/11: "119.4").
+      assert.ok(Number.isInteger(r.distance_km) && Number.isInteger(r.elevation_gain_m), `${m.name} ${squad}: heltal`);
       assert.deepEqual(r.climbs.map((c) => c.name), m.authored_route.climbs.map((c) => c.name), "same climbs");
       assert.ok(r.sectors.length >= 1 || m.authored_route.sectors.length === 0, "sectors survive");
     }

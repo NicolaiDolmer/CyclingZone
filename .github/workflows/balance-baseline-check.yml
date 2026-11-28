@@ -12,6 +12,8 @@ name: Balance baseline
 
 on:
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "backend/lib/riderValuation.js"
       - "backend/lib/riderValuationFit.js"
@@ -44,6 +46,7 @@ concurrency:
 
 jobs:
   balance-baseline:
+    if: ${{ !github.event.pull_request.draft }}
     name: balance-baseline (advisory)
     runs-on: ubuntu-latest
     defaults:

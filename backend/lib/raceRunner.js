@@ -121,6 +121,7 @@ import {
 // S4 (#1176): styrt/mekaniske uheld + DNF — abandon-state (cross-invokation) +
 // persistens co-locates i raceIncidents.js (ren roll-logik + DB-loader).
 import { loadAbandonedRiderIds, persistInjuryWithdrawals } from "./raceIncidents.js";
+import { applyFrozenAiEntrantState, dropFrozenAiInjuryRows, isAiTeamFrozenStateEnabled, refreezeAiEntrantsAfterStageStart } from "./aiTeamFrozenState8614.js"; // #8614
 // S6 (#2355): why-rapport + story-tags — ren afledning af de samme komponenter
 // (ranked[].components) der allerede persisteres til race_simulation_rider_scores.
 import { extractStageMoments } from "./raceNarrative.js";
@@ -2060,6 +2061,8 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     }
   }
 
+  // #8614: med ai_team_frozen_state_8614 on har AI-ryttere fast træthed og form (læst kun med AI-hold i feltet).
+  const aiFrozen8614 = aiTeamIds.size > 0 && await isAiTeamFrozenStateEnabled(supabase);
   const entrants = [];
   for (const r of riders || []) {
     const ab = abilityByRider.get(r.id);
@@ -2085,6 +2088,7 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
       entrant.fatigue = cond.fatigue;
     }
     // Ryttere uden condition-række: form/fatigue sættes IKKE (undefined → neutral i simulatoren).
+    applyFrozenAiEntrantState(entrant, aiFrozen8614); // #8614
     entrants.push(entrant);
   }
   return entrants;
@@ -2458,6 +2462,7 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers, seaso
     seasonNumber,
     raceDayInjuries,
   });
+  if (injuryRows.length) await dropFrozenAiInjuryRows({ supabase, rows: injuryRows }); // #8614: AI-hold faar ingen skader
   if (!injuryRows.length) return;
 
   // Udled `injured_until` af slut-loebsdagen (ÉT opslag for alle ramte ryttere).
@@ -3861,6 +3866,7 @@ export async function simulateStageByIndex({
       // A durable instant press keeps its date semantics across switch changes.
       await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants, instantOnly: true });
     }
+    await refreezeAiEntrantsAfterStageStart({ supabase, entrants }); // #8808: AI-hold fast tilstand også efter etapestarten
 
     const engineInputRecorder = dryRun ? null : createEngineInputRecorder({ raceId: race.id }); // #1857
     if (race.race_type === "stage_race") {

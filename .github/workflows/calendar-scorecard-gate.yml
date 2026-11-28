@@ -31,6 +31,8 @@ name: Calendar scorecard gate
 
 on:
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "backend/lib/tierCalendarMaterializer.js"
       - "backend/lib/tierCalendarGuarantees.js"
@@ -56,6 +58,7 @@ concurrency:
 
 jobs:
   calendar-scorecard:
+    if: ${{ !github.event.pull_request.draft }}
     name: calendar-scorecard
     runs-on: ubuntu-latest
     defaults:
