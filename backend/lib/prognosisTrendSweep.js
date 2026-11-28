@@ -106,31 +106,34 @@ export async function summarizeTeam({ io, teamId, season, seasons, params, today
     if (!ticksBy.has(tick.rider_id)) ticksBy.set(tick.rider_id, []);
     ticksBy.get(tick.rider_id).push(tick);
   }
-  const summaries = wanted.map((rider) => {
+  const summaries = [];
+  for (const rider of wanted) {
     const dates = settledXpDates(ticksBy.get(rider.id), { seasonNumberById, birthdate: rider.birthdate });
     const estimate = estimateBy.get(rider.id);
     const visibleEstimate = Number.isFinite(estimate) ? estimate : null;
     const primaryType = rider.primary_type ?? null;
     const secondaryType = rider.secondary_type ?? null;
-    // Startfarten regnes kun, hvor den bruges (under TREND_OWN_AFTER_DATES datoer).
-    const potentiale = dates.length < TREND_OWN_AFTER_DATES
-      ? priorPotentialFromEstimate({
-        id: rider.id, abilities: abilitiesBy.get(rider.id) ?? null,
-        seasonAge: ageForSeason(rider.birthdate, Number(season.number)), primaryType, secondaryType,
-      }, visibleEstimate, params)
-      : null;
+    // Regnes for alle: startfarten bruger den under TREND_OWN_AFTER_DATES datoer, og målingen
+    // af "normal træning" (priorFactorFromSamples) bruger den for alle med nok datoer (Fable 28/11).
+    const potentiale = priorPotentialFromEstimate({
+      id: rider.id, abilities: abilitiesBy.get(rider.id) ?? null,
+      seasonAge: ageForSeason(rider.birthdate, Number(season.number)), primaryType, secondaryType,
+    }, visibleEstimate, params);
     const riderInput = { id: rider.id, potentiale, visibleEstimate, birthdate: rider.birthdate, primaryType, secondaryType };
     const recentDates = dates.filter((entry) => daysBetween(entry.date, today) < TREND_RECENT_DAYS).length;
-    return {
+    summaries.push({
       rider: riderInput,
       abilities: abilitiesBy.get(rider.id) ?? null,
       dates,
       trend: dates.length ? trendPace(dates, { today, params }) : null,
-      standard: standardPriorPace(riderInput, params),
+      // Uden synligt skøn er der ingen ærlig "normal træning" at måle mod: rytteren tæller ikke i målingen.
+      standard: potentiale == null ? null : standardPriorPace(riderInput, params),
       recentDates,
       history: null,
-    };
-  });
+    });
+    // Halveringen er ren CPU (Fable 28/11): giv event-loopet fri mellem rytterne.
+    await new Promise((resolve) => setImmediate(resolve));
+  }
   // Egen historik (C) kun for ryttere, hvor farten endnu ikke er helt hans egen.
   const thin = summaries.filter((s) => s.dates.length < TREND_OWN_AFTER_DATES);
   if (thin.length && io.history) {
@@ -283,16 +286,16 @@ export async function runPrognosisTrendBatch({ supabase, now = new Date(), io = 
       fail(summary.teamId, err);
     }
   }
-  // Den fulde kørsel huskes, også når enkelte hold fejlede: de hold prøves alene næste gang.
-  // Et hold, der er væk fra listen, prøves ikke igen.
-  const known = new Set(teamIds);
-  const stillFailing = full
-    ? [...failedIds]
-    : [...new Set([...remembered.failedTeamIds.filter((id) => known.has(id) && !retry.has(id)), ...failedIds])];
+  // Den fulde kørsel huskes, også når enkelte hold fejlede: de hold prøves alene næste gang
+  // (alle huskede fejl prøves hver kørsel, så listen er netop denne kørsels fejl). Et hold, der
+  // er væk fra listen, falder ud. Fejlede ALLE hold, huskes intet (Fable 28/11: ellers stod
+  // faktoren på 1 hele dagen); så prøves den fulde kørsel igen næste time.
+  const allFailed = summaries.length === 0 && teamIds.length > 0;
   const next = {
-    fullRunDate: full ? today : remembered.fullRunDate,
-    factor: full || remembered.factor == null ? factor : remembered.factor,
-    failedTeamIds: stillFailing.sort(),
+    fullRunDate: full && !allFailed ? today : remembered.fullRunDate,
+    // Kun den fulde kørsel måler faktoren (som før); timekørslen genbruger den huskede.
+    factor: full && !allFailed ? factor : remembered.factor,
+    failedTeamIds: [...failedIds].sort(),
   };
   const changed = next.fullRunDate !== remembered.fullRunDate || next.factor !== remembered.factor
     || next.failedTeamIds.join(",") !== [...remembered.failedTeamIds].sort().join(",");
@@ -300,9 +303,21 @@ export async function runPrognosisTrendBatch({ supabase, now = new Date(), io = 
   return { ran: true, full, retried: retry.size, ...totals, failedTeams, ...(firstError ? { firstError } : {}) };
 }
 
+// Fable 28/11: to kørsler i samme proces (time-tick + boot-run) må ikke overlappe. Mellem to
+// instanser under et deploy kan de stadig overlappe; rækkerne er idempotente, og hukommelsen
+// tager i værste fald et fejlet hold igen næste dag.
+let tickRunning = false;
+
 /** Cron-indgangen. */
 export async function runPrognosisTrendTick({ supabase, now = new Date(), capture = captureException }) {
-  const result = await runPrognosisTrendBatch({ supabase, now });
+  if (tickRunning) return { ran: false, skipped: "already_running" };
+  tickRunning = true;
+  let result;
+  try {
+    result = await runPrognosisTrendBatch({ supabase, now });
+  } finally {
+    tickRunning = false;
+  }
   if (result.ran && result.written > 0) {
     console.log(`Prognosis trend (${result.full ? "full" : "missing"}): ${result.teams} teams, ${result.written} written, ${result.unchanged} unchanged`);
   }

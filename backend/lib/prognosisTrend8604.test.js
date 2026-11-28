@@ -419,6 +419,34 @@ test("et fejlende hold prøves alene næste time, uden at de andre regnes om", a
   assert.equal(io.calls.removed.length, removedBefore, "kun en fuld kørsel fjerner rækker; 'own' blev ikke kørt fuldt");
 });
 
+test("fejler alle hold, huskes intet: den fulde kørsel prøves igen, og faktoren bliver ikke 1", async () => {
+  const memory = { fullRunDate: "2026-11-27", factor: 1.2, failedTeamIds: [] };
+  const result = await runPrognosisTrendBatch({ supabase: onSupabase(), io: batchIo(new Set(["own", "two"])), state: memory, params, now: new Date("2026-11-28T06:00:00Z") });
+  assert.equal(result.full, true);
+  assert.equal(result.failedTeams, 2);
+  assert.equal(memory.fullRunDate, "2026-11-27");
+  assert.equal(memory.factor, 1.2);
+  assert.deepEqual(memory.failedTeamIds, ["own", "two"]);
+});
+
+test("målingen af normal træning bruger kun ryttere med synligt skøn (Fable 28/11)", async () => {
+  const io = fakeIo();
+  io.estimates = async () => [{ rider_id: "a", value: 70 }];
+  const summary = await summarizeTeam({ io, teamId: "own", season: SEASON, seasons: SEASONS, params, today: TODAY, since: "2026-11-01" });
+  const byId = new Map(summary.riders.map((s) => [s.rider.id, s]));
+  assert.ok(byId.get("a").standard, "rytter med skøn har en standard-fart");
+  assert.equal(byId.get("b").standard, null, "rytter uden skøn tæller ikke i målingen");
+});
+
+test("halveringen rammer midten af skønnets spænd, ikke den nedre kant (Fable 28/11)", () => {
+  // flat(30), alder 20: toppen går fra 61 (P1) til 87 (P6), så 69-71 ligger inde i spændet.
+  const rider = { id: "x", abilities: flat(30), seasonAge: 20, primaryType: "climber", secondaryType: null };
+  const p = priorPotentialFromEstimate(rider, 70, params);
+  const pLow = priorPotentialFromEstimate(rider, 69, params);
+  const pHigh = priorPotentialFromEstimate(rider, 71, params);
+  assert.ok(pLow < p && p < pHigh, `${pLow} < ${p} < ${pHigh}`);
+});
+
 test("batchen: slukket kontakt læser intet ud over kontakten", async () => {
   clearFlagStageCache();
   const supabase = goldenSupabase({ app_config: [{ key: "prognosis_trend_8604", value: "beta" }] });

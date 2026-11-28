@@ -178,11 +178,19 @@ export function priorPotentialFromEstimate(rider, estimate, params) {
   if (low == null) return null;
   if (estimate <= low) return lo;
   if (estimate >= (topAt(hi) ?? -Infinity)) return hi;
-  for (let i = 0; i < PRIOR_BISECT_STEPS; i++) {
-    const mid = (lo + hi) / 2;
-    if ((topAt(mid) ?? -Infinity) < estimate) lo = mid; else hi = mid;
-  }
-  return (lo + hi) / 2;
+  // Toppen er et heltal, så et helt spænd af potentialer giver samme skøn. Fable 28/11: brug
+  // midten af spændet (første P, der når skønnet, og første P, der når skønnet + 1), ikke
+  // den nedre kant, som systematisk gav for lavt P.
+  const firstReaching = (target) => {
+    let a = lo;
+    let b = hi;
+    for (let i = 0; i < PRIOR_BISECT_STEPS; i++) {
+      const mid = (a + b) / 2;
+      if ((topAt(mid) ?? -Infinity) < target) a = mid; else b = mid;
+    }
+    return b;
+  };
+  return (firstReaching(estimate) + firstReaching(estimate + 1)) / 2;
 }
 
 /** Normal træning for potentialet (A): standardkarrierens fordeling, renset for alder. */
