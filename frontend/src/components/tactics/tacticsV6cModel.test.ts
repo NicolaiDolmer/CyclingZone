@@ -18,13 +18,44 @@ const named = [
 ];
 const parts = routeParts(route, named);
 
-test("rutedelene er wireframets: To første, To sidste, Last 10 km", () => {
+test("#8828: hver stigning er en rutedel, også den midterste (K1); topafslutningen efter den sidste", () => {
   assert.deepEqual(parts.map((p) => p.label), [
     { key: "toClimb", name: "Salita di Bondone" },
+    { key: "toClimb", name: "Cima Zoncolan" },
     { key: "toClimb", name: "Monte Zoncolaro" },
     { key: "lastTen" },
   ]);
-  assert.deepEqual(parts.map((p) => p.from), [null, { at: "kom", kom_index: 0 }, { at: "final_km" }]);
+  assert.deepEqual(parts.map((p) => p.from), [null, { at: "kom", kom_index: 0 }, { at: "kom", kom_index: 1 }, { at: "final_km" }]);
+});
+
+test("#8828: tre stigninger uden topafslutning viser alle tre; en stigning uden navn vises med kategori og km", () => {
+  const three: StagePlanRoute = {
+    distance_km: 180, profile_type: "hilly",
+    climbs: [
+      { index: 0, km: 40, name: "Côte A", category: "3" },
+      { index: 1, km: 87.4, name: null, category: "2" },
+      { index: 2, km: 150, name: "Côte C", category: "1" },
+    ],
+  };
+  const p3 = routeParts(three, [{ km: 40, name: "Côte A", summit: false }, { km: 87.4, name: null, summit: false }, { km: 150, name: "Côte C", summit: false }]);
+  assert.deepEqual(p3.map((p) => p.label), [
+    { key: "toClimb", name: "Côte A" },
+    { key: "toClimbUnnamed", category: "2", km: 87 },
+    { key: "toClimb", name: "Côte C" },
+    { key: "toLastTen" },
+    { key: "lastTen" },
+  ]);
+  // Den midterste stignings top er et skift-punkt, kæden kan gemmes med.
+  const legs = legsFromParts(["stay_sheltered", "stay_sheltered", "follow_moves", "follow_moves", "ride_for_result"], p3, "captain", three);
+  assert.deepEqual(legs, [{ task: "stay_sheltered" }, { task: "follow_moves", from: { at: "kom", kom_index: 1 } }, { task: "ride_for_result", from: { at: "final_km" } }]);
+  assert.equal(validateStagePlanLegs(legs, "captain", three), null);
+});
+
+test("#8828: én stigning giver samme dele som før", () => {
+  const one: StagePlanRoute = { distance_km: 160, profile_type: "hilly", climbs: [{ index: 0, km: 70, name: "Côte A", category: "3" }] };
+  assert.deepEqual(routeParts(one, [{ km: 70, name: "Côte A", summit: false }]).map((p) => p.label), [
+    { key: "toClimb", name: "Côte A" }, { key: "toLastTen" }, { key: "lastTen" },
+  ]);
 });
 
 test("en flad etape har to dele", () => {
@@ -33,7 +64,7 @@ test("en flad etape har to dele", () => {
 });
 
 test("kæden fra rutedelene er gyldig og læses tilbage ens", () => {
-  const tasks = ["shelter_leader", "tempo", "tempo"] as const;
+  const tasks = ["shelter_leader", "tempo", "tempo", "tempo"] as const;
   const legs = legsFromParts([...tasks], parts, "helper", route);
   assert.deepEqual(legs, [{ task: "shelter_leader" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }]);
   assert.equal(validateStagePlanLegs(legs, "helper", route), null);
@@ -106,11 +137,11 @@ test("låste ryttere beholder deres række, når holdplanen lægges på", () => 
 });
 
 test("Codex P1: en ændring i én rutedel flytter aldrig ordrer i en anden (skift-punkter bevares)", () => {
-  // Angreb fra den ANDEN stigning (km 123) ligger inde i delen, der begynder ved den første (km 87).
+  // Angreb fra den ANDEN stigning (km 123); #8828: den er nu sin egen rutedel.
   const saved = [{ task: "stay_sheltered" as const }, { task: "attack" as const, from: { at: "kom" as const, kom_index: 1 } }];
   const tasks = partTasks(saved, route, parts)!;
-  assert.deepEqual(tasks, ["stay_sheltered", "attack", "attack"]);
-  const next = setPartTask(tasks, 2, "ride_in");
+  assert.deepEqual(tasks, ["stay_sheltered", "stay_sheltered", "attack", "attack"]);
+  const next = setPartTask(tasks, 3, "ride_in");
   const legs = legsFromParts(next, parts, "captain", route, null, saved);
   assert.deepEqual(legs, [{ task: "stay_sheltered" }, { task: "attack", from: { at: "kom", kom_index: 1 } }, { task: "ride_in", from: { at: "final_km" } }]);
   assert.equal(validateStagePlanLegs(legs, "captain", route), null);

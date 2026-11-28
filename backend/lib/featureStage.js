@@ -58,6 +58,7 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "team_chase_7730",
   "jersey_hunt_7855",
   "hilly_selection_8799",
+  "long_attack_7884", // #8828: "Angrib paa"-stederne (motorens input, startstempel)
   "time_limit_fatigue_7715",
   "route_profile_hills",
   "ai_team_retire_enabled",

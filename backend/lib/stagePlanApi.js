@@ -22,6 +22,17 @@ import {
   validateStagePlanLegs,
   withJerseyHunt7855,
 } from "./stagePlan.ts";
+import {
+  LONG_ATTACK_7884_ENGINE_READY,
+  attackPlaces7884,
+  attackPlacesView7884,
+  attackRouteFingerprint7884,
+  longAttackStorage7884,
+  planHasLongAttack7884,
+  routeFingerprintError7884,
+  validateStagePlan7884,
+} from "./tacticAttackTrigger7884.js"; // #8828
+import { longAttack7884OpenForRaceStamped } from "./longAttack7884Flag.js"; // #8828: stemplet paa loebet afgoer
 
 export const STAGE_PLAN_FLAG_KEY = "stage_plan_v1";
 
@@ -43,7 +54,8 @@ const VALID_ROLES = new Set(["captain", "co_captain", "sprint_captain", "helper"
  * effektive rolle. Kaldes kun naar PUT-kroppen faktisk baerer en plan.
  */
 // #7855: `jerseyHunt7855` = loebet tager imod troejejagtens opgaver (jerseyHunt7855Flag.jerseyHunt7855OpenForRace).
-export async function loadStagePlanContext({ supabase, raceId, stageNumber, baseRoleByRider, jerseyHunt7855 = false, overrideRows }) {
+// #8828: `longAttack7884` = loebet tager imod "Angrib paa"-stederne (longAttack7884OpenForRaceApi).
+export async function loadStagePlanContext({ supabase, raceId, stageNumber, baseRoleByRider, jerseyHunt7855 = false, longAttack7884 = false, overrideRows }) {
   const riderIds = [...baseRoleByRider.keys()];
   const [profileRes, rolesRes] = await Promise.all([
     supabase
@@ -70,7 +82,40 @@ export async function loadStagePlanContext({ supabase, raceId, stageNumber, base
   for (const row of rolesRes.data || []) {
     if (VALID_ROLES.has(planRole(row.race_role))) roleByRider.set(row.rider_id, planRole(row.race_role));
   }
-  return { route: withJerseyHunt7855(stagePlanRouteFromRaw(profileRes.data), jerseyHunt7855 === true), roleByRider, hasRoute: Boolean(profileRes.data) };
+  const ctx = { route: withJerseyHunt7855(stagePlanRouteFromRaw(profileRes.data), jerseyHunt7855 === true), roleByRider, hasRoute: Boolean(profileRes.data) };
+  return longAttack7884 === true && profileRes.data ? withLongAttack7884Context(ctx, profileRes.data) : ctx;
+}
+
+/**
+ * #8828: tager loebet imod "Angrib paa"-stederne? Kun naar motoren vil koere dem i netop dette loeb:
+ * stemplet ved foerste etape (og ikke "stop"), eller kontakten "on" og loebet ikke startet
+ * (longAttack7884Flag.longAttack7884OpenForRaceStamped, samme regel som troejejagten). Intet DB-kald
+ * uden motorens trin (LONG_ATTACK_7884_ENGINE_READY) eller uden etapeplanens revision. Fejl = false.
+ */
+export async function longAttack7884OpenForRaceApi({ supabase, race, readStage = readFlagStage, openForRace = longAttack7884OpenForRaceStamped }) {
+  if (LONG_ATTACK_7884_ENGINE_READY !== true || !stagePlanRevisionOk(race)) return false;
+  return openForRace({ supabase, race, readStage });
+}
+
+/**
+ * #8828: stederne pr. etape til fladen ({ [stage_number]: { fingerprint, places } }), kun kaldt
+ * naar loebet tager imod dem. Etiketterne er data; fladen oversaetter dem.
+ */
+export async function loadLongAttack7884Places({ supabase, raceId }) {
+  const { data, error } = await supabase
+    .from("race_stage_profiles")
+    .select("stage_number, distance_km, profile_type, climbs")
+    .eq("race_id", raceId); // pagination-safe: eet loebs etaper (maks en grand tour)
+  if (error) throw new Error(`race_stage_profiles: ${error.message}`);
+  const byStage = {};
+  for (const row of data || []) byStage[row.stage_number] = attackPlacesView7884(row);
+  return byStage;
+}
+
+/** #8828: konteksten med "Angrib paa"-stederne og rutens fingeraftryk. Slukket: samme objekt. */
+export function withLongAttack7884Context(ctx, rawProfile) {
+  const places = attackPlaces7884(rawProfile);
+  return { ...ctx, places7884: places, fingerprint7884: attackRouteFingerprint7884(places) };
 }
 
 /** Baerer kroppen en plan paa mindst en rytter? */
@@ -82,11 +127,15 @@ export function orderHasStagePlan(order) {
  * Valider alle planer i kroppen. Returnerer foerste fejlkode eller null.
  * `plan: null` betyder "ingen plan" (rytteren koerer paa sin almindelige ordre).
  */
-export function validateRiderPlans(riders, { route, roleByRider, hasRoute = true }) {
+export function validateRiderPlans(riders, { route, roleByRider, hasRoute = true, places7884, fingerprint7884 }) {
   for (const r of riders ?? []) {
     if (!r || typeof r !== "object" || !("plan" in r) || r.plan === null) continue;
     if (!hasRoute) return "stage_plan_no_route";
-    const error = validateStagePlanLegs(r.plan, roleByRider.get(r.rider_id) ?? "free_role", route);
+    const role = roleByRider.get(r.rider_id) ?? "free_role";
+    // #8828: kun naar loebet tager imod stederne; ellers er et sted et ukendt skiftepunkt som i dag.
+    const error = places7884
+      ? validateStagePlan7884(r.plan, role, route, places7884) ?? routeFingerprintError7884(r, fingerprint7884)
+      : validateStagePlanLegs(r.plan, role, route);
     if (error) return error;
   }
   return null;
@@ -99,6 +148,9 @@ export function validateRiderPlans(riders, { route, roleByRider, hasRoute = true
  */
 export function withStagePlan(normalizedRider, rawRider) {
   if (!Array.isArray(rawRider?.plan) || rawRider.plan.length === 0) return normalizedRider;
+  // #8828: en plan med "Angrib paa"-steder (kun naar validateRiderPlans tog imod dem) gemmes med
+  // planen uden stederne ved siden af og rutens fingeraftryk. Alle andre planer: som foer.
+  if (planHasLongAttack7884(rawRider.plan)) return { ...normalizedRider, ...longAttackStorage7884(rawRider.plan, rawRider.long_attack_route_7884, legacyOrderFromPlan) };
   const plan = normalizeStagePlanLegs(rawRider.plan);
   // #7855: planen uden jagt gemmes ved siden af, kun for planer med jagt. Slukkes opgaverne, inden
   // etapen koeres, falder motoren tilbage paa den i stedet for at droppe hele planen. Feltet kan

@@ -116,3 +116,56 @@ Kontrakten er `backend/lib/tacticAttackTrigger7884.js`. Hvert scenarie er en tes
 **Hvad dette byg ikke er:** ingen motorændring (ingen fil under `backend/lib/engine/` er rørt), ingen
 flade, ingen API-ændring. Motortrinnet (afsæt fra foden, fart betalt af reserven, jagten) er trin 4
 og 5 i designets byggeplan og får egen PR, egen måling og Fable-dom før merge.
+
+## 6. Trin 2-7 (#8828): dommer-scenarier skrevet før koden
+
+**Gem og læsning (trin 2)**, tests D18-D27 i `tacticAttackTrigger7884.test.js`:
+- D18 En stigning uden navn vises med kategori og km (toppens km); finalen for sig.
+- D19 Under valget står fakta fra ruten: foden, antal stigninger efter, topankomst.
+- D20 Den kanoniske form beholder stigningens index.
+- D21 Gem bærer planen uden stederne ved siden af (motoren kører den, når reglen ikke gælder),
+  rutens fingeraftryk og de gamle felter fra planen uden stederne.
+- D22 Gem med et andet fingeraftryk afvises neutralt (409); planer uden steder røres ikke.
+- D23 API'et tager kun imod stederne med kontakten "on", etapeplanens revision OG motorens trin
+  tilsluttet; indtil da læses kontakten slet ikke.
+- D24 Med stederne åbne valideres og gemmes planen, og motorens ordre-adapter får planen uden stederne.
+- D25 "Holdet fører fra" og "km før mål" kan sættes ind som ny opgave/ny art uden omskrivning.
+- D26-D27 Slukket er adapterens ordre og API'ets validering/gem bit-identiske med merge-basen
+  (frosne digests fra et separat checkout, #7587).
+
+**Motoren (trin 4-6)**, tests M1-M8 i `engine/v4/mechanics/longAttack7884.test.ts`:
+- M1 Afsæt fra foden fra den gruppe han sidder i: samme hul som gruppen, ingen flytning frem,
+  intet startforspring. Er han alene i gruppen, sker der intet.
+- M2 Farten over hans egen evne betales af reserven: tillægget findes kun, mens der er reserve, og
+  det koster reserve i forhold til tillægget. En tom reserve giver intet tillæg (så gælder motorens
+  almindelige straf for en tømt reserve: han "går død").
+- M3 En træt rytter (mindre reserve) får målbart mindre ud af angrebet end en frisk.
+- M4 Ingen ny tilfældighed: samme input giver samme output, og mekanikken tager ingen
+  tilfældighedsstrøm.
+- M5 Ét forsøg: er han hentet (hans gruppe rummer ryttere, der ikke angreb med ham), er angrebet
+  slut, og resten af leddet køres som "Følg med" (ejerens valg 4 A).
+- M6 At køre op til en gruppe foran er ikke at blive hentet.
+- M7 Uden nogen "Angrib på"-ordre i feltet gør mekanikken intet (samme objekter ind og ud).
+- M8 Én ejer af gevinsten: en rytter på langt angreb er ikke kandidat til "Alt ud"-gevinsten på
+  samme segment.
+
+**Tilslutningen (trin 3, #8828)**, tests W0-W9 i `engine/v4/mechanics/longAttack7884Engine.test.ts` og
+startstemplet i `longAttack7884Flag.test.js`:
+- W0 Slukket OG tændt uden nogen "Angrib på"-ordre er bit-identiske med en frossen golden skrevet af
+  merge-basens kode i et separat checkout (#7587).
+- W1 Motorens steder har samme nøgler og fod som API'ets på de samme rå felter.
+- W2-W3 Ordre-adapteren bærer planen med stederne ved siden af; motoren kører den kun i et løb stemplet
+  til kontakten og kun, når den er gyldig mod motorens egne steder. Ellers planen uden stederne.
+- W4 Afsæt ved foden fra hans egen gruppe med samme hul; angrebet gælder stigningen (til toppen, eller
+  mål ved topankomst og finalen); indsatsen er ikke "Alt ud" (farten betales af reserven, M8 og valg 3 A),
+  men trætheden bagefter kender leddets pris.
+- W5 Hentet: ét forsøg, resten af leddet er "Følg med", senere led gælder. Over toppen uden at være
+  hentet: samme, uden nyt tillæg.
+- W6-W9 Topankomst og finalen holder til mål; et hold styrer aldrig et andet holds rytter; slukket
+  kører en gemt plan med steder som planen uden dem; tændt er afsættet ved foden og deterministisk.
+- Kontakten bindes til løbet ved første etape (`races.long_attack_7884`), og stemplet læses før
+  kontakten (#8801). API'et tager kun imod stederne, når løbet vil køre dem.
+
+Jagten fra holdene (designets trin 5), regnskabet i trætheden (trin 6) og kalibreringen mod benchmark
+(privat, `balance-internals/7884/`) er IKKE bygget. Kontakten må ikke tændes, før de er det, og før den
+uafhængige dommer og ejeren har set det.

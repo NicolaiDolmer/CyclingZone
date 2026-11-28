@@ -52,6 +52,7 @@
     "ifDropped": "Hvis han bliver sat: {task}",
     "steps": "Indsatstrin",
     "toClimb": "Til {name}",
+    "toClimbUnnamed": "Til kategori {category} ved km {km}",
     "toLastTen": "Til de sidste 10 km",
     "lastTen": "De sidste 10 km",
     "tryBreak": "Prøv udbruddet",
@@ -142,5 +143,30 @@
     "locked": "Låst",
     "unsaved": "{count, plural, one {Etape {stages} har ændringer, du ikke har gemt.} other {Etaperne {stages} har ændringer, du ikke har gemt.}}",
     "unsavedNote": "Intet går tabt, når du skifter etape."
+  },
+  "attack7884": {
+    "title": "Angrib på",
+    "subtitle": "{name} · {role}",
+    "chip": "Angrib på {place}",
+    "none": "Intet angreb",
+    "today": "Angriber på {place}",
+    "finale": "Finalen",
+    "unnamed": "Kat. {category} ved km {km}",
+    "summit": "{name} (mål)",
+    "factCategory": "Kat. {category}",
+    "factFoot": "fod km {km}",
+    "factClimbAfter": "{count} stigning efter",
+    "factClimbsAfter": "{count} stigninger efter",
+    "factSummit": "topankomst",
+    "factValley": "dal bagefter",
+    "factLongValley": "lang dal bagefter",
+    "factFinale": "Sidste 10 km · fra km {km}",
+    "rule": "Ét forsøg. Bliver han hentet, er kræfterne brugt, og resten af planen gælder.",
+    "ruleShort": "Ét forsøg. Bliver han hentet, er kræfterne brugt.",
+    "choose": "Vælg {place}",
+    "chooseNone": "Vælg en stigning",
+    "remove": "Fjern angrebet",
+    "close": "Luk",
+    "blocked": "Passer ikke ind i rækkefølgen i hans plan på denne etape"
   }
 }

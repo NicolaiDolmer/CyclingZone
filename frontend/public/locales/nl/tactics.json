@@ -52,6 +52,7 @@
     "ifDropped": "Als hij gelost wordt: {task}",
     "steps": "Inspanningsniveaus",
     "toClimb": "Naar {name}",
+    "toClimbUnnamed": "Naar categorie {category} bij km {km}",
     "toLastTen": "Naar de laatste 10 km",
     "lastTen": "Laatste 10 km",
     "tryBreak": "Vlucht proberen",
@@ -142,5 +143,30 @@
     "locked": "Vast",
     "unsaved": "{count, plural, one {Etappe {stages} heeft wijzigingen die je niet hebt opgeslagen.} other {Etappes {stages} hebben wijzigingen die je niet hebt opgeslagen.}}",
     "unsavedNote": "Er gaat niets verloren als je van etappe wisselt."
+  },
+  "attack7884": {
+    "title": "Aanvallen op",
+    "subtitle": "{name} · {role}",
+    "chip": "Aanvallen op {place}",
+    "none": "Geen aanval",
+    "today": "Valt aan op {place}",
+    "finale": "Finale",
+    "unnamed": "Cat. {category} bij km {km}",
+    "summit": "{name} (finish)",
+    "factCategory": "Cat. {category}",
+    "factFoot": "voet km {km}",
+    "factClimbAfter": "{count} klim erna",
+    "factClimbsAfter": "{count} klimmen erna",
+    "factSummit": "aankomst bergop",
+    "factValley": "dal erna",
+    "factLongValley": "lang dal erna",
+    "factFinale": "Laatste 10 km · vanaf km {km}",
+    "rule": "Eén poging. Wordt hij ingelopen, dan zijn zijn krachten op en geldt de rest van het plan.",
+    "ruleShort": "Eén poging. Wordt hij ingelopen, dan zijn zijn krachten op.",
+    "choose": "Kies {place}",
+    "chooseNone": "Kies een klim",
+    "remove": "Aanval verwijderen",
+    "close": "Sluiten",
+    "blocked": "Past niet in de volgorde van zijn plan in deze etappe"
   }
 }

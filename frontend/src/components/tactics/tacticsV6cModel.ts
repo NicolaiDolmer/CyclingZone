@@ -22,6 +22,8 @@ import {
 
 export type RoutePartLabel =
   | { key: "toClimb"; name: string }
+  // #8828 (ejer 26/11): en stigning uden navn vises med kategori og km ("Kat. 3 ved km 87").
+  | { key: "toClimbUnnamed"; category: string; km: number }
   | { key: "toLastTen" }
   | { key: "lastTen" };
 
@@ -37,25 +39,31 @@ export interface RoutePart {
 export interface NamedClimb { km: number; name: string | null; summit: boolean }
 
 /**
- * Wireframets rutedele (legNames i v6c): to stigninger eller flere giver "To <første>",
- * "To <sidste>", "Last 10 km"; én stigning "To <den>", "To the last 10 km", "Last 10 km";
- * ingen stigninger "To the last 10 km", "Last 10 km". Delene begynder ved et skift-punkt,
- * motoren kender (toppen af den første stigning, 10 km fra mål), så kæden kan gemmes.
+ * Rutedelene. #8828 (ejer 26/11, K1 på #7884): HVER kategoriseret stigning før de sidste 10 km
+ * er en grænse, så ingen stigning skjules (før delte de faste dele ruten i "To <første>",
+ * "To <sidste>", "Last 10 km", og en midterste stigning fandtes ikke). Delene er:
+ * "To <stigning 1>", "To <stigning 2>", ..., derefter "To <målstigningen>" ved en topafslutning
+ * (ellers "To the last 10 km"), og "Last 10 km". Uden stigninger: "To the last 10 km", "Last 10 km".
+ * Hver del begynder ved et skift-punkt motoren kender (toppen af forrige stigning, 10 km fra mål),
+ * så kæden kan gemmes; en stigning uden navn vises med kategori og km.
  */
 export function routeParts(route: StagePlanRoute, named: readonly NamedClimb[] = []): RoutePart[] {
   const finalKm = triggerKm({ at: "final_km" }, route) ?? 0;
   const lastTen: RoutePart = { km: finalKm, from: { at: "final_km" }, label: { key: "lastTen" } };
-  const climbs = [...route.climbs].filter((c) => c.km < finalKm).sort((a, b) => a.km - b.km);
-  const first = climbs[0] ?? null;
-  if (!first) return [{ km: 0, from: null, label: { key: "toLastTen" } }, lastTen];
+  const climbs = [...route.climbs].filter((c) => c.km < finalKm).sort((a, b) => a.km - b.km || a.index - b.index);
+  if (!climbs.length) return [{ km: 0, from: null, label: { key: "toLastTen" } }, lastTen];
   const allNamed = [...named].sort((a, b) => a.km - b.km);
-  const nameOf = (km: number, fallback: string | null) => allNamed.find((c) => Math.abs(c.km - km) < 0.05)?.name ?? fallback;
+  const nameOf = (km: number, fallback: string | null) => allNamed.find((c) => Math.abs(c.km - km) < 0.05)?.name || fallback || null;
+  const climbLabel = (c: (typeof climbs)[number]): RoutePartLabel => {
+    const name = nameOf(c.km, c.name);
+    return name ? { key: "toClimb", name } : { key: "toClimbUnnamed", category: c.category, km: Math.round(c.km) };
+  };
+  const lastClimb = climbs[climbs.length - 1];
   const last = allNamed.length ? allNamed[allNamed.length - 1] : null;
-  const firstName = nameOf(first.km, first.name) ?? "";
-  const middle: RoutePartLabel = last && last.km > first.km + 0.05 && last.name ? { key: "toClimb", name: last.name } : { key: "toLastTen" };
+  const afterLast: RoutePartLabel = last && last.km > lastClimb.km + 0.05 && last.name ? { key: "toClimb", name: last.name } : { key: "toLastTen" };
   return [
-    { km: 0, from: null, label: { key: "toClimb", name: firstName } },
-    { km: first.km, from: { at: "kom", kom_index: first.index }, label: middle },
+    { km: 0, from: null, label: climbLabel(climbs[0]) },
+    ...climbs.map((c, i): RoutePart => ({ km: c.km, from: { at: "kom", kom_index: c.index }, label: i + 1 < climbs.length ? climbLabel(climbs[i + 1]) : afterLast })),
     lastTen,
   ];
 }

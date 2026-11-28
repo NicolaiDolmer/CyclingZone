@@ -61,6 +61,7 @@ import { bindDescentRegroupCap7644, isDescentRegroupCap7644Enabled } from "./des
 import { isSplitAttackCause7640Enabled } from "./splitAttackCause7640Flag.js"; // #7640
 import { bindLetGoOrder7557, isLetGoOrder7557Enabled } from "./letGoOrder7557Flag.js"; // #7557
 import { bindHillySelection8799, isHillySelection8799Enabled } from "./hillySelection8799Flag.js"; // #8799
+import { bindLongAttack7884, isLongAttack7884Enabled } from "./longAttack7884Flag.js"; // #8828
 import { bindIttNoDayRoll7726, isIttNoDayRoll7726Enabled } from "./ittNoDayRoll7726Flag.js"; // #7726
 import { bindStartedFieldLock7733, isStartedFieldLock7733Enabled, raceHasStartedFieldLock7733 } from "./startedFieldLock7733Flag.js"; // #7733
 import { bindTeamChase7730, isTeamChase7730Enabled } from "./teamChase7730Flag.js"; // #7730
@@ -338,6 +339,7 @@ export async function resolveRaceEngineV4({
   checkTimeLimitFatigue7715Enabled = isTimeLimitFatigue7715Enabled,
   checkJerseyHunt7855Enabled = isJerseyHunt7855Enabled, // #7855
   checkHillySelection8799Enabled = isHillySelection8799Enabled, // #8799
+  checkLongAttack7884Enabled = isLongAttack7884Enabled, // #8828
 }) {
   const enabled = await checkV4Enabled(supabase);
   if (!enabled) return { v4Engine: null, teamOrderRows: [] };
@@ -401,7 +403,10 @@ export async function resolveRaceEngineV4({
     const huntEngine = jerseyHunt7855 === true ? { ...v4Engine, jerseyHunt7855: true } : v4Engine;
     // #8799: samme moenster (laest for sig, fail closed); bindHillySelection8799 afgoer om loebet er omfattet.
     const hillySelection8799 = await Promise.resolve().then(() => checkHillySelection8799Enabled(supabase)).catch(() => false);
-    return { v4Engine: hillySelection8799 === true ? { ...huntEngine, hillySelection8799: true } : huntEngine, teamOrderRows };
+    const selectionEngine = hillySelection8799 === true ? { ...huntEngine, hillySelection8799: true } : huntEngine;
+    // #8828: samme moenster (laest for sig, fail closed); bindLongAttack7884 afgoer om loebet er omfattet (stemplet foerst).
+    const longAttack7884 = await Promise.resolve().then(() => checkLongAttack7884Enabled(supabase)).catch(() => false);
+    return { v4Engine: longAttack7884 === true ? { ...selectionEngine, longAttack7884: true } : selectionEngine, teamOrderRows };
   } catch (err) {
     console.error(`  ⚠️  race ${race.id}: loebsmotor v4 kunne ikke indlaeses (${err?.message}) - koerer v3 for denne afvikling`);
     captureException(err, {
@@ -463,6 +468,11 @@ export function v4LetGoOrder7557Arg(v4Engine, rulesRevision) {
 /** #8799: selektion + afslutninger paa kuperet (flag hilly_selection_8799), kun et loeb stemplet ved sin foerste etape. */
 export function v4HillySelection8799Arg(v4Engine, rulesRevision) {
   return v4Engine?.hillySelection8799 === true && isS5ProfilesV3OrLater(rulesRevision) ? { hillySelection8799: true } : {};
+}
+
+/** #8828: "Angrib paa"-stederne i etapeplanen (flag long_attack_7884), kun et loeb stemplet ved sin foerste etape. */
+export function v4LongAttack7884Arg(v4Engine, rulesRevision) {
+  return v4Engine?.longAttack7884 === true && isS5ProfilesV3OrLater(rulesRevision) ? { longAttack7884: true } : {};
 }
 
 /** #7715: meget traette ryttere (flag time_limit_fatigue_7715), kun et loeb der fik reglen ved sin foerste etape. */
@@ -802,7 +812,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     const gcStandings = v4Engine && isStageRace && isOrdersGcRulesRevision(rulesRevision) ? (stageNumbersSoFar.size ? rankByCumTimeAsc(filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar), cumTime, posSum) : []) : null;
     // #1857: runRecordedEngineCall = præcis call(args) når optageren er null (dryRun/tests).
     const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = runRecordedEngineCall(engineInputRecorder, { stageNumber, engine: v4Engine ? "v4" : "v3", engineVersion: v4Engine ? ENGINE_VERSION_V4 : (v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION), rulesRevision, seedInput, formPeaksOff: v4Engine?.formPeaks === false }, v4Engine
-      ? { entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4DayWords7725Arg(v4Engine, rulesRevision), ...v4IttNoDayRoll7726Arg(v4Engine, rulesRevision), ...v4TeamChase7730Arg(v4Engine, rulesRevision), ...v4JerseyHunt7855Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision), ...v4DescentRegroupCap7644Arg(v4Engine, rulesRevision), ...v4SplitAttackCause7640Arg(v4Engine, rulesRevision), ...v4LetGoOrder7557Arg(v4Engine, rulesRevision), ...v4TimeLimitFatigue7715Arg(v4Engine, rulesRevision), ...v4HillySelection8799Arg(v4Engine, rulesRevision) }
+      ? { entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4DayWords7725Arg(v4Engine, rulesRevision), ...v4IttNoDayRoll7726Arg(v4Engine, rulesRevision), ...v4TeamChase7730Arg(v4Engine, rulesRevision), ...v4JerseyHunt7855Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision), ...v4DescentRegroupCap7644Arg(v4Engine, rulesRevision), ...v4SplitAttackCause7640Arg(v4Engine, rulesRevision), ...v4LetGoOrder7557Arg(v4Engine, rulesRevision), ...v4TimeLimitFatigue7715Arg(v4Engine, rulesRevision), ...v4HillySelection8799Arg(v4Engine, rulesRevision), ...v4LongAttack7884Arg(v4Engine, rulesRevision) }
       : { entrants: stageEntrants, stageProfile: stage, seed, v3 }, v4Engine ? (a) => v4Engine.simulateStage(a) : simulateStage);
     for (const inc of incidents) {
       allIncidents.push({ stage_number: stageNumber, ...inc });
@@ -884,6 +894,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         ...v4IttNoDayRoll7726Arg(v4Engine, rulesRevision), // #7726 (slukket = uaendret checksum)
         ...v4TeamChase7730Arg(v4Engine, rulesRevision), // #7730 (slukket = uaendret checksum)
         ...v4JerseyHunt7855Arg(v4Engine, rulesRevision), // #7855 (slukket = uaendret checksum)
+        ...v4LongAttack7884Arg(v4Engine, rulesRevision), // #8828 (slukket = uaendret checksum)
         ...v4TimeLimitFatigue7715Arg(v4Engine, rulesRevision), // #7715 (slukket = uaendret checksum)
         // #7290: profilens bakker aendrer v4-ruten; kun da med (slukket = uaendret checksum).
         ...(stage.routeProfileHills === true ? { profileHills: true } : {}),
@@ -2784,7 +2795,8 @@ export async function simulateRace({
   const capBoundEngine = await bindDescentRegroupCap7644({ supabase, race, v4Engine: huntBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7644 startstempel
   const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: capBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7557
   const selectionBoundEngine = await bindHillySelection8799({ supabase, race, v4Engine: letGoBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #8799
-  const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: selectionBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7715
+  const longAttackBoundEngine = await bindLongAttack7884({ supabase, race, v4Engine: selectionBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #8828 startstempel
+  const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: longAttackBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7715
   if (v4Engine) await applyRouteProfileHills({ supabase, raceId: race.id, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
   // S3 (#2034): overrides hentes KUN når v3=true — v3=false undgår DB-kaldet helt
   // og buildRaceResults modtager undefined, hvilket garanterer bit-identisk flag-off.
@@ -3209,7 +3221,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
   // #1857: se buildRaceResults' tilsvarende note.
   const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = runRecordedEngineCall(engineInputRecorder, { stageNumber, engine: v4Engine ? "v4" : "v3", engineVersion: v4Engine ? ENGINE_VERSION_V4 : (v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION), rulesRevision, seedInput, formPeaksOff: v4Engine?.formPeaks === false }, v4Engine
-    ? { entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4DayWords7725Arg(v4Engine, rulesRevision), ...v4IttNoDayRoll7726Arg(v4Engine, rulesRevision), ...v4TeamChase7730Arg(v4Engine, rulesRevision), ...v4JerseyHunt7855Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision), ...v4DescentRegroupCap7644Arg(v4Engine, rulesRevision), ...v4SplitAttackCause7640Arg(v4Engine, rulesRevision), ...v4LetGoOrder7557Arg(v4Engine, rulesRevision), ...v4TimeLimitFatigue7715Arg(v4Engine, rulesRevision), ...v4HillySelection8799Arg(v4Engine, rulesRevision) }
+    ? { entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4DayWords7725Arg(v4Engine, rulesRevision), ...v4IttNoDayRoll7726Arg(v4Engine, rulesRevision), ...v4TeamChase7730Arg(v4Engine, rulesRevision), ...v4JerseyHunt7855Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision), ...v4DescentRegroupCap7644Arg(v4Engine, rulesRevision), ...v4SplitAttackCause7640Arg(v4Engine, rulesRevision), ...v4LetGoOrder7557Arg(v4Engine, rulesRevision), ...v4TimeLimitFatigue7715Arg(v4Engine, rulesRevision), ...v4HillySelection8799Arg(v4Engine, rulesRevision), ...v4LongAttack7884Arg(v4Engine, rulesRevision) }
     : { entrants: simEntrants, stageProfile: thisStage, seed, v3 }, v4Engine ? (a) => v4Engine.simulateStage(a) : simulateStage);
   // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
   const stampedIncidents = incidents.map((inc) => ({ stage_number: stageNumber, ...inc }));
@@ -3277,6 +3289,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
         ...v4IttNoDayRoll7726Arg(v4Engine, rulesRevision), // #7726 (slukket = uaendret checksum)
         ...v4TeamChase7730Arg(v4Engine, rulesRevision), // #7730 (slukket = uaendret checksum)
         ...v4JerseyHunt7855Arg(v4Engine, rulesRevision), // #7855 (slukket = uaendret checksum)
+        ...v4LongAttack7884Arg(v4Engine, rulesRevision), // #8828 (slukket = uaendret checksum)
         ...v4TimeLimitFatigue7715Arg(v4Engine, rulesRevision), // #7715 (slukket = uaendret checksum)
         // #7290: se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
         ...(thisStage.routeProfileHills === true ? { profileHills: true } : {}),
@@ -3757,7 +3770,8 @@ export async function simulateStageByIndex({
     const capBoundEngine = await bindDescentRegroupCap7644({ supabase, race, v4Engine: huntBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7644 startstempel
     const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: capBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7557
     const selectionBoundEngine = await bindHillySelection8799({ supabase, race, v4Engine: letGoBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #8799
-    const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: selectionBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7715
+    const longAttackBoundEngine = await bindLongAttack7884({ supabase, race, v4Engine: selectionBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #8828 startstempel
+    const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: longAttackBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7715
     // #7733: stemplet saettes samme sted; kontakten rammer kun loeb der ikke er startet.
     await bindStartedFieldLock7733({ supabase, race, firstStageClaim, dryRun, checkEnabled: checkStartedFieldLock7733Enabled });
     if (v4Engine) await applyRouteProfileHills({ supabase, raceId: race.id, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget

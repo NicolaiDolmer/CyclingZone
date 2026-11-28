@@ -97,7 +97,8 @@ import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { compareIds } from "../../compareIds.ts";
 import { queenStageGap7236On } from "./mechanics/queenStageGap7236.ts"; // #7236
 import { descentRegroupCap7644On, descentRegroupTempo6486, descentRegroupTuning7236 } from "./mechanics/descentRegroup6486.ts"; // #6486, #7236, #7644
-import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanHuntTasks7855, stagePlanHuntWindows7855, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003, #7380, #7855
+import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanHuntTasks7855, stagePlanHuntWindows7855, stagePlanLoadEfforts, stagePlanLongAttackStart7884, stagePlanLongAttackers7884 } from "../../stagePlanEngine.ts"; // #7003, #7380, #7855, #8828
+import { longAttackStep7884 } from "./mechanics/longAttack7884.ts"; // #8828 (slukket)
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
 import { breakawayCurve6912On } from "./mechanics/breakawayCurve6912.ts"; // #6912
 import { hillyFinish8189On } from "./mechanics/hillyFinish8189.ts"; // #8189
@@ -833,7 +834,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
   // #7003 (KUN s5_profiles_v3, slukket): etapeplanen langs ruten (lib/stagePlanEngine.ts). Uden plan: null, loopet uroert.
   const baseEntrantsById = entrantsById;
-  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById, { ...(input.stage_plan_dropped_front_7635 === true ? { droppedFront7635: true } : {}), ...(input.jersey_hunt_7855 === true ? { jerseyHunt7855: true } : {}) }) : null; // #7635, #7855 (slukket)
+  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById, { ...(input.stage_plan_dropped_front_7635 === true ? { droppedFront7635: true } : {}), ...(input.jersey_hunt_7855 === true ? { jerseyHunt7855: true } : {}), ...(input.long_attack_7884 === true ? { longAttack7884: true } : {}) }) : null; // #7635, #7855, #8828 (slukket)
 
   const rngForFn = boundRngFor(seed);
   // #4885: feltets reference-CP pr. terraen — fart-modellens nulpunkt. Regnet
@@ -899,6 +900,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     if (stagePlan) {
       timeline.push(...advanceStagePlan(stagePlan, { state, segment, segmentIndex, isLastSegment: segmentIndex === segments.length - 1, entrants: baseEntrantsById }));
       entrantsById = stagePlanEntrants(stagePlan, baseEntrantsById);
+      // #8828 (KUN et loeb stemplet til long_attack_7884): "Angrib paa" saetter af ved foden, fra hans egen gruppe.
+      if (stagePlan.longAttack7884) state = { ...state, groups: stagePlanLongAttackStart7884(stagePlan, state.groups, segmentIndex) };
     }
     // #6200 (KUN official_times_v3): stykket uden stigning efter nedkoerslen mod maal.
     const runInAfterFinishDescent = timeModelV3 && finishDescentIndex >= 0 && segmentIndex > finishDescentIndex;
@@ -938,6 +941,23 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         wheelSitterIds,
       );
       tempoByGroup.set(group.id, tempo);
+    }
+    // #8828 (KUN et loeb stemplet til long_attack_7884, kun ryttere med et aktivt "Angrib paa"): farten
+    // over egen evne betales af reserven (mechanics/longAttack7884.longAttackStep7884). Tillaegget
+    // ganges paa hans CP for segmentet (samme plads som holdets faktor), og prisen traekkes efter
+    // tick'et. Ingen angriber = ingen aendring.
+    const longAttackCost7884 = new Map<string, number>();
+    for (const riderId of stagePlanLongAttackers7884(stagePlan)) {
+      const rs = state.riders[riderId];
+      const group = state.groups.find((g) => g.rider_ids.includes(riderId));
+      const tempo = group ? tempoByGroup.get(group.id) : undefined;
+      if (!rs || rs.status !== "racing" || !group || !tempo) continue;
+      const step = longAttackStep7884({ wprime: rs.wprime, wprimeMax: rs.wprimeMax, dtSeconds: tempo.dtSeconds });
+      if (!(step.cpMultiplier > 1)) continue;
+      const teamFactor = Number.isFinite(rs.team_cp_factor) ? (rs.team_cp_factor as number) : 1;
+      const boosted = { ...state.riders, [riderId]: { ...rs, team_cp_factor: teamFactor * step.cpMultiplier } };
+      tempoByGroup.set(group.id, computeGroupTempo(group, boosted, entrantsById, segment, tuning, route.weather, referenceCp[segment.kind], wheelSitterIds));
+      longAttackCost7884.set(riderId, Math.max(0, rs.wprime - step.wprimeAfter));
     }
     // #5581: grupettoen regner paa tidsgraensen (applyGrupettoPaceFloor). Skal
     // ske FOER tick'et, saa et haevet grupetto-tempo ogsaa koster af reserven.
@@ -989,6 +1009,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       if (!tempo) continue;
       const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning, sharedGroupTime, effortCostTuningFor(rulesRevision));
       nextRiders = { ...nextRiders, ...patch };
+    }
+    // #8828: reservens pris for tillaegget (kun ryttere med et aktivt "Angrib paa"). Tom reserve = 0.
+    for (const [riderId, cost] of longAttackCost7884) {
+      const r = nextRiders[riderId];
+      if (r && cost > 0) nextRiders = { ...nextRiders, [riderId]: { ...r, wprime: Math.max(0, r.wprime - cost) } };
     }
     const ridersBeforeTick = state.riders; // #5582: jagtens om-tick starter herfra
     state = { ...state, riders: nextRiders };

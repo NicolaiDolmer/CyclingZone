@@ -1,5 +1,6 @@
 import {withStagePlanFields} from '../components/race/StagePlanModel.ts';
 import type {TeamPlanOrder} from '../components/race/tacticsReady7864.ts';
+import {attackPlaceKey7884} from '../components/tactics/longAttack7884Model.ts'; // #8828
 
 /** Same allowlist for ordinary and multi-stage saves. Roles never enter an order. */
 export function tacticsOrderPayload7864(rawOrder:TeamPlanOrder,stagePlan:boolean){
@@ -8,6 +9,8 @@ export function tacticsOrderPayload7864(rawOrder:TeamPlanOrder,stagePlan:boolean
   rider_id:rider.rider_id,effort:rider.effort,try_break:rider.try_break===true,leadout:rider.leadout===true,
   ...(stagePlan&&Array.isArray(rider.plan)&&rider.plan.length?{plan:rider.plan}:{}),
   ...(stagePlan&&rider.locked===true?{locked:true}:{}), // #8298: låsen gemmes med etapens ordre
+  // #8828: rutens fingeraftryk følger kun en plan med et "Angrib på"-sted (serveren afviser ellers feltet).
+  ...(()=>{const fp=(rider as unknown as {long_attack_route_7884?:unknown}).long_attack_route_7884;return stagePlan&&Array.isArray(rider.plan)&&attackPlaceKey7884(rider.plan as never)!==null&&typeof fp==='string'?{long_attack_route_7884:fp}:{};})(),
  }))};
 }
 function stable(value:unknown):unknown{

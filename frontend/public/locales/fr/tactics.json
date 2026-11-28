@@ -52,6 +52,7 @@
     "ifDropped": "S'il est lâché : {task}",
     "steps": "Niveaux d'effort",
     "toClimb": "Jusqu'à {name}",
+    "toClimbUnnamed": "Jusqu'à la catégorie {category} au km {km}",
     "toLastTen": "Jusqu'aux 10 derniers km",
     "lastTen": "10 derniers km",
     "tryBreak": "Tenter l'échappée",
@@ -142,5 +143,30 @@
     "locked": "Verrouillé",
     "unsaved": "{count, plural, one {L'étape {stages} a des modifications non enregistrées.} other {Les étapes {stages} ont des modifications non enregistrées.}}",
     "unsavedNote": "Rien n'est perdu quand vous changez d'étape."
+  },
+  "attack7884": {
+    "title": "Attaquer dans",
+    "subtitle": "{name} · {role}",
+    "chip": "Attaquer dans {place}",
+    "none": "Pas d'attaque",
+    "today": "Attaque dans {place}",
+    "finale": "Final",
+    "unnamed": "Cat. {category} au km {km}",
+    "summit": "{name} (arrivée)",
+    "factCategory": "Cat. {category}",
+    "factFoot": "pied km {km}",
+    "factClimbAfter": "{count} montée après",
+    "factClimbsAfter": "{count} montées après",
+    "factSummit": "arrivée au sommet",
+    "factValley": "vallée après",
+    "factLongValley": "longue vallée après",
+    "factFinale": "10 derniers km · dès le km {km}",
+    "rule": "Une tentative. S'il est repris, ses forces sont dépensées et le reste du plan s'applique.",
+    "ruleShort": "Une tentative. S'il est repris, ses forces sont dépensées.",
+    "choose": "Choisir {place}",
+    "chooseNone": "Choisis une montée",
+    "remove": "Retirer l'attaque",
+    "close": "Fermer",
+    "blocked": "Ne rentre pas dans l'ordre de son plan sur cette étape"
   }
 }

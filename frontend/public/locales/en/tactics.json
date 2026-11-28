@@ -52,6 +52,7 @@
     "ifDropped": "If dropped: {task}",
     "steps": "Effort steps",
     "toClimb": "To {name}",
+    "toClimbUnnamed": "To category {category} at km {km}",
     "toLastTen": "To the last 10 km",
     "lastTen": "Last 10 km",
     "tryBreak": "Try the break",
@@ -142,5 +143,30 @@
     "locked": "Locked",
     "unsaved": "{count, plural, one {Stage {stages} has changes you have not saved.} other {Stages {stages} have changes you have not saved.}}",
     "unsavedNote": "Nothing is lost when you switch stage."
+  },
+  "attack7884": {
+    "title": "Attack on",
+    "subtitle": "{name} · {role}",
+    "chip": "Attack on {place}",
+    "none": "No attack",
+    "today": "Attacks on {place}",
+    "finale": "Finale",
+    "unnamed": "Cat. {category} at km {km}",
+    "summit": "{name} (finish)",
+    "factCategory": "Cat. {category}",
+    "factFoot": "foot km {km}",
+    "factClimbAfter": "{count} climb after",
+    "factClimbsAfter": "{count} climbs after",
+    "factSummit": "summit finish",
+    "factValley": "valley after",
+    "factLongValley": "long valley after",
+    "factFinale": "Last 10 km · from km {km}",
+    "rule": "One attempt. If he is caught, his strength is spent and the rest of the plan applies.",
+    "ruleShort": "One attempt. If he is caught, his strength is spent.",
+    "choose": "Choose {place}",
+    "chooseNone": "Choose a climb",
+    "remove": "Remove the attack",
+    "close": "Close",
+    "blocked": "Does not fit the order of his plan on this stage"
   }
 }

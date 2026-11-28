@@ -255,6 +255,10 @@ export type StageInput = {
   // #7855 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): troejejagten i etapeplanen (Hent point / Hent bjergpoint,
   // mechanics/jerseyHunt7855.ts). Udeladt = opgaverne findes ikke, som foer.
   jersey_hunt_7855?: true | null;
+  // #8828 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): "Angrib paa <sted>" i etapeplanen (langt angreb
+  // fra foden, mechanics/longAttack7884.ts via stagePlanEngine.ts). Broen saetter feltet kun for et loeb
+  // stemplet til kontakten long_attack_7884 ved foerste etape. Udeladt = planen koeres uden stederne, som foer.
+  long_attack_7884?: true | null;
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
