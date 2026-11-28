@@ -102,6 +102,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "rider_hover_card", // #2009
   "training_rotation", // #8548 (patch note 7.506)
   "training_week_priority", // #8549 (patch note 7.506)
+  "training_day_override_8592", // #8592 (patch note 7.535)
   "planning_workbench", // #7535
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
