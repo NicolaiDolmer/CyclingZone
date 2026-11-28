@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-166 poster: live 137 · dormant 9 · building 9 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+167 poster: live 138 · dormant 9 · building 9 · spec 1 · idea 2 · retired 8. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -28,9 +28,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-day
 
-**live:** Race page v6, step 1 (results for a ridden stage) (`race-page-v6`) 2026-11-21 · Spoiler shield (`spoiler-shield`) 2026-11-21 · Team plans (`tactics-ready`) 2026-11-13
+**live:** Race page v6, step 1 (results for a ridden stage) (`race-page-v6`) 2026-11-21 · Spoiler shield (`spoiler-shield`) 2026-11-21
 
-**arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `race-replay` · `rider-why-button` · `role-scope-choice` · `stage-page-v2` · `stage-plan-v1` · `stage-scheduler`
+**arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `race-replay` · `rider-why-button` · `role-scope-choice` · `stage-page-v2` · `stage-plan-v1` · `stage-scheduler` · `tactics-ready`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -59,9 +59,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## training
 
-**live:** Development XP (`development-xp-model`) 2026-11-21 · One potential source (`potential-estimate-display`) 2026-11-22 · Stored potential estimates (`potential-estimate-writes`) 2026-11-22 · Race session settles when the stage is decided (`settle-race-session-after-stage`) 2026-11-20 · Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Every session at easy, normal or hard (`training-effort-levels-7947`) 2026-11-21 · Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) 2026-11-20 · Teams without a division do not train (`training-no-division-human-no-tick-6110`) 2026-11-20 · New Training page (R5) (`training-page-r5`) 2026-11-21 · Rotation plans that wait on rest and races (`training-rotation-8548`) 2026-11-26 · Train now (no bonus) (`training-train-now`) 2026-11-13 · The rolling training week for the day picker (`training-week-forecast-8580`) 2026-11-22 · Week blocks with priority and one locked session per day (`training-week-priority-8549`) 2026-11-27
+**live:** Development XP (`development-xp-model`) 2026-11-21 · One potential source (`potential-estimate-display`) 2026-11-22 · Stored potential estimates (`potential-estimate-writes`) 2026-11-22 · Race session settles when the stage is decided (`settle-race-session-after-stage`) 2026-11-20 · Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Only this day, one session for a rider, several riders or a group on one date (`training-day-override-8592`) 2026-11-28 · Every session at easy, normal or hard (`training-effort-levels-7947`) 2026-11-21 · Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) 2026-11-20 · Teams without a division do not train (`training-no-division-human-no-tick-6110`) 2026-11-20 · New Training page (R5) (`training-page-r5`) 2026-11-21 · Rotation plans that wait on rest and races (`training-rotation-8548`) 2026-11-26 · The rolling training week for the day picker (`training-week-forecast-8580`) 2026-11-22 · Week blocks with priority and one locked session per day (`training-week-priority-8549`) 2026-11-27
 
-**arkiv:** `ability-cap-per-date` · `condition-model-v2` · `condition-v2-race-date-training-day` · `daily-training` · `development-curve-b` · `peak-planner` · `potential-single-number` · `race-day-role-yield` · `season-fatigue-reset` · `train-now-whole-day` · `training-bulk-day` · `training-catalog-v3` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
+**arkiv:** `ability-cap-per-date` · `condition-model-v2` · `condition-v2-race-date-training-day` · `daily-training` · `development-curve-b` · `peak-planner` · `potential-single-number` · `race-day-role-yield` · `season-fatigue-reset` · `train-now-whole-day` · `training-bulk-day` · `training-catalog-v3` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system` · `training-train-now`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -70,7 +70,6 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Race day role base day (`race-day-role-base-day`)|dormant|`race_day_role_base_day_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-03|#5950 løsning A (ejer 3/11), underkontakt til race-day-role-yield. Off.|
 |AI teams keep a fixed fatigue and form (`ai-team-frozen-state-8614`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-26|Kontakten ai_team_frozen_state_8614 seedes off (migration post-merge). Valg B: intet tick, ingen skader, engangs-nulstilling ved sæsonskiftet. Tænding ejer-only.|
 |Injuries heal over the off-season (`season-injury-reset`)|building|`season_injury_reset_mode`|[TRAINING_RULES](TRAINING_RULES.md)|#5865|2026-11-25|Prod 25/11: season_injury_reset_mode = clear. Selve nulstillingen efterprøves ved S5→S6.|
-|Only this day, one session for a rider, several riders or a group on one date (`training-day-override-8592`)|building|`training_day_override_8592`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-26|Bag flaget (seedet off). Løb, binding og skade vinder; virker uden program (#8819).|
 
 ## academy
 
@@ -112,7 +111,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## board
 
-**live:** Board mandate model (`board-mandate-model`) 2026-11-13
+**arkiv:** `board-mandate-model`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -148,9 +147,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## ops
 
-**live:** Discord bot DM switch (`discord-player-dm-switch`) 2026-11-13
-
-**arkiv:** `ranking-shadow` · `rider-reputation`
+**arkiv:** `discord-player-dm-switch` · `ranking-shadow` · `rider-reputation`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
