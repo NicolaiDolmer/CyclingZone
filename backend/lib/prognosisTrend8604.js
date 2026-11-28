@@ -315,14 +315,21 @@ export function simulateTrend(rider, pace, params, career = STANDARD_CAREER) {
   const declineDays = age0 >= declineSeasonAge ? (age0 - declineSeasonAge + progress) * perSeason : -Infinity;
   const horizonIndex = Math.round(clamp(declineDays, 0, perSeason));
 
-  const applyDrops = (newAge, share) => {
-    if (newAge - 1 < declineSeasonAge || !(share > 0)) return;
-    for (const [ability, drop] of Object.entries(expectedSeasonDrops(state, primaryType, newAge, cfg, career.declineLoad))) {
+  // Skiftets fald regnes ÉN gang pr. sæson (motoren regner det fra værdien ved skiftet) og
+  // fordeles over sæsonens datoer. Regnet dato for dato fra de allerede sænkede evner ville
+  // procent-aldring forrente sig, og faldet blev for lille (Codex #8876 P2).
+  const seasonDrops = (newAge) => (newAge - 1 < declineSeasonAge
+    ? null
+    : expectedSeasonDrops(state, primaryType, newAge, cfg, career.declineLoad));
+  const applyDrops = (drops, share) => {
+    if (!drops || !(share > 0)) return;
+    for (const [ability, drop] of Object.entries(drops)) {
       state[ability] = Math.max(0, state[ability] - drop * share);
     }
   };
   // Den del af sæsonens fald, der hører til de dage, der allerede er gået.
-  applyDrops(age0 + 1, progress);
+  const firstSeasonDrops = seasonDrops(age0 + 1);
+  applyDrops(firstSeasonDrops, progress);
 
   const entries = Object.entries(pace ?? {}).filter(([ability, xp]) => ability in state && xp > 0);
   const ratings = [bestRatingRaw(state)];
@@ -332,13 +339,14 @@ export function simulateTrend(rider, pace, params, career = STANDARD_CAREER) {
   for (let age = age0; age <= lastAge; age++) {
     const dates = age === age0 ? Math.round((1 - progress) * perSeason) : perSeason;
     const shares = entries.map(([ability, xp]) => [ability, xp * shareFor(ability, age, params)]);
+    const drops = age === age0 ? firstSeasonDrops : seasonDrops(age + 1);
     for (let d = 0; d < dates; d++) {
       for (const [ability, xp] of shares) {
         const out = buyPoints({ level: state[ability], bar: bars[ability] ?? 0, xp }, params);
         bars[ability] = out.bar;
         state[ability] = out.level;
       }
-      applyDrops(age + 1, 1 / perSeason);
+      applyDrops(drops, 1 / perSeason);
       const rating = bestRatingRaw(state);
       ratings.push(rating);
       if (rating > ratings[topIndex]) topIndex = ratings.length - 1;

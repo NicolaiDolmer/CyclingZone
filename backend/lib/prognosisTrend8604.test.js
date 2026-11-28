@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { validateDevelopmentXpParams } from "./developmentXp.ts";
 import { STANDARD_CAREER } from "./developmentXpExpectedTop.ts";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
-import { AGING_V2_CONFIG } from "./riderProgression.js";
+import { AGING_V2_CONFIG, xpAgingConfig } from "./riderProgression.js";
 import { clearFlagStageCache } from "./featureStage.js";
 import {
   TREND_LEARNED_DATES, TREND_OWN_AFTER_DATES, blendPace, computeTrendPrognosis, expectedSeasonDrops,
@@ -85,6 +85,37 @@ const prognosis = (over = {}) => computeTrendPrognosis({
 
 test("params er gyldige (forudsætning for resten)", () => {
   assert.ok(params);
+});
+
+test("procent-aldring: én sæsons fald er motorens fald fra værdien ved skiftet, ikke forrentet dato for dato (Codex #8876 P2)", () => {
+  // Prisens top og aldringen er én pakke (developmentXp.ts): begge eller ingen.
+  const pctParams = validateDevelopmentXpParams({
+    price: { base: 10, exponent: 2, top: 120 },
+    potentialXp: [{ at: 1, value: 10 }, { at: 3, value: 30 }, { at: 6, value: 90 }],
+    ageShare: {
+      physical: [{ at: 28, value: 1 }, { at: 32, value: 0.5 }, { at: 36, value: 0.1 }],
+      mental: [{ at: 32, value: 1 }, { at: 36, value: 0.5 }, { at: 40, value: 0.2 }],
+    },
+    offFocusShare: 0.1,
+    raceOffFocusShare: 0.2,
+    typeShare: { signatur: 1, sekundaer: 0.8, haandvaerk: 0.5, andenRolle: 0.3, svaghed: 0.1 },
+    aging: {
+      physical: [{ at: 30, value: 0 }, { at: 34, value: 0.08 }],
+      mental: [{ at: 30, value: 0 }, { at: 34, value: 0.02 }],
+    },
+  });
+  assert.ok(pctParams, "procent-aldringen skal være gyldig");
+  const cfg = xpAgingConfig(pctParams);
+  assert.ok(cfg?.percent);
+  const start = flat(70);
+  const sim = simulateTrend({ ...baseRider({ abilities: start }), seasonAge: 33, seasonProgress: 0 }, {}, pctParams);
+  const drops = expectedSeasonDrops(start, "climber", 34, cfg);
+  assert.ok(Object.keys(drops).length > 0, "der skal være et fald ved 34");
+  const expectedState = Object.fromEntries(Object.entries(start).map(([a, v]) => [a, v - (drops[a] ?? 0)]));
+  // Ratingen af den forventede tilstand: en rytter uden fald (alder 20) og uden fart.
+  const expected = simulateTrend({ ...baseRider({ abilities: expectedState }), seasonAge: 20, seasonProgress: 0 }, {}, pctParams).ratingNow;
+  const afterOneSeason = sim.ratings[STANDARD_CAREER.datesPerSeason];
+  assert.ok(Math.abs(afterOneSeason - expected) < 1e-9, `${afterOneSeason} = ${expected}`);
 });
 
 test("hård træning giver en højere prognose end let træning", () => {
@@ -309,7 +340,7 @@ test("batchen: slukket kontakt læser intet ud over kontakten", async () => {
   clearFlagStageCache();
   const supabase = goldenSupabase({ app_config: [{ key: "prognosis_trend_8604", value: "beta" }] });
   const io = new Proxy({}, { get: () => { throw new Error("io må ikke bruges, når kontakten er slukket"); } });
-  const result = await runPrognosisTrendBatch({ supabase, io, state: { fullRunDate: null, factor: null } });
+  const result = await runPrognosisTrendBatch({ supabase, io, state: { fullRunDate: null, factor: null }, now: new Date("2026-11-28T06:00:00Z") });
   assert.deepEqual(result, { ran: false, skipped: "flag_off" });
   assert.deepEqual(supabase.reads.map((read) => read.table), ["app_config"]);
 });
