@@ -36,6 +36,8 @@ on:
         required: false
         default: false
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'scripts/race-truth-guard.mjs'
       - 'scripts/race-truth-guard.test.mjs'
@@ -60,7 +62,7 @@ concurrency:
 jobs:
   test:
     name: race-truth-rules
-    if: github.event_name == 'pull_request'
+    if: ${{ github.event_name == 'pull_request' && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -515,6 +515,24 @@ test('#6924: season ends at 18:00, the evening run at 20:00 settles the final da
   assert.equal(db.training_date_work.length, 3);
 });
 
+test('#7470 (Fable hul A): a transition still running at 20:00 makes the final date wait, not quarantine', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const { db, settled, quarantined, options, endSeasonAndTransition } = cutoverWorld();
+  endSeasonAndTransition();
+  // Started, not finished: no completed phase and no audit row yet.
+  db.admin_log.push({ action_type: 'season_transition_phase', meta: { from_season_id: 's4', source: 'season_transition_phase', status: 'started', transition_at: '2026-10-25T17:30:00Z' } });
+  db.training_date_work.push({ team_id: 'B', season_id: 's4', tick_date: FINAL, game_days: [41], expected_rider_ids: ['b1'], status: 'partial' });
+  await runNormalizedTrainingDateSweep({ ...options, now: at('2026-10-25T19:05:00Z') });
+  assert.deepEqual(quarantined, [], 'no historical quarantine while the cutover runs');
+  assert.ok(!settled.some(row => row.key.startsWith('B:')), 'and nothing settled yet');
+  // The transition finishes: the next run settles the date as usual.
+  db.admin_log.push({ action_type: 'season_transition_phase', meta: { from_season_id: 's4', source: 'season_transition_phase', status: 'completed', transition_at: '2026-10-25T17:30:00Z' } });
+  __resetNormalizedTrainingDateCacheForTests();
+  await runNormalizedTrainingDateSweep({ ...options, now: at('2026-10-25T19:10:00Z') });
+  assert.deepEqual(quarantined, []);
+  assert.ok(settled.some(row => row.key === `B:s4:${FINAL}:41`), 'settled once the cutover is complete');
+});
+
 test('#6924: unfinished final-date work is settled the next day, then becomes historical', async () => {
   for (const [now, historical] of [['2026-10-26T09:00:00Z', false], ['2026-10-27T09:00:00Z', true]]) {
     __resetNormalizedTrainingDateCacheForTests();

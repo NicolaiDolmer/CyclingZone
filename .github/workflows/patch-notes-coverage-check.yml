@@ -15,6 +15,8 @@ name: Patch notes coverage
 
 on:
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -27,6 +29,7 @@ concurrency:
 
 jobs:
   patch-notes-coverage:
+    if: ${{ !github.event.pull_request.draft }}
     name: patch-notes-coverage (advisory)
     runs-on: ubuntu-latest
     steps:

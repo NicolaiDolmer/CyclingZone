@@ -32,6 +32,7 @@ concurrency:
 
 jobs:
   build-stop:
+    if: ${{ !github.event.pull_request.draft }}
     name: build-stop
     runs-on: ubuntu-latest
     timeout-minutes: 3

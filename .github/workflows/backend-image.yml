@@ -18,6 +18,8 @@ on:
       - "backend/**"
       - ".github/workflows/backend-image.yml"
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "backend/**"
       - ".github/workflows/backend-image.yml"
@@ -32,6 +34,7 @@ concurrency:
 
 jobs:
   image:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

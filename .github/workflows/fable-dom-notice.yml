@@ -1,0 +1,48 @@
+name: Fable judgment notice
+
+on:
+  workflow_run:
+    workflows:
+      - CI (AI-Autopilot)
+      - i18n · Key coverage
+      - Playwright Smoke
+      - Lighthouse CI
+      - PR user-verification check
+      - Dependency review
+      - Secret Scan
+      - Frontend JS typecheck baseline
+      - TypeScript core ratchet
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  statuses: read
+  pull-requests: write
+
+# Serialize the read-before-comment check on a head across finishing workflows.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # workflow_run has a write scope. Only load code from the trusted default branch.
+      - name: Check out the default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Notify when Fable review is due
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/fable-dom-notice.mjs

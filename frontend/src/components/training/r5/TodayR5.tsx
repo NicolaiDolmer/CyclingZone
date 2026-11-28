@@ -96,6 +96,8 @@ export type TodayR5Props = {
   week?: WeekResponse | null;
   /** #8580: "Ret <ugedag> i Program" fra en dag frem. */
   onEditWeekday?: (weekday: string) => void;
+  /** #8592: genindlæs ugen og prognosen efter et "Kun denne dag"-valg. */
+  onWeekChanged?: () => void;
   riders: R5Rider[];
   loading: boolean;
   phone: boolean;
@@ -698,7 +700,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     const weekDays = r5.riderWeekPlans[id] ?? null;
     const onRotation = riderForecast?.rotationSlots != null;
     const planned = dayFields({
-      programSlot: (slot) => rotationFieldSession(riderForecast, slot)
+      programSlot: (slot) => riderForecast?.dateOverride?.session ?? rotationFieldSession(riderForecast, slot) // #8592
         ?? programSessionToday(weekDays, WEEKDAY_KEYS, r5.todayWeekday, slot + 1),
       planSession: planSession ?? null,
       raceSlots,
@@ -726,6 +728,8 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       if (!levelsOn) return null;
       const settled = settledEfforts?.[slot] ?? null;
       if (settled) return settled;
+      // Codex P2 (#8834): "Kun denne dag" koerer passet paa sessionens eget niveau (som motoren).
+      if (riderForecast?.dateOverride?.session) return null;
       if (rotationFieldSession(riderForecast, slot)) {
         return effortOfIntensity(riderForecast?.rotationSlots?.[slot]?.intensity);
       }
@@ -1211,6 +1215,6 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   if (!weekUsable(r5.week)) return page;
   return (
     <DayPickerR5 week={r5.week} riders={r5.riders} planFor={r5.planFor} riderWeekPlans={r5.riderWeekPlans}
-      phone={r5.phone} onEditWeekday={r5.onEditWeekday} today={page} />
+      phone={r5.phone} onEditWeekday={r5.onEditWeekday} today={page} groups={r5.groups ?? []} onWeekChanged={r5.onWeekChanged} />
   );
 }

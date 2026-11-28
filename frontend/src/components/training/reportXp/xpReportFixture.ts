@@ -58,6 +58,11 @@ const FIXTURE_POINTS_PER_DATE = 1;
  * focus is paid out from the bar. `boost` is extra XP, in shares of the ability's
  * fixture price, on the scripted date's first session.
  */
+// #8856: the session a slot rode, picked from its first ability, so the preview shows the three
+// VO2max sessions apart (mixed, climbing and punch intervals) and a few others.
+const SESSION_BY_ABILITY: Record<string, string> = { climbing: "vo2max_climb", punch: "vo2max_punch", sprint: "sprint", time_trial: "threshold", endurance: "endurance", cobblestone: "cobbled_sectors", aggression: "attack_repeats" };
+const VARIED = ["tempo", "vo2max_climb", "vo2max", "vo2max_punch"];
+const sessionFor = (ability: string, slot: number): string => SESSION_BY_ABILITY[ability] ?? VARIED[slot % VARIED.length];
 const SCRIPT: Record<string, Record<number, { rest?: true; race?: boolean; focus?: string[]; boost?: { key: string; share: number } }>> = {
   "fx-6": { 1: { race: true, boost: { key: "climbing", share: 2.4 } }, 0: { rest: true } },
   "fx-1": { 1: { focus: ["climbing", "endurance"], boost: { key: "climbing", share: 2.3 } }, 0: { race: false, focus: ["tempo", "recovery"] } },
@@ -113,7 +118,7 @@ export function buildXpReportFixture(): XpFixture {
         if (!race && !rest) scores.set(`${r.id}:${date}:${slot}`, pick(noise(r.id, date, slot, "score"), 34, 82));
         const activity: XpActivity = {
           rider_id: r.id, name: r.name, game_day: slot, race_day: race,
-          focus: race || rest ? null : focus[0] === "sprint" ? "sprint" : "tempo",
+          focus: race || rest ? null : sessionFor(focus[0], slot),
           intensity: rest ? "rest" : race ? null : "hard", gains: slotGains, xp,
         };
         return activity;

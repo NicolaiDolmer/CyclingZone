@@ -158,7 +158,7 @@ test("estimates tændt: potentialView pr. rytter, den gamle model kører ikke", 
     potentialView: { hidden: false, value: 74, certainty: "fair", previousValue: null, previousCertainty: null, changedAt: null },
   });
   assert.deepEqual(out.estimates.youth, {
-    potentialView: { hidden: true, reason: "learning", trainings: 1, trainingsNeeded: 5 },
+    potentialView: { hidden: true, reason: "unscouted" } /* #8855: aldrig Læres; skrivning slukket her, så intet dag ét-skøn */,
     prognosisView: { hidden: true, reason: "noEstimate" }, // #8523: egen rytter, intet skøn endnu
   });
   assert.doesNotMatch(JSON.stringify(out), FORBIDDEN);
@@ -239,7 +239,7 @@ test("development-projection tændt: potentialView, ingen band/ceil/timing og in
 
 test("development-projection tændt: akademiets gamle tomme svar er væk for egne ungdomsryttere", async () => {
   const out = await route("get", "/riders/:id/development-projection", fakeSupabase("on"))({ params: { id: "youth" } });
-  assert.deepEqual(out.potentialView, { hidden: true, reason: "learning", trainings: 1, trainingsNeeded: 5 });
+  assert.deepEqual(out.potentialView, { hidden: true, reason: "unscouted" } /* #8855: aldrig Læres; skrivning slukket her, så intet dag ét-skøn */);
   assert.deepEqual(out.prognosisView, { hidden: true, reason: "noEstimate" });
 });
 
@@ -275,7 +275,7 @@ test("akademi tændt: trup og kandidater svarer fra skønnet", async () => {
   const out = await route("get", "/academy/me", fakeSupabase("on"), academyContext(intake2))();
   assert.deepEqual(out.roster, [{
     id: "youth",
-    potentialView: { hidden: true, reason: "learning", trainings: 1, trainingsNeeded: 5 },
+    potentialView: { hidden: true, reason: "unscouted" } /* #8855: aldrig Læres; skrivning slukket her, så intet dag ét-skøn */,
     prognosisView: { hidden: true, reason: "noEstimate" },
   }]);
   assert.equal(out.intake[0].potentialView.value, 74);

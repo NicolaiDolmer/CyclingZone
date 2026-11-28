@@ -14,6 +14,8 @@ export type ForecastEntry = {
   fieldSource?: (number | null)[];
   taken?: number[];
   lockMovedFrom?: number | null;
+  // #8592 + #8819: dagens "Kun denne dag"-valg og det, der skete med det (fund 1).
+  dateOverride?: { session: string; outcome?: "trained" | "race" | "bound_rest" | "injured" | "fatigue_rule" | "unavailable" | "unknown"; some?: boolean; beatsRule?: boolean } | null;
 };
 export type ForecastResponse = {
   available?: boolean;

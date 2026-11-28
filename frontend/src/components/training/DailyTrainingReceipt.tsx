@@ -16,6 +16,7 @@ import { useTrainNowBonusEnabled } from "../../lib/trainNowBonusFlag.ts";
 import { raceSourceBreakdown, dayRaceShare } from "./raceContribution7627/raceContributionModel.ts";
 import RaceSourceTable from "./raceContribution7627/RaceSourceTable.tsx";
 import RaceShareStrip from "./raceContribution7627/RaceShareStrip.tsx";
+import SessionName from "./reportXp/SessionName.tsx";
 
 const isKnown = (row: DailyRiderReceipt) => row.receipt_status === "complete" || row.receipt_status === "recorded";
 // #6027: a pending date still shows what its stored race days already trained.
@@ -81,6 +82,9 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
     : activity.race_day ? t("dailyReceipt.race")
     : activity.intensity === "rest" ? t("restDay")
     : activity.focus ? tRider(`training.focus_${activity.focus}`) : t("dailyReceipt.training");
+  // The same order as activityName: only a real training session names its session.
+  const trainedFocus = (activity: TrainingActivity): string | null =>
+    activity.status === "unknown_pending" || activity.injured || activity.race_day || activity.intensity === "rest" ? null : activity.focus ?? null;
   // #7745: a whole point is a bold "+1" in front of the ability; progress toward
   // the next point never shares the line, so "+1" and "+1%" cannot be confused.
   const developmentCell = (row: DailyRiderReceipt): ReactNode => {
@@ -119,7 +123,8 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
           <ol className="mb-4 grid grid-cols-3 gap-x-3 gap-y-3 sm:grid-cols-5">
             {row.activities.map((activity,index)=><li key={index}>
               <p className="font-data text-2xs tabular-nums text-cz-3">{activity.game_day != null && activity.game_day >= 0 ? t("dailyReceipt.raceDay",{day:activity.game_day+1}) : t("dailyReceipt.activity",{n:index+1})}</p>
-              <p className="mt-1 wrap-break-word text-xs font-medium text-cz-1">{activityName(activity)}</p>
+              {/* #8856: a training session shows its own name with a tooltip, not only its ability family. */}
+              <p className="mt-1 wrap-break-word text-xs font-medium text-cz-1">{trainedFocus(activity) ? <SessionName focus={trainedFocus(activity)!} testId="daily-receipt-session-name" /> : activityName(activity)}</p>
               {activity.intensity && activity.intensity !== "rest" && !activity.race_day && <p className="text-2xs text-cz-3">{tRider(`training.intensity_${activity.intensity}`)}</p>}
               {showScore && !activity.race_day && !activity.injured && activity.intensity !== "rest" && <p className="mt-1 font-data text-xs tabular-nums text-cz-1" data-testid="daily-receipt-pass-score">{t("colScore")}: {visible ? receiptPassScore(trainingScore?.[row.rider_id],run.tick_date,run.season_id,activity) ?? "—" : "—"}</p>}
             </li>)}

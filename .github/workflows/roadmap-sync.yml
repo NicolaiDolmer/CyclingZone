@@ -16,6 +16,8 @@ name: Roadmap sync
 
 on:
   pull_request:
+    # #8802: kladder springer de tunge jobs over; ready_for_review koerer dem paa samme HEAD.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'docs/FEATURE_REGISTRY.yml'
       - 'scripts/generate-feature-status.mjs'
@@ -46,6 +48,7 @@ concurrency:
 
 jobs:
   roadmap-text:
+    if: ${{ !github.event.pull_request.draft }}
     name: roadmap-text
     runs-on: ubuntu-latest
     steps:

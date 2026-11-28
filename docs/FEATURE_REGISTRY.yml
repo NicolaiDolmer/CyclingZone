@@ -386,6 +386,18 @@ features:
     verified: 2026-11-20
     note: Tændt 20/11 efter ejer-go 19/11 (#8490). Menneskehold uden division træner ikke; AI-hold uden division beholder kalenderdagens tick til de låste tal er designet.
 
+  - id: ai-team-frozen-state-8614
+    area: training
+    title_en: AI teams keep a fixed fatigue and form
+    title_da: AI-hold har fast træthed og form
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 6110
+    verified: 2026-11-26
+    decision: ejer-beslutning
+    decide_by: 2026-12-03
+    note: "Kontakten ai_team_frozen_state_8614 seedes off (migration post-merge). Valg B: intet tick, ingen skader, engangs-nulstilling ved sæsonskiftet. Tænding ejer-only."
+
   - id: training-fatigue-now-7801
     area: training
     title_en: Fatigue now counts today's earlier stages
@@ -1081,6 +1093,19 @@ features:
     note: "On 22/11 aften efter ejer-ja på prod-billeder (#8580): rettelsen #8599 merget, kontakten off → beta → on. GET /api/training/programs/forecast/week + dagsvælgeren i I dag R5; dag 0 = GET /forecast uændret, dagene frem har kun løbs- og hvilefelter (K-7)."
     decision: taend
     decide_by: 2026-12-06
+
+  - id: training-day-override-8592
+    area: training
+    title_en: Only this day, one session for a rider, several riders or a group on one date
+    title_da: Kun denne dag, et pas for en rytter, flere eller en gruppe på én dato
+    state: building
+    flag: training_day_override_8592
+    ssot: docs/TRAINING_RULES.md
+    epic: 7456
+    verified: 2026-11-26
+    note: "Bag flaget (seedet off). Løb, binding og skade vinder; virker uden program (#8819)."
+    decision: goer-faerdigt
+    decide_by: 2026-12-10
 
   # --- academy -------------------------------------------------------------
   - id: academy

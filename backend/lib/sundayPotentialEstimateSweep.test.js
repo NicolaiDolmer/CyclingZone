@@ -81,13 +81,18 @@ test("i dag: alle ryttere har talent_ceiling NULL, så intet skrives", async () 
   assert.equal(estimates(sb).length, 0);
 });
 
-test("egne ryttere: første skøn ved grænsen, ingen under den", async () => {
+// #8855: under grænsen har en egen rytter dag ét-skønnet (ét kig med standardscouten),
+// så tællingen ses på nøglen: own0 = de egne træninger har nået grænsen.
+const DAY_ONE_KEY = `s1t${PARAMS.scout.defaultTier}`;
+const keys = (sb) => estimates(sb).map((row) => row.knowledge_key);
+
+test("egne ryttere: egne træninger ved grænsen, dag ét-skønnet under den (#8855)", async () => {
   const sb = client({
     riders: [{ id: "r1", team_id: "t1", talent_ceiling: 70, is_retired: false }, { id: "r2", team_id: "t1", talent_ceiling: 60, is_retired: false }],
     training_rider_ticks: [...ticks("r1", "t1", 5), ...ticks("r2", "t1", 4)],
   });
-  assert.equal((await run(sb)).written, 1);
-  assert.deepEqual(estimates(sb).map((r) => [r.rider_id, r.write_reason]), [["r1", "sunday"]]);
+  assert.equal((await run(sb)).written, 2);
+  assert.deepEqual(estimates(sb).map((r) => [r.rider_id, r.write_reason, r.knowledge_key]), [["r1", "sunday", "own0"], ["r2", "sunday", DAY_ONE_KEY]]);
 });
 
 test("datoer tælles, ikke løbsdage, og kun på dette hold", async () => {
@@ -96,7 +101,8 @@ test("datoer tælles, ikke løbsdage, og kun på dette hold", async () => {
     riders: [{ id: "r1", team_id: "t1", talent_ceiling: 70, is_retired: false }],
     training_rider_ticks: [...sameDate, ...ticks("r1", "t9", 8)],
   });
-  assert.equal((await run(sb)).written, 0);
+  await run(sb);
+  assert.deepEqual(keys(sb), [DAY_ONE_KEY]);
 });
 
 // Rækker fra før dato-afregningen: rider_training_scores (løbsdags-stien) og
@@ -113,7 +119,8 @@ test("træning fra de gamle stier tæller med", async () => {
     rider_training_scores: legacyScores("r1", "t1", 3),
     training_day_runs: [legacyRun("t1", "2026-07-01", [trained("r1")]), legacyRun("t1", "2026-07-02", [trained("r1")])],
   });
-  assert.equal((await run(sb)).written, 1);
+  await run(sb);
+  assert.deepEqual(keys(sb), ["own0"]);
 });
 
 // De to næste står med 4 sikre datoer, så én ekstra dato fra et lækket filter giver et skøn.
@@ -124,7 +131,8 @@ test("samme dato i flere kilder tæller én gang", async () => {
     rider_training_scores: [{ id: "a", rider_id: "r1", team_id: "t1", tick_date: "2026-10-01" }],
     training_day_runs: [legacyRun("t1", "2026-10-02", [trained("r1")])],
   });
-  assert.equal((await run(sb)).written, 0);
+  await run(sb);
+  assert.deepEqual(keys(sb), [DAY_ONE_KEY]);
 });
 
 test("gammel træning på et andet hold, hviledage og uafsluttede rapporter tæller ikke", async () => {
@@ -140,7 +148,8 @@ test("gammel træning på et andet hold, hviledage og uafsluttede rapporter tæl
       legacyRun("t1", "2026-10-20", [trained("r1")], 7),
     ],
   });
-  assert.equal((await run(sb)).written, 0);
+  await run(sb);
+  assert.deepEqual(keys(sb), [DAY_ONE_KEY]);
 });
 
 test("fremmed rytter: kun når loftet har flyttet sig", async () => {

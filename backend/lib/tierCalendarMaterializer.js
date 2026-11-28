@@ -47,7 +47,7 @@ import { SQUAD_CALENDAR, CALENDAR_SQUADS, calendarPlacementRulesForSeason } from
 import { detectSeasonPlacementRuleViolations } from "./calendarPlacementGates.js";
 import { packSquadCalendar, squadSlotsForDate } from "./squadCalendarPacker.js";
 // #7471: ungdommens mini-udgaver af seniorloebene (samme dage som seniorens D1).
-import { isMiniEditionRow, withMiniEditionRoutes, packMiniEditionCalendar, loadSeniorMiniAnchors } from "./youthMiniEditions7471.js";
+import { isMiniEditionRow, withMiniEditionRoutes, packMiniEditionCalendar, loadSeniorMiniAnchors, parseMiniEditionExternalId } from "./youthMiniEditions7471.js";
 // #6367: hvilken profil-model en saeson SKAL genereres med (v5 til og med S4, "s5" fra S5).
 // Afledt af saesonnummeret, aldrig af et flag - samme kilde som benchmark-gaten bruger.
 import {
@@ -72,6 +72,8 @@ export function s5GateRacesFromPlan(plan) {
     for (const r of pool?.raceRows ?? []) {
       races.push({
         pool_race_id: r.pool_race_id, name: r.name, race_type: r.race_type, race_class: r.race_class ?? null,
+        // #8830 U23 loesning A: gaten skal kende ungdommens mini-GT'er (egen bjergtop-kvote).
+        squad: r.squad ?? t.squad ?? plan?.squad ?? parseMiniEditionExternalId(r.external_id)?.squad ?? null,
         terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
         stages: profiles.get(r.pool_race_id) ?? [],
       });

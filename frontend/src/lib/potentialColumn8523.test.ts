@@ -34,10 +34,11 @@ test("trup-listens Prognose-sortering: ryttere uden prognose står sidst i begge
   }
 });
 
-test("Usikker viser 'ca.' og afdæmpet tal, og ordet står efter en prik", () => {
+test("ejer 27/11 (#8873): feltet viser kun tallet; sikkerheden står i tooltip'en, Usikker er afdæmpet", () => {
   assert.match(estimate, /unsure \? "text-cz-3" : "text-cz-1"/);
-  assert.match(estimate, /potentialNumber\.approx/);
-  assert.match(estimate, /aria-hidden="true" className="text-cz-3">·<\/span>/);
+  assert.match(estimate, /title=\{`\$\{certaintyWord\}\. \$\{t\("rider:potentialEstimate\.notAFact"\)\}`\}/);
+  assert.doesNotMatch(estimate.slice(estimate.indexOf("export default function PotentialEstimate")), /<CertaintyWord/);
+  assert.doesNotMatch(estimate.slice(estimate.indexOf("export default function PotentialEstimate")), /potentialNumber\.approx/);
 });
 
 test("undertitlen 'spejderens skøn' hører til navnet Potentiale", () => {
