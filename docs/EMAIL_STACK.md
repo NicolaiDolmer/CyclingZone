@@ -233,6 +233,7 @@ Hvor det aflæses:
 | Ugentlige tal | Mandagstals-proceduren i `docs/GROWTH_STACK.md` |
 | Klik fra mail | Alle CTA'er bærer `utm_source=email` og `utm_medium`/`utm_campaign` = mailtypen (`emailTemplates.js:223-226`), så klik lander i den eksisterende kanal-tragt. Discord-CTA'en er bevidst ikke tagget |
 | Mail-klik i signup-attribution | Referrer-domænet fra Gmail-appen tæller som mail-klik i `signup_attribution` (11 rækker målt 8/9) |
+| Kampagne-effekt (S6 og frem, #8807) | `scripts/email-campaign-report.mjs --campaign s6_season [--edition before-start]`, kun læsning. Pr. gruppe × sprog × emne: sendt, leveret, bounce hård/blød, klage, afmeldt, unikke klik og aktivitet efter 1/3/7/14 dage (logget ind, træning, udtagelse, sæsonløb, Pro). Tallene skrives KUN til en privat OneDrive-fil (afviser Git-mapper). Alle der må få mailen får den (ingen kontrolgruppe, ejer 27/11). Pro = betalt checkout (`checkout_completed`), logget ind ignorerer betalings-webhooks. Exit 2 = webhooken leverer ikke (ingen `email_events` for afsendelser ældre end 2 t). Forbehold står i rapporten og i `emailCampaignReport.js` |
 
 Målt tilstand 2026-09-08 ✅ (read-only mod prod):
 
