@@ -20,7 +20,8 @@
     "prognosisLearningTitle": "Prognosen bygger på hans udvikling indtil nu og bliver mere præcis, jo længere han træner hos dig.",
     "aiTeamTitle": "AI-holdenes ryttere kan ikke scoutes.",
     "potentialSubtitle": "spejderens skøn",
-    "potentialTitle": "Potentiale, spejderens skøn. Et skøn, ikke et facit."
+    "potentialTitle": "Potentiale, spejderens skøn. Et skøn, ikke et facit.",
+    "approx": "ca. {value}"
   },
   "table": {
     "nation": "Nation",

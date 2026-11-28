@@ -20,7 +20,8 @@
     "prognosisLearningTitle": "Le pronostic se base sur sa progression jusqu'ici et devient plus précis à mesure qu'il s'entraîne avec toi.",
     "aiTeamTitle": "Les coureurs des équipes IA ne peuvent pas être scoutés.",
     "potentialSubtitle": "estimation du scout",
-    "potentialTitle": "Potentiel, l'estimation du scout. Une estimation, pas un fait."
+    "potentialTitle": "Potentiel, l'estimation du scout. Une estimation, pas un fait.",
+    "approx": "env. {value}"
   },
   "table": {
     "nation": "Nation",

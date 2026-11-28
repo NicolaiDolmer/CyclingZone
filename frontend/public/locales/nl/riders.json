@@ -20,7 +20,8 @@
     "prognosisLearningTitle": "De prognose is gebaseerd op zijn ontwikkeling tot nu toe en wordt nauwkeuriger naarmate hij langer bij jou traint.",
     "aiTeamTitle": "Renners van AI-ploegen kun je niet scouten.",
     "potentialSubtitle": "inschatting van de scout",
-    "potentialTitle": "Potentieel, de inschatting van de scout. Een inschatting, geen feit."
+    "potentialTitle": "Potentieel, de inschatting van de scout. Een inschatting, geen feit.",
+    "approx": "ca. {value}"
   },
   "table": {
     "nation": "Land",
