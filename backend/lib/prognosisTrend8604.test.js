@@ -11,10 +11,10 @@ import { AGING_V2_CONFIG, xpAgingConfig } from "./riderProgression.js";
 import { clearFlagStageCache } from "./featureStage.js";
 import {
   TREND_LEARNED_DATES, TREND_OWN_AFTER_DATES, blendPace, computeTrendPrognosis, expectedSeasonDrops,
-  loadTrendPrognosisViews, priorFactorFromSamples, seasonHistoryPace, settledXpDates, simulateTrend,
+  loadTrendPrognosisViews, priorFactorFromSamples, priorPotentialFromEstimate, seasonHistoryPace, settledXpDates, simulateTrend,
   standardPriorPace, trendPace, trendView,
 } from "./prognosisTrend8604.js";
-import { publishTeam, runPrognosisTrendBatch, summarizeTeam } from "./prognosisTrendSweep.js";
+import { publishTeam, runPrognosisTrendBatch, summarizeTeam, supabaseTrendIo } from "./prognosisTrendSweep.js";
 import { GOLDEN_STAGES, GOLDEN_TEAM, goldenDigests, goldenSupabase, goldenSurfaces, goldenTables } from "./prognosisTrend8604.golden.mjs";
 
 // ── Frossen golden ─────────────────────────────────────────────────────────────────
@@ -334,6 +334,89 @@ test("batchen publicerer idempotent pr. (rytter, hold), uden bånd, og fjerner r
   });
   assert.equal(again.written, 0);
   assert.equal(again.unchanged, 2);
+});
+
+// ── Ejer 28/11: synligt skøn som startfart, kørslens hukommelse, fejlende hold alene ──
+
+test("startfarten bruger det synlige skøn, aldrig det skjulte potentiale", async () => {
+  const rider = { id: "x", abilities: flat(55), seasonAge: 20, primaryType: "climber", secondaryType: null };
+  const low = priorPotentialFromEstimate(rider, 60, params);
+  const high = priorPotentialFromEstimate(rider, 75, params);
+  assert.ok(isFinite(low) && isFinite(high) && high > low, `${high} > ${low}`);
+  assert.equal(priorPotentialFromEstimate(rider, null, params), null);
+  // Samme synlige skøn, forskelligt skjult potentiale: samme startfart.
+  const io = fakeIo();
+  io.riders = async () => [
+    { id: "p1", team_id: "own", birthdate: "2006-06-15", primary_type: "climber", secondary_type: null, potentiale: 1 },
+    { id: "p2", team_id: "own", birthdate: "2006-06-15", primary_type: "climber", secondary_type: null, potentiale: 6 },
+  ];
+  io.estimates = async () => [{ rider_id: "p1", value: 70 }, { rider_id: "p2", value: 70 }];
+  const summary = await summarizeTeam({ io, teamId: "own", season: SEASON, seasons: SEASONS, params, today: TODAY, since: "2026-11-01" });
+  const [s1, s2] = summary.riders;
+  assert.deepEqual(s1.standard, s2.standard);
+  assert.equal(s1.rider.potentiale, s2.rider.potentiale);
+});
+
+test("Supabase-I/O læser aldrig det skjulte potentiale", async () => {
+  const supabase = goldenSupabase({ riders: [] });
+  await supabaseTrendIo(supabase).riders("own");
+  const read = supabase.reads.find((r) => r.table === "riders");
+  assert.ok(read && !/potentiale/.test(read.columns), read?.columns);
+});
+
+function onSupabase() {
+  clearFlagStageCache();
+  return goldenSupabase({ app_config: [{ key: "prognosis_trend_8604", value: "on" }] });
+}
+const batchIo = (failing = new Set()) => {
+  const io = fakeIo();
+  io.activeSeason = async () => SEASON;
+  io.seasons = async () => SEASONS;
+  io.xpFromDate = async () => "2026-11-01";
+  io.teamIds = async () => ["own", "two"];
+  const riders = io.riders;
+  io.riders = async (teamId) => {
+    if (failing.has(teamId)) throw new Error(`hold ${teamId} fejler`);
+    return (await riders()).map((r) => ({ ...r, id: `${teamId}-${r.id}`, team_id: teamId }));
+  };
+  io.estimates = async () => [];
+  // Rækkerne pr. hold, som tabellens nøgle (rytter, hold).
+  io.published = async (teamId) => [...io.store.values()]
+    .filter((row) => row.team_id === teamId).map((row) => ({ rider_id: row.rider_id, input_hash: row.input_hash }));
+  return io;
+};
+
+test("den fulde kørsel huskes: et deploy samme dag starter ingen ny fuld kørsel", async () => {
+  const memory = { fullRunDate: null, factor: null, failedTeamIds: [] };
+  const morning = new Date("2026-11-28T06:00:00Z"); // 07:00 i København
+  const first = await runPrognosisTrendBatch({ supabase: onSupabase(), io: batchIo(), state: memory, params, now: morning });
+  assert.equal(first.full, true);
+  assert.equal(memory.fullRunDate, "2026-11-28");
+  // "Deploy": ny proces, samme hukommelse (databasen).
+  const after = await runPrognosisTrendBatch({ supabase: onSupabase(), io: batchIo(), state: { ...memory }, params, now: new Date("2026-11-28T10:00:00Z") });
+  assert.equal(after.full, false);
+  const nextDay = await runPrognosisTrendBatch({ supabase: onSupabase(), io: batchIo(), state: { ...memory }, params, now: new Date("2026-11-29T06:00:00Z") });
+  assert.equal(nextDay.full, true);
+});
+
+test("et fejlende hold prøves alene næste time, uden at de andre regnes om", async () => {
+  const memory = { fullRunDate: null, factor: null, failedTeamIds: [] };
+  const failing = new Set(["two"]);
+  const io = batchIo(failing);
+  const first = await runPrognosisTrendBatch({ supabase: onSupabase(), io, state: memory, params, now: new Date("2026-11-28T06:00:00Z") });
+  assert.equal(first.full, true);
+  assert.equal(first.failedTeams, 1);
+  assert.equal(memory.fullRunDate, "2026-11-28", "den fulde kørsel huskes trods ét fejlende hold");
+  assert.deepEqual(memory.failedTeamIds, ["two"]);
+  failing.clear();
+  const removedBefore = io.calls.removed.length;
+  const retry = await runPrognosisTrendBatch({ supabase: onSupabase(), io, state: memory, params, now: new Date("2026-11-28T07:00:00Z") });
+  assert.equal(retry.full, false);
+  assert.equal(retry.retried, 1);
+  assert.deepEqual(memory.failedTeamIds, []);
+  // "two" regnes helt (begge ryttere skrevet); "own" har sine rækker og regnes ikke om.
+  assert.equal(retry.written, 2);
+  assert.equal(io.calls.removed.length, removedBefore, "kun en fuld kørsel fjerner rækker; 'own' blev ikke kørt fuldt");
 });
 
 test("batchen: slukket kontakt læser intet ud over kontakten", async () => {
